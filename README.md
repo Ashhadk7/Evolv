@@ -4,16 +4,16 @@
 
 Evolv is an AI-powered venture platform that turns raw startup ideas into investor-ready blueprints with market analysis, competitor maps, MVP specs, architecture, budgets, and a viability score in just 60 seconds. It seamlessly matches founders, developers, and investors within a unified ecosystem.
 
-![Evolv Hero Preview](https://github.com/Ashhadk7/Evolv/assets/placeholder-hero.png) **(Note: Replace with actual screenshot)*
+![Evolv Hero Preview](./public/hero.png)
 
-## ✨ Key Features
+## Key Features
 
 - **AI Blueprint Generation:** Instantly generate comprehensive venture plans including market potential, developer demand, and investor interest scores.
 - **Dynamic Dashboard UI:** Stunning, responsive interface built with Framer Motion for premium micro-animations and interactions.
 - **Ecosystem Matchmaking:** Connects the dots between visionary founders, skilled developers, and active investors.
 - **Modern Tech Stack:** Built for performance and aesthetics using the latest frontend technologies.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
 - **Styling:** [Tailwind CSS 4](https://tailwindcss.com/)
@@ -22,7 +22,7 @@ Evolv is an AI-powered venture platform that turns raw startup ideas into invest
 - **Typography:** [Geist Sans](https://vercel.com/font)
 - **Language:** TypeScript
 
-## 🚀 Getting Started
+## Getting Started
 
 Follow these instructions to get a copy of the project up and running on your local machine.
 
@@ -59,7 +59,7 @@ Ensure you have [Node.js](https://nodejs.org/) installed on your machine.
 4. **Open the app:**
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 src/
@@ -71,10 +71,10 @@ src/
 └── ...
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/Ashhadk7/Evolv/issues).
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
