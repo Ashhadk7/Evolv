@@ -2,79 +2,76 @@
 
 > **Where great ideas become funded startups.**
 
-Evolv is an AI-powered venture platform that turns raw startup ideas into investor-ready blueprints with market analysis, competitor maps, MVP specs, architecture, budgets, and a viability score in just 60 seconds. It seamlessly matches founders, developers, and investors within a unified ecosystem.
+Evolv is an AI-powered venture platform that turns raw startup ideas into investor-ready blueprints — with market analysis, competitor maps, MVP specs, architecture, budgets, and a viability score in 60 seconds. It connects founders, developers, and investors in a unified ecosystem.
 
-![Evolv Hero Preview](./public/hero.png)
+![Evolv Hero Preview](./frontend/public/hero.png)
 
 ## Key Features
 
-- **AI Blueprint Generation:** Instantly generate comprehensive venture plans including market potential, developer demand, and investor interest scores.
-- **Dynamic Dashboard UI:** Stunning, responsive interface built with Framer Motion for premium micro-animations and interactions.
-- **Ecosystem Matchmaking:** Connects the dots between visionary founders, skilled developers, and active investors.
-- **Modern Tech Stack:** Built for performance and aesthetics using the latest frontend technologies.
+- **AI Blueprint Generation** — Comprehensive venture plans including market potential, developer demand, and investor interest scores.
+- **Ecosystem Matchmaking** — Connects founders, developers, and investors.
+- **Role-Based Dashboards** — Separate views for founders, developers, and investors.
+- **Modern Stack** — Built for performance and aesthetics with the latest frontend technologies.
 
 ## Tech Stack
 
-- **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
-- **Styling:** [Tailwind CSS 4](https://tailwindcss.com/)
-- **Animations:** [Framer Motion](https://www.framer.com/motion/)
-- **Icons:** [Lucide React](https://lucide.dev/)
-- **Typography:** [Geist Sans](https://vercel.com/font)
-- **Language:** TypeScript
+| Layer | Technology |
+|---|---|
+| Framework | [Next.js](https://nextjs.org/) (App Router) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com/) |
+| Animations | [Framer Motion](https://www.framer.com/motion/) |
+| Icons | [Lucide React](https://lucide.dev/) |
+| Typography | [Geist Sans](https://vercel.com/font) |
+| Language | TypeScript |
+
+## Project Structure
+
+```
+evolv/
+├── frontend/               # Next.js app
+│   ├── public/             # Static assets
+│   └── src/
+│       ├── app/            # App Router — routing only
+│       ├── components/
+│       │   ├── landing/    # Landing page sections
+│       │   └── ui/         # Reusable UI primitives
+│       ├── views/          # Page-level view composition
+│       ├── lib/            # Utility functions
+│       └── types/          # TypeScript types
+└── backend/                # API (coming soon)
+```
 
 ## Getting Started
 
-Follow these instructions to get a copy of the project up and running on your local machine.
-
 ### Prerequisites
 
-Ensure you have [Node.js](https://nodejs.org/) installed on your machine.
+- [Node.js](https://nodejs.org/) 18+
+- npm, yarn, or pnpm
 
 ### Installation
 
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/Ashhadk7/Evolv.git
-   cd evolv-landing
+   cd Evolv/frontend
    ```
 
 2. **Install dependencies:**
    ```bash
    npm install
-   # or
-   yarn install
-   # or
-   pnpm install
    ```
 
 3. **Run the development server:**
    ```bash
    npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
    ```
 
-4. **Open the app:**
-   Navigate to [http://localhost:3000](http://localhost:3000) in your browser to view the application.
-
-## Project Structure
-
-```text
-src/
-├── app/                  # Next.js App Router pages and layouts
-├── components/           # Reusable UI components
-│   ├── sections/         # Page sections (Hero, Navbar, Features, etc.)
-│   └── ui/               # Base UI elements (Buttons, Animations)
-├── lib/                  # Utility functions
-└── ...
-```
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/Ashhadk7/Evolv/issues).
+Contributions, issues, and feature requests are welcome. Check the [issues page](https://github.com/Ashhadk7/Evolv/issues).
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License — see the LICENSE file for details.
