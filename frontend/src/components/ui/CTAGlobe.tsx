@@ -129,11 +129,12 @@ export function CTAGlobe() {
 
     // ── Animation loop ───────────────────────────────────────────
     let raf: number;
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
 
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const t = clock.getElapsedTime();
+      timer.update();
+      const t = timer.getElapsed();
 
       group.rotation.y = t * 0.065 + mx * 0.3;
       group.rotation.x = Math.sin(t * 0.04) * 0.1 + my * 0.2;
