@@ -1,9 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useInView } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Check, Sparkle, InstagramLogo, LinkedinLogo, TwitterLogo } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Check, InstagramLogo, LinkedinLogo, TwitterLogo } from "@phosphor-icons/react";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { ScrollReelTestimonials } from "@/components/ui/scroll-reel-testimonials";
 
@@ -59,7 +59,6 @@ export function Testimonials() {
    CTA — light cream, globe accent, senior-level design
 ════════════════════════════════════════════════════════════ */
 
-// Mirrors the Hero section cycling words for brand consistency
 const OUTCOMES = [
   "funded startup",
   "developer team",
@@ -71,30 +70,6 @@ const ROLE_CHIPS = [
   { label: "Founder",   top: "8%",  left: "68%", delay: 0 },
   { label: "Developer", top: "78%", left: "62%", delay: 0.6 },
   { label: "Investor",  top: "46%", left: "76%", delay: 1.2 },
-];
-
-const VALUE_CARDS = [
-  {
-    tag:    "Founders",
-    title:  "Blueprint in 60 seconds",
-    body:   "Describe your idea and Evolv generates a full market analysis, tech stack, financial model, and pitch structure — instantly.",
-    checks: ["Market sizing & timing", "Recommended tech stack", "12-month revenue model"],
-    accent: "#1a312c",
-  },
-  {
-    tag:    "Developers",
-    title:  "Real-time project matching",
-    body:   "Browse blueprints that fit your exact skills, stack, and budget. Scope is already defined — no ambiguous briefs.",
-    checks: ["Skill-fit scoring", "Budget & timeline clarity", "Warm founder introductions"],
-    accent: "#428475",
-  },
-  {
-    tag:    "Investors",
-    title:  "Investor-ready scoring",
-    body:   "A 0–100 viability rating across market timing, execution risk, and traction — structured for first-pass diligence.",
-    checks: ["A+ / A / B tier rating", "Competitive gap analysis", "Pitch prep checklist"],
-    accent: "#89d7b7",
-  },
 ];
 
 function CyclingWord() {
@@ -132,138 +107,7 @@ function CyclingWord() {
   );
 }
 
-function ValueCard({ card, index, inView }: {
-  card: typeof VALUE_CARDS[0];
-  index: number;
-  inView: boolean;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <motion.div
-      className="group relative flex flex-col overflow-hidden rounded-2xl"
-      initial={{ opacity: 0, y: 36 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{
-        duration: 0.6,
-        delay: index * 0.14,
-        ease: [0.21, 0.47, 0.32, 0.98],
-      }}
-      whileHover={{ y: -8, scale: 1.015 }}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      style={{
-        background: "rgba(255,255,255,0.78)",
-        border: "1px solid rgba(26,49,44,0.07)",
-        boxShadow: hovered
-          ? "0 20px 60px rgba(26,49,44,0.12), 0 0 0 1.5px rgba(66,132,117,0.25)"
-          : "0 2px 12px rgba(26,49,44,0.05)",
-        transition: "box-shadow 0.3s ease",
-        backdropFilter: "blur(12px)",
-      }}
-    >
-      {/* Shimmer overlay on hover */}
-      <motion.div
-        className="pointer-events-none absolute inset-0 rounded-2xl"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: hovered ? 1 : 0 }}
-        transition={{ duration: 0.25 }}
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(137,215,183,0.1) 0%, rgba(66,132,117,0.04) 40%, transparent 70%)",
-        }}
-      />
-
-      {/* Top gradient accent line (per role color) */}
-      <div
-        className="absolute left-0 right-0 top-0 h-[2.5px] rounded-t-2xl"
-        style={{
-          background: `linear-gradient(90deg, ${card.accent}60, ${card.accent}20, transparent)`,
-          opacity: hovered ? 1 : 0.55,
-          transition: "opacity 0.3s ease",
-        }}
-      />
-
-      <div className="relative flex flex-1 flex-col p-6">
-        {/* Role tag */}
-        <div className="mb-4 flex items-center justify-between">
-          <span
-            className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-            style={{
-              background: `${card.accent}12`,
-              border: `1px solid ${card.accent}28`,
-              color: card.accent === "#89d7b7" ? "#428475" : card.accent,
-            }}
-          >
-            {card.tag}
-          </span>
-          <motion.div
-            animate={{ rotate: hovered ? 15 : 0, scale: hovered ? 1.15 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          >
-            <Sparkle
-              size={14}
-              weight="fill"
-              style={{
-                color: card.accent === "#89d7b7" ? "#428475" : card.accent,
-                opacity: hovered ? 0.8 : 0.3,
-              }}
-            />
-          </motion.div>
-        </div>
-
-        <h3
-          className="mb-2.5 text-[15px] font-semibold leading-snug tracking-tight"
-          style={{ color: "#0f1e1a" }}
-        >
-          {card.title}
-        </h3>
-
-        <p
-          className="mb-5 flex-1 text-[13px] leading-relaxed"
-          style={{ color: "rgba(15,30,26,0.52)" }}
-        >
-          {card.body}
-        </p>
-
-        {/* Checklist */}
-        <ul className="flex flex-col gap-2">
-          {card.checks.map((c, ci) => (
-            <motion.li
-              key={c}
-              className="flex items-center gap-2.5"
-              initial={false}
-              animate={{ x: hovered ? 2 : 0 }}
-              transition={{ delay: ci * 0.04, duration: 0.2 }}
-            >
-              <span
-                className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
-                style={{
-                  background: hovered ? `${card.accent}18` : "rgba(66,132,117,0.08)",
-                  transition: "background 0.3s ease",
-                }}
-              >
-                <Check
-                  size={9}
-                  weight="bold"
-                  style={{ color: card.accent === "#89d7b7" ? "#428475" : card.accent }}
-                />
-              </span>
-              <span className="text-[12px]" style={{ color: "rgba(15,30,26,0.55)" }}>
-                {c}
-              </span>
-            </motion.li>
-          ))}
-        </ul>
-      </div>
-    </motion.div>
-  );
-}
-
 export function CTA() {
-  const cardsRef = useRef<HTMLDivElement>(null);
-  const inView   = useInView(cardsRef, { once: true, margin: "-60px" });
-
   return (
     <section
       className="relative overflow-hidden"
@@ -304,10 +148,10 @@ export function CTA() {
       {/* ══════════════════════════════════════════════════
           MAIN HERO ROW
       ══════════════════════════════════════════════════ */}
-      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center px-4 pt-20 sm:px-6 md:px-12 lg:grid-cols-[55%_45%] lg:pt-28">
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center px-4 pt-20 pb-24 sm:px-6 md:px-12 lg:grid-cols-[55%_45%] lg:pt-28 lg:pb-32">
 
         {/* ── LEFT: headline + CTA ──────────────────────── */}
-        <FadeIn className="pb-8 lg:pb-28 lg:pr-16">
+        <FadeIn className="pb-8 lg:pb-0 lg:pr-16">
 
           {/* Badge */}
           <motion.div
@@ -362,9 +206,7 @@ export function CTA() {
 
           {/* Trust micro-row */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {[
-              
-            ].map((t) => (
+            {[].map((t) => (
               <span
                 key={t}
                 className="flex items-center gap-1.5 text-[12px]"
@@ -435,24 +277,12 @@ export function CTA() {
           </div>
         </div>
       </div>
-
-      {/* ══════════════════════════════════════════════════
-          VALUE CARDS
-      ══════════════════════════════════════════════════ */}
-      <div
-        ref={cardsRef}
-        className="relative mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pb-24 pt-16 sm:px-6 md:grid-cols-3 md:px-12 lg:pb-32"
-      >
-        {VALUE_CARDS.map((card, i) => (
-          <ValueCard key={card.tag} card={card} index={i} inView={inView} />
-        ))}
-      </div>
     </section>
   );
 }
 
 /* ════════════════════════════════════════════════════════════
-   FOOTER — improved: proper layout, solid colors, good spacing
+   FOOTER
 ════════════════════════════════════════════════════════════ */
 
 const NAV_LINKS = [
@@ -460,18 +290,6 @@ const NAV_LINKS = [
   { label: "Who it's for", href: "#who-it-for" },
   { label: "Early users", href: "#early-users" },
   { label: "Blueprint", href: "#blueprint" },
-];
-
-const COMPANY_LINKS = [
-  { label: "About", href: "#" },
-  { label: "Our Team", href: "#" },
-  { label: "Contact", href: "mailto:hello@evolv.so" },
-];
-
-const SOCIAL_LINKS = [
-  { label: "Twitter", href: "#", icon: TwitterLogo },
-  { label: "LinkedIn", href: "#", icon: LinkedinLogo },
-  { label: "Instagram", href: "#", icon: InstagramLogo },
 ];
 
 const LEGAL_LINKS = [
@@ -577,7 +395,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Col 3 — Built by / contact */}
+          {/* Col 3 — Company */}
           <div className="flex flex-col gap-4">
             <p
               className="text-[11px] font-semibold uppercase tracking-widest"
@@ -586,51 +404,27 @@ export function Footer() {
               Company
             </p>
             <ul className="flex flex-col gap-3">
-              <li>
-                <a
-                  href="#"
-                  className="text-[14px] transition-colors duration-150"
-                  style={{ color: "rgba(255,244,225,0.55)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
-                  }
-                >
-                  About
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-[14px] transition-colors duration-150"
-                  style={{ color: "rgba(255,244,225,0.55)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
-                  }
-                >
-                  Our Team
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:hello@evolv.so"
-                  className="text-[14px] transition-colors duration-150"
-                  style={{ color: "rgba(255,244,225,0.55)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
-                  }
-                >
-                  Contact
-                </a>
-              </li>
+              {[
+                { label: "About", href: "#" },
+                { label: "Our Team", href: "#" },
+                { label: "Contact", href: "mailto:hello@evolv.so" },
+              ].map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="text-[14px] transition-colors duration-150"
+                    style={{ color: "rgba(255,244,225,0.55)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
+                    }
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
