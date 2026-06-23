@@ -9,12 +9,13 @@ import {
 } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const NAV_LINKS = [
-  { label: "Home",     href: "#home"     },
-  { label: "How it works",   href: "#how-it-works"   },
-  { label: "About",    href: "#about"     },
-  { label: "Our Team", href: "#our-team" },
+  { label: "Home",         href: "#home"         },
+  { label: "How it works", href: "#how-it-works"  },
+  { label: "About",        href: "#about"         },
+  { label: "Our Team",     href: "#our-team"      },
 ];
 
 function EvolvMark() {
@@ -41,6 +42,7 @@ function EvolvMark() {
 
 export function Navbar() {
   const { scrollY } = useScroll();
+  const router = useRouter();
   const [menuOpen, setMenuOpen]       = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -51,21 +53,13 @@ export function Navbar() {
   const backgroundColor = useMotionTemplate`rgba(16, 34, 30, ${bgOpacity})`;
   const borderColor     = useMotionTemplate`rgba(137, 215, 183, ${borderOpacity})`;
 
-  // ── Compact mode: kicks in as user scrolls past the hero ─────
-  // 0 = at top / full size   |   1 = scrolled past hero / compact
-  const compact = useTransform(scrollY, [380, 720], [0, 1]);
-
-  // Outer wrapper: shrinks top padding + adds horizontal padding
-  // (more side padding = narrower pill on screen)
-  const outerPt = useTransform(compact, [0, 1], [12,  4]);
-  const outerPx = useTransform(compact, [0, 1], [16, 28]);
-
-  // Inner pill: tighter padding + narrower max-width
-  const innerPx  = useTransform(compact, [0, 1], [20, 14]);
-  const innerPy  = useTransform(compact, [0, 1], [12,  6]);
+  const compact   = useTransform(scrollY, [380, 720], [0, 1]);
+  const outerPt   = useTransform(compact, [0, 1], [12,  4]);
+  const outerPx   = useTransform(compact, [0, 1], [16, 28]);
+  const innerPx   = useTransform(compact, [0, 1], [20, 14]);
+  const innerPy   = useTransform(compact, [0, 1], [12,  6]);
   const innerMaxW = useTransform(compact, [0, 1], [1280, 940]);
 
-  // Lamp hover helpers ──────────────────────────────────────────
   const onEnter = (label: string) => {
     clearTimeout(hideTimer.current);
     setHoveredLink(label);
@@ -76,7 +70,6 @@ export function Navbar() {
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50">
-      {/* Animated outer wrapper — controls overall size & position */}
       <motion.div
         style={{
           paddingTop:    outerPt,
@@ -85,14 +78,13 @@ export function Navbar() {
           paddingRight:  outerPx,
         }}
       >
-        {/* Inner navbar pill */}
         <motion.div
           className="mx-auto flex items-center justify-between rounded-xl"
           style={{
-            maxWidth:     innerMaxW,
-            paddingLeft:  innerPx,
-            paddingRight: innerPx,
-            paddingTop:   innerPy,
+            maxWidth:      innerMaxW,
+            paddingLeft:   innerPx,
+            paddingRight:  innerPx,
+            paddingTop:    innerPy,
             paddingBottom: innerPy,
             backgroundColor,
             borderWidth: "1px",
@@ -112,7 +104,7 @@ export function Navbar() {
             </span>
           </a>
 
-          {/* Desktop nav links — sliding lamp effect */}
+          {/* Desktop nav links */}
           <div className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((link) => (
               <a
@@ -130,7 +122,6 @@ export function Navbar() {
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                     style={{ background: "rgba(137,215,183,0.09)" }}
                   >
-                    {/* Glowing bar at top of pill */}
                     <span
                       className="absolute left-1/2 -translate-x-1/2"
                       style={{ top: "-5px" }}
@@ -157,12 +148,16 @@ export function Navbar() {
 
           {/* Desktop actions */}
           <div className="hidden items-center gap-1 md:flex">
-            <button className="px-4 py-2 text-sm text-cream/48 transition-colors hover:text-cream/75">
+            <button
+              onClick={() => router.push("/sign-in")}
+              className="px-4 py-2 text-sm text-cream/48 transition-colors hover:text-cream/75"
+            >
               Sign in
             </button>
             <motion.button
               whileHover={{ scale: 1.025 }}
               whileTap={{ scale: 0.97 }}
+              onClick={() => router.push("/sign-up")}
               className="rounded-lg bg-mint px-5 py-2 text-sm font-semibold text-dark"
               style={{
                 boxShadow:
@@ -207,10 +202,16 @@ export function Navbar() {
               </a>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-mint/8 pt-3">
-              <button className="px-3 py-2.5 text-left text-sm text-cream/55 transition-colors hover:text-cream/80">
+              <button
+                onClick={() => { router.push("/sign-in"); setMenuOpen(false); }}
+                className="px-3 py-2.5 text-left text-sm text-cream/55 transition-colors hover:text-cream/80"
+              >
                 Sign in
               </button>
-              <button className="rounded-lg bg-mint px-4 py-2.5 text-sm font-semibold text-dark">
+              <button
+                onClick={() => { router.push("/sign-up"); setMenuOpen(false); }}
+                className="rounded-lg bg-mint px-4 py-2.5 text-sm font-semibold text-dark"
+              >
                 Get started free
               </button>
             </div>

@@ -11,6 +11,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -287,16 +288,11 @@ function BlueprintCard() {
 
 function DashboardMockup() {
   return (
-    /*
-     * Outer div has generous padding on all four sides so the absolutely-
-     * positioned floating badges live OUTSIDE the card but inside this
-     * container — they never overlap the card face.
-     */
     <div
       className="relative mx-auto w-full max-w-[400px]"
       style={{ paddingTop: "2.8rem", paddingBottom: "4rem", paddingLeft: "2rem", paddingRight: "0.75rem" }}
     >
-      {/* Ambient glow — behind everything */}
+      {/* Ambient glow */}
       <div
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
@@ -306,7 +302,7 @@ function DashboardMockup() {
         }}
       />
 
-      {/* ── Floating badge: top-left ──────────────────────────────────────── */}
+      {/* Floating badge: top-left */}
       <motion.div
         animate={{ y: [0, -5, 0] }}
         transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
@@ -326,9 +322,9 @@ function DashboardMockup() {
         </span>
       </motion.div>
 
-      {/* ── Card deck ─────────────────────────────────────────────────────── */}
+      {/* Card deck */}
       <div className="relative" style={{ perspective: "1100px" }}>
-        {/* Ghost card 3 — furthest back */}
+        {/* Ghost card 3 */}
         <div
           className="absolute inset-0 rounded-2xl"
           style={{
@@ -340,7 +336,7 @@ function DashboardMockup() {
             opacity: 0.5,
           }}
         />
-        {/* Ghost card 2 — middle */}
+        {/* Ghost card 2 */}
         <div
           className="absolute inset-0 rounded-2xl"
           style={{
@@ -353,7 +349,7 @@ function DashboardMockup() {
           }}
         />
 
-        {/* Main card — 3D tilted with smooth hover */}
+        {/* Main card */}
         <motion.div
           initial={{ opacity: 0, rotateX: 14, rotateY: -18, y: 16 }}
           animate={{ opacity: 1, rotateX: 4, rotateY: -8, y: 0 }}
@@ -361,7 +357,6 @@ function DashboardMockup() {
           transition={{ duration: 0.9, delay: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
           style={{ position: "relative", zIndex: 10, transformStyle: "preserve-3d" }}
         >
-          {/* Gentle float on the main card */}
           <motion.div
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
@@ -371,7 +366,7 @@ function DashboardMockup() {
         </motion.div>
       </div>
 
-      {/* ── Floating badge: bottom-right ──────────────────────────────────── */}
+      {/* Floating badge: bottom-right */}
       <motion.div
         animate={{ y: [0, 5, 0] }}
         transition={{ duration: 4.1, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
@@ -393,7 +388,7 @@ function DashboardMockup() {
         <Lightning size={12} weight="fill" className="shrink-0 text-mint" />
       </motion.div>
 
-      {/* ── Floating badge: bottom-left ────────────────────────────────────── */}
+      {/* Floating badge: bottom-left */}
       <motion.div
         animate={{ y: [0, -4, 0] }}
         transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
@@ -439,6 +434,12 @@ function ScrollIndicator() {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function Hero() {
+  const router = useRouter();
+
+  const scrollToHowItWorks = () => {
+    document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <section className="relative flex min-h-[100dvh] flex-col justify-center overflow-hidden bg-dark px-4 pt-24 pb-8 sm:px-6 md:px-12">
       <HeroBackground />
@@ -496,25 +497,30 @@ export function Hero() {
               analysis, competitor maps, MVP specs, and a viability score — in 60 seconds.
             </motion.p>
 
-            {/* CTA buttons */}
+            {/* ── CTA buttons ── */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
               className="mb-8 flex flex-col gap-2.5 sm:flex-row"
             >
+              {/* PRIMARY — goes to /sign-up */}
               <motion.button
                 whileHover={{ scale: 1.025 }}
                 whileTap={{ scale: 0.975 }}
+                onClick={() => router.push("/sign-up")}
                 className="flex items-center justify-center gap-2 rounded-xl bg-mint px-7 py-3.5 text-[13px] font-semibold tracking-tight text-dark transition-all"
                 style={{ boxShadow: "0 0 40px rgba(137,215,183,0.28), 0 4px 16px rgba(137,215,183,0.14)" }}
               >
                 <RocketLaunch size={15} weight="bold" />
                 Forge your blueprint
               </motion.button>
+
+              {/* SECONDARY — smooth scrolls to #how-it-works */}
               <motion.button
                 whileHover={{ scale: 1.015 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={scrollToHowItWorks}
                 className="group flex items-center justify-center gap-2 rounded-xl border border-cream/10 px-7 py-3.5 text-[13px] tracking-tight text-cream/48 transition-all hover:border-mint/24 hover:text-cream/72"
               >
                 See how it works
