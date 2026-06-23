@@ -1,31 +1,36 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Code2, Lightbulb, TrendingUp } from "lucide-react";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/FadeIn";
+import {
+  ArrowRight,
+  BracketsAngle,
+  Check,
+  LightbulbFilament,
+  TrendUp,
+} from "@phosphor-icons/react";
 
 const users = [
   {
     id: "founders",
-    icon: Lightbulb,
+    Icon: LightbulbFilament,
     role: "Founders",
-    accentColor: "#428475",
+    accent: "#428475",
     title: "Turn an idea into a venture-ready blueprint",
     description:
-      "Describe the startup in plain English. Evolv researches the market, maps competitors, and packages the opportunity into a structured plan developers and investors can act on.",
+      "Describe the startup in plain language. Evolv researches the market, maps competitors, and packages the opportunity into a structured plan developers and investors can act on.",
     perks: [
       "Market analysis and competitor map",
       "Prioritized MVP scope and build order",
       "Technical architecture and cost estimate",
-      "Investor-ready viability score from 0 to 100",
+      "Investor-ready viability score 0–100",
     ],
     cta: "Start as a founder",
   },
   {
     id: "developers",
-    icon: Code2,
+    Icon: BracketsAngle,
     role: "Developers",
-    accentColor: "#2d6455",
+    accent: "#2d6455",
     title: "Browse projects that match your exact stack",
     description:
       "Skip vague briefs and discovery churn. Every blueprint includes the technical spec, preferred stack, budget range, timeline, and founder context before you commit.",
@@ -39,12 +44,12 @@ const users = [
   },
   {
     id: "investors",
-    icon: TrendingUp,
+    Icon: TrendUp,
     role: "Investors",
-    accentColor: "#1a312c",
+    accent: "#1a312c",
     title: "Review AI-scored deals before they surface",
     description:
-      "Use a filtered feed of venture blueprints scored by viability, domain, stage, and funding readiness. Move from signal to founder conversation without spreadsheet sprawl.",
+      "Use a filtered feed of venture blueprints scored by viability, domain, stage, and funding readiness. Move from signal to conversation without spreadsheet sprawl.",
     perks: [
       "Daily deal feed with viability scoring",
       "Filters for domain, stage, and budget",
@@ -55,85 +60,173 @@ const users = [
   },
 ];
 
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.21, 0.47, 0.32, 0.98] as const },
+  },
+};
+
 export function UserTypes() {
   return (
-    <section className="relative overflow-hidden bg-[#f2fbf7] px-4 py-20 sm:px-6 md:px-12 lg:py-24">
-      <div className="absolute left-0 right-0 top-0 h-px bg-dark/10" />
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-dark/8" />
+    <section
+      id="who-it-is-for"
+      className="relative overflow-hidden px-4 py-20 sm:px-6 md:px-12 lg:py-28"
+      style={{ background: "#f8f9f8" }}
+    >
+      <div
+        className="absolute left-0 right-0 top-0 h-px"
+        style={{ background: "rgba(26,49,44,0.08)" }}
+      />
+
+      {/* Directional light from top — not a tile, just depth */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(66,132,117,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(66,132,117,0.055) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-          maskImage: "linear-gradient(to bottom, transparent, black 16%, black 84%, transparent)",
+          background:
+            "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(66,132,117,0.055) 0%, transparent 70%)",
         }}
       />
 
       <div className="relative mx-auto max-w-7xl">
-        <FadeIn className="mb-12 max-w-2xl md:mb-14">
-          <div className="mb-3 text-xs font-semibold uppercase text-mid">Who it is for</div>
-          <h2 className="mb-4 text-3xl font-bold leading-tight text-dark sm:text-4xl md:text-5xl">
-            One platform, <span className="text-mid">three precise workflows</span>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
+          className="mb-14 max-w-xl md:mb-16"
+        >
+          <div
+            className="mb-4 inline-flex items-center rounded-full px-3 py-1"
+            style={{
+              background: "rgba(66,132,117,0.08)",
+              border: "1px solid rgba(66,132,117,0.14)",
+            }}
+          >
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: "#428475" }}
+            >
+              Who it is for
+            </span>
+          </div>
+          <h2
+            className="mb-4 text-3xl font-bold leading-[1.08] tracking-[-0.02em] sm:text-4xl md:text-[2.8rem]"
+            style={{ color: "#0f1e1a" }}
+          >
+            One platform,{" "}
+            <span style={{ color: "#428475" }}>three precise workflows</span>
           </h2>
-          <p className="text-base leading-relaxed text-dark/60 md:text-lg">
-            Evolv gives each side of the venture market the right level of structure, signal, and
-            context to move faster.
+          <p
+            className="text-[15px] leading-relaxed"
+            style={{ color: "rgba(15,30,26,0.5)" }}
+          >
+            Evolv gives each side of the venture market the right level of
+            structure, signal, and context to move faster.
           </p>
-        </FadeIn>
+        </motion.div>
 
-        <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-3" staggerDelay={0.12}>
+        {/* Cards */}
+        <motion.div
+          className="grid grid-cols-1 gap-5 lg:grid-cols-3"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+        >
           {users.map((user) => (
-            <StaggerItem key={user.role} className="h-full">
-              <motion.article
-                id={user.id}
-                whileHover={{
-                  y: -5,
-                  boxShadow: "0 22px 58px rgba(26,49,44,0.13), 0 4px 14px rgba(26,49,44,0.06)",
-                  transition: { duration: 0.28 },
-                }}
-                className="group flex h-full scroll-mt-28 flex-col overflow-hidden rounded-lg border border-dark/10 bg-white p-6 sm:p-7"
-                style={{
-                  borderTop: `2px solid ${user.accentColor}`,
-                  boxShadow: "0 1px 4px rgba(26,49,44,0.06)",
-                }}
-              >
+            <motion.article
+              key={user.id}
+              id={user.id}
+              variants={cardVariants}
+              whileHover={{ y: -5, transition: { duration: 0.22 } }}
+              className="group flex flex-col scroll-mt-28 overflow-hidden rounded-2xl"
+              style={{
+                background: "#ffffff",
+                border: "1px solid rgba(15,30,26,0.07)",
+                borderTop: `2.5px solid ${user.accent}`,
+                boxShadow:
+                  "0 1px 3px rgba(15,30,26,0.04), 0 4px 16px rgba(15,30,26,0.04)",
+              }}
+            >
+              <div className="flex flex-1 flex-col p-7">
+                {/* Icon */}
                 <div
-                  className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg"
+                  className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl"
                   style={{
-                    backgroundColor: `${user.accentColor}16`,
-                    border: `1px solid ${user.accentColor}24`,
+                    background: `${user.accent}13`,
+                    border: `1px solid ${user.accent}22`,
                   }}
                 >
-                  <user.icon size={20} style={{ color: user.accentColor }} />
+                  <user.Icon size={20} weight="bold" style={{ color: user.accent }} />
                 </div>
 
-                <div className="mb-2 text-xs font-semibold uppercase" style={{ color: user.accentColor }}>
+                {/* Role */}
+                <div
+                  className="mb-2 text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: user.accent }}
+                >
                   {user.role}
                 </div>
-                <h3 className="mb-3 text-xl font-bold leading-snug text-dark">{user.title}</h3>
-                <p className="mb-6 text-sm leading-relaxed text-dark/58">{user.description}</p>
 
+                {/* Title */}
+                <h3
+                  className="mb-3 text-[1.15rem] font-bold leading-snug tracking-[-0.015em]"
+                  style={{ color: "#0f1e1a" }}
+                >
+                  {user.title}
+                </h3>
+
+                {/* Description */}
+                <p
+                  className="mb-6 text-sm leading-[1.72]"
+                  style={{ color: "rgba(15,30,26,0.5)" }}
+                >
+                  {user.description}
+                </p>
+
+                {/* Perks */}
                 <div className="mb-8 flex flex-1 flex-col gap-2.5">
                   {user.perks.map((perk) => (
                     <div key={perk} className="flex items-start gap-2.5">
-                      <Check size={14} className="mt-0.5 shrink-0" style={{ color: user.accentColor }} />
-                      <span className="text-sm leading-relaxed text-dark/68">{perk}</span>
+                      <div
+                        className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
+                        style={{ background: `${user.accent}14` }}
+                      >
+                        <Check size={9} weight="bold" style={{ color: user.accent }} />
+                      </div>
+                      <span
+                        className="text-[13px] leading-relaxed"
+                        style={{ color: "rgba(15,30,26,0.58)" }}
+                      >
+                        {perk}
+                      </span>
                     </div>
                   ))}
                 </div>
 
+                {/* CTA */}
                 <motion.button
                   whileHover={{ x: 3 }}
-                  className="mt-auto flex items-center gap-2 text-sm font-semibold transition-colors"
-                  style={{ color: user.accentColor }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-auto flex items-center gap-1.5 text-[13px] font-semibold"
+                  style={{ color: user.accent }}
                 >
-                  {user.cta} <ArrowRight size={14} />
+                  {user.cta}
+                  <ArrowRight size={13} weight="bold" />
                 </motion.button>
-              </motion.article>
-            </StaggerItem>
+              </div>
+            </motion.article>
           ))}
-        </StaggerContainer>
+        </motion.div>
       </div>
     </section>
   );

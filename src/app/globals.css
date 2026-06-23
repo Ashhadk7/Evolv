@@ -6,7 +6,7 @@
   --color-mint: #89d7b7;
   --color-cream: #fff4e1;
 
-  --font-family-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-family-sans: inherit;
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-slow: pulse 4s ease-in-out infinite;
@@ -25,7 +25,7 @@ html { scroll-behavior: smooth; }
 body {
   background: #1a312c;
   color: #fff4e1;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: inherit;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -40,3 +40,53 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #1a312c; }
 ::-webkit-scrollbar-thumb { background: #428475; border-radius: 3px; }
+
+/* ── Footer ── */
+.footer-link {
+  color: rgba(255, 244, 225, 0.42);
+  transition: color 200ms ease;
+}
+.footer-link:hover { color: #89d7b7; }
+
+.footer-social {
+  color: rgba(255, 244, 225, 0.38);
+  transition: color 180ms ease, background 180ms ease;
+}
+.footer-social:hover {
+  color: #89d7b7;
+  background: rgba(137, 215, 183, 0.12) !important;
+}
+
+/* ── CTA blob drift ── */
+@keyframes blob-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, -30px) scale(1.06); }
+  66%       { transform: translate(-20px, 25px) scale(0.96); }
+}
+@keyframes blob-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-35px, 20px) scale(1.04); }
+  75%       { transform: translate(25px, -35px) scale(0.98); }
+}
+
+/* ── ScrollReelTestimonials ── */
+@keyframes scroll-reel-char-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes scroll-reel-exit {
+  from { opacity: 1; transform: translateY(0);   }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+.scroll-reel-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: scroll-reel-char-rise 240ms ease forwards;
+}
+
+.scroll-reel-exit {
+  animation: scroll-reel-exit 240ms ease forwards;
+}

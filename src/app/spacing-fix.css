@@ -58,9 +58,19 @@
 .pt-7 { padding-top: calc(var(--spacing) * 7); }
 .pt-24 { padding-top: calc(var(--spacing) * 24); }
 .pt-28 { padding-top: calc(var(--spacing) * 28); }
+.pt-24 { padding-top: calc(var(--spacing) * 24); }
+.pt-28 { padding-top: calc(var(--spacing) * 28); }
+.pt-36 { padding-top: calc(var(--spacing) * 36); }
+.pt-40 { padding-top: calc(var(--spacing) * 40); }
 .pb-1 { padding-bottom: calc(var(--spacing) * 1); }
+.pb-8 { padding-bottom: calc(var(--spacing) * 8); }
+.pb-12 { padding-bottom: calc(var(--spacing) * 12); }
 .pb-16 { padding-bottom: calc(var(--spacing) * 16); }
+.pb-20 { padding-bottom: calc(var(--spacing) * 20); }
 .pl-6 { padding-left: calc(var(--spacing) * 6); }
+.pb-24 { padding-bottom: calc(var(--spacing) * 24); }
+.pt-32 { padding-top: calc(var(--spacing) * 32); }
+.mb-0\.5 { margin-bottom: calc(var(--spacing) * 0.5); }
 
 @media (min-width: 40rem) {
   .sm\:p-6 { padding: calc(var(--spacing) * 6); }
@@ -78,6 +88,8 @@
 @media (min-width: 64rem) {
   .lg\:px-8 { padding-inline: calc(var(--spacing) * 8); }
   .lg\:pt-28 { padding-top: calc(var(--spacing) * 28); }
+  .lg\:pt-40 { padding-top: calc(var(--spacing) * 40); }
+  .lg\:pt-44 { padding-top: calc(var(--spacing) * 44); }
   .lg\:py-24 { padding-block: calc(var(--spacing) * 24); }
   .lg\:py-28 { padding-block: calc(var(--spacing) * 28); }
 }
