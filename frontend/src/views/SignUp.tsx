@@ -28,20 +28,17 @@ function BlueprintAnimation() {
   });
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center px-10">
+    <div className="relative flex h-full w-full flex-col items-center justify-center px-10">
       <div
         className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(137,215,183,0.07) 0%, transparent 70%)",
-        }}
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(137,215,183,0.07) 0%, transparent 70%)" }}
       />
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
-        className="w-full max-w-[320px] overflow-hidden rounded-2xl"
+        className="relative z-10 w-full max-w-[320px] overflow-hidden rounded-2xl"
         style={{
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(255,255,255,0.08)",
@@ -126,7 +123,7 @@ function BlueprintAnimation() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.9 }}
-        className="mt-6 text-center text-[12px] leading-relaxed text-white/22"
+        className="relative z-10 mt-6 text-center text-[12px] leading-relaxed text-white/22"
       >
         From raw idea to investor-ready blueprint
         <br />
@@ -229,9 +226,7 @@ export default function SignUp() {
                   className="rounded-lg px-3 py-2.5 text-left transition-all"
                   style={{
                     background: role === r.value ? "rgba(137,215,183,0.09)" : "rgba(255,255,255,0.03)",
-                    border: role === r.value
-                      ? "1px solid rgba(137,215,183,0.25)"
-                      : "1px solid rgba(255,255,255,0.07)",
+                    border: role === r.value ? "1px solid rgba(137,215,183,0.25)" : "1px solid rgba(255,255,255,0.07)",
                   }}
                 >
                   <div className="text-[12px] font-medium" style={{ color: role === r.value ? "#89d7b7" : "rgba(255,255,255,0.45)" }}>
@@ -299,7 +294,7 @@ export default function SignUp() {
         </div>
       </div>
 
-      {/* RIGHT: animation panel */}
+      {/* RIGHT: animation panel — fixed alignment */}
       <div
         className="relative hidden lg:flex lg:w-[46%]"
         style={{

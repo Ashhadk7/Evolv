@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Eye, EyeSlash, Sparkle } from "@phosphor-icons/react";
+import { ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
 import Link from "next/link";
 
 export default function SignIn() {
@@ -106,7 +106,6 @@ export default function SignIn() {
           </button>
         </div>
 
-        {/* Feature chips at bottom */}
         <div className="mt-10 flex flex-wrap gap-2">
           {["Market analysis", "Viability score", "Dev matching", "Investor feed"].map((chip) => (
             <span
@@ -120,9 +119,9 @@ export default function SignIn() {
         </div>
       </div>
 
-      {/* RIGHT: subtle visual panel */}
+      {/* RIGHT: panel — properly centered */}
       <div
-        className="relative hidden lg:flex lg:w-[46%] flex-col items-center justify-center px-12"
+        className="relative hidden lg:flex lg:w-[46%] items-center justify-center px-12"
         style={{
           background: "linear-gradient(150deg, #0a1410 0%, #060e0b 100%)",
           borderLeft: "1px solid rgba(255,255,255,0.04)",
@@ -130,10 +129,7 @@ export default function SignIn() {
       >
         <div
           className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 55% 45% at 50% 45%, rgba(137,215,183,0.06) 0%, transparent 70%)",
-          }}
+          style={{ background: "radial-gradient(ellipse 55% 45% at 50% 45%, rgba(137,215,183,0.06) 0%, transparent 70%)" }}
         />
 
         <div className="relative z-10 max-w-[300px]">
