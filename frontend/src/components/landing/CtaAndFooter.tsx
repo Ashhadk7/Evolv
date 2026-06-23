@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Check, Sparkle } from "@phosphor-icons/react";
+import { ArrowRight, ArrowUpRight, Check, Sparkle, InstagramLogo, LinkedinLogo, TwitterLogo } from "@phosphor-icons/react";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { ScrollReelTestimonials } from "@/components/ui/scroll-reel-testimonials";
 
@@ -360,56 +360,40 @@ export function CTA() {
             60 seconds. Then it matches you with the right developers and investors.
           </p>
 
-          {/* CTA buttons */}
-          <div className="mb-8 flex flex-wrap items-center gap-3">
-            <motion.button
-              whileHover={{
-                scale: 1.04,
-                boxShadow: "0 10px 40px rgba(26,49,44,0.24), 0 2px 8px rgba(26,49,44,0.16)",
-              }}
-              whileTap={{ scale: 0.97 }}
-              className="group relative flex items-center gap-2.5 overflow-hidden rounded-xl px-8 py-4 text-[15px] font-semibold"
-              style={{
-                background: "#1a312c",
-                color: "#89d7b7",
-                boxShadow: "0 4px 20px rgba(26,49,44,0.2)",
-              }}
-            >
-              {/* Shimmer on hover */}
-              <motion.span
-                className="pointer-events-none absolute inset-0"
-                initial={{ x: "-100%", opacity: 0.6 }}
-                whileHover={{ x: "100%" }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
+          <div className="mb-10 grid gap-4 sm:grid-cols-3 items-stretch">
+            {[
+              {
+                title: "Blueprint in 60 seconds",
+                text: "Instantly turn your idea into an execution-ready project brief.",
+              },
+              {
+                title: "Developer matches ready",
+                text: "See scoped teams that fit your stack, budget, and timeline.",
+              },
+              {
+                title: "Investor-ready score",
+                text: "Share a concise viability grade for faster diligence.",
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="flex h-full flex-col rounded-3xl border border-slate-900/40 bg-white/95 p-5 shadow-sm"
                 style={{
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(137,215,183,0.15), transparent)",
+                  color: "#0f1e1a",
                 }}
-              />
-              <span className="relative">Get started free</span>
-              <ArrowRight size={16} weight="bold" className="relative" />
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 rounded-xl px-6 py-4 text-[14px] font-medium transition-all"
-              style={{
-                border: "1.5px solid rgba(26,49,44,0.14)",
-                color: "rgba(12,26,20,0.55)",
-              }}
-            >
-              See a live blueprint
-              <ArrowUpRight size={14} />
-            </motion.button>
+              >
+                <h3 className="mb-3 text-sm font-semibold">{card.title}</h3>
+                <p className="mt-auto text-[13px] leading-relaxed" style={{ color: "rgba(12,26,20,0.68)" }}>
+                  {card.text}
+                </p>
+              </div>
+            ))}
           </div>
 
           {/* Trust micro-row */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             {[
-              "No credit card required",
-              "Blueprint in 60 seconds",
-              "Cancel any time",
+              
             ].map((t) => (
               <span
                 key={t}
@@ -498,102 +482,220 @@ export function CTA() {
 }
 
 /* ════════════════════════════════════════════════════════════
-   FOOTER — compact, brand-focused
+   FOOTER — improved: proper layout, solid colors, good spacing
 ════════════════════════════════════════════════════════════ */
+
+const NAV_LINKS = [
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Who it's for", href: "#who-it-for" },
+  { label: "Early users", href: "#early-users" },
+  { label: "Blueprint", href: "#blueprint" },
+];
+
+const COMPANY_LINKS = [
+  { label: "About", href: "#" },
+  { label: "Our Team", href: "#" },
+  { label: "Contact", href: "mailto:hello@evolv.so" },
+];
+
+const SOCIAL_LINKS = [
+  { label: "Twitter", href: "#", icon: TwitterLogo },
+  { label: "LinkedIn", href: "#", icon: LinkedinLogo },
+  { label: "Instagram", href: "#", icon: InstagramLogo },
+];
+
+const LEGAL_LINKS = [
+  { label: "Privacy Policy", href: "#" },
+  { label: "Terms of Use", href: "#" },
+];
 
 export function Footer() {
   return (
     <footer
-      className="relative px-4 py-10 sm:px-6 md:px-12"
-      style={{ background: "#1a312c" }}
+      className="relative px-4 pt-16 pb-8 sm:px-6 md:px-12"
+      style={{ background: "#0f1e1a" }}
     >
       {/* Top separator */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 right-0 top-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 5%, rgba(137,215,183,0.28) 30%, rgba(137,215,183,0.28) 70%, transparent 95%)",
-        }}
+        className="absolute left-0 right-0 top-0 h-px"
+        style={{ background: "rgba(137,215,183,0.15)" }}
       />
 
       <div className="relative mx-auto max-w-7xl">
 
-        {/* ── Main row: logo left · nav + CTA right ── */}
-        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+        {/* ── Main 3-column grid ── */}
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8 lg:gap-16">
 
-          {/* Logo block */}
-          <a
-            href="#"
-            className="flex items-center gap-3"
-            aria-label="Evolv home"
-          >
-            <svg
-              width="44"
-              height="44"
-              viewBox="0 0 20 20"
-              fill="none"
-              aria-hidden="true"
-              className="shrink-0"
-            >
-              <path
-                d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5"
-                stroke="#89d7b7"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="18" cy="3.5" r="2.1" fill="#89d7b7" />
-            </svg>
-            <span
-              className="text-[30px] font-bold tracking-tight leading-none"
-              style={{ color: "#fff4e1" }}
-            >
-              Ev<span style={{ color: "#89d7b7" }}>olv</span>
-            </span>
-          </a>
-
-          {/* Tagline — visible on desktop inline, below logo on mobile */}
-          <p
-            className="max-w-[260px] text-[13px] leading-relaxed md:mx-auto"
-            style={{ color: "rgba(255,244,225,0.36)" }}
-          >
-            Where ideas become blueprints and blueprints become ventures.
-          </p>
-
-          {/* Nav links + CTA */}
-          <div className="flex flex-wrap items-center gap-6">
-            <a href="#" className="footer-link text-[14px] font-medium">
-              About
+          {/* Col 1 — Brand */}
+          <div className="flex flex-col gap-5">
+            <a href="#" aria-label="Evolv home" className="flex items-center gap-3">
+              <svg
+                width="36"
+                height="36"
+                viewBox="0 0 20 20"
+                fill="none"
+                aria-hidden="true"
+                className="shrink-0"
+              >
+                <path
+                  d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5"
+                  stroke="#89d7b7"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="18" cy="3.5" r="2.1" fill="#89d7b7" />
+              </svg>
+              <span
+                className="text-[26px] font-bold tracking-tight leading-none"
+                style={{ color: "#fff4e1" }}
+              >
+                Ev<span style={{ color: "#89d7b7" }}>olv</span>
+              </span>
             </a>
-            <a href="#" className="footer-link text-[14px] font-medium">
-              Our Team
-            </a>
+
+            <p
+              className="text-[13px] leading-relaxed max-w-[240px]"
+              style={{ color: "rgba(255,244,225,0.45)" }}
+            >
+              Where ideas become blueprints and blueprints become ventures.
+            </p>
+
+            {/* CTA button */}
             <motion.a
               href="#"
-              whileHover={{ scale: 1.04, boxShadow: "0 0 24px rgba(137,215,183,0.28)" }}
+              whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-semibold"
+              className="mt-1 inline-flex w-fit items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold"
               style={{
                 background: "#89d7b7",
-                color: "#1a312c",
-                boxShadow: "0 0 14px rgba(137,215,183,0.15)",
+                color: "#0f1e1a",
               }}
             >
-              Get started
-              <ArrowRight size={14} weight="bold" />
+              Get started free
+              <ArrowRight size={13} weight="bold" />
             </motion.a>
           </div>
+
+          {/* Col 2 — Navigation */}
+          <div className="flex flex-col gap-4">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(137,215,183,0.5)" }}
+            >
+              Sections
+            </p>
+            <ul className="flex flex-col gap-3">
+              {NAV_LINKS.map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="text-[14px] transition-colors duration-150"
+                    style={{ color: "rgba(255,244,225,0.55)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
+                    }
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Col 3 — Built by / contact */}
+          <div className="flex flex-col gap-4">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(137,215,183,0.5)" }}
+            >
+              Company
+            </p>
+            <ul className="flex flex-col gap-3">
+              <li>
+                <a
+                  href="#"
+                  className="text-[14px] transition-colors duration-150"
+                  style={{ color: "rgba(255,244,225,0.55)" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
+                  }
+                >
+                  About
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="text-[14px] transition-colors duration-150"
+                  style={{ color: "rgba(255,244,225,0.55)" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
+                  }
+                >
+                  Our Team
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:hello@evolv.so"
+                  className="text-[14px] transition-colors duration-150"
+                  style={{ color: "rgba(255,244,225,0.55)" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "rgba(255,244,225,0.55)")
+                  }
+                >
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </div>
+
         </div>
 
-        {/* ── Copyright bar ── */}
+        {/* ── Bottom bar ── */}
         <div
-          className="mt-8 border-t pt-6 text-center"
+          className="mt-14 flex flex-col items-center justify-between gap-4 border-t pt-6 sm:flex-row"
           style={{ borderColor: "rgba(137,215,183,0.1)" }}
         >
-          <p className="text-[12px]" style={{ color: "rgba(255,244,225,0.24)" }}>
+          <p
+            className="text-[12px]"
+            style={{ color: "rgba(255,244,225,0.28)" }}
+          >
             &copy; 2026 Team Evolv. All rights reserved.
           </p>
+
+          <div className="flex items-center gap-5">
+            {LEGAL_LINKS.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                className="text-[12px] transition-colors duration-150"
+                style={{ color: "rgba(255,244,225,0.28)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "rgba(255,244,225,0.6)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "rgba(255,244,225,0.28)")
+                }
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
         </div>
 
       </div>
