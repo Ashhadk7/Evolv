@@ -360,36 +360,6 @@ export function CTA() {
             60 seconds. Then it matches you with the right developers and investors.
           </p>
 
-          <div className="mb-10 grid gap-4 sm:grid-cols-3 items-stretch">
-            {[
-              {
-                title: "Blueprint in 60 seconds",
-                text: "Instantly turn your idea into an execution-ready project brief.",
-              },
-              {
-                title: "Developer matches ready",
-                text: "See scoped teams that fit your stack, budget, and timeline.",
-              },
-              {
-                title: "Investor-ready score",
-                text: "Share a concise viability grade for faster diligence.",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="flex h-full flex-col rounded-3xl border border-slate-900/40 bg-white/95 p-5 shadow-sm"
-                style={{
-                  color: "#0f1e1a",
-                }}
-              >
-                <h3 className="mb-3 text-sm font-semibold">{card.title}</h3>
-                <p className="mt-auto text-[13px] leading-relaxed" style={{ color: "rgba(12,26,20,0.68)" }}>
-                  {card.text}
-                </p>
-              </div>
-            ))}
-          </div>
-
           {/* Trust micro-row */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             {[
@@ -471,7 +441,7 @@ export function CTA() {
       ══════════════════════════════════════════════════ */}
       <div
         ref={cardsRef}
-        className="relative mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pb-24 pt-2 sm:px-6 md:grid-cols-3 md:px-12 lg:pb-32"
+        className="relative mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pb-24 pt-16 sm:px-6 md:grid-cols-3 md:px-12 lg:pb-32"
       >
         {VALUE_CARDS.map((card, i) => (
           <ValueCard key={card.tag} card={card} index={i} inView={inView} />
