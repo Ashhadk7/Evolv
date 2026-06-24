@@ -2,7 +2,7 @@
 
 import { motion, type MotionValue, useScroll, useSpring, useTransform } from "framer-motion";
 import { ArrowsOut, Clock, Handshake, Robot, Scroll } from "@phosphor-icons/react";
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -51,80 +51,6 @@ const steps = [
 // screen never goes fully dark at the boundary.
 const TRANS = 0.07;
 const EPS   = 0.015;
-
-// ─── Animated canvas background ───────────────────────────────────────────────
-
-function LiveBackground() {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let raf: number;
-    let t = 0;
-
-    const lights = [
-      { bx: 0.18, by: 0.12, ax: 0.09, ay: 0.07, r: 0.55, R: 137, G: 215, B: 183, A: 0.13, s: 0.00028 },
-      { bx: 0.82, by: 0.82, ax: 0.07, ay: 0.08, r: 0.60, R: 66,  G: 132, B: 117, A: 0.17, s: 0.00022 },
-      { bx: 0.50, by: 0.50, ax: 0.06, ay: 0.06, r: 0.45, R: 137, G: 215, B: 183, A: 0.08, s: 0.00038 },
-      { bx: 0.80, by: 0.18, ax: 0.05, ay: 0.08, r: 0.40, R: 66,  G: 132, B: 117, A: 0.11, s: 0.00032 },
-      { bx: 0.12, by: 0.78, ax: 0.08, ay: 0.06, r: 0.48, R: 137, G: 215, B: 183, A: 0.09, s: 0.00025 },
-    ];
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width  = rect.width  * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-    };
-
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-
-    const draw = () => {
-      t++;
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
-      const minDim = Math.min(w, h);
-
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#0b1a16";
-      ctx.fillRect(0, 0, w, h);
-
-      for (const l of lights) {
-        const cx = (l.bx + Math.sin(t * l.s + l.bx * 6) * l.ax) * w;
-        const cy = (l.by + Math.cos(t * l.s * 0.77 + l.by * 5) * l.ay) * h;
-        const r  = l.r * minDim * 0.85;
-
-        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        grd.addColorStop(0,   `rgba(${l.R},${l.G},${l.B},${l.A})`);
-        grd.addColorStop(0.5, `rgba(${l.R},${l.G},${l.B},${l.A * 0.45})`);
-        grd.addColorStop(1,   `rgba(${l.R},${l.G},${l.B},0)`);
-
-        ctx.fillStyle = grd;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    draw();
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, []);
-
-  return (
-    <canvas
-      ref={ref}
-      className="absolute inset-0 h-full w-full"
-      style={{ display: "block" }}
-    />
-  );
-}
 
 // ─── Vertical center progress line ────────────────────────────────────────────
 
@@ -328,11 +254,11 @@ function StepContent({ step }: { step: (typeof steps)[number] }) {
   return (
     <div className="flex flex-col">
       <div className="mb-4 flex items-center gap-3">
-        <span className="font-mono text-[11px] tracking-widest text-mint/35">
+        <span className="font-mono text-[11px] tracking-widest text-mint/70">
           {step.number}
         </span>
-        <span className="h-px w-8 bg-mint/15" />
-        <span className="text-[10px] uppercase tracking-widest text-cream/25">
+        <span className="h-px w-8 bg-mint/30" />
+        <span className="text-[10px] uppercase tracking-widest text-cream/55">
           {step.detail}
         </span>
       </div>
@@ -341,19 +267,19 @@ function StepContent({ step }: { step: (typeof steps)[number] }) {
         {step.title}
       </h3>
 
-      <p className="mb-8 max-w-md text-[15px] leading-relaxed text-cream/45">
+      <p className="mb-8 max-w-md text-[15px] leading-relaxed text-cream/70">
         {step.description}
       </p>
 
       <div
         className="inline-flex w-fit items-center gap-2 rounded-full px-4 py-2"
         style={{
-          background: "rgba(137,215,183,0.07)",
-          border: "1px solid rgba(137,215,183,0.16)",
+          background: "rgba(137,215,183,0.1)",
+          border: "1px solid rgba(137,215,183,0.28)",
         }}
       >
-        <Clock size={11} weight="bold" className="text-mint/50" />
-        <span className="text-[11px] font-medium text-mint/60">{step.tag}</span>
+        <Clock size={11} weight="bold" className="text-mint/75" />
+        <span className="text-[11px] font-medium text-mint/85">{step.tag}</span>
       </div>
     </div>
   );
@@ -362,30 +288,19 @@ function StepContent({ step }: { step: (typeof steps)[number] }) {
 function StepVisual({ step }: { step: (typeof steps)[number] }) {
   return (
     <div className="flex items-center justify-center">
-      <div className="relative">
-        <div
-          className="absolute -inset-16 rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(137,215,183,0.18) 0%, transparent 60%)",
-            filter: "blur(32px)",
-          }}
-        />
-        <div
-          className="relative flex h-[200px] w-[200px] items-center justify-center rounded-2xl md:h-[240px] md:w-[240px]"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(137,215,183,0.11) 0%, rgba(137,215,183,0.025) 100%)",
-            border: "1px solid rgba(137,215,183,0.2)",
-            boxShadow:
-              "0 0 0 1px rgba(137,215,183,0.06) inset, 0 28px 72px rgba(0,0,0,0.32)",
-          }}
-        >
-          <span className="absolute left-4 top-4 font-mono text-[10px] tracking-widest text-mint/20">
-            {step.number}
-          </span>
-          <step.Icon size={68} weight="bold" className="text-mint/62" />
-        </div>
+      <div
+        className="relative flex h-[200px] w-[200px] items-center justify-center rounded-2xl md:h-[240px] md:w-[240px]"
+        style={{
+          background: "rgba(11,26,22,0.82)",
+          border: "1px solid rgba(137,215,183,0.14)",
+          boxShadow:
+            "0 1px 2px rgba(0,0,0,0.35), inset 0 1px 0 rgba(137,215,183,0.07), 0 28px 72px rgba(0,0,0,0.45)",
+        }}
+      >
+        <span className="absolute left-4 top-4 font-mono text-[10px] tracking-widest text-mint/45">
+          {step.number}
+        </span>
+        <step.Icon size={68} weight="bold" className="text-mint/85" />
       </div>
     </div>
   );
@@ -471,13 +386,11 @@ export function HowItWorks() {
           position: "sticky",
           top: 0,
           height: "100vh",
-          background: "#0b1a16",
+          background: "#1a312c",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <LiveBackground />
-
         {/* Top border */}
         <div
           className="absolute left-0 right-0 top-0 z-10 h-px"
