@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeSlash, RocketLaunch, Sparkle } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -8,7 +9,6 @@ import Link from "next/link";
 const ROLE_OPTIONS = [
   { value: "founder",   label: "Founder",   desc: "I have an idea" },
   { value: "developer", label: "Developer", desc: "I build products" },
-  { value: "investor",  label: "Investor",  desc: "I fund ventures" },
 ] as const;
 
 const STEPS = [
@@ -77,7 +77,6 @@ function BlueprintAnimation() {
           <div className="mb-4 space-y-2.5">
             {[
               { label: "Market fit",    val: 78 },
-              { label: "Investor pull", val: 65 },
               { label: "Dev demand",    val: 82 },
             ].map((item, i) => (
               <div key={item.label}>
@@ -134,9 +133,10 @@ function BlueprintAnimation() {
 }
 
 export default function SignUp() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [role, setRole] = useState<"founder" | "developer" | "investor" | "">("");
+  const [role, setRole] = useState<"founder" | "developer" | "">("");
 
   return (
     <div className="flex min-h-screen w-full" style={{ background: "#0f1c18" }}>
@@ -217,7 +217,7 @@ export default function SignUp() {
 
           <div className="flex flex-col gap-1">
             <label className="text-[11px] text-white/30">I am joining as</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {ROLE_OPTIONS.map((r) => (
                 <button
                   key={r.value}
@@ -265,6 +265,10 @@ export default function SignUp() {
             whileHover={{ scale: 1.012 }}
             whileTap={{ scale: 0.988 }}
             type="button"
+            onClick={() => {
+              if (role === "founder") router.push("/founder-dashboard?setup=true");
+              else if (role === "developer") router.push("/developer-dashboard");
+            }}
             className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold"
             style={{ background: "#89d7b7", color: "#0f1c18", boxShadow: "0 0 20px rgba(137,215,183,0.15)" }}
           >
