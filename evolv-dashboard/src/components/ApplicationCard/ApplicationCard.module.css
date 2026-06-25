@@ -1,0 +1,121 @@
+.appItem {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #F5F3EF;
+    transition: transform 0.25s ease, background 0.25s ease;
+    border-radius: 0.4rem;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+    margin-left: -0.3rem;
+    margin-right: -0.3rem;
+}
+
+.appItem:last-child {
+    border-bottom: none;
+}
+
+.appItem:hover {
+    transform: translateX(4px) scale(1.02);
+    background: #FAF9F7;
+}
+
+.icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+.icon.health {
+    background: #EAF5F0;
+    color: #2E8B6A;
+}
+
+.icon.logistics {
+    background: #FDF3E7;
+    color: #C07830;
+}
+
+.icon.finflow {
+    background: #E8F0FD;
+    color: #2B5CC8;
+}
+
+.icon.energy {
+    background: #F3EAF5;
+    color: #7B2E8B;
+}
+
+.info {
+    flex: 1;
+    min-width: 0;
+}
+
+.name {
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #1B1B1B;
+    line-height: 1.2;
+}
+
+.role {
+    font-size: 0.65rem;
+    color: #888;
+}
+
+.date {
+    font-size: 0.6rem;
+    color: #AAA;
+}
+
+.status {
+    font-size: 0.54rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.status.interview {
+    background: #EAF5F0;
+    color: #0D5C35;
+    border: 1px solid #8FD8BE;
+}
+
+.status.pending {
+    background: #FDF3E7;
+    color: #7A5030;
+    border: 1px solid #DBA870;
+}
+
+.status.accepted {
+    background: #E8F0FD;
+    color: #1B44A8;
+    border: 1px solid #7AABF0;
+}
+
+.status.declined {
+    background: #FDE8E8;
+    color: #8A2020;
+    border: 1px solid #F0A0A0;
+}
+
+.chevron {
+    color: #CCC;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.chevron:hover {
+    color: #5BC8A0;
+    transform: translateX(3px);
+}
