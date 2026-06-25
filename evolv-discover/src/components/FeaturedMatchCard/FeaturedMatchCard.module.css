@@ -1,0 +1,240 @@
+.featuredCard {
+    background: #FFFFFF;
+    border-radius: 0.65rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid #E6E0D7;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+}
+
+.featuredCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px rgba(13, 43, 34, 0.08);
+    border-color: #8FD8BE;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #1B1B1B;
+    padding: 0.15rem 0.6rem;
+    background: #F7F6F3;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.logo {
+    font-size: 1.8rem;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+}
+
+.name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #1B1B1B;
+}
+
+.meta {
+    font-size: 0.7rem;
+    color: #888;
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+
+.badges {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.viabilityBadge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #0D2B22;
+    background: #EAF5F0;
+    border: 1px solid #8FD8BE;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+}
+
+.matchBadge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #7A5030;
+    background: #FDF3E7;
+    border: 1px solid #DBA870;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.desc {
+    font-size: 0.82rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.metrics {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.metricLabel {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 0.04em;
+}
+
+.metricValue {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #1B1B1B;
+}
+
+.techTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.techTag {
+    font-size: 0.6rem;
+    font-weight: 500;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: #F7F6F3;
+    border: 1px solid #E6E0D7;
+    color: #555;
+}
+
+.whyBox {
+    background: #F7F6F3;
+    border-left: 2.5px solid #8FD8BE;
+    border-radius: 0 0.35rem 0.35rem 0;
+    padding: 0.5rem 0.7rem;
+}
+
+.whyLabel {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
+    margin-bottom: 0.15rem;
+}
+
+.whyBox ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.whyBox ul li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: #1B1B1B;
+}
+
+.whyBox ul li i {
+    color: #5BC8A0;
+    font-size: 0.55rem;
+}
+
+.actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.primaryBtn {
+    background: #0D2B22;
+    color: #F7F6F3;
+    border: none;
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.2s ease;
+}
+
+.primaryBtn:hover {
+    background: #1A4A3A;
+    transform: scale(1.05);
+}
+
+.iconBtn {
+    background: transparent;
+    border: 1px solid #E6E0D7;
+    border-radius: 999px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.7rem;
+    color: #555;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+    border-color: #8FD8BE;
+    color: #0D2B22;
+    background: #EAF5F0;
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .top {
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .metrics {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+}

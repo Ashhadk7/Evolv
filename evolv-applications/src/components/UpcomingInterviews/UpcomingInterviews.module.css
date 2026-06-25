@@ -1,0 +1,143 @@
+.interviewsSection {
+    margin-bottom: 1.5rem;
+}
+
+.sectionHeader {
+    margin-bottom: 0.75rem;
+}
+
+.sectionHeader h3 {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #1B1B1B;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.interviewsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.interviewCard {
+    background: #FFFFFF;
+    border-radius: 0.65rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid #E6E0D7;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+}
+
+.interviewCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(13, 43, 34, 0.05);
+    border-color: #8FD8BE;
+}
+
+.interviewTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.3rem;
+}
+
+.interviewInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.interviewLogo {
+    font-weight: 700;
+    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: #EAF5F0;
+    color: #0D2B22;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #8FD8BE;
+    flex-shrink: 0;
+}
+
+.interviewStartup {
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: #1B1B1B;
+}
+
+.interviewRole {
+    font-size: 0.65rem;
+    color: #888;
+}
+
+.interviewType {
+    font-size: 0.55rem;
+    font-weight: 600;
+    color: #0D2B22;
+    background: #FDF3E7;
+    padding: 0.08rem 0.4rem;
+    border-radius: 999px;
+    border: 1px solid #DBA870;
+}
+
+.interviewDateTime {
+    font-size: 0.7rem;
+    color: #555;
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 0.2rem;
+}
+
+.interviewDateTime i {
+    color: #5BC8A0;
+    width: 0.8rem;
+}
+
+.interviewLocation {
+    font-size: 0.7rem;
+    color: #555;
+    margin-bottom: 0.2rem;
+}
+
+.interviewLocation i {
+    color: #5BC8A0;
+    width: 0.8rem;
+}
+
+.interviewDetails {
+    font-size: 0.65rem;
+    color: #777;
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 0.2rem;
+    flex-wrap: wrap;
+}
+
+.interviewDetails i {
+    color: #5BC8A0;
+    width: 0.8rem;
+}
+
+.interviewNotes {
+    font-size: 0.62rem;
+    color: #888;
+    background: #F7F6F3;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.3rem;
+    border-left: 2px solid #8FD8BE;
+}
+
+.interviewNotes i {
+    color: #5BC8A0;
+    margin-right: 0.2rem;
+}
+
+@media (max-width: 768px) {
+    .interviewsGrid {
+        grid-template-columns: 1fr;
+    }
+}

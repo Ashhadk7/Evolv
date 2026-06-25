@@ -1,0 +1,169 @@
+.projItem {
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #F5F3EF;
+    transition: transform 0.25s ease, background 0.25s ease;
+    border-radius: 0.4rem;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+    margin-left: -0.3rem;
+    margin-right: -0.3rem;
+}
+
+.projItem:last-child {
+    border-bottom: none;
+}
+
+.projItem:hover {
+    transform: translateX(4px) scale(1.02);
+    background: #FAF9F7;
+}
+
+.top {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-bottom: 0.3rem;
+}
+
+.icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+.icon.health {
+    background: #EAF5F0;
+    color: #2E8B6A;
+}
+
+.icon.logistics {
+    background: #FDF3E7;
+    color: #C07830;
+}
+
+.icon.finflow {
+    background: #E8F0FD;
+    color: #2B5CC8;
+}
+
+.icon.energy {
+    background: #F3EAF5;
+    color: #7B2E8B;
+}
+
+.info {
+    flex: 1;
+    min-width: 0;
+}
+
+.name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #1B1B1B;
+    line-height: 1.2;
+}
+
+.role {
+    font-size: 0.65rem;
+    color: #888;
+}
+
+.right {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.pct {
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: #1B1B1B;
+}
+
+.progress {
+    height: 5px;
+    background: #EDEBE6;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 0.2rem;
+}
+
+.progress .fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress .fill.green {
+    background: #5BC8A0;
+}
+
+.progress .fill.orange {
+    background: #F0A050;
+}
+
+.avatars {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 0.2rem;
+}
+
+.avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid #FFF;
+    background: #A0C8B8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.45rem;
+    font-weight: 700;
+    color: #0D2B22;
+    margin-left: -4px;
+}
+
+.avatar:first-child {
+    margin-left: 0;
+}
+
+.avatar.more {
+    background: #E6E0D7;
+    color: #888;
+    font-size: 0.42rem;
+}
+
+.metaRow {
+    display: flex;
+    gap: 0.8rem;
+    font-size: 0.6rem;
+    color: #999;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.metaRow span {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.stageBadge {
+    font-size: 0.54rem;
+    font-weight: 600;
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    background: #EAF5F0;
+    color: #0D5C35;
+}
+
+.deadlineValue,
+.hoursValue {
+    font-weight: 600;
+    color: #555;
+}
