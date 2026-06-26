@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowUp, Eye, Sparkle, TrendUp } from "@phosphor-icons/react";
 
 /* ── Sparkline SVG ── */
@@ -58,7 +58,17 @@ function StatCard({
   return (
     <div
       className="bg-white rounded-xl p-4 flex flex-col gap-1"
-      style={{ border: "1px solid #e8ede9" }}
+      style={{ border: "1px solid #e8ede9", transition: "all 0.2s ease" }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,28,24,0.08)";
+        e.currentTarget.style.borderColor = "#c5ddd0";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderColor = "#e8ede9";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
     >
       <div className="flex items-center justify-between">
         <span className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: "#7a9e8e" }}>
@@ -109,7 +119,17 @@ function BlueprintCard({
   return (
     <div
       className="bg-white rounded-xl p-4"
-      style={{ border: "1px solid #e8ede9" }}
+      style={{ border: "1px solid #e8ede9", transition: "all 0.2s ease" }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,28,24,0.08)";
+        e.currentTarget.style.borderColor = "#c5ddd0";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderColor = "#e8ede9";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -189,7 +209,20 @@ function PortfolioHealth() {
     { label: "Execution", val: 58 },
   ];
   return (
-    <div className="bg-white rounded-xl p-4 h-full" style={{ border: "1px solid #e8ede9" }}>
+    <div
+      className="bg-white rounded-xl p-4 h-full"
+      style={{ border: "1px solid #e8ede9", transition: "all 0.2s ease" }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,28,24,0.08)";
+        e.currentTarget.style.borderColor = "#c5ddd0";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderColor = "#e8ede9";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
       <div className="text-[12px] font-semibold mb-3" style={{ color: "#1a2e26" }}>
         Portfolio Health
       </div>
@@ -211,7 +244,20 @@ function PortfolioHealth() {
 /* ── Bottom widget: Developer Pipeline ── */
 function DevPipeline() {
   return (
-    <div className="bg-white rounded-xl p-4 h-full" style={{ border: "1px solid #e8ede9" }}>
+    <div
+      className="bg-white rounded-xl p-4 h-full"
+      style={{ border: "1px solid #e8ede9", transition: "all 0.2s ease" }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,28,24,0.08)";
+        e.currentTarget.style.borderColor = "#c5ddd0";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderColor = "#e8ede9";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
       <div className="text-[12px] font-semibold mb-3" style={{ color: "#1a2e26" }}>
         Developer Pipeline
       </div>
@@ -253,20 +299,48 @@ const STAT_DATA = {
 };
 
 export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint }: Props) {
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const name = profile.firstName || "Asad";
+  const fullText = `Hello, ${name}`;
+  const [displayed, setDisplayed] = useState('');
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setDisplayed('');
+    setDone(false);
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayed(fullText.slice(0, i));
+      if (i >= fullText.length) {
+        clearInterval(interval);
+        setTimeout(() => setDone(true), 1500);
+      }
+    }, 55);
+    return () => clearInterval(interval);
+  }, [fullText]);
 
   return (
     <div
       className="flex flex-col h-full overflow-y-auto"
       style={{ background: "#f5f6f4", padding: "24px 28px" }}
     >
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes blink-cursor {
+          from, to { border-color: transparent }
+          50% { border-color: #1a2e26 }
+        }
+      ` }} />
       {/* ── Top row ── */}
       <div className="flex items-start justify-between mb-4 shrink-0">
         <div>
           <h1 className="text-[1.45rem] font-bold" style={{ color: "#1a2e26" }}>
-            {greeting}, {profile.firstName}.
+            {displayed}
+            <span style={{
+              borderLeft: "2px solid #1a2e26",
+              marginLeft: "2px",
+              animation: "blink-cursor 0.75s step-end infinite",
+              display: done ? "none" : "inline"
+            }} />
           </h1>
           <p className="text-[13px] mt-0.5" style={{ color: "#7a9e8e" }}>
             You have{" "}
@@ -292,7 +366,17 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
       {/* ── AI Briefing Card ── */}
       <div
         className="flex items-center gap-4 bg-white rounded-xl px-5 py-3.5 mb-4 shrink-0"
-        style={{ border: "1px solid #e8ede9" }}
+        style={{ border: "1px solid #e8ede9", transition: "all 0.2s ease" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,28,24,0.08)";
+          e.currentTarget.style.borderColor = "#c5ddd0";
+          e.currentTarget.style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = "none";
+          e.currentTarget.style.borderColor = "#e8ede9";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
       >
         <Sparkle size={18} weight="fill" className="shrink-0" style={{ color: "#89d7b7" }} />
         <div className="flex-1 min-w-0">

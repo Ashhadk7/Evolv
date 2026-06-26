@@ -7611,6 +7611,18 @@ export { ProjectCard };
 
 
 const Sidebar = ({ currentPage, onNavigate }) => {
+    const [userName, setUserName] = useState('Sarah Mitchell');
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('evolv_user');
+            if (raw) {
+                const user = JSON.parse(raw);
+                const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+                if (name) setUserName(name);
+            }
+        } catch (_) {}
+    }, []);
+
     const navSections = [
         {
             label: 'Main',
@@ -7678,7 +7690,7 @@ const Sidebar = ({ currentPage, onNavigate }) => {
                     />
                 </div>
                 <div className={"Sidebar_userInfo"}>
-                    <div className={"Sidebar_name"}>Sarah Mitchell</div>
+                    <div className={"Sidebar_name"}>{userName}</div>
                     <div className={"Sidebar_role"}>Developer</div>
                 </div>
                 <span className={"Sidebar_dots"}>

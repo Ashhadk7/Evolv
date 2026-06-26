@@ -57,10 +57,23 @@ export function Sidebar({ active, onNavigate, profile, inboxCount = 3 }: Sidebar
               key={id}
               onClick={() => onNavigate(id)}
               className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left"
+              onMouseEnter={(e) => {
+                if (isActive) return;
+                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+                e.currentTarget.style.transform = "translateX(2px)";
+              }}
+              onMouseLeave={(e) => {
+                if (isActive) return;
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+                e.currentTarget.style.transform = "translateX(0)";
+              }}
               style={{
                 background: isActive ? "#ffffff" : "transparent",
                 color: isActive ? "#0f1c18" : "rgba(255,255,255,0.65)",
-                transition: "background 0.15s ease, color 0.15s ease",
+                transform: "translateX(0)",
+                transition: "background 0.15s ease, color 0.15s ease, transform 0.15s ease",
               }}
             >
               <Icon size={18} weight={isActive ? "fill" : "regular"} />

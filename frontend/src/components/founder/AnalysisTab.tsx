@@ -194,10 +194,7 @@ export function AnalysisTab() {
                 <button
                   key={p.id}
                   onClick={() => setActiveProject(p.id)}
-                  className="w-full text-left rounded-lg px-3 py-2.5 mb-1 transition-colors"
-                  style={{
-                    background: activeProject === p.id ? "#f0f5f2" : "transparent",
-                  }}
+                  className={`w-full text-left rounded-lg px-3 py-2.5 mb-1 transition-all cursor-pointer ${activeProject === p.id ? 'bg-[#f0f5f2]' : 'hover:bg-[#f5f7f5]'}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[12px] font-semibold" style={{ color: "#1a2e26" }}>{p.name}</span>
@@ -311,13 +308,13 @@ export function AnalysisTab() {
               <div className="text-[11px]" style={{ color: "#7a9e8e" }}>Available balance</div>
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <button
-                  className="py-1.5 rounded-lg text-[12px] font-semibold text-center transition-colors hover:bg-[#0f1c18] hover:text-white"
+                  className="py-1.5 rounded-lg text-[12px] font-semibold text-center transition-all hover:bg-[#1a2e26] hover:text-white cursor-pointer"
                   style={{ background: "#f0f5f2", color: "#1a2e26", border: "1px solid #e8ede9" }}
                 >
                   Deposit
                 </button>
                 <button
-                  className="py-1.5 rounded-lg text-[12px] font-semibold text-center transition-opacity hover:opacity-90"
+                  className="py-1.5 rounded-lg text-[12px] font-semibold text-center transition-all hover:bg-[#1a2e26] cursor-pointer"
                   style={{ background: "#0f1c18", color: "#89d7b7" }}
                 >
                   Withdraw
