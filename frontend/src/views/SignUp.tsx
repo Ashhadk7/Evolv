@@ -18,6 +18,7 @@ import {
   Sparkle,
   UserCircle,
 } from "@phosphor-icons/react";
+import { ScrollReelTestimonials } from "@/components/ui/scroll-reel-testimonials";
 
 const BRAND_DARK = "#1a312c";
 const BRAND_INK = "#0f1c18";
@@ -141,7 +142,7 @@ function ChoiceGrid({
 }
 
 function Progress({ step, role }: { step: number; role: Role | "" }) {
-  const labels = ["Role", "Account", role === "developer" ? "Developer profile" : "Founder profile"];
+  const labels = ["Role", "Account", role === "developer" ? "Developer profile" : role === "founder" ? "Founder profile" : "Profile"];
   return (
     <div className="mb-7">
       <div className="mb-3 grid grid-cols-3 gap-2">
@@ -159,46 +160,102 @@ function Progress({ step, role }: { step: number; role: Role | "" }) {
   );
 }
 
-function SidePanel({ role }: { role: Role | "" }) {
-  const points = role === "developer"
-    ? ["Build a profile founders can evaluate quickly", "Get matched by stack, availability, and venture fit", "Apply to blueprint-backed projects"]
-    : ["Generate private blueprints immediately", "Publish only after profile completion", "Unlock developers and investor-ready sharing"];
+const testimonialData = [
+  {
+    quote: "I had my idea on Monday. By Wednesday I had a full blueprint, a developer match, and two investor inquiries.",
+    author: "Ayesha Khan — Founder, EdTech startup",
+    image: "https://images.unsplash.com/photo-1664575602554-2087b04935a5?w=300&q=80&fit=crop&crop=faces",
+    alt: "Ayesha Khan",
+  },
+  {
+    quote: "Every blueprint already has the stack, features, constraints, and budget context. It makes freelance discovery dramatically cleaner.",
+    author: "James Delgado — Full-stack developer",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80&fit=crop&crop=faces",
+    alt: "James Delgado",
+  },
+  {
+    quote: "The viability scoring saves hours of first-pass diligence. I can filter by domain and move directly into founder conversations.",
+    author: "Sofia Reyes — Angel investor, HealthTech focus",
+    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&q=80&fit=crop&crop=faces",
+    alt: "Sofia Reyes",
+  },
+];
 
+function SidePanel() {
   return (
-    <aside className="relative hidden min-h-screen overflow-hidden lg:flex lg:w-[42%]" style={{ background: BRAND_DARK }}>
+    <motion.aside 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      className="relative hidden h-screen overflow-hidden lg:flex lg:w-[44%] xl:w-[42%] flex-col" 
+      style={{ background: BRAND_DARK }}
+    >
+      {/* Soft ambient glow only — no grid */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage: "radial-gradient(circle, rgba(137,215,183,0.08) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-          maskImage: "linear-gradient(135deg, black 30%, rgba(0,0,0,0.6) 70%, transparent 100%)",
+          background:
+            "radial-gradient(ellipse 70% 55% at 35% 55%, rgba(137,215,183,0.07) 0%, transparent 65%)," +
+            "radial-gradient(ellipse 50% 40% at 78% 25%, rgba(66,132,117,0.05) 0%, transparent 55%)",
         }}
       />
-      <div className="relative z-10 flex w-full flex-col px-10 py-9 xl:px-14">
-        <Logo dark />
-        <div className="my-auto">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase" style={{ background: "rgba(137,215,183,0.1)", border: "1px solid rgba(137,215,183,0.18)", color: BRAND_MINT }}>
-            <Sparkle size={12} weight="fill" />
-            Guided onboarding
-          </div>
-          <h2 className="max-w-[470px] text-[2.15rem] font-bold leading-[1.08]" style={{ color: BRAND_CREAM }}>
-            Create the right account before you enter the marketplace.
-          </h2>
-          <p className="mt-4 max-w-[420px] text-[14px] leading-6" style={{ color: "rgba(255,244,225,0.58)" }}>
-            Evolv separates founder and developer workflows so profiles, matching, publishing, and applications start with the right context.
-          </p>
+      <div
+        className="pointer-events-none absolute -bottom-32 -left-32 h-80 w-80 rounded-full"
+        style={{ background: "rgba(137,215,183,0.05)", filter: "blur(60px)" }}
+      />
 
-          <div className="mt-8 rounded-[8px] p-4" style={{ background: "rgba(11,26,22,0.72)", border: "1px solid rgba(137,215,183,0.16)" }}>
-            {points.map((point, index) => (
-              <div key={point} className="flex gap-3 py-3" style={{ borderBottom: index < points.length - 1 ? "1px solid rgba(137,215,183,0.1)" : undefined }}>
-                <CheckCircle size={18} weight="fill" color={BRAND_MINT} className="mt-0.5 shrink-0" />
-                <span className="text-[13px] leading-5" style={{ color: "rgba(255,244,225,0.76)" }}>{point}</span>
-              </div>
-            ))}
-          </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 24 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 flex h-full flex-col px-12 xl:px-16"
+      >
+        {/* Logo — with breathing room from the top */}
+        <div style={{ paddingTop: "64px" }}>
+          <Logo dark />
         </div>
-      </div>
-    </aside>
+
+        {/* Everything else centered in remaining height */}
+        <div className="flex flex-1 flex-col justify-center gap-9 py-8">
+          <div className="flex flex-col gap-5">
+            <div
+              className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+              style={{ background: "rgba(137,215,183,0.1)", border: "1px solid rgba(137,215,183,0.16)", color: BRAND_MINT }}
+            >
+              <Sparkle size={10} weight="fill" />
+              Join the network
+            </div>
+
+            <div>
+              <h2
+                className="font-bold leading-[1.08] tracking-[-0.02em]"
+                style={{ color: BRAND_CREAM, fontSize: "clamp(2.1rem, 2.8vw, 2.75rem)" }}
+              >
+                Build your venture.<br />
+                <span style={{ color: BRAND_MINT }}>Find your team.</span>
+              </h2>
+              <p className="mt-4 text-[14px] leading-relaxed" style={{ color: "rgba(255,244,225,0.46)" }}>
+                Join a curated ecosystem of founders and developers shipping the next generation of startups. We separate workflows from day one so you get exactly the tools you need.
+              </p>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
+            className="w-full flex justify-center"
+          >
+            {/* Scaled-down Landing Page Component */}
+            <div className="relative h-[220px] xl:h-[260px] w-full flex items-center justify-center">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[760px] scale-[0.55] xl:scale-[0.70]">
+                <ScrollReelTestimonials testimonials={testimonialData} />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.aside>
   );
 }
 
@@ -396,34 +453,54 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen w-full lg:flex" style={{ background: "#f5f6f4" }}>
-      <SidePanel role={role} />
+    <div className="flex h-screen w-full overflow-hidden lg:flex-row-reverse" style={{ background: "#f5f6f4" }}>
+      <SidePanel />
 
-      <main className="flex min-h-screen flex-1 items-center justify-center px-5 py-8 sm:px-8 lg:px-12">
-        <div className="w-full max-w-[650px]">
-          <div className="mb-8 flex items-center justify-between">
-            <Logo />
-            <Link href="/sign-in" className="text-[13px] font-bold transition hover:text-[#0f1c18]" style={{ color: BRAND_MID }}>
-              Sign in
-            </Link>
-          </div>
-
-          <Progress step={step} role={role} />
-
-          <div className="mb-6">
-            <h1 className="text-[2rem] font-bold leading-tight" style={{ color: BRAND_INK }}>
-              {step === 0 ? "What kind of account are you creating?" : step === 1 ? "Create your login" : role === "founder" ? "Shape your founder profile" : "Build your developer profile"}
-            </h1>
-            <p className="mt-2 max-w-[560px] text-[14px] leading-6" style={{ color: "rgba(15,28,24,0.56)" }}>
-              {step === 0
-                ? "Evolv personalizes onboarding, permissions, and matching based on your role."
-                : step === 1
-                ? "Use an email you can keep tied to your venture or professional profile."
-                : role === "founder"
-                ? "You can skip this and still generate blueprints, but publishing and developer connections stay locked until completion."
-                : "Complete this now to appear in founder searches and apply to blueprint-backed projects."}
+      <main className="relative flex h-screen flex-1 flex-col overflow-y-auto lg:w-[56%] xl:w-[58%] lg:flex-none">
+        
+        {/* Fixed Top Bar */}
+        <div className="flex items-center justify-between px-8 sm:px-10 xl:px-14" style={{ paddingTop: "56px" }}>
+          <Logo />
+          <div className="hidden sm:block">
+            <p className="text-[14px] font-medium" style={{ color: "rgba(15,28,24,0.5)" }}>
+              Already have an account?{" "}
+              <Link href="/sign-in" className="font-bold underline underline-offset-2 transition-colors hover:opacity-80" style={{ color: BRAND_MID }}>
+                Log in
+              </Link>
             </p>
           </div>
+          <Link href="/sign-in" className="text-[13.5px] font-bold sm:hidden transition-colors hover:opacity-80" style={{ color: BRAND_MID }}>
+            Log in
+          </Link>
+        </div>
+
+        {/* Form Content */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-1 flex-col justify-center px-8 sm:px-10 xl:px-14"
+        >
+          <div className="w-full max-w-[580px] mx-auto">
+
+            <div className="mb-8">
+              <Progress step={step} role={role} />
+            </div>
+
+            <div className="mb-12">
+              <h1 className="text-[1.9rem] font-bold tracking-tight leading-[1.18]" style={{ color: BRAND_INK }}>
+                {step === 0 ? "What kind of account are you creating?" : step === 1 ? "Create your login" : role === "founder" ? "Shape your founder profile" : "Build your developer profile"}
+              </h1>
+              <p className="mt-3 max-w-[500px] text-[14px] leading-relaxed" style={{ color: "rgba(15,28,24,0.5)" }}>
+                {step === 0
+                  ? "Evolv personalizes onboarding, permissions, and matching based on your role."
+                  : step === 1
+                  ? "Use an email you can keep tied to your venture or professional profile."
+                  : role === "founder"
+                  ? "You can skip this and still generate blueprints, but publishing and developer connections stay locked until completion."
+                  : "Complete this now to appear in founder searches and apply to blueprint-backed projects."}
+              </p>
+            </div>
 
           {error && (
             <motion.div
@@ -435,9 +512,9 @@ export default function SignUp() {
             </motion.div>
           )}
 
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div key="role" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-3 md:grid-cols-2">
+            <AnimatePresence mode="wait">
+              {step === 0 && (
+                <motion.div key="role" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-6 md:grid-cols-2">
                 {[
                   { id: "founder" as const, title: "Founder", icon: Lightbulb, desc: "I want to turn an idea into a blueprint, find builders, and publish once ready.", meta: "Blueprints, profile gating, developer matching" },
                   { id: "developer" as const, title: "Developer", icon: Code, desc: "I want founders to discover me and apply to scoped startup opportunities.", meta: "Skills, portfolio signal, applications" },
@@ -470,7 +547,7 @@ export default function SignUp() {
             )}
 
             {step === 1 && (
-              <motion.div key="account" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-4">
+              <motion.div key="account" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-5">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextInput label="First name" value={account.firstName} onChange={(value) => setAccountField("firstName", value)} placeholder="Sara" />
                   <TextInput label="Last name" value={account.lastName} onChange={(value) => setAccountField("lastName", value)} placeholder="Ahmed" />
@@ -568,13 +645,17 @@ export default function SignUp() {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
+            </AnimatePresence>
+          </div>
+        </motion.div>
 
-          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Bottom Button Bar */}
+        <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between px-8 sm:px-10 xl:px-14 pt-8 pb-12 xl:pb-16">
+          <div className="w-full max-w-[580px] mx-auto flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={() => step === 0 ? router.push("/") : setStep((current) => current - 1)}
-              className="flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-bold transition hover:bg-white"
+              className="flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-[13.5px] font-bold transition hover:bg-black/5"
               style={{ color: "rgba(15,28,24,0.6)" }}
             >
               <ArrowLeft size={15} weight="bold" />
@@ -586,37 +667,39 @@ export default function SignUp() {
                 <button
                   type="button"
                   onClick={() => finish(true)}
-                  className="h-11 rounded-lg border bg-white px-4 text-[13px] font-bold transition hover:border-[#428475]/40"
+                  className="h-11 rounded-xl border bg-white px-5 text-[13.5px] font-bold transition hover:bg-gray-50"
                   style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_MID }}
                 >
                   Skip for now
                 </button>
               )}
               <motion.button
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.99 }}
+                whileHover={{ scale: 1.012 }}
+                whileTap={{ scale: 0.988 }}
                 type="button"
                 onClick={step < 2 ? goNext : () => finish(false)}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-[13px] font-bold"
-                style={{ background: BRAND_INK, color: BRAND_MINT, boxShadow: "0 14px 32px rgba(15,28,24,0.16)" }}
+                className="flex h-11 items-center justify-center gap-2 rounded-xl px-7 text-[13.5px] font-semibold transition-all"
+                style={{ background: BRAND_INK, color: BRAND_MINT, boxShadow: "0 4px 14px rgba(15,28,24,0.18)" }}
               >
-                {step < 2 ? "Continue" : role === "founder" ? "Complete founder profile" : "Complete developer profile"}
+                {step < 2 ? "Continue" : "Complete profile"}
                 {step < 2 ? <ArrowRight size={15} weight="bold" /> : role === "founder" ? <RocketLaunch size={15} weight="bold" /> : <Briefcase size={15} weight="bold" />}
               </motion.button>
             </div>
           </div>
+        </div>
 
-          {step === 2 && (
-            <div className="mt-5 flex items-start gap-3 rounded-lg border bg-white px-4 py-3" style={{ borderColor: "rgba(15,28,24,0.1)" }}>
+        {step === 2 && (
+          <div className="px-8 sm:px-10 xl:px-14 pb-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-[580px] flex items-start gap-3 rounded-xl border bg-white px-4 py-3" style={{ borderColor: "rgba(15,28,24,0.1)" }}>
               <UserCircle size={18} weight="fill" color={BRAND_MID} className="mt-0.5 shrink-0" />
               <p className="text-[12px] leading-5" style={{ color: "rgba(15,28,24,0.58)" }}>
                 {role === "founder"
                   ? "Skipped founder profiles can create and save private blueprints, but publishing, developer outreach, and investor sharing stay locked."
                   : "Skipped developer profiles can enter the dashboard, but discovery visibility, applications, and network actions require profile completion."}
               </p>
-            </div>
-          )}
-        </div>
+            </motion.div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -176,7 +176,12 @@ function BlueprintCard() {
 
 function AuthVisual() {
   return (
-    <aside className="relative hidden min-h-screen overflow-hidden lg:flex lg:w-[50%] flex-col" style={{ background: BRAND_DARK }}>
+    <motion.aside 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      className="relative hidden min-h-screen overflow-hidden lg:flex lg:w-[50%] flex-col" style={{ background: BRAND_DARK }}
+    >
       {/* Soft ambient glow only — no grid */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -191,7 +196,12 @@ function AuthVisual() {
         style={{ background: "rgba(137,215,183,0.05)", filter: "blur(60px)" }}
       />
 
-      <div className="relative z-10 flex h-full flex-col px-12 xl:px-16">
+      <motion.div 
+        initial={{ opacity: 0, y: 24 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 flex h-full flex-col px-12 xl:px-16"
+      >
 
         {/* Logo — with breathing room from the top */}
         <div style={{ paddingTop: "64px"}}>
@@ -229,14 +239,14 @@ function AuthVisual() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.25, ease: [0.21, 0.47, 0.32, 0.98] }}
+            transition={{ duration: 0.7, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="w-full"
           >
             <BlueprintCard />
           </motion.div>
         </div>
-      </div>
-    </aside>
+      </motion.div>
+    </motion.aside>
   );
 }
 
