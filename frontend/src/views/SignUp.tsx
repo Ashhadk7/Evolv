@@ -1,495 +1,623 @@
 "use client";
 
-import { useState } from "react";
+import type React from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeSlash, RocketLaunch, Sparkle } from "@phosphor-icons/react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  CheckCircle,
+  Code,
+  Eye,
+  EyeSlash,
+  Lightbulb,
+  RocketLaunch,
+  Sparkle,
+  UserCircle,
+} from "@phosphor-icons/react";
 
-const ROLE_OPTIONS = [
-  { value: "founder", label: "Founder", desc: "I have an idea" },
-  { value: "developer", label: "Developer", desc: "I build products" },
-] as const;
+const BRAND_DARK = "#1a312c";
+const BRAND_INK = "#0f1c18";
+const BRAND_MID = "#428475";
+const BRAND_MINT = "#89d7b7";
+const BRAND_CREAM = "#fff4e1";
 
-const STEPS = [
-  "Analysing market size...",
-  "Mapping competitors...",
-  "Generating MVP scope...",
-  "Scoring viability...",
-  "Blueprint ready ✦",
-];
+type Role = "founder" | "developer";
 
-function BlueprintAnimation() {
-  const [step, setStep] = useState(0);
+const DOMAINS = ["AI", "SaaS", "FinTech", "MedTech", "CleanTech", "EdTech", "Web3", "E-commerce"];
+const SKILLS = ["React", "Next.js", "Node.js", "Python", "FastAPI", "AI/ML", "PostgreSQL", "AWS", "Docker", "Solidity"];
+const FOUNDER_STAGES = ["Idea", "Prototype", "MVP", "Early revenue", "Fundraising"];
+const WORK_TYPES = ["Remote", "Hybrid", "Onsite"];
 
-  useState(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % STEPS.length), 1800);
-    return () => clearInterval(id);
-  });
+function Logo({ dark = false }: { dark?: boolean }) {
+  return (
+    <Link href="/" className="inline-flex w-fit items-center gap-2.5">
+      <svg width="24" height="24" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5" stroke={dark ? BRAND_MINT : BRAND_MID} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="18" cy="3.5" r="2.1" fill={dark ? BRAND_MINT : BRAND_MID} />
+      </svg>
+      <span className="text-[20px] font-bold tracking-tight" style={{ color: dark ? BRAND_CREAM : BRAND_INK }}>
+        Ev<span style={{ color: dark ? BRAND_MINT : BRAND_MID }}>olv</span>
+      </span>
+    </Link>
+  );
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  right,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>{label}</span>
+      <span className="relative block">
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="h-11 w-full rounded-lg border bg-white px-4 text-[14px] outline-none transition placeholder:text-[#0f1c18]/35 focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+          style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}
+        />
+        {right}
+      </span>
+    </label>
+  );
+}
+
+function TextArea({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="min-h-[92px] w-full resize-none rounded-lg border bg-white px-4 py-3 text-[14px] outline-none transition placeholder:text-[#0f1c18]/35 focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+        style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}
+      />
+    </label>
+  );
+}
+
+function ChoiceGrid({
+  items,
+  selected,
+  onToggle,
+  multi = true,
+}: {
+  items: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  multi?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => {
+        const active = selected.includes(item);
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onToggle(item)}
+            className="rounded-full border px-3 py-1.5 text-[12px] font-semibold transition"
+            style={{
+              background: active ? BRAND_INK : "#fff",
+              borderColor: active ? BRAND_INK : "rgba(15,28,24,0.12)",
+              color: active ? BRAND_MINT : "rgba(15,28,24,0.62)",
+            }}
+            aria-pressed={multi ? active : undefined}
+          >
+            {item}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Progress({ step, role }: { step: number; role: Role | "" }) {
+  const labels = ["Role", "Account", role === "developer" ? "Developer profile" : "Founder profile"];
+  return (
+    <div className="mb-7">
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {labels.map((label, index) => {
+          const active = step >= index;
+          return (
+            <div key={label}>
+              <div className="h-1.5 rounded-full" style={{ background: active ? BRAND_INK : "rgba(15,28,24,0.1)" }} />
+              <div className="mt-1.5 text-[10px] font-bold uppercase" style={{ color: active ? BRAND_INK : "rgba(15,28,24,0.35)" }}>{label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SidePanel({ role }: { role: Role | "" }) {
+  const points = role === "developer"
+    ? ["Build a profile founders can evaluate quickly", "Get matched by stack, availability, and venture fit", "Apply to blueprint-backed projects"]
+    : ["Generate private blueprints immediately", "Publish only after profile completion", "Unlock developers and investor-ready sharing"];
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center px-10">
+    <aside className="relative hidden min-h-screen overflow-hidden lg:flex lg:w-[42%]" style={{ background: BRAND_DARK }}>
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(137,215,183,0.07) 0%, transparent 70%)" }}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
-        className="relative z-10 w-full max-w-[320px] overflow-hidden rounded-2xl"
         style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          backdropFilter: "blur(12px)",
+          backgroundImage: "radial-gradient(circle, rgba(137,215,183,0.08) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+          maskImage: "linear-gradient(135deg, black 30%, rgba(0,0,0,0.6) 70%, transparent 100%)",
         }}
-      >
-        <div
-          className="flex items-center gap-1.5 border-b px-4 py-3"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}
-        >
-          <span className="h-2 w-2 rounded-full bg-[#ff5f56]/45" />
-          <span className="h-2 w-2 rounded-full bg-[#ffbd2e]/45" />
-          <span className="h-2 w-2 rounded-full bg-[#27c93f]/45" />
-          <span className="ml-auto font-mono text-[10px] text-white/18">my-startup.blueprint</span>
-        </div>
-
-        <div className="p-5">
-          <div className="mb-4 flex items-start justify-between">
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#89d7b7] opacity-55" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#89d7b7]" />
-                </span>
-                <span className="text-[9px] font-semibold uppercase tracking-widest text-[#89d7b7]/55">Generating</span>
-              </div>
-              <div className="text-[15px] font-semibold text-white/80">Your Idea</div>
-              <div className="text-[11px] text-white/28">AI · Blueprint</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[2rem] font-bold tabular-nums text-[#89d7b7]/60">—</div>
-              <div className="text-[9px] uppercase tracking-wider text-white/18">Viability</div>
-            </div>
+      />
+      <div className="relative z-10 flex w-full flex-col px-10 py-9 xl:px-14">
+        <Logo dark />
+        <div className="my-auto">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase" style={{ background: "rgba(137,215,183,0.1)", border: "1px solid rgba(137,215,183,0.18)", color: BRAND_MINT }}>
+            <Sparkle size={12} weight="fill" />
+            Guided onboarding
           </div>
+          <h2 className="max-w-[470px] text-[2.15rem] font-bold leading-[1.08]" style={{ color: BRAND_CREAM }}>
+            Create the right account before you enter the marketplace.
+          </h2>
+          <p className="mt-4 max-w-[420px] text-[14px] leading-6" style={{ color: "rgba(255,244,225,0.58)" }}>
+            Evolv separates founder and developer workflows so profiles, matching, publishing, and applications start with the right context.
+          </p>
 
-          <div className="mb-4 space-y-2.5">
-            {[
-              { label: "Market fit", val: 78 },
-              { label: "Dev demand", val: 82 },
-            ].map((item, i) => (
-              <div key={item.label}>
-                <div className="mb-1 flex justify-between text-[10px]">
-                  <span className="text-white/28">{item.label}</span>
-                  <span className="text-[#89d7b7]/55">{item.val}%</span>
-                </div>
-                <div className="h-[3px] overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${item.val}%` }}
-                    transition={{ delay: 0.4 + i * 0.15, duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-                    className="h-full rounded-full"
-                    style={{ background: "linear-gradient(90deg, #428475, #89d7b7)" }}
-                  />
-                </div>
+          <div className="mt-8 rounded-[8px] p-4" style={{ background: "rgba(11,26,22,0.72)", border: "1px solid rgba(137,215,183,0.16)" }}>
+            {points.map((point, index) => (
+              <div key={point} className="flex gap-3 py-3" style={{ borderBottom: index < points.length - 1 ? "1px solid rgba(137,215,183,0.1)" : undefined }}>
+                <CheckCircle size={18} weight="fill" color={BRAND_MINT} className="mt-0.5 shrink-0" />
+                <span className="text-[13px] leading-5" style={{ color: "rgba(255,244,225,0.76)" }}>{point}</span>
               </div>
             ))}
           </div>
-
-          <div
-            className="flex items-center gap-2 rounded-xl px-3 py-2.5"
-            style={{ background: "rgba(137,215,183,0.05)", border: "1px solid rgba(137,215,183,0.09)" }}
-          >
-            <Sparkle size={10} weight="fill" className="shrink-0 text-[#89d7b7]" />
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={step}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.28 }}
-                className="text-[10px] text-white/38"
-              >
-                {STEPS[step]}
-              </motion.span>
-            </AnimatePresence>
-          </div>
         </div>
-      </motion.div>
-
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.9 }}
-        className="relative z-10 mt-6 text-center text-[12px] leading-relaxed text-white/22"
-      >
-        From raw idea to investor-ready blueprint
-        <br />
-        <span className="text-[#89d7b7]/40">in under 60 seconds.</span>
-      </motion.p>
-    </div>
+      </div>
+    </aside>
   );
 }
 
 export default function SignUp() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [step, setStep] = useState(0);
+  const [role, setRole] = useState<Role | "">("");
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [role, setRole] = useState<"founder" | "developer" | "">("");
-  const [error, setError] = useState("");
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [account, setAccount] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    confirmEmail: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [founder, setFounder] = useState({
+    bio: "",
+    domains: [] as string[],
+    stage: "",
+    idea: "",
+    linkedIn: "",
+    phone: "",
+  });
+
+  const [developer, setDeveloper] = useState({
+    jobTitle: "",
+    experience: "",
+    location: "",
+    skills: [] as string[],
+    workType: "Remote",
+    bio: "",
+    github: "",
+    linkedIn: "",
+  });
+
+  const profileCompleteness = useMemo(() => {
+    if (role === "founder") {
+      const completed = [founder.bio, founder.stage, founder.idea].filter(Boolean).length + (founder.domains.length ? 1 : 0);
+      return Math.round((completed / 4) * 100);
+    }
+    if (role === "developer") {
+      const completed = [developer.jobTitle, developer.experience, developer.location, developer.bio].filter(Boolean).length + (developer.skills.length ? 1 : 0);
+      return Math.round((completed / 5) * 100);
+    }
+    return 0;
+  }, [developer, founder, role]);
+
+  const setAccountField = (key: keyof typeof account, value: string) => setAccount((current) => ({ ...current, [key]: value }));
+  const setFounderField = (key: Exclude<keyof typeof founder, "domains">, value: string) => setFounder((current) => ({ ...current, [key]: value }));
+  const setDeveloperField = (key: Exclude<keyof typeof developer, "skills">, value: string) => setDeveloper((current) => ({ ...current, [key]: value }));
+
+  const toggleFounderDomain = (domain: string) => {
+    setFounder((current) => ({
+      ...current,
+      domains: current.domains.includes(domain) ? current.domains.filter((item) => item !== domain) : [...current.domains, domain],
+    }));
+  };
+
+  const toggleSkill = (skill: string) => {
+    setDeveloper((current) => ({
+      ...current,
+      skills: current.skills.includes(skill) ? current.skills.filter((item) => item !== skill) : [...current.skills, skill],
+    }));
+  };
+
+  const validateRole = () => {
+    if (!role) {
+      setError("Choose whether you are joining as a founder or developer.");
+      return false;
+    }
     setError("");
+    return true;
+  };
 
-    if (!firstName || !lastName || !email || !confirmEmail || !password || !confirmPassword || !role) {
-      setError("Please fill in all fields.");
-      return;
+  const validateAccount = () => {
+    if (!account.firstName || !account.lastName || !account.email || !account.confirmEmail || !account.password || !account.confirmPassword) {
+      setError("Complete the required account fields.");
+      return false;
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email)) {
+      setError("Enter a valid email address.");
+      return false;
     }
-
-    if (email.toLowerCase() !== confirmEmail.toLowerCase()) {
-      setError("Emails do not match.");
-      return;
+    if (account.email.toLowerCase() !== account.confirmEmail.toLowerCase()) {
+      setError("Email addresses do not match.");
+      return false;
     }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
-      return;
+    if (account.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return false;
     }
-
-    if (password !== confirmPassword) {
+    if (account.password !== account.confirmPassword) {
       setError("Passwords do not match.");
-      return;
+      return false;
+    }
+    if (!agreed) {
+      setError("Accept the Terms and Privacy Policy to continue.");
+      return false;
+    }
+    setError("");
+    return true;
+  };
+
+  const persistAccount = (profileComplete: boolean) => {
+    const baseUser = {
+      firstName: account.firstName,
+      lastName: account.lastName,
+      email: account.email,
+      password: account.password,
+      role,
+    };
+
+    const profile = role === "founder"
+      ? {
+          firstName: account.firstName,
+          lastName: account.lastName,
+          email: account.email,
+          bio: founder.bio,
+          domains: founder.domains,
+          linkedin: founder.linkedIn,
+          dob: "",
+          gender: "",
+          phone: founder.phone,
+          education: "",
+          description: founder.idea,
+          ventureStage: founder.stage,
+          profileComplete,
+        }
+      : {
+          firstName: account.firstName,
+          lastName: account.lastName,
+          email: account.email,
+          jobTitle: developer.jobTitle,
+          role: developer.jobTitle,
+          location: developer.location,
+          experience: developer.experience,
+          bio: developer.bio,
+          techStack: developer.skills,
+          workType: developer.workType,
+          github: developer.github,
+          linkedin: developer.linkedIn,
+          availability: true,
+          profileComplete,
+          firstTime: !profileComplete,
+        };
+
+    const storedUsers = localStorage.getItem("evolv_users");
+    const users = storedUsers ? JSON.parse(storedUsers) : [];
+    if (users.some((user: any) => user.email.toLowerCase() === account.email.toLowerCase())) {
+      setError("An account with this email already exists.");
+      return false;
     }
 
-    if (!agreed) {
-      setError("You must agree to the Terms and Privacy Policy.");
+    localStorage.setItem("evolv_users", JSON.stringify([...users, { ...baseUser, profile }]));
+    if (role === "founder") {
+      localStorage.setItem("evolv_founder_profile", JSON.stringify(profile));
+      router.push(profileComplete ? "/founder-dashboard" : "/founder-dashboard?setup=true");
+    } else {
+      localStorage.setItem("evolv_user", JSON.stringify(profile));
+      router.push("/developer-dashboard");
+    }
+    return true;
+  };
+
+  const finish = (skip = false) => {
+    setError("");
+    if (!role) return;
+
+    const complete = role === "founder"
+      ? Boolean(founder.bio && founder.stage && founder.idea && founder.domains.length)
+      : Boolean(developer.jobTitle && developer.experience && developer.location && developer.bio && developer.skills.length);
+
+    if (!skip && !complete) {
+      setError(role === "founder"
+        ? "Add a bio, stage, idea summary, and at least one domain to complete your founder profile."
+        : "Add a role, experience, location, bio, and at least one skill to complete your developer profile.");
       return;
     }
 
     try {
-      const storedUsers = localStorage.getItem("evolv_users");
-      const users = storedUsers ? JSON.parse(storedUsers) : [];
-
-      if (users.some((u: any) => u.email.toLowerCase() === email.toLowerCase())) {
-        setError("An account with this email already exists.");
-        return;
-      }
-
-      // Add user to database
-      const newUser = { firstName, lastName, email, password, role };
-      users.push(newUser);
-      localStorage.setItem("evolv_users", JSON.stringify(users));
-
-      // Perform login & redirect
-      if (role === "founder") {
-        localStorage.setItem("evolv_founder_profile", JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          bio: "",
-          domains: [],
-          linkedin: "",
-          dob: "",
-          gender: "",
-          phone: "",
-          education: "",
-          description: "",
-        }));
-        router.push("/founder-dashboard?setup=true");
-      } else {
-        localStorage.setItem("evolv_user", JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          firstTime: true
-        }));
-        router.push("/developer-dashboard");
-      }
-    } catch (_) {
-      setError("An error occurred during account creation.");
+      persistAccount(!skip && complete);
+    } catch {
+      setError("Something went wrong while creating your account.");
     }
   };
 
+  const goNext = () => {
+    if (step === 0 && validateRole()) setStep(1);
+    if (step === 1 && validateAccount()) setStep(2);
+  };
+
   return (
-    <div className="flex h-screen w-full overflow-hidden" style={{ background: "rgb(245, 246, 244)" }}>
+    <div className="min-h-screen w-full lg:flex" style={{ background: "#f5f6f4" }}>
+      <SidePanel role={role} />
 
-      {/* LEFT: form (Light Theme) */}
-      <div className="flex w-full h-full flex-col justify-center px-6 py-6 sm:px-10 lg:w-[54%] lg:px-14 xl:px-20 overflow-y-auto" style={{ background: "rgb(245, 246, 244)" }}>
-
-        <Link href="/" className="mb-4 flex items-center gap-2 w-fit">
-          <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-            <path d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5" stroke="#428475" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="18" cy="3.5" r="2.1" fill="#428475" />
-          </svg>
-          <span className="text-[19px] font-bold tracking-tight text-[#0f1c18]/85">
-            Ev<span className="text-[#428475]">olv</span>
-          </span>
-        </Link>
-
-        <div className="mb-4">
-          <h1 className="mb-0.5 text-[1.5rem] font-bold tracking-tight text-[#0f1c18]">Create your account</h1>
-          <p className="text-[12.5px] text-[#0f1c18]/45">
-            Already have one?{" "}
-            <Link href="/sign-in" className="text-[#428475] hover:text-[#0f1c18] font-semibold transition-colors">
+      <main className="flex min-h-screen flex-1 items-center justify-center px-5 py-8 sm:px-8 lg:px-12">
+        <div className="w-full max-w-[650px]">
+          <div className="mb-8 flex items-center justify-between">
+            <Logo />
+            <Link href="/sign-in" className="text-[13px] font-bold transition hover:text-[#0f1c18]" style={{ color: BRAND_MID }}>
               Sign in
             </Link>
-          </p>
-        </div>
+          </div>
 
-        <form onSubmit={handleSignUp} className="flex flex-col gap-2.5">
+          <Progress step={step} role={role} />
+
+          <div className="mb-6">
+            <h1 className="text-[2rem] font-bold leading-tight" style={{ color: BRAND_INK }}>
+              {step === 0 ? "What kind of account are you creating?" : step === 1 ? "Create your login" : role === "founder" ? "Shape your founder profile" : "Build your developer profile"}
+            </h1>
+            <p className="mt-2 max-w-[560px] text-[14px] leading-6" style={{ color: "rgba(15,28,24,0.56)" }}>
+              {step === 0
+                ? "Evolv personalizes onboarding, permissions, and matching based on your role."
+                : step === 1
+                ? "Use an email you can keep tied to your venture or professional profile."
+                : role === "founder"
+                ? "You can skip this and still generate blueprints, but publishing and developer connections stay locked until completion."
+                : "Complete this now to appear in founder searches and apply to blueprint-backed projects."}
+            </p>
+          </div>
+
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-2.5 text-[12px] rounded-lg border text-red-600 bg-red-50 border-red-100 flex items-center gap-2 font-medium"
+              className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700"
             >
-              <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
               {error}
             </motion.div>
           )}
 
-          {/* Row 1: Name Fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[11px] text-[#0f1c18]/60 font-medium">First name</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Sara"
-                className="rounded-lg pr-4 py-2 text-[13px] text-[#0f1c18] placeholder-[#0f1c18]/45 outline-none transition-all"
-                style={{ paddingLeft: "1rem", background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#428475";
-                  e.currentTarget.style.boxShadow = "0 0 0 2px rgba(66,132,117,0.15)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(15,28,24,0.12)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[11px] text-[#0f1c18]/60 font-medium">Last name</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Ahmed"
-                className="rounded-lg pr-4 py-2 text-[13px] text-[#0f1c18] placeholder-[#0f1c18]/45 outline-none transition-all"
-                style={{ paddingLeft: "1rem",background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#428475";
-                  e.currentTarget.style.boxShadow = "0 0 0 2px rgba(66,132,117,0.15)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(15,28,24,0.12)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              />
-            </div>
-          </div>
+          <AnimatePresence mode="wait">
+            {step === 0 && (
+              <motion.div key="role" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-3 md:grid-cols-2">
+                {[
+                  { id: "founder" as const, title: "Founder", icon: Lightbulb, desc: "I want to turn an idea into a blueprint, find builders, and publish once ready.", meta: "Blueprints, profile gating, developer matching" },
+                  { id: "developer" as const, title: "Developer", icon: Code, desc: "I want founders to discover me and apply to scoped startup opportunities.", meta: "Skills, portfolio signal, applications" },
+                ].map(({ id, title, icon: Icon, desc, meta }) => {
+                  const active = role === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setRole(id)}
+                      className="rounded-[8px] border bg-white p-5 text-left transition hover:-translate-y-0.5"
+                      style={{
+                        borderColor: active ? BRAND_MID : "rgba(15,28,24,0.1)",
+                        boxShadow: active ? "0 16px 34px rgba(66,132,117,0.14)" : "0 10px 26px rgba(15,28,24,0.05)",
+                      }}
+                    >
+                      <div className="mb-5 flex items-center justify-between">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-lg" style={{ background: active ? BRAND_INK : "#f0f5f2", color: active ? BRAND_MINT : BRAND_MID }}>
+                          <Icon size={22} weight={active ? "fill" : "regular"} />
+                        </span>
+                        <span className="h-5 w-5 rounded-full border" style={{ borderColor: active ? BRAND_MID : "rgba(15,28,24,0.18)", background: active ? BRAND_MINT : "#fff" }} />
+                      </div>
+                      <h2 className="text-[18px] font-bold" style={{ color: BRAND_INK }}>{title}</h2>
+                      <p className="mt-2 text-[13px] leading-5" style={{ color: "rgba(15,28,24,0.58)" }}>{desc}</p>
+                      <div className="mt-4 text-[11px] font-bold uppercase" style={{ color: BRAND_MID }}>{meta}</div>
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
 
-          {/* Row 2: Email & Confirm Email */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[11px] text-[#0f1c18]/60 font-medium">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="rounded-lg pr-4 py-2 text-[13px] text-[#0f1c18] placeholder-[#0f1c18]/45 outline-none transition-all"
-                style={{paddingLeft: "1rem", background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#428475";
-                  e.currentTarget.style.boxShadow = "0 0 0 2px rgba(66,132,117,0.15)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(15,28,24,0.12)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[11px] text-[#0f1c18]/60 font-medium">Confirm Email</label>
-              <input
-                type="email"
-                value={confirmEmail}
-                onChange={(e) => setConfirmEmail(e.target.value)}
-                placeholder="Confirm email"
-                className="rounded-lg pr-4 py-2 text-[13px] text-[#0f1c18] placeholder-[#0f1c18]/45 outline-none transition-all"
-                style={{paddingLeft: "1rem", background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#428475";
-                  e.currentTarget.style.boxShadow = "0 0 0 2px rgba(66,132,117,0.15)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(15,28,24,0.12)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              />
-            </div>
-          </div>
+            {step === 1 && (
+              <motion.div key="account" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput label="First name" value={account.firstName} onChange={(value) => setAccountField("firstName", value)} placeholder="Sara" />
+                  <TextInput label="Last name" value={account.lastName} onChange={(value) => setAccountField("lastName", value)} placeholder="Ahmed" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput label="Email" type="email" value={account.email} onChange={(value) => setAccountField("email", value)} placeholder="you@example.com" />
+                  <TextInput label="Confirm email" type="email" value={account.confirmEmail} onChange={(value) => setAccountField("confirmEmail", value)} placeholder="Confirm email" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    value={account.password}
+                    onChange={(value) => setAccountField("password", value)}
+                    placeholder="Minimum 8 characters"
+                    right={
+                      <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[#0f1c18]/45 hover:bg-[#f0f5f2]" aria-label={showPassword ? "Hide password" : "Show password"}>
+                        {showPassword ? <EyeSlash size={17} /> : <Eye size={17} />}
+                      </button>
+                    }
+                  />
+                  <TextInput label="Confirm password" type={showPassword ? "text" : "password"} value={account.confirmPassword} onChange={(value) => setAccountField("confirmPassword", value)} placeholder="Confirm password" />
+                </div>
+                <label className="flex cursor-pointer items-start gap-3 text-[12px] leading-5" style={{ color: "rgba(15,28,24,0.58)" }}>
+                  <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#0f1c18]/20 accent-[#1a312c]" />
+                  <span>
+                    I agree to the <a href="#" className="font-bold text-[#428475]">Terms</a> and <a href="#" className="font-bold text-[#428475]">Privacy Policy</a>.
+                  </span>
+                </label>
+              </motion.div>
+            )}
 
-          {/* Row 3: Password & Confirm Password */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[11px] text-[#0f1c18]/60 font-medium">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 chars"
-                  className="w-full rounded-lg pr-10 py-2 text-[13px] text-[#0f1c18] placeholder-[#0f1c18]/45 outline-none transition-all"
-                  style={{paddingLeft: "1rem", background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#428475";
-                    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(66,132,117,0.15)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(15,28,24,0.12)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0f1c18]/30 hover:text-[#0f1c18]/60 transition-colors"
-                >
-                  {showPassword ? <EyeSlash size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <label className="text-[11px] text-[#0f1c18]/60 font-medium">Confirm Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
-                  className="w-full rounded-lg pr-10 py-2 text-[13px] text-[#0f1c18] placeholder-[#0f1c18]/45 outline-none transition-all"
-                  style={{paddingLeft: "1rem", background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#428475";
-                    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(66,132,117,0.15)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(15,28,24,0.12)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <label className="text-[11px] text-[#0f1c18]/60 font-medium">I am joining as</label>
-            <div className="grid grid-cols-2 gap-2">
-              {ROLE_OPTIONS.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  onClick={() => setRole(r.value)}
-                  className="rounded-lg px-3 py-1.5 text-left transition-all"
-                  style={{
-                    background: role === r.value ? "rgba(137,215,183,0.18)" : "#ffffff",
-                    border: role === r.value ? "1px solid rgba(66,132,117,0.4)" : "1px solid rgba(15,28,24,0.08)",
-                  }}
-                >
-                  <div className="text-[12px] font-semibold" style={{ color: role === r.value ? "#1b4d3e" : "rgba(15,28,24,0.6)" }}>
-                    {r.label}
+            {step === 2 && role === "founder" && (
+              <motion.div key="founder" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-4">
+                <div className="rounded-lg border bg-white p-4" style={{ borderColor: "rgba(15,28,24,0.1)" }}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[12px] font-bold" style={{ color: BRAND_INK }}>Profile completion</span>
+                    <span className="text-[12px] font-bold" style={{ color: BRAND_MID }}>{profileCompleteness}%</span>
                   </div>
-                  <div className="text-[10px] text-[#0f1c18]/50">{r.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+                  <div className="h-2 rounded-full bg-[#e8ede9]"><div className="h-2 rounded-full" style={{ width: `${profileCompleteness}%`, background: BRAND_MID }} /></div>
+                </div>
+                <TextInput label="Founder headline" value={founder.bio} onChange={(value) => setFounderField("bio", value)} placeholder="Building the future of healthcare diagnostics" />
+                <div>
+                  <span className="mb-2 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Domains</span>
+                  <ChoiceGrid items={DOMAINS} selected={founder.domains} onToggle={toggleFounderDomain} />
+                </div>
+                <div>
+                  <span className="mb-2 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Current stage</span>
+                  <ChoiceGrid items={FOUNDER_STAGES} selected={founder.stage ? [founder.stage] : []} multi={false} onToggle={(value) => setFounderField("stage", value)} />
+                </div>
+                <TextArea label="Startup idea summary" value={founder.idea} onChange={(value) => setFounderField("idea", value)} placeholder="Describe the problem, target customer, and the outcome your product should create." />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput label="LinkedIn (optional)" value={founder.linkedIn} onChange={(value) => setFounderField("linkedIn", value)} placeholder="https://linkedin.com/in/..." />
+                  <TextInput label="Phone (optional)" value={founder.phone} onChange={(value) => setFounderField("phone", value)} placeholder="+92 300 0000000" />
+                </div>
+              </motion.div>
+            )}
 
-          <label className="flex cursor-pointer items-start gap-2.5 mt-0.5">
-            <div
-              onClick={() => setAgreed((a) => !a)}
-              className="mt-0.5 flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded"
-              style={{
-                background: agreed ? "#0f1c18" : "transparent",
-                border: agreed ? "1px solid #0f1c18" : "1px solid rgba(15,28,24,0.2)",
-              }}
+            {step === 2 && role === "developer" && (
+              <motion.div key="developer" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} className="grid gap-4">
+                <div className="rounded-lg border bg-white p-4" style={{ borderColor: "rgba(15,28,24,0.1)" }}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[12px] font-bold" style={{ color: BRAND_INK }}>Profile strength</span>
+                    <span className="text-[12px] font-bold" style={{ color: BRAND_MID }}>{profileCompleteness}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-[#e8ede9]"><div className="h-2 rounded-full" style={{ width: `${profileCompleteness}%`, background: BRAND_MID }} /></div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput label="Professional role" value={developer.jobTitle} onChange={(value) => setDeveloperField("jobTitle", value)} placeholder="Full Stack Developer" />
+                  <TextInput label="Location" value={developer.location} onChange={(value) => setDeveloperField("location", value)} placeholder="Islamabad, Pakistan" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Experience</span>
+                    <select value={developer.experience} onChange={(event) => setDeveloperField("experience", event.target.value)} className="h-11 w-full rounded-lg border bg-white px-4 text-[14px] outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20" style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}>
+                      <option value="">Select experience</option>
+                      {["< 1 year", "1-2 years", "3-5 years", "5-8 years", "8+ years"].map((item) => <option key={item}>{item}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Preferred work type</span>
+                    <select value={developer.workType} onChange={(event) => setDeveloperField("workType", event.target.value)} className="h-11 w-full rounded-lg border bg-white px-4 text-[14px] outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20" style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}>
+                      {WORK_TYPES.map((item) => <option key={item}>{item}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <div>
+                  <span className="mb-2 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Core skills</span>
+                  <ChoiceGrid items={SKILLS} selected={developer.skills} onToggle={toggleSkill} />
+                </div>
+                <TextArea label="Professional summary" value={developer.bio} onChange={(value) => setDeveloperField("bio", value)} placeholder="Summarize the products you build, your strongest stack, and the startup environments you prefer." />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput label="GitHub (optional)" value={developer.github} onChange={(value) => setDeveloperField("github", value)} placeholder="https://github.com/..." />
+                  <TextInput label="LinkedIn (optional)" value={developer.linkedIn} onChange={(value) => setDeveloperField("linkedIn", value)} placeholder="https://linkedin.com/in/..." />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => step === 0 ? router.push("/") : setStep((current) => current - 1)}
+              className="flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-bold transition hover:bg-white"
+              style={{ color: "rgba(15,28,24,0.6)" }}
             >
-              {agreed && (
-                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                  <path d="M1 3.5L3.5 6L8 1" stroke="#89d7b7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+              <ArrowLeft size={15} weight="bold" />
+              {step === 0 ? "Back home" : "Back"}
+            </button>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {step === 2 && (
+                <button
+                  type="button"
+                  onClick={() => finish(true)}
+                  className="h-11 rounded-lg border bg-white px-4 text-[13px] font-bold transition hover:border-[#428475]/40"
+                  style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_MID }}
+                >
+                  Skip for now
+                </button>
               )}
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.99 }}
+                type="button"
+                onClick={step < 2 ? goNext : () => finish(false)}
+                className="flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-[13px] font-bold"
+                style={{ background: BRAND_INK, color: BRAND_MINT, boxShadow: "0 14px 32px rgba(15,28,24,0.16)" }}
+              >
+                {step < 2 ? "Continue" : role === "founder" ? "Complete founder profile" : "Complete developer profile"}
+                {step < 2 ? <ArrowRight size={15} weight="bold" /> : role === "founder" ? <RocketLaunch size={15} weight="bold" /> : <Briefcase size={15} weight="bold" />}
+              </motion.button>
             </div>
-            <span className="text-[12px] text-[#0f1c18]/50 leading-tight">
-              I agree to the{" "}
-              <a href="#" className="text-[#428475] underline underline-offset-2 hover:text-[#0f1c18] font-semibold">Terms</a>
-              {" "}and{" "}
-              <a href="#" className="text-[#428475] underline underline-offset-2 hover:text-[#0f1c18] font-semibold">Privacy Policy</a>
-            </span>
-          </label>
-
-          <motion.button
-            whileHover={{ scale: 1.012 }}
-            whileTap={{ scale: 0.988 }}
-            type="submit"
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg py-2 text-[13px] font-semibold transition-all"
-            style={{ background: "#0f1c18", color: "#89d7b7", boxShadow: "0 4px 12px rgba(15,28,24,0.15)" }}
-          >
-            <RocketLaunch size={13} weight="bold" />
-            Create account
-          </motion.button>
-
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1" style={{ background: "rgba(15,28,24,0.08)" }} />
-            <span className="text-[11px] text-[#0f1c18]/30">or</span>
-            <div className="h-px flex-1" style={{ background: "rgba(15,28,24,0.08)" }} />
           </div>
 
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2.5 rounded-lg py-2.5 text-[13px] text-[#0f1c18]/70 transition-all hover:bg-slate-50 hover:text-[#0f1c18]"
-            style={{ background: "#ffffff", border: "1px solid rgba(15,28,24,0.12)" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
-              <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" />
-              <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853" />
-              <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05" />
-              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.96L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
-            </svg>
-            Continue with Google
-          </button>
-        </form>
-      </div>
-
-      {/* RIGHT: animation panel (Dark Theme) — fixed alignment */}
-      <div
-        className="relative hidden lg:flex lg:w-[46%] h-full"
-        style={{
-          background: "linear-gradient(150deg, #0a1410 0%, #060e0b 100%)",
-          borderLeft: "1px solid rgba(255,255,255,0.04)",
-        }}
-      >
-        <BlueprintAnimation />
-      </div>
+          {step === 2 && (
+            <div className="mt-5 flex items-start gap-3 rounded-lg border bg-white px-4 py-3" style={{ borderColor: "rgba(15,28,24,0.1)" }}>
+              <UserCircle size={18} weight="fill" color={BRAND_MID} className="mt-0.5 shrink-0" />
+              <p className="text-[12px] leading-5" style={{ color: "rgba(15,28,24,0.58)" }}>
+                {role === "founder"
+                  ? "Skipped founder profiles can create and save private blueprints, but publishing, developer outreach, and investor sharing stay locked."
+                  : "Skipped developer profiles can enter the dashboard, but discovery visibility, applications, and network actions require profile completion."}
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

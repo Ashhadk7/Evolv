@@ -6917,6 +6917,7 @@ const DevOnboardingModal = ({ onComplete, userName = '' }) => {
                 workType,
                 photo: photoPreview,
                 firstTime: false,          // clears the onboarding flag
+                profileComplete: true,
             };
             localStorage.setItem('evolv_user', JSON.stringify(updated));
         } catch (_) {}
@@ -6926,7 +6927,7 @@ const DevOnboardingModal = ({ onComplete, userName = '' }) => {
     const handleSkip = () => {
         try {
             const existing = JSON.parse(localStorage.getItem('evolv_user') || '{}');
-            localStorage.setItem('evolv_user', JSON.stringify({ ...existing, firstTime: false }));
+            localStorage.setItem('evolv_user', JSON.stringify({ ...existing, firstTime: false, profileComplete: false }));
         } catch (_) {}
         onComplete();
     };

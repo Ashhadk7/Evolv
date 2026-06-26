@@ -290,6 +290,7 @@ interface Props {
   onNavigateWorkspace: (forge?: boolean) => void;
   blueprints: Blueprint[];
   onViewBlueprint: (id: string) => void;
+  profileComplete?: boolean;
 }
 
 const STAT_DATA = {
@@ -298,7 +299,7 @@ const STAT_DATA = {
   views: [80, 95, 110, 100, 118, 128, 135, 138, 142],
 };
 
-export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint }: Props) {
+export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint, profileComplete = true }: Props) {
   const name = profile.firstName || "Asad";
   const fullText = `Hello, ${name}`;
   const [displayed, setDisplayed] = useState('');
@@ -400,10 +401,16 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
           </div>
         </div>
         <button
+          disabled={!profileComplete}
+          title={profileComplete ? "Publish blueprint" : "Complete your founder profile before publishing"}
           className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#0f1c18", color: "#89d7b7" }}
+          style={{
+            background: profileComplete ? "#0f1c18" : "#e8ede9",
+            color: profileComplete ? "#89d7b7" : "#7a9e8e",
+            opacity: profileComplete ? 1 : 0.78,
+          }}
         >
-          ✎ Publish Nexus Health
+          <span>{profileComplete ? "Publish Nexus Health" : "Complete profile to publish"}</span>
         </button>
       </div>
 

@@ -140,11 +140,13 @@ function Badge({ label, color = "#f0f5f2", text = "#428475" }: { label: string; 
 }
 
 /* Blueprint card in list */
-function BPCard({ bp, onView, onTogglePublic, onDelete }: {
+function BPCard({ bp, onView, onTogglePublic, onDelete, canPublish = true, onCompleteProfile }: {
   bp: Blueprint;
   onView: () => void;
   onTogglePublic: () => void;
   onDelete: () => void;
+  canPublish?: boolean;
+  onCompleteProfile?: () => void;
 }) {
   return (
     <div className="bg-white rounded-xl p-4" style={{ border: "1px solid #e8ede9" }}>
@@ -185,12 +187,17 @@ function BPCard({ bp, onView, onTogglePublic, onDelete }: {
         </button>
         <button
           onClick={() => {
+            if (!canPublish && !bp.isPublic) {
+              onCompleteProfile?.();
+              return;
+            }
             if (window.confirm(`Are you sure you want to make this blueprint ${bp.isPublic ? 'private' : 'public'}?`)) {
               onTogglePublic();
             }
           }}
           className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg transition-colors"
-          style={{ background: "#f0f5f2", color: "#428475" }}
+          style={{ background: !canPublish && !bp.isPublic ? "#e8ede9" : "#f0f5f2", color: !canPublish && !bp.isPublic ? "#7a9e8e" : "#428475" }}
+          title={!canPublish && !bp.isPublic ? "Complete your founder profile before publishing" : undefined}
         >
           {bp.isPublic ? <Lock size={14} /> : <LockOpen size={14} />}
           {bp.isPublic ? "Make Private" : "Make Public"}
@@ -572,6 +579,8 @@ interface Props {
   onClearOpen?: () => void;
   triggerForge?: boolean;
   onClearForge?: () => void;
+  profileComplete?: boolean;
+  onCompleteProfile?: () => void;
 }
 
 export function WorkspaceTab({
@@ -580,7 +589,9 @@ export function WorkspaceTab({
   openBlueprintId,
   onClearOpen,
   triggerForge,
-  onClearForge
+  onClearForge,
+  profileComplete = true,
+  onCompleteProfile
 }: Props) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
@@ -630,6 +641,12 @@ export function WorkspaceTab({
         </button>
       </div>
 
+      {!profileComplete && (
+        <div className="mb-4 rounded-xl bg-white px-4 py-3 text-[12px] leading-5" style={{ border: "1px solid #dde5e0", color: "#6b8e7e" }}>
+          You can generate and save private blueprints now. Complete your founder profile before publishing blueprints or connecting with developers.
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
@@ -664,6 +681,8 @@ export function WorkspaceTab({
                   onView={() => setViewingId(bp.id)}
                   onTogglePublic={() => togglePublic(bp.id)}
                   onDelete={() => deleteBlueprint(bp.id)}
+                  canPublish={profileComplete}
+                  onCompleteProfile={onCompleteProfile}
                 />
               ))}
             </motion.div>

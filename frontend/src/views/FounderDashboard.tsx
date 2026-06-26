@@ -22,6 +22,7 @@ const DEFAULT_PROFILE: FounderProfile = {
   education: "",
   description: "",
   email: "",
+  profileComplete: false,
 };
 
 const STORAGE_KEY_PROFILE = "evolv_founder_profile";
@@ -34,6 +35,9 @@ export default function FounderDashboard() {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(DEFAULT_BLUEPRINTS);
   const [openBlueprintId, setOpenBlueprintId] = useState<string | null>(null);
   const [triggerForge, setTriggerForge] = useState(false);
+
+  const isProfileComplete = (p: FounderProfile) =>
+    Boolean(p.profileComplete || (p.firstName && p.lastName && p.bio && p.domains.length > 0));
 
   /* ── Load from localStorage ── */
   useEffect(() => {
@@ -58,8 +62,9 @@ export default function FounderDashboard() {
 
   /* ── Persist profile ── */
   const saveProfile = (p: FounderProfile) => {
-    setProfile(p);
-    try { localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(p)); } catch { /* ignore */ }
+    const nextProfile = { ...p, profileComplete: isProfileComplete(p) };
+    setProfile(nextProfile);
+    try { localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(nextProfile)); } catch { /* ignore */ }
   };
 
   /* ── Persist blueprints ── */
@@ -70,7 +75,7 @@ export default function FounderDashboard() {
 
   /* ── Onboarding handlers ── */
   const handleOnboardingComplete = (p: FounderProfile) => {
-    saveProfile(p);
+    saveProfile({ ...p, profileComplete: true });
     setShowOnboarding(false);
     /* Clear ?setup param from URL without reload */
     if (typeof window !== "undefined") {
@@ -87,6 +92,17 @@ export default function FounderDashboard() {
       url.searchParams.delete("setup");
       window.history.replaceState({}, "", url.toString());
     }
+  };
+
+  const profileComplete = isProfileComplete(profile);
+
+  const navigateFounder = (nextTab: FounderTab) => {
+    if (!profileComplete && nextTab === "inbox") {
+      setShowOnboarding(true);
+      setTab("settings");
+      return;
+    }
+    setTab(nextTab);
   };
 
   /* ── Navigate to workspace and open blueprint ── */
@@ -110,7 +126,7 @@ export default function FounderDashboard() {
       {/* Sidebar */}
       <Sidebar
         active={tab}
-        onNavigate={setTab}
+        onNavigate={navigateFounder}
         profile={profile}
         inboxCount={3}
       />
@@ -126,6 +142,7 @@ export default function FounderDashboard() {
             }}
             blueprints={blueprints}
             onViewBlueprint={handleViewBlueprint}
+            profileComplete={profileComplete}
           />
         )}
         {tab === "workspace" && (
@@ -136,6 +153,11 @@ export default function FounderDashboard() {
             onClearOpen={() => setOpenBlueprintId(null)}
             triggerForge={triggerForge}
             onClearForge={() => setTriggerForge(false)}
+            profileComplete={profileComplete}
+            onCompleteProfile={() => {
+              setTab("settings");
+              setShowOnboarding(true);
+            }}
           />
         )}
         {tab === "analysis" && <AnalysisTab />}
