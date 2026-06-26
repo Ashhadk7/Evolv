@@ -302,6 +302,16 @@ export function SettingsTab({ profile, onProfileSave }: Props) {
                 key={id}
                 onClick={() => setSection(id)}
                 className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg mb-1 text-left transition-colors"
+                onMouseEnter={(e) => {
+                  if (active) return;
+                  e.currentTarget.style.background = "#f5f7f5";
+                  e.currentTarget.style.color = "#0f1c18";
+                }}
+                onMouseLeave={(e) => {
+                  if (active) return;
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#7a9e8e";
+                }}
                 style={{
                   background: active ? "#f0f5f2" : "transparent",
                   color: active ? "#0f1c18" : "#7a9e8e",

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 
 import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './DeveloperShared';
 import { statsData, featuredMatch, recentMatches, applications, projects, profileData, insightsData } from './developerData';
@@ -266,15 +266,28 @@ const MODALS = {
 
 const DeveloperDashboard = ({ onNavigate }) => {
     const [modal, setModal] = useState(null);
+    const [userName, setUserName] = useState('Sarah');
     const openModal = useCallback((cfg) => setModal(cfg), []);
     const closeModal = useCallback(() => setModal(null), []);
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('evolv_user');
+            if (raw) {
+                const user = JSON.parse(raw);
+                if (user.firstName) {
+                    setUserName(user.firstName);
+                }
+            }
+        } catch (_) {}
+    }, []);
 
     return (
         <div className={"DeveloperDashboard_dashboardContainer"}>
             <Sidebar currentPage="dashboard" onNavigate={onNavigate} />
             <main className={"DeveloperDashboard_mainWrapper"}>
                 <TopbarWithModal
-                    title="Welcome back, Sarah"
+                    title={`Hi, ${userName}`}
                     subtitle="Here's your developer dashboard overview."
                     onNavigate={onNavigate}
                     openModal={openModal}

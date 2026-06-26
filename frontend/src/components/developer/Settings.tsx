@@ -26,7 +26,23 @@ const defaultNotifications = {
 };
 
 const Settings = ({ onNavigate }) => {
-    const [profile, setProfile] = useState(defaultProfile);
+    const [profile, setProfile] = useState(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem('evolv_user');
+                if (raw) {
+                    const user = JSON.parse(raw);
+                    const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+                    return {
+                        ...defaultProfile,
+                        name: name || defaultProfile.name,
+                        email: user.email || defaultProfile.email,
+                    };
+                }
+            } catch (_) {}
+        }
+        return defaultProfile;
+    });
     const [notifications, setNotifications] = useState(defaultNotifications);
     const [activeTab, setActiveTab] = useState('profile');
     const [newSkill, setNewSkill] = useState('');
@@ -39,6 +55,19 @@ const Settings = ({ onNavigate }) => {
     const [pwSaved, setPwSaved] = useState(false);
 
     const handleSave = () => {
+        try {
+            const raw = localStorage.getItem('evolv_user');
+            const currentUser = raw ? JSON.parse(raw) : {};
+            const parts = profile.name.trim().split(' ');
+            const firstName = parts[0] || '';
+            const lastName = parts.slice(1).join(' ') || '';
+            localStorage.setItem('evolv_user', JSON.stringify({
+                ...currentUser,
+                firstName,
+                lastName,
+                email: profile.email
+            }));
+        } catch (_) {}
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };

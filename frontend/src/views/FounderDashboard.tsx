@@ -96,7 +96,17 @@ export default function FounderDashboard() {
   };
 
   return (
-    <div className="flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
+    <div className="founder-shell flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .founder-shell button:not(:disabled) {
+          cursor: pointer;
+        }
+
+        .founder-shell button:disabled {
+          cursor: not-allowed;
+        }
+      ` }} />
+
       {/* Sidebar */}
       <Sidebar
         active={tab}

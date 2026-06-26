@@ -223,9 +223,8 @@ export function InboxTab() {
               <button
                 key={c.id}
                 onClick={() => setActiveId(c.id)}
-                className="w-full text-left px-4 py-3.5 transition-colors"
+                className={`w-full text-left px-4 py-3.5 transition-all cursor-pointer ${isActive ? 'bg-[#f0f5f2]' : 'hover:bg-[#f5f7f5]'}`}
                 style={{
-                  background: isActive ? "#f0f5f2" : "transparent",
                   borderBottom: "1px solid #f0f5f2",
                 }}
               >
@@ -309,19 +308,19 @@ export function InboxTab() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCall({ mode: "voice" })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-[#f0f5f2]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all hover:bg-[#e8ede9] cursor-pointer"
               style={{ color: "#0f1c18", border: "1px solid #e8ede9" }}
             >
               <Phone size={14} /> Voice
             </button>
             <button
               onClick={() => setCall({ mode: "video" })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all hover:bg-[#1a2e26] cursor-pointer"
               style={{ background: "#0f1c18", color: "#89d7b7" }}
             >
               <VideoCamera size={14} /> Video
             </button>
-            <button className="p-1.5 rounded-lg hover:bg-[#f5f7f5] transition-colors">
+            <button className="p-1.5 rounded-lg hover:bg-[#e8ede9] transition-all cursor-pointer">
               <DotsThree size={16} style={{ color: "#7a9e8e" }} />
             </button>
           </div>
