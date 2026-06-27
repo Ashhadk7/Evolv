@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { ArrowUp, Eye, Sparkle, TrendUp } from "@phosphor-icons/react";
 
 /* ── Sparkline SVG ── */
@@ -355,13 +356,16 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
             , and growing developer interest.
           </p>
         </div>
-        <button
+        <motion.button
           onClick={() => onNavigateWorkspace(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
           style={{ background: "#0f1c18", color: "#89d7b7" }}
         >
           + Forge new blueprint
-        </button>
+        </motion.button>
       </div>
 
       {/* ── AI Briefing Card ── */}
@@ -400,10 +404,13 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
             ))}
           </div>
         </div>
-        <button
+        <motion.button
           disabled={!profileComplete}
           title={profileComplete ? "Publish blueprint" : "Complete your founder profile before publishing"}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+          whileHover={profileComplete ? { scale: 1.03 } : {}}
+          whileTap={profileComplete ? { scale: 0.97 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
           style={{
             background: profileComplete ? "#0f1c18" : "#e8ede9",
             color: profileComplete ? "#89d7b7" : "#7a9e8e",
@@ -411,7 +418,7 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
           }}
         >
           <span>{profileComplete ? "Publish Nexus Health" : "Complete profile to publish"}</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* ── Stat cards ── */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Receipt, CreditCard, ArrowUp } from "@phosphor-icons/react";
 
 /* ── Simple SVG Line Chart ── */
@@ -313,12 +314,15 @@ export function AnalysisTab() {
                 >
                   Deposit
                 </button>
-                <button
-                  className="py-1.5 rounded-lg text-[12px] font-semibold text-center transition-all hover:bg-[#1a2e26] cursor-pointer"
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="py-1.5 rounded-xl text-[12px] font-semibold text-center cursor-pointer"
                   style={{ background: "#0f1c18", color: "#89d7b7" }}
                 >
                   Withdraw
-                </button>
+                </motion.button>
               </div>
             </div>
           </Card>

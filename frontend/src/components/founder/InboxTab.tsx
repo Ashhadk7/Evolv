@@ -397,13 +397,16 @@ export function InboxTab({
             >
               <Phone size={14} /> Voice
             </button>
-            <button
+            <motion.button
               onClick={() => setCall({ mode: "video" })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all hover:bg-[#1a2e26] cursor-pointer"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium cursor-pointer"
               style={{ background: "#0f1c18", color: "#89d7b7" }}
             >
               <VideoCamera size={14} /> Video
-            </button>
+            </motion.button>
             <button className="p-1.5 rounded-lg hover:bg-[#e8ede9] transition-all cursor-pointer">
               <DotsThree size={16} style={{ color: "#7a9e8e" }} />
             </button>
@@ -455,14 +458,17 @@ export function InboxTab({
             className="flex-1 rounded-xl px-4 py-2.5 text-[13px] outline-none"
             style={{ background: "#f5f7f5", border: "1px solid #e8ede9", color: "#1a2e26" }}
           />
-          <button
+          <motion.button
             onClick={sendMsg}
             disabled={!draft.trim()}
-            className="h-9 w-9 rounded-xl flex items-center justify-center transition-opacity"
+            whileHover={draft.trim() ? { scale: 1.08 } : {}}
+            whileTap={draft.trim() ? { scale: 0.92 } : {}}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+            className="h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer"
             style={{ background: "#0f1c18", opacity: draft.trim() ? 1 : 0.4 }}
           >
             <PaperPlaneTilt size={15} style={{ color: "#89d7b7" }} weight="fill" />
-          </button>
+          </motion.button>
         </div>
       </div>
 

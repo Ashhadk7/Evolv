@@ -120,6 +120,14 @@ export default function FounderDashboard() {
     setTab("inbox");
   };
 
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY_PROFILE);
+      localStorage.removeItem(STORAGE_KEY_BLUEPRINTS);
+    } catch { /* ignore */ }
+    window.location.href = "/sign-in";
+  };
+
   return (
     <div className="founder-shell flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -139,6 +147,7 @@ export default function FounderDashboard() {
         profile={profile}
         inboxCount={3}
         networkCount={networkRequestCount}
+        onLogout={handleLogout}
       />
 
       {/* Main content */}

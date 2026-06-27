@@ -179,9 +179,9 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
                           onClick={() => toggleDomain(d)}
                           className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
                           style={{
-                            background: sel ? "#0f1c18" : "#f0f5f2",
+                            background: sel ? "#1a312c" : "#f0f5f2",
                             color: sel ? "#89d7b7" : "#428475",
-                            border: `1px solid ${sel ? "#0f1c18" : "#dde5e0"}`,
+                            border: `1px solid ${sel ? "rgba(137,215,183,0.25)" : "#dde5e0"}`,
                           }}
                         >
                           {d}
@@ -310,7 +310,7 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
                 Back
               </button>
             )}
-            <button
+            <motion.button
               onClick={() => {
                 if (step === 1) {
                   if (!profile.firstName || !profile.lastName || !profile.bio || profile.domains.length === 0) {
@@ -322,7 +322,10 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
                   onComplete({ ...profile, profileComplete: true });
                 }
               }}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
               style={{ background: "#0f1c18", color: "#89d7b7" }}
             >
               {step === 1 ? "Continue" : "Complete Setup"}
@@ -331,7 +334,7 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
               ) : (
                 <CheckCircle size={14} weight="bold" />
               )}
-            </button>
+            </motion.button>
           </div>
         </div>
       </motion.div>

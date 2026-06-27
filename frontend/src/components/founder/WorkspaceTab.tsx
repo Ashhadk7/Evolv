@@ -178,13 +178,16 @@ function BPCard({ bp, onView, onTogglePublic, onDelete, canPublish = true, onCom
         </div>
       </div>
       <div className="flex items-center gap-2" style={{ borderTop: "1px solid #eaf0eb", paddingTop: 12 }}>
-        <button
+        <motion.button
           onClick={onView}
-          className="flex items-center justify-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-colors flex-1"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          className="flex items-center justify-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-xl cursor-pointer flex-1"
           style={{ background: "#0f1c18", color: "#89d7b7" }}
         >
           <Eye size={14} /> Open Blueprint
-        </button>
+        </motion.button>
         <button
           onClick={() => {
             if (!canPublish && !bp.isPublic) {
@@ -469,9 +472,9 @@ function ForgeModal({
                         onClick={() => setIndustry(ind)}
                         className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
                         style={{
-                          background: industry === ind ? "#0f1c18" : "#f0f5f2",
+                          background: industry === ind ? "#1a312c" : "#f0f5f2",
                           color: industry === ind ? "#89d7b7" : "#428475",
-                          border: `1px solid ${industry === ind ? "#0f1c18" : "#dde5e0"}`,
+                          border: `1px solid ${industry === ind ? "rgba(137,215,183,0.25)" : "#dde5e0"}`,
                         }}
                       >
                         {ind}
@@ -479,10 +482,13 @@ function ForgeModal({
                     ))}
                   </div>
                 </div>
-                <button
+                <motion.button
                   onClick={startGeneration}
                   disabled={!idea.trim() || !industry}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-opacity"
+                  whileHover={idea.trim() && industry ? { scale: 1.01 } : {}}
+                  whileTap={idea.trim() && industry ? { scale: 0.98 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer"
                   style={{
                     background: "#0f1c18",
                     color: "#89d7b7",
@@ -490,7 +496,7 @@ function ForgeModal({
                   }}
                 >
                   <Sparkle size={14} weight="fill" /> Generate Blueprint
-                </button>
+                </motion.button>
               </motion.div>
             )}
 
@@ -553,13 +559,16 @@ function ForgeModal({
                 <div className="text-[13px] mb-5" style={{ color: "#7a9e8e" }}>
                   All 5 agents completed analysis successfully.
                 </div>
-                <button
+                <motion.button
                   onClick={handleAccept}
-                  className="flex items-center justify-center gap-2 mx-auto px-6 py-2.5 rounded-xl text-[13px] font-semibold"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="flex items-center justify-center gap-2 mx-auto px-6 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer"
                   style={{ background: "#0f1c18", color: "#89d7b7" }}
                 >
                   <CheckCircle size={14} weight="fill" /> View Blueprint
-                </button>
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -632,13 +641,16 @@ export function WorkspaceTab({
             {blueprints.length} blueprints · {blueprints.filter((b) => b.isPublic).length} public
           </p>
         </div>
-        <button
+        <motion.button
           onClick={() => setForgeOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
           style={{ background: "#0f1c18", color: "#89d7b7" }}
         >
           <Plus size={14} weight="bold" /> Forge New Blueprint
-        </button>
+        </motion.button>
       </div>
 
       {!profileComplete && (

@@ -285,16 +285,19 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button
+                        <motion.button
                           onClick={(event) => {
                             event.stopPropagation();
                             handleAcceptRequest(person.id);
                           }}
-                          className="px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.96 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                          className="px-3 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer"
                           style={{ background: "#0f1c18", color: "#89d7b7" }}
                         >
                           Accept
-                        </button>
+                        </motion.button>
                         <button
                           onClick={(event) => {
                             event.stopPropagation();
@@ -382,12 +385,15 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                     </div>
 
                     <div className="flex items-center gap-2 pt-3" style={{ borderTop: "1px solid #eaf0eb" }}>
-                      <button
+                      <motion.button
                         onClick={(event) => {
                           event.stopPropagation();
                           handleToggleConnection(person.id);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer"
                         style={{
                           background: isConnected ? "#e8f5ef" : "#0f1c18",
                           color: isConnected ? "#2e7d5c" : "#89d7b7",
@@ -396,7 +402,7 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                       >
                         {isConnected ? <CheckCircle size={13} weight="fill" /> : <UserPlus size={13} weight="bold" />}
                         {isConnected ? "Connected" : "Connect"}
-                      </button>
+                      </motion.button>
                       <button
                         onClick={(event) => {
                           event.stopPropagation();

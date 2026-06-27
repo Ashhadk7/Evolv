@@ -421,19 +421,25 @@ export function NetworkProfileDetailScreen({
                     >
                       Ignore
                     </button>
-                    <button
+                    <motion.button
                       onClick={() => onAccept(profile.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
                       style={{ background: "#0f1c18", color: "#89d7b7" }}
                     >
                       <UserPlus size={14} weight="bold" /> Accept
-                    </button>
+                    </motion.button>
                   </>
                 )}
                 {canToggleConnection && (
-                  <button
+                  <motion.button
                     onClick={() => onToggleConnection(profile.id)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold transition-colors"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
                     style={{
                       background: connected ? "#e8f5ef" : "#0f1c18",
                       color: connected ? "#2e7d5c" : "#89d7b7",
@@ -442,7 +448,7 @@ export function NetworkProfileDetailScreen({
                   >
                     {connected ? <CheckCircle size={14} weight="fill" /> : <UserPlus size={14} weight="bold" />}
                     {connected ? "Connected" : "Connect"}
-                  </button>
+                  </motion.button>
                 )}
                 {onMessage && (
                   <button
