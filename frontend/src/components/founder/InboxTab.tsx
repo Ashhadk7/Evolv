@@ -11,6 +11,7 @@ import {
   PaperPlaneTilt,
   DotsThree,
 } from "@phosphor-icons/react";
+import { buildProfileFromContact, NetworkProfileDetailScreen } from "./NetworkProfileDetail";
 
 /* ────────────────────────────────────────────────────────── */
 /* Types & static data                                         */
@@ -200,6 +201,7 @@ export function InboxTab({
   const [messages, setMessages] = useState<Record<string, Message[]>>(MOCK_MSGS);
   const [draft, setDraft] = useState("");
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
+  const [viewingProfile, setViewingProfile] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const mergedContacts = [
@@ -234,10 +236,12 @@ export function InboxTab({
   const activeId = activeContactId ?? localActiveId;
   const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0] ?? CONTACTS[0];
   const thread = contact ? messages[contact.id] ?? [] : [];
+  const contactProfile = buildProfileFromContact(contact);
 
   const selectContact = (id: string) => {
     if (onActiveContactChange) onActiveContactChange(id);
     else setLocalActiveId(id);
+    setViewingProfile(false);
   };
 
   useEffect(() => {
@@ -264,6 +268,19 @@ export function InboxTab({
       sendMsg();
     }
   };
+
+  if (viewingProfile) {
+    return (
+      <NetworkProfileDetailScreen
+        profile={contactProfile}
+        connected
+        backLabel="Back to Chat"
+        onBack={() => setViewingProfile(false)}
+        onMessage={() => setViewingProfile(false)}
+        messageLabel="Open Chat"
+      />
+    );
+  }
 
   return (
     <div
@@ -342,7 +359,11 @@ export function InboxTab({
           className="flex items-center px-5 py-3.5 shrink-0 bg-white"
           style={{ borderBottom: "1px solid #e8ede9" }}
         >
-          <div className="flex items-center gap-2.5 flex-1">
+          <button
+            type="button"
+            onClick={() => setViewingProfile(true)}
+            className="flex items-center gap-2.5 flex-1 rounded-xl px-2 py-1.5 -ml-2 text-left transition-all hover:bg-[#f5f7f5] cursor-pointer"
+          >
             <div
               className="h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
               style={{ background: "#0f1c18", color: "#89d7b7" }}
@@ -366,7 +387,7 @@ export function InboxTab({
                 </span>
               </div>
             </div>
-          </div>
+          </button>
           {/* Call buttons */}
           <div className="flex items-center gap-2">
             <button
