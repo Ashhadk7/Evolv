@@ -8,7 +8,8 @@ import { WorkspaceTab, DEFAULT_BLUEPRINTS, type Blueprint } from "@/components/f
 import { AnalysisTab } from "@/components/founder/AnalysisTab";
 import { InboxTab, type InboxLaunchContact } from "@/components/founder/InboxTab";
 import { NetworkTab, type FounderNetworkMessageTarget } from "@/components/founder/NetworkTab";
-import { SettingsTab } from "@/components/founder/SettingsTab";
+import { FounderTopActions } from "@/components/founder/FounderTopActions";
+import { SettingsTab, type SettingsSection } from "@/components/founder/SettingsTab";
 
 /* ── Default profile ── */
 const DEFAULT_PROFILE: FounderProfile = {
@@ -23,6 +24,7 @@ const DEFAULT_PROFILE: FounderProfile = {
   education: "",
   description: "",
   email: "",
+  avatarUrl: "",
   profileComplete: false,
 };
 
@@ -39,6 +41,7 @@ export default function FounderDashboard() {
   const [networkRequestCount, setNetworkRequestCount] = useState(3);
   const [inboxActiveContactId, setInboxActiveContactId] = useState("sarah");
   const [networkInboxContacts, setNetworkInboxContacts] = useState<InboxLaunchContact[]>([]);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>("profile");
 
   const isProfileComplete = (p: FounderProfile) =>
     Boolean(p.profileComplete || (p.firstName && p.lastName && p.bio && p.domains.length > 0));
@@ -128,6 +131,19 @@ export default function FounderDashboard() {
     window.location.href = "/sign-in";
   };
 
+  const openSettingsSection = (section: SettingsSection) => {
+    setSettingsSection(section);
+    setTab("settings");
+  };
+
+  const topActions = (
+    <FounderTopActions
+      profile={profile}
+      onOpenProfile={() => openSettingsSection("profile")}
+    />
+  );
+
+
   return (
     <div className="founder-shell flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -162,6 +178,7 @@ export default function FounderDashboard() {
             blueprints={blueprints}
             onViewBlueprint={handleViewBlueprint}
             profileComplete={profileComplete}
+            topActions={topActions}
           />
         )}
         {tab === "workspace" && (
@@ -175,15 +192,18 @@ export default function FounderDashboard() {
             profileComplete={profileComplete}
             onCompleteProfile={() => {
               setTab("settings");
+              setSettingsSection("profile");
               setShowOnboarding(true);
             }}
+            topActions={topActions}
           />
         )}
-        {tab === "analysis" && <AnalysisTab />}
+        {tab === "analysis" && <AnalysisTab topActions={topActions} />}
         {tab === "network" && (
           <NetworkTab
             onMessage={handleOpenNetworkMessage}
             onPendingCountChange={setNetworkRequestCount}
+            topActions={topActions}
           />
         )}
         {tab === "inbox" && (
@@ -191,10 +211,17 @@ export default function FounderDashboard() {
             activeContactId={inboxActiveContactId}
             onActiveContactChange={setInboxActiveContactId}
             extraContacts={networkInboxContacts}
+            topActions={topActions}
           />
         )}
         {tab === "settings" && (
-          <SettingsTab profile={profile} onProfileSave={saveProfile} />
+          <SettingsTab
+            profile={profile}
+            onProfileSave={saveProfile}
+            section={settingsSection}
+            onSectionChange={setSettingsSection}
+            topActions={topActions}
+          />
         )}
       </main>
 

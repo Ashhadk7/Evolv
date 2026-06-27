@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './DeveloperShared';
 import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
@@ -14,6 +14,7 @@ const defaultProfile = {
     openToRemote: true,
     preferredBudget: '$180K – $250K',
     experienceYears: '5',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
 };
 
 const defaultNotifications = {
@@ -37,6 +38,7 @@ const Settings = ({ onNavigate }) => {
                         ...defaultProfile,
                         name: name || defaultProfile.name,
                         email: user.email || defaultProfile.email,
+                        avatarUrl: user.avatarUrl || defaultProfile.avatarUrl,
                     };
                 }
             } catch (_) {}
@@ -50,6 +52,7 @@ const Settings = ({ onNavigate }) => {
     const [passwordData, setPasswordData] = useState({ current: '', newPass: '', confirm: '' });
     const [paySaved, setPaySaved] = useState(false);
     const [payData, setPayData] = useState({ method: 'bank', accountName: 'Sarah Mitchell', accountNumber: '****4821', bankName: 'HBL Pakistan', currency: 'USD', paypal: 'sarah.mitchell@evolv.dev' });
+    const photoInputRef = useRef(null);
 
     const handlePaySave = () => { setPaySaved(true); setTimeout(() => setPaySaved(false), 2000); };
     const [pwSaved, setPwSaved] = useState(false);
@@ -65,11 +68,23 @@ const Settings = ({ onNavigate }) => {
                 ...currentUser,
                 firstName,
                 lastName,
-                email: profile.email
+                email: profile.email,
+                avatarUrl: profile.avatarUrl,
             }));
         } catch (_) {}
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+    };
+
+    const handlePhotoUpload = (file) => {
+        if (!file || !file.type || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                setProfile((p) => ({ ...p, avatarUrl: reader.result }));
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     const handlePwSave = () => {
@@ -132,12 +147,19 @@ const Settings = ({ onNavigate }) => {
 
                                 <div className={"Settings_avatarSection"}>
                                     <div className={"Settings_avatarCircle"}>
-                                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face" alt="Sarah" />
+                                        <img src={profile.avatarUrl} alt="Sarah" />
                                     </div>
                                     <div>
                                         <div className={"Settings_avatarName"}>{profile.name}</div>
                                         <div className={"Settings_avatarRole"}>{profile.role}</div>
-                                        <button className={"Settings_changePhotoBtn"}><i className="fas fa-camera" /> Change Photo</button>
+                                        <button className={"Settings_changePhotoBtn"} onClick={() => photoInputRef.current?.click()}><i className="fas fa-camera" /> Change Photo</button>
+                                        <input
+                                            ref={photoInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+                                        />
                                     </div>
                                 </div>
 

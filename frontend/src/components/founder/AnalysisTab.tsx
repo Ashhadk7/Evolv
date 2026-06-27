@@ -154,7 +154,7 @@ function InvoiceRow({
 const VELOCITY_DATA = [12, 18, 15, 22, 19, 28, 24, 33, 30, 38, 35, 42];
 const WEEKS = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "W12"];
 
-export function AnalysisTab() {
+export function AnalysisTab({ topActions }: { topActions?: React.ReactNode }) {
   const [activeProject, setActiveProject] = useState("nexus");
 
   const projects = [
@@ -177,9 +177,12 @@ export function AnalysisTab() {
       className="h-full flex flex-col overflow-hidden"
       style={{ background: "#f5f6f4", padding: "24px 28px" }}
     >
-      <div className="mb-5 shrink-0">
-        <h2 className="text-[1.2rem] font-bold" style={{ color: "#1a2e26" }}>Project Analysis</h2>
-        <p className="text-[12px] mt-0.5" style={{ color: "#7a9e8e" }}>Track progress, velocity, and payments across all ventures</p>
+      <div className="mb-5 shrink-0 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[1.2rem] font-bold" style={{ color: "#1a2e26" }}>Project Analysis</h2>
+          <p className="text-[12px] mt-0.5" style={{ color: "#7a9e8e" }}>Track progress, velocity, and payments across all ventures</p>
+        </div>
+        {topActions}
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-3 gap-4 overflow-hidden">

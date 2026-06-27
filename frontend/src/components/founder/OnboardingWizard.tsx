@@ -16,6 +16,7 @@ export interface FounderProfile {
   education: string;
   description: string;
   email: string;
+  avatarUrl?: string;
   profileComplete?: boolean;
   ventureStage?: string;
 }

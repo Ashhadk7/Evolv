@@ -590,6 +590,7 @@ interface Props {
   onClearForge?: () => void;
   profileComplete?: boolean;
   onCompleteProfile?: () => void;
+  topActions?: React.ReactNode;
 }
 
 export function WorkspaceTab({
@@ -600,7 +601,8 @@ export function WorkspaceTab({
   triggerForge,
   onClearForge,
   profileComplete = true,
-  onCompleteProfile
+  onCompleteProfile,
+  topActions
 }: Props) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
@@ -641,16 +643,19 @@ export function WorkspaceTab({
             {blueprints.length} blueprints · {blueprints.filter((b) => b.isPublic).length} public
           </p>
         </div>
-        <motion.button
-          onClick={() => setForgeOpen(true)}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 400, damping: 22 }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
-          style={{ background: "#0f1c18", color: "#89d7b7" }}
-        >
-          <Plus size={14} weight="bold" /> Forge New Blueprint
-        </motion.button>
+        <div className="flex items-center gap-2 shrink-0">
+          <motion.button
+            onClick={() => setForgeOpen(true)}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
+            style={{ background: "#0f1c18", color: "#89d7b7" }}
+          >
+            <Plus size={14} weight="bold" /> Forge New Blueprint
+          </motion.button>
+          {topActions}
+        </div>
       </div>
 
       {!profileComplete && (

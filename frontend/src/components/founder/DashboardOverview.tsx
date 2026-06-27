@@ -292,6 +292,7 @@ interface Props {
   blueprints: Blueprint[];
   onViewBlueprint: (id: string) => void;
   profileComplete?: boolean;
+  topActions?: React.ReactNode;
 }
 
 const STAT_DATA = {
@@ -300,7 +301,7 @@ const STAT_DATA = {
   views: [80, 95, 110, 100, 118, 128, 135, 138, 142],
 };
 
-export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint, profileComplete = true }: Props) {
+export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint, profileComplete = true, topActions }: Props) {
   const name = profile.firstName || "Asad";
   const fullText = `Hello, ${name}`;
   const [displayed, setDisplayed] = useState('');
@@ -356,16 +357,19 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
             , and growing developer interest.
           </p>
         </div>
-        <motion.button
-          onClick={() => onNavigateWorkspace(true)}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 400, damping: 22 }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
-          style={{ background: "#0f1c18", color: "#89d7b7" }}
-        >
-          + Forge new blueprint
-        </motion.button>
+        <div className="flex items-center gap-2 shrink-0">
+          <motion.button
+            onClick={() => onNavigateWorkspace(true)}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
+            style={{ background: "#0f1c18", color: "#89d7b7" }}
+          >
+            + Forge new blueprint
+          </motion.button>
+          {topActions}
+        </div>
       </div>
 
       {/* ── AI Briefing Card ── */}

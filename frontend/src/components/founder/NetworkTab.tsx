@@ -21,6 +21,7 @@ import {
   FOUNDER_NETWORK_PROFILES,
   INITIAL_PENDING_IDS,
   NetworkProfileDetailScreen,
+  RatingStars,
   SkillPill,
   TypeBadge,
   type FounderContactProfile,
@@ -46,6 +47,7 @@ interface StoredNetworkState {
 interface NetworkTabProps {
   onMessage: (contact: FounderNetworkMessageTarget) => void;
   onPendingCountChange?: (count: number) => void;
+  topActions?: React.ReactNode;
 }
 
 const STORAGE_KEY = "evolv_founder_network_state";
@@ -128,7 +130,7 @@ function Avatar({ person, size = 44 }: { person: FounderContactProfile; size?: n
   );
 }
 
-export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps) {
+export function NetworkTab({ onMessage, onPendingCountChange, topActions }: NetworkTabProps) {
   const [activeTab, setActiveTab] = useState<NetworkTabFilter>("all");
   const [networkState, setNetworkState] = useState<StoredNetworkState>(getInitialNetworkState);
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
@@ -208,6 +210,7 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
   if (selectedPerson) {
     return (
       <NetworkProfileDetailScreen
+        key={selectedPerson.id}
         profile={selectedPerson}
         connected={Boolean(connected[selectedPerson.id])}
         pending={pendingIds.includes(selectedPerson.id)}
@@ -217,6 +220,7 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
         onIgnore={handleIgnoreRequest}
         onToggleConnection={handleToggleConnection}
         onMessage={handleMessage}
+        topActions={topActions}
       />
     );
   }
@@ -232,9 +236,12 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
             Manage developer matches, founder peers, and connection requests in one place.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-white" style={{ border: "1px solid #e8ede9" }}>
-          <TrendUp size={14} style={{ color: "#428475" }} />
-          <span className="text-[12px] font-semibold" style={{ color: "#1a2e26" }}>{suggestedPeople.length} suggested</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-white" style={{ border: "1px solid #e8ede9" }}>
+            <TrendUp size={14} style={{ color: "#428475" }} />
+            <span className="text-[12px] font-semibold" style={{ color: "#1a2e26" }}>{suggestedPeople.length} suggested</span>
+          </div>
+          {topActions}
         </div>
       </div>
 
@@ -283,6 +290,12 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                         <div className="flex items-center gap-1 text-[10px] mt-1" style={{ color: "#7a9e8e" }}>
                           <Users size={11} /> {person.mutual} mutual connections
                         </div>
+                        {person.type === "Developer" && (
+                          <div className="flex items-center gap-1.5 text-[10px] mt-1" style={{ color: "#7a9e8e" }}>
+                            <RatingStars rating={person.rating ?? 0} size={11} />
+                            <span>{person.rating ?? 0}/5 rating</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <motion.button
@@ -380,6 +393,14 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                       <span className="flex items-center gap-1"><Star size={11} weight="fill" /> {person.match}% match</span>
                     </div>
 
+                    {person.type === "Developer" && (
+                      <div className="flex items-center gap-2 mb-3 text-[10px]" style={{ color: "#7a9e8e" }}>
+                        <RatingStars rating={person.rating ?? 0} size={12} />
+                        <span className="font-semibold" style={{ color: "#1a2e26" }}>{person.rating ?? 0}/5</span>
+                        <span>{person.reviews?.length ?? 0} reviews</span>
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {person.skills.slice(0, 3).map((skill) => <SkillPill key={skill} label={skill} />)}
                     </div>
@@ -440,7 +461,15 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                   <div className="flex-1 min-w-0">
                     <div className="text-[12px] font-semibold truncate" style={{ color: "#1a2e26" }}>{person.name}</div>
                     <div className="text-[10px] truncate" style={{ color: "#7a9e8e" }}>{person.role}</div>
-                    <div className="text-[10px] font-semibold" style={{ color: "#2e7d5c" }}>{person.match}% match</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] font-semibold" style={{ color: "#2e7d5c" }}>{person.match}% match</span>
+                      {person.type === "Developer" && (
+                        <span className="flex items-center gap-1 text-[10px]" style={{ color: "#7a9e8e" }}>
+                          <RatingStars rating={person.rating ?? 0} size={10} />
+                          {person.rating ?? 0}/5
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={(event) => {
@@ -486,4 +515,3 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
     </div>
   );
 }
-

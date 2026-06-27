@@ -191,10 +191,12 @@ export function InboxTab({
   activeContactId,
   onActiveContactChange,
   extraContacts = [],
+  topActions,
 }: {
   activeContactId?: string;
   onActiveContactChange?: (id: string) => void;
   extraContacts?: InboxLaunchContact[];
+  topActions?: React.ReactNode;
 }) {
   const [localActiveId, setLocalActiveId] = useState("sarah");
   const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
@@ -272,12 +274,14 @@ export function InboxTab({
   if (viewingProfile) {
     return (
       <NetworkProfileDetailScreen
+        key={contactProfile.id}
         profile={contactProfile}
         connected
         backLabel="Back to Chat"
         onBack={() => setViewingProfile(false)}
         onMessage={() => setViewingProfile(false)}
         messageLabel="Open Chat"
+        topActions={topActions}
       />
     );
   }
@@ -410,6 +414,7 @@ export function InboxTab({
             <button className="p-1.5 rounded-lg hover:bg-[#e8ede9] transition-all cursor-pointer">
               <DotsThree size={16} style={{ color: "#7a9e8e" }} />
             </button>
+            {topActions}
           </div>
         </div>
 
