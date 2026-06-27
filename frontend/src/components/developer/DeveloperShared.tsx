@@ -6225,6 +6225,22 @@ export const DeveloperGlobalStyles = `
     font-size: 0.85rem;
 }
 
+.Topbar_notifBtn:hover {
+    border-color: #8FD8BE;
+    color: #0D2B22;
+    background: #EAF5F0;
+}
+
+.Topbar_notifBtn svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .Topbar_notifBtn .Topbar_dot {
     position: absolute;
     top: 5px;
@@ -7871,6 +7887,7 @@ const Topbar = ({ title, subtitle, onNavigate, onNotifClick }) => {
     const fullText = title || 'Welcome back, Sarah';
     const [displayed, setDisplayed] = useState('');
     const [done, setDone] = useState(false);
+    const [profileImage, setProfileImage] = useState('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face');
 
     useEffect(() => {
         setDisplayed('');
@@ -7887,6 +7904,16 @@ const Topbar = ({ title, subtitle, onNavigate, onNotifClick }) => {
         return () => clearInterval(interval);
     }, [fullText]);
 
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('evolv_user');
+            if (raw) {
+                const user = JSON.parse(raw);
+                if (user.avatarUrl) setProfileImage(user.avatarUrl);
+            }
+        } catch (_) {}
+    }, []);
+
     return (
         <div className={"Topbar_topbar"}>
             <div className={"Topbar_greeting"}>
@@ -7897,17 +7924,16 @@ const Topbar = ({ title, subtitle, onNavigate, onNotifClick }) => {
                 <div className={"Topbar_sub"}>{subtitle || "Here's your developer dashboard overview."}</div>
             </div>
             <div className={"Topbar_right"}>
-                <div className={"Topbar_searchWrap"}>
-                    <i className={`fas fa-search ${"Topbar_searchIcon"}`}></i>
-                    <input type="text" placeholder="Search..." />
-                </div>
                 <div className={"Topbar_notifBtn"} onClick={onNotifClick} style={{ cursor: onNotifClick ? 'pointer' : 'default' }}>
-                    <i className="fas fa-bell"></i>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 10.7C18 7.2 15.7 5 12 5S6 7.2 6 10.7c0 2.4-.6 4.1-1.5 5.2-.5.6-.1 1.6.7 1.6h13.6c.8 0 1.2-1 .7-1.6-.9-1.1-1.5-2.8-1.5-5.2Z" />
+                        <path d="M9.8 18.5a2.3 2.3 0 0 0 4.4 0" />
+                    </svg>
                     <span className={"Topbar_dot"}></span>
                 </div>
                 <div className={"Topbar_profileAv"} onClick={() => onNavigate && onNavigate('settings')} style={{ cursor: 'pointer' }}>
                     <img
-                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face"
+                        src={profileImage}
                         alt="Sarah"
                     />
                 </div>

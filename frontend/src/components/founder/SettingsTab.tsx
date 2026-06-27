@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   User,
   Bell,
@@ -94,6 +94,7 @@ function ProfileSection({
 }) {
   const [local, setLocal] = useState<FounderProfile>(profile);
   const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (key: keyof FounderProfile, val: string) =>
     setLocal((p) => ({ ...p, [key]: val }));
@@ -110,6 +111,17 @@ function ProfileSection({
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handlePhotoUpload = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setLocal((p) => ({ ...p, avatarUrl: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const initials = `${local.firstName?.[0] ?? ""}${local.lastName?.[0] ?? ""}`.toUpperCase() || "F";
 
   return (
@@ -121,14 +133,27 @@ function ProfileSection({
             className="h-16 w-16 rounded-full flex items-center justify-center text-[1.2rem] font-bold"
             style={{ background: "#89d7b7", color: "#0f1c18" }}
           >
-            {initials}
+            {local.avatarUrl ? (
+              <img src={local.avatarUrl} alt="Founder profile" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              initials
+            )}
           </div>
           <button
+            onClick={() => fileInputRef.current?.click()}
             className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full flex items-center justify-center"
             style={{ background: "#0f1c18", border: "2px solid #fff" }}
+            title="Upload photo"
           >
             <UploadSimple size={11} style={{ color: "#89d7b7" }} />
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+          />
         </div>
         <div>
           <div className="text-[13px] font-semibold" style={{ color: "#1a2e26" }}>
@@ -268,15 +293,20 @@ function NotificationsSection() {
 /* Main export                                                 */
 /* ────────────────────────────────────────────────────────── */
 
-type SettingsSection = "profile" | "notifications";
+export type SettingsSection = "profile" | "notifications";
 
 interface Props {
   profile: FounderProfile;
   onProfileSave: (p: FounderProfile) => void;
+  section?: SettingsSection;
+  onSectionChange?: (section: SettingsSection) => void;
+  topActions?: React.ReactNode;
 }
 
-export function SettingsTab({ profile, onProfileSave }: Props) {
-  const [section, setSection] = useState<SettingsSection>("profile");
+export function SettingsTab({ profile, onProfileSave, section, onSectionChange, topActions }: Props) {
+  const [localSection, setLocalSection] = useState<SettingsSection>("profile");
+  const activeSection = section ?? localSection;
+  const setSection = onSectionChange ?? setLocalSection;
 
   const NAV: { id: SettingsSection; label: string; Icon: React.ElementType }[] = [
     { id: "profile", label: "Profile", Icon: User },
@@ -296,7 +326,7 @@ export function SettingsTab({ profile, onProfileSave }: Props) {
         <div className="text-[13px] font-bold mb-4" style={{ color: "#1a2e26" }}>Settings</div>
         <div className="flex-1">
           {NAV.map(({ id, label, Icon }) => {
-            const active = section === id;
+            const active = activeSection === id;
             return (
               <button
                 key={id}
@@ -335,17 +365,18 @@ export function SettingsTab({ profile, onProfileSave }: Props) {
       </div>
 
       {/* Right content */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      <div className="relative flex-1 overflow-y-auto px-8 py-6">
         <div style={{ maxWidth: 560 }}>
           <h2 className="text-[1.15rem] font-bold mb-1" style={{ color: "#1a2e26" }}>
-            {section === "profile" ? "Profile" : "Notifications"}
+            {activeSection === "profile" ? "Profile" : "Notifications"}
           </h2>
           <p className="text-[12px] mb-5" style={{ color: "#7a9e8e" }}>
-            {section === "profile"
+            {activeSection === "profile"
               ? "Update your personal details and public profile."
               : "Control which notifications you receive."}
           </p>
-          {section === "profile" ? (
+          {topActions && <div className="absolute top-6 right-8">{topActions}</div>}
+          {activeSection === "profile" ? (
             <ProfileSection profile={profile} onSave={onProfileSave} />
           ) : (
             <NotificationsSection />

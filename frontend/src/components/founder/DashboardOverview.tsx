@@ -291,6 +291,7 @@ interface Props {
   blueprints: Blueprint[];
   onViewBlueprint: (id: string) => void;
   profileComplete?: boolean;
+  topActions?: React.ReactNode;
 }
 
 const STAT_DATA = {
@@ -299,7 +300,7 @@ const STAT_DATA = {
   views: [80, 95, 110, 100, 118, 128, 135, 138, 142],
 };
 
-export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint, profileComplete = true }: Props) {
+export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint, profileComplete = true, topActions }: Props) {
   const name = profile.firstName || "Asad";
   const fullText = `Hello, ${name}`;
   const [displayed, setDisplayed] = useState('');
@@ -355,13 +356,16 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
             , and growing developer interest.
           </p>
         </div>
-        <button
-          onClick={() => onNavigateWorkspace(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#0f1c18", color: "#89d7b7" }}
-        >
-          + Forge new blueprint
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onNavigateWorkspace(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "#0f1c18", color: "#89d7b7" }}
+          >
+            + Forge new blueprint
+          </button>
+          {topActions}
+        </div>
       </div>
 
       {/* ── AI Briefing Card ── */}

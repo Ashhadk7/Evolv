@@ -346,6 +346,7 @@ export function NetworkProfileDetailScreen({
   onToggleConnection,
   onMessage,
   messageLabel = "Message",
+  topActions,
 }: {
   profile: FounderContactProfile;
   connected?: boolean;
@@ -357,6 +358,7 @@ export function NetworkProfileDetailScreen({
   onToggleConnection?: (id: string) => void;
   onMessage?: (profile: FounderContactProfile) => void;
   messageLabel?: string;
+  topActions?: React.ReactNode;
 }) {
   const canManagePending = pending && onAccept && onIgnore;
   const canToggleConnection = !pending && onToggleConnection;
@@ -381,6 +383,7 @@ export function NetworkProfileDetailScreen({
         <div className="text-[12px] font-semibold" style={{ color: "#7a9e8e" }}>
           {profile.type} profile
         </div>
+        <div className="ml-auto">{topActions}</div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4 items-start">
@@ -552,4 +555,3 @@ export function NetworkProfileDetailScreen({
     </motion.div>
   );
 }
-
