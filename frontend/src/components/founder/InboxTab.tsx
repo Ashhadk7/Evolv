@@ -8,7 +8,6 @@ import {
   Microphone,
   MicrophoneSlash,
   PhoneSlash,
-  X,
   PaperPlaneTilt,
   DotsThree,
 } from "@phosphor-icons/react";
@@ -22,6 +21,15 @@ interface Message {
   from: "me" | "them";
   text: string;
   time: string;
+}
+
+export interface InboxLaunchContact {
+  id: string;
+  name: string;
+  role: string;
+  match?: number;
+  initials?: string;
+  online?: boolean;
 }
 
 interface Contact {
@@ -62,6 +70,8 @@ const MOCK_MSGS: Record<string, Message[]> = {
     { id: "1", from: "them", text: "I'm interested in the AI role. My background is in computer vision and NLP.", time: "Yesterday" },
   ],
 };
+
+const AUDIO_BAR_DURATIONS = [0.52, 0.64, 0.78, 0.58, 0.86, 0.68, 0.74, 0.9, 0.62, 0.8, 0.56, 0.7];
 
 /* ────────────────────────────────────────────────────────── */
 /* Sub-components                                              */
@@ -128,7 +138,7 @@ function CallOverlay({
                 transition={{
                   repeat: Infinity,
                   repeatType: "reverse",
-                  duration: 0.5 + Math.random() * 0.4,
+                  duration: AUDIO_BAR_DURATIONS[i % AUDIO_BAR_DURATIONS.length],
                   delay: i * 0.06,
                 }}
               />
@@ -176,15 +186,59 @@ function CallOverlay({
 /* Main export                                                 */
 /* ────────────────────────────────────────────────────────── */
 
-export function InboxTab() {
-  const [activeId, setActiveId] = useState("sarah");
+export function InboxTab({
+  activeContactId,
+  onActiveContactChange,
+  extraContacts = [],
+}: {
+  activeContactId?: string;
+  onActiveContactChange?: (id: string) => void;
+  extraContacts?: InboxLaunchContact[];
+}) {
+  const [localActiveId, setLocalActiveId] = useState("sarah");
+  const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
   const [messages, setMessages] = useState<Record<string, Message[]>>(MOCK_MSGS);
   const [draft, setDraft] = useState("");
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const contact = CONTACTS.find((c) => c.id === activeId)!;
-  const thread = messages[activeId] ?? [];
+  const mergedContacts = [
+    ...extraContacts
+      .filter((extra) => !contacts.some((contact) => contact.id === extra.id))
+      .map<Contact>((extra) => {
+        const initials =
+          extra.initials ||
+          extra.name
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0])
+            .join("")
+            .toUpperCase();
+
+        return {
+          id: extra.id,
+          name: extra.name,
+          role: extra.role,
+          match: extra.match ?? 80,
+          lastMsg: "New conversation",
+          lastTime: "Now",
+          unread: 0,
+          initials,
+          online: Boolean(extra.online),
+        };
+      }),
+    ...contacts,
+  ];
+
+  const activeId = activeContactId ?? localActiveId;
+  const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0] ?? CONTACTS[0];
+  const thread = contact ? messages[contact.id] ?? [] : [];
+
+  const selectContact = (id: string) => {
+    if (onActiveContactChange) onActiveContactChange(id);
+    else setLocalActiveId(id);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -194,7 +248,13 @@ export function InboxTab() {
     if (!draft.trim()) return;
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const msg: Message = { id: Date.now().toString(), from: "me", text: draft.trim(), time: now };
-    setMessages((prev) => ({ ...prev, [activeId]: [...(prev[activeId] ?? []), msg] }));
+    setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
+    setContacts((prev) => {
+      const nextContact = { ...contact, lastMsg: draft.trim(), lastTime: "Now", unread: 0 };
+      return prev.some((item) => item.id === contact.id)
+        ? prev.map((item) => item.id === contact.id ? nextContact : item)
+        : [nextContact, ...prev];
+    });
     setDraft("");
   };
 
@@ -217,12 +277,15 @@ export function InboxTab() {
           <div className="text-[11px] mt-0.5" style={{ color: "#7a9e8e" }}>Developer connections</div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {CONTACTS.map((c) => {
+          {mergedContacts.map((c) => {
             const isActive = c.id === activeId;
             return (
               <button
                 key={c.id}
-                onClick={() => setActiveId(c.id)}
+                onClick={() => {
+                  selectContact(c.id);
+                  setContacts((prev) => prev.map((item) => item.id === c.id ? { ...item, unread: 0 } : item));
+                }}
                 className={`w-full text-left px-4 py-3.5 transition-all cursor-pointer ${isActive ? 'bg-[#f0f5f2]' : 'hover:bg-[#f5f7f5]'}`}
                 style={{
                   borderBottom: "1px solid #f0f5f2",

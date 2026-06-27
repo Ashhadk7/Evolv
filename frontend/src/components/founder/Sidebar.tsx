@@ -1,25 +1,27 @@
 "use client";
 
-import { SquaresFour, Lightbulb, ChartBar, ChatCircle, Gear } from "@phosphor-icons/react";
+import { SquaresFour, Lightbulb, ChartBar, ChatCircle, Gear, Users } from "@phosphor-icons/react";
 
-export type FounderTab = "dashboard" | "workspace" | "analysis" | "inbox" | "settings";
+export type FounderTab = "dashboard" | "workspace" | "analysis" | "network" | "inbox" | "settings";
 
 interface SidebarProps {
   active: FounderTab;
   onNavigate: (tab: FounderTab) => void;
   profile: { firstName: string; lastName: string };
   inboxCount?: number;
+  networkCount?: number;
 }
 
-const ITEMS: { id: FounderTab; label: string; Icon: React.ElementType; badge?: boolean }[] = [
+const ITEMS: { id: FounderTab; label: string; Icon: React.ElementType; badge?: "network" | "inbox" }[] = [
   { id: "dashboard", label: "Dashboard", Icon: SquaresFour },
   { id: "workspace", label: "Workspace", Icon: Lightbulb },
   { id: "analysis", label: "Analysis", Icon: ChartBar },
-  { id: "inbox", label: "Inbox", Icon: ChatCircle, badge: true },
+  { id: "network", label: "Network", Icon: Users, badge: "network" },
+  { id: "inbox", label: "Inbox", Icon: ChatCircle, badge: "inbox" },
   { id: "settings", label: "Settings", Icon: Gear },
 ];
 
-export function Sidebar({ active, onNavigate, profile, inboxCount = 3 }: SidebarProps) {
+export function Sidebar({ active, onNavigate, profile, inboxCount = 3, networkCount = 3 }: SidebarProps) {
   const initials =
     `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || "F";
 
@@ -52,6 +54,7 @@ export function Sidebar({ active, onNavigate, profile, inboxCount = 3 }: Sidebar
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1.5 overflow-y-auto">
         {ITEMS.map(({ id, label, Icon, badge }) => {
           const isActive = active === id;
+          const badgeCount = badge === "network" ? networkCount : badge === "inbox" ? inboxCount : 0;
           return (
             <button
               key={id}
@@ -78,12 +81,12 @@ export function Sidebar({ active, onNavigate, profile, inboxCount = 3 }: Sidebar
             >
               <Icon size={18} weight={isActive ? "fill" : "regular"} />
               <span className="text-[14px] font-medium flex-1">{label}</span>
-              {badge && inboxCount > 0 && (
+              {badge && badgeCount > 0 && (
                 <span
                   className="text-[12px] font-bold px-2 py-0.5 rounded-full leading-none"
                   style={{ background: "#89d7b7", color: "#0f1c18" }}
                 >
-                  {inboxCount}
+                  {badgeCount}
                 </span>
               )}
             </button>
