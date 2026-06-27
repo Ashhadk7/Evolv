@@ -6,7 +6,8 @@ import { OnboardingWizard, type FounderProfile } from "@/components/founder/Onbo
 import { DashboardOverview } from "@/components/founder/DashboardOverview";
 import { WorkspaceTab, DEFAULT_BLUEPRINTS, type Blueprint } from "@/components/founder/WorkspaceTab";
 import { AnalysisTab } from "@/components/founder/AnalysisTab";
-import { InboxTab } from "@/components/founder/InboxTab";
+import { InboxTab, type InboxLaunchContact } from "@/components/founder/InboxTab";
+import { NetworkTab, type FounderNetworkMessageTarget } from "@/components/founder/NetworkTab";
 import { SettingsTab } from "@/components/founder/SettingsTab";
 
 /* ── Default profile ── */
@@ -35,29 +36,31 @@ export default function FounderDashboard() {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(DEFAULT_BLUEPRINTS);
   const [openBlueprintId, setOpenBlueprintId] = useState<string | null>(null);
   const [triggerForge, setTriggerForge] = useState(false);
+  const [networkRequestCount, setNetworkRequestCount] = useState(3);
+  const [inboxActiveContactId, setInboxActiveContactId] = useState("sarah");
+  const [networkInboxContacts, setNetworkInboxContacts] = useState<InboxLaunchContact[]>([]);
 
   const isProfileComplete = (p: FounderProfile) =>
     Boolean(p.profileComplete || (p.firstName && p.lastName && p.bio && p.domains.length > 0));
 
   /* ── Load from localStorage ── */
   useEffect(() => {
-    try {
-      const storedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
-      if (storedProfile) setProfile(JSON.parse(storedProfile));
+    const loadTimer = window.setTimeout(() => {
+      try {
+        const storedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
+        if (storedProfile) setProfile(JSON.parse(storedProfile));
 
-      const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
-      if (storedBlueprints) setBlueprints(JSON.parse(storedBlueprints));
-    } catch {
-      /* ignore parse errors */
-    }
-
-    /* Show onboarding if ?setup=true in URL */
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("setup") === "true") {
-        setShowOnboarding(true);
+        const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
+        if (storedBlueprints) setBlueprints(JSON.parse(storedBlueprints));
+      } catch {
+        /* ignore parse errors */
       }
-    }
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("setup") === "true") setShowOnboarding(true);
+    }, 0);
+
+    return () => window.clearTimeout(loadTimer);
   }, []);
 
   /* ── Persist profile ── */
@@ -97,7 +100,7 @@ export default function FounderDashboard() {
   const profileComplete = isProfileComplete(profile);
 
   const navigateFounder = (nextTab: FounderTab) => {
-    if (!profileComplete && nextTab === "inbox") {
+    if (!profileComplete && (nextTab === "network" || nextTab === "inbox")) {
       setShowOnboarding(true);
       setTab("settings");
       return;
@@ -109,6 +112,12 @@ export default function FounderDashboard() {
   const handleViewBlueprint = (id: string) => {
     setOpenBlueprintId(id);
     setTab("workspace");
+  };
+
+  const handleOpenNetworkMessage = (contact: FounderNetworkMessageTarget) => {
+    setNetworkInboxContacts((prev) => [contact, ...prev.filter((item) => item.id !== contact.id)]);
+    setInboxActiveContactId(contact.id);
+    setTab("inbox");
   };
 
   return (
@@ -129,6 +138,7 @@ export default function FounderDashboard() {
         onNavigate={navigateFounder}
         profile={profile}
         inboxCount={3}
+        networkCount={networkRequestCount}
       />
 
       {/* Main content */}
@@ -161,7 +171,19 @@ export default function FounderDashboard() {
           />
         )}
         {tab === "analysis" && <AnalysisTab />}
-        {tab === "inbox" && <InboxTab />}
+        {tab === "network" && (
+          <NetworkTab
+            onMessage={handleOpenNetworkMessage}
+            onPendingCountChange={setNetworkRequestCount}
+          />
+        )}
+        {tab === "inbox" && (
+          <InboxTab
+            activeContactId={inboxActiveContactId}
+            onActiveContactChange={setInboxActiveContactId}
+            extraContacts={networkInboxContacts}
+          />
+        )}
         {tab === "settings" && (
           <SettingsTab profile={profile} onProfileSave={saveProfile} />
         )}
