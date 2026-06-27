@@ -132,7 +132,6 @@ export default function FounderDashboard() {
     <FounderTopActions
       profile={profile}
       onOpenProfile={() => openSettingsSection("profile")}
-      onOpenNotifications={() => openSettingsSection("notifications")}
     />
   );
 

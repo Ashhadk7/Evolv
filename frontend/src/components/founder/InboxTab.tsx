@@ -274,6 +274,7 @@ export function InboxTab({
   if (viewingProfile) {
     return (
       <NetworkProfileDetailScreen
+        key={contactProfile.id}
         profile={contactProfile}
         connected
         backLabel="Back to Chat"
