@@ -107,7 +107,7 @@ function CallOverlay({
         initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: 1, scale: 1 }}
         className="rounded-2xl overflow-hidden text-center"
-        style={{ width: 320, background: "#0f1c18", border: "1px solid rgba(137,215,183,0.15)" }}
+        style={{ width: 320, background: "#1a312c", border: "1px solid rgba(137,215,183,0.15)" }}
       >
         <div className="px-8 py-8">
           {/* Avatar */}
@@ -191,12 +191,10 @@ export function InboxTab({
   activeContactId,
   onActiveContactChange,
   extraContacts = [],
-  topActions,
 }: {
   activeContactId?: string;
   onActiveContactChange?: (id: string) => void;
   extraContacts?: InboxLaunchContact[];
-  topActions?: React.ReactNode;
 }) {
   const [localActiveId, setLocalActiveId] = useState("sarah");
   const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
@@ -281,7 +279,6 @@ export function InboxTab({
         onBack={() => setViewingProfile(false)}
         onMessage={() => setViewingProfile(false)}
         messageLabel="Open Chat"
-        topActions={topActions}
       />
     );
   }
@@ -370,7 +367,7 @@ export function InboxTab({
           >
             <div
               className="h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-              style={{ background: "#0f1c18", color: "#89d7b7" }}
+              style={{ background: "#1a312c", color: "#89d7b7" }}
             >
               {contact.initials}
             </div>
@@ -407,14 +404,13 @@ export function InboxTab({
               whileTap={{ scale: 0.96 }}
               transition={{ type: "spring", stiffness: 400, damping: 22 }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium cursor-pointer"
-              style={{ background: "#0f1c18", color: "#89d7b7" }}
+              style={{ background: "#1a312c", color: "#89d7b7" }}
             >
               <VideoCamera size={14} /> Video
             </motion.button>
             <button className="p-1.5 rounded-lg hover:bg-[#e8ede9] transition-all cursor-pointer">
               <DotsThree size={16} style={{ color: "#7a9e8e" }} />
             </button>
-            {topActions}
           </div>
         </div>
 
@@ -432,7 +428,7 @@ export function InboxTab({
                   className="max-w-[68%] px-4 py-2.5 rounded-2xl text-[13px]"
                   style={
                     msg.from === "me"
-                      ? { background: "#0f1c18", color: "#e8f5ef", borderBottomRightRadius: 4 }
+                      ? { background: "#1a312c", color: "#e8f5ef", borderBottomRightRadius: 4 }
                       : { background: "#fff", color: "#1a2e26", border: "1px solid #e8ede9", borderBottomLeftRadius: 4 }
                   }
                 >
@@ -470,7 +466,7 @@ export function InboxTab({
             whileTap={draft.trim() ? { scale: 0.92 } : {}}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
             className="h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer"
-            style={{ background: "#0f1c18", opacity: draft.trim() ? 1 : 0.4 }}
+            style={{ background: "#1a312c", opacity: draft.trim() ? 1 : 0.4 }}
           >
             <PaperPlaneTilt size={15} style={{ color: "#89d7b7" }} weight="fill" />
           </motion.button>

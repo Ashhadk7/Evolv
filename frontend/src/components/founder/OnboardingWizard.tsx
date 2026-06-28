@@ -327,7 +327,7 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 400, damping: 22 }}
               className="flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
-              style={{ background: "#0f1c18", color: "#89d7b7" }}
+              style={{ background: "#1a312c", color: "#89d7b7" }}
             >
               {step === 1 ? "Continue" : "Complete Setup"}
               {step === 1 ? (

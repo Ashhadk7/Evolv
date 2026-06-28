@@ -104,7 +104,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, NotificationPanelPro
                           exit={{ scale: 0, opacity: 0 }}
                           transition={{ type: "spring", stiffness: 400, damping: 22 }}
                           style={{
-                            background: "#0f1c18",
+                            background: "#1a312c",
                             color: "#89d7b7",
                             fontSize: 10,
                             fontWeight: 700,
@@ -417,7 +417,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, NotificationPanelPro
                         fontSize: 13,
                         fontWeight: 600,
                         color: "#89d7b7",
-                        background: "#0f1c18",
+                        background: "#1a312c",
                       }}
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}

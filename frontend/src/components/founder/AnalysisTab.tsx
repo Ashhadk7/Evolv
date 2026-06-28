@@ -154,7 +154,7 @@ function InvoiceRow({
 const VELOCITY_DATA = [12, 18, 15, 22, 19, 28, 24, 33, 30, 38, 35, 42];
 const WEEKS = ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "W12"];
 
-export function AnalysisTab({ topActions }: { topActions?: React.ReactNode }) {
+export function AnalysisTab() {
   const [activeProject, setActiveProject] = useState("nexus");
 
   const projects = [
@@ -182,7 +182,6 @@ export function AnalysisTab({ topActions }: { topActions?: React.ReactNode }) {
           <h2 className="text-[1.2rem] font-bold" style={{ color: "#1a2e26" }}>Project Analysis</h2>
           <p className="text-[12px] mt-0.5" style={{ color: "#7a9e8e" }}>Track progress, velocity, and payments across all ventures</p>
         </div>
-        {topActions}
       </div>
 
       <div className="flex-1 min-h-0 grid grid-cols-3 gap-4 overflow-hidden">
@@ -322,7 +321,7 @@ export function AnalysisTab({ topActions }: { topActions?: React.ReactNode }) {
                   whileTap={{ scale: 0.96 }}
                   transition={{ type: "spring", stiffness: 400, damping: 22 }}
                   className="py-1.5 rounded-xl text-[12px] font-semibold text-center cursor-pointer"
-                  style={{ background: "#0f1c18", color: "#89d7b7" }}
+                  style={{ background: "#1a312c", color: "#89d7b7" }}
                 >
                   Withdraw
                 </motion.button>

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Sidebar, type FounderTab } from "@/components/founder/Sidebar";
 import { OnboardingWizard, type FounderProfile } from "@/components/founder/OnboardingWizard";
-import { FounderTopActions } from "@/components/founder/FounderTopActions";
 import { type SettingsSection } from "@/components/founder/SettingsTab";
 import { type FounderNetworkMessageTarget } from "@/components/founder/NetworkTab";
 import { type InboxLaunchContact } from "@/components/founder/InboxTab";
@@ -120,18 +119,6 @@ export default function FounderDashboard() {
     window.location.href = "/sign-in";
   };
 
-  const openSettingsSection = (section: SettingsSection) => {
-    setSettingsSection(section);
-    setTab("settings");
-  };
-
-  const topActions = (
-    <FounderTopActions
-      profile={profile}
-      onOpenProfile={() => openSettingsSection("profile")}
-    />
-  );
-
   return (
     <div className="founder-shell flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
       <style dangerouslySetInnerHTML={{ __html: `.founder-shell button:not(:disabled){cursor:pointer}.founder-shell button:disabled{cursor:not-allowed}` }} />
@@ -153,7 +140,6 @@ export default function FounderDashboard() {
             blueprints={blueprints}
             onViewBlueprint={handleViewBlueprint}
             profileComplete={profileComplete}
-            topActions={topActions}
           />
         )}
         {tab === "workspace" && (
@@ -166,15 +152,13 @@ export default function FounderDashboard() {
             onClearForge={() => setTriggerForge(false)}
             profileComplete={profileComplete}
             onCompleteProfile={() => { setTab("settings"); setSettingsSection("profile"); setShowOnboarding(true); }}
-            topActions={topActions}
           />
         )}
-        {tab === "analysis" && <AnalysisTab topActions={topActions} />}
+        {tab === "analysis" && <AnalysisTab />}
         {tab === "network" && (
           <NetworkTab
             onMessage={handleOpenNetworkMessage}
             onPendingCountChange={setNetworkRequestCount}
-            topActions={topActions}
           />
         )}
         {tab === "inbox" && (
@@ -182,7 +166,6 @@ export default function FounderDashboard() {
             activeContactId={inboxActiveContactId}
             onActiveContactChange={setInboxActiveContactId}
             extraContacts={networkInboxContacts}
-            topActions={topActions}
           />
         )}
         {tab === "settings" && (
@@ -191,7 +174,6 @@ export default function FounderDashboard() {
             onProfileSave={saveProfile}
             section={settingsSection}
             onSectionChange={setSettingsSection}
-            topActions={topActions}
           />
         )}
       </main>

@@ -47,7 +47,6 @@ interface StoredNetworkState {
 interface NetworkTabProps {
   onMessage: (contact: FounderNetworkMessageTarget) => void;
   onPendingCountChange?: (count: number) => void;
-  topActions?: React.ReactNode;
 }
 
 const STORAGE_KEY = "evolv_founder_network_state";
@@ -130,7 +129,7 @@ function Avatar({ person, size = 44 }: { person: FounderContactProfile; size?: n
   );
 }
 
-export function NetworkTab({ onMessage, onPendingCountChange, topActions }: NetworkTabProps) {
+export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps) {
   const [activeTab, setActiveTab] = useState<NetworkTabFilter>("all");
   const [networkState, setNetworkState] = useState<StoredNetworkState>(getInitialNetworkState);
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
@@ -220,7 +219,6 @@ export function NetworkTab({ onMessage, onPendingCountChange, topActions }: Netw
         onIgnore={handleIgnoreRequest}
         onToggleConnection={handleToggleConnection}
         onMessage={handleMessage}
-        topActions={topActions}
       />
     );
   }
@@ -236,12 +234,9 @@ export function NetworkTab({ onMessage, onPendingCountChange, topActions }: Netw
             Manage developer matches, founder peers, and connection requests in one place.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-white" style={{ border: "1px solid #e8ede9" }}>
-            <TrendUp size={14} style={{ color: "#428475" }} />
-            <span className="text-[12px] font-semibold" style={{ color: "#1a2e26" }}>{suggestedPeople.length} suggested</span>
-          </div>
-          {topActions}
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-white" style={{ border: "1px solid #e8ede9" }}>
+          <TrendUp size={14} style={{ color: "#428475" }} />
+          <span className="text-[12px] font-semibold" style={{ color: "#1a2e26" }}>{suggestedPeople.length} suggested</span>
         </div>
       </div>
 
@@ -307,7 +302,7 @@ export function NetworkTab({ onMessage, onPendingCountChange, topActions }: Netw
                           whileTap={{ scale: 0.96 }}
                           transition={{ type: "spring", stiffness: 400, damping: 22 }}
                           className="px-3 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer"
-                          style={{ background: "#0f1c18", color: "#89d7b7" }}
+                          style={{ background: "#1a312c", color: "#89d7b7" }}
                         >
                           Accept
                         </motion.button>
@@ -418,7 +413,7 @@ export function NetworkTab({ onMessage, onPendingCountChange, topActions }: Netw
                         style={{
                           background: isConnected ? "#e8f5ef" : "#0f1c18",
                           color: isConnected ? "#2e7d5c" : "#89d7b7",
-                          border: isConnected ? "1px solid #c5ddd0" : "1px solid #0f1c18",
+                          border: isConnected ? "1px solid #c5ddd0" : "1px solid #1a312c",
                         }}
                       >
                         {isConnected ? <CheckCircle size={13} weight="fill" /> : <UserPlus size={13} weight="bold" />}

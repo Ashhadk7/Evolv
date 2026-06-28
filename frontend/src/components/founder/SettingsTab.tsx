@@ -13,7 +13,7 @@ import {
 import type { FounderProfile } from "./OnboardingWizard";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const INK        = "#0f1c18";
+const INK        = "#1a312c";
 const DARK       = "#1a312c";   // sidebar BG — used for selected chips
 const MINT       = "#89d7b7";
 const MID        = "#428475";
@@ -425,10 +425,9 @@ interface Props {
   onProfileSave: (p: FounderProfile) => void;
   section?: SettingsSection;
   onSectionChange?: (section: SettingsSection) => void;
-  topActions?: React.ReactNode;
 }
 
-export function SettingsTab({ profile, onProfileSave, section, onSectionChange, topActions }: Props) {
+export function SettingsTab({ profile, onProfileSave, section, onSectionChange }: Props) {
   const [localSection, setLocalSection] = useState<SettingsSection>("profile");
   const activeSection = section ?? localSection;
   const setSection = onSectionChange ?? setLocalSection;
@@ -497,8 +496,6 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
               ? "Update your personal details and public profile."
               : "Control which notifications you receive."}
           </p>
-          {topActions && <div className="absolute top-6 right-8">{topActions}</div>}
-
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeSection}

@@ -20,8 +20,8 @@ const BORDER_R    = "rgba(137,215,183,0.07)";
 const ACCENT      = "#89d7b7";
 const ACCENT_DIM  = "rgba(137,215,183,0.55)";
 const TEXT_ON     = "#e8f4ef";
-const TEXT_OFF    = "rgba(232,244,239,0.46)";
-const TEXT_MUTED  = "rgba(232,244,239,0.26)";
+const TEXT_OFF    = "rgba(232,244,239,0.70)";
+const TEXT_MUTED  = "rgba(232,244,239,0.42)";
 const ACTIVE_BG   = "rgba(137,215,183,0.11)";
 const HOVER_BG    = "rgba(255,255,255,0.045)";
 const PILL_BG     = "rgba(255,255,255,0.04)";
@@ -185,8 +185,8 @@ export function Sidebar({
 
                       <Icon
                         icon={icon}
-                        width={20}
-                        height={20}
+                        width={22}
+                        height={22}
                         style={{
                           color: isActive ? ACCENT : TEXT_OFF,
                           flexShrink: 0,

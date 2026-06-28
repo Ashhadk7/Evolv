@@ -103,7 +103,6 @@ export function NetworkProfileDetailScreen({
   onToggleConnection,
   onMessage,
   messageLabel = "Message",
-  topActions,
 }: {
   profile: FounderContactProfile;
   connected?: boolean;
@@ -115,7 +114,6 @@ export function NetworkProfileDetailScreen({
   onToggleConnection?: (id: string) => void;
   onMessage?: (profile: FounderContactProfile) => void;
   messageLabel?: string;
-  topActions?: React.ReactNode;
 }) {
   const canManagePending     = pending && onAccept && onIgnore;
   const canToggleConnection  = !pending && onToggleConnection;
@@ -155,21 +153,18 @@ export function NetworkProfileDetailScreen({
       className="h-full overflow-y-auto"
       style={{ background: "#f5f6f4", padding: "24px 28px" }}
     >
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors hover:bg-[#e8ede9] shrink-0"
-            style={{ color: "#428475" }}
-          >
-            <ArrowLeft size={14} weight="bold" /> {backLabel}
-          </button>
-          <div className="h-4 w-px shrink-0" style={{ background: "#dde5e0" }} />
-          <div className="text-[12px] font-semibold truncate" style={{ color: "#7a9e8e" }}>
-            {profile.type} profile
-          </div>
+      <div className="flex items-center gap-3 min-w-0 mb-5">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors hover:bg-[#e8ede9] shrink-0"
+          style={{ color: "#428475" }}
+        >
+          <ArrowLeft size={14} weight="bold" /> {backLabel}
+        </button>
+        <div className="h-4 w-px shrink-0" style={{ background: "#dde5e0" }} />
+        <div className="text-[12px] font-semibold truncate" style={{ color: "#7a9e8e" }}>
+          {profile.type} profile
         </div>
-        {topActions && <div className="shrink-0">{topActions}</div>}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4 items-start">
@@ -222,7 +217,7 @@ export function NetworkProfileDetailScreen({
                       whileTap={{ scale: 0.97 }}
                       transition={{ type: "spring", stiffness: 400, damping: 22 }}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
-                      style={{ background: "#0f1c18", color: "#89d7b7" }}
+                      style={{ background: "#1a312c", color: "#89d7b7" }}
                     >
                       <UserPlus size={14} weight="bold" /> Accept
                     </motion.button>
@@ -238,7 +233,7 @@ export function NetworkProfileDetailScreen({
                     style={{
                       background: connected ? "#e8f5ef" : "#0f1c18",
                       color: connected ? "#2e7d5c" : "#89d7b7",
-                      border: connected ? "1px solid #c5ddd0" : "1px solid #0f1c18",
+                      border: connected ? "1px solid #c5ddd0" : "1px solid #1a312c",
                     }}
                   >
                     {connected ? <CheckCircle size={14} weight="fill" /> : <UserPlus size={14} weight="bold" />}
@@ -344,7 +339,7 @@ export function NetworkProfileDetailScreen({
                     disabled={!reviewText.trim()}
                     onClick={handleAddReview}
                     className="px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-opacity disabled:opacity-40"
-                    style={{ background: "#0f1c18", color: "#89d7b7" }}
+                    style={{ background: "#1a312c", color: "#89d7b7" }}
                   >
                     Submit review
                   </button>

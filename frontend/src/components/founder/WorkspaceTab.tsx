@@ -184,7 +184,7 @@ function BPCard({ bp, onView, onTogglePublic, onDelete, canPublish = true, onCom
           whileTap={{ scale: 0.97 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
           className="flex items-center justify-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-xl cursor-pointer flex-1"
-          style={{ background: "#0f1c18", color: "#89d7b7" }}
+          style={{ background: "#1a312c", color: "#89d7b7" }}
         >
           <Eye size={14} /> Open Blueprint
         </motion.button>
@@ -351,7 +351,7 @@ function BlueprintDetail({ bp, onBack }: { bp: Blueprint; onBack: () => void }) 
           >
             {bp.isPublic ? "Public" : "Private"}
           </span>
-          <span className="text-[12px] font-bold px-3 py-1 rounded-lg" style={{ background: "#0f1c18", color: "#89d7b7" }}>
+          <span className="text-[12px] font-bold px-3 py-1 rounded-lg" style={{ background: "#1a312c", color: "#89d7b7" }}>
             {bp.viability}% Viability
           </span>
         </div>
@@ -490,7 +490,7 @@ function ForgeModal({
                   transition={{ type: "spring", stiffness: 400, damping: 22 }}
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer"
                   style={{
-                    background: "#0f1c18",
+                    background: "#1a312c",
                     color: "#89d7b7",
                     opacity: !idea.trim() || !industry ? 0.4 : 1,
                   }}
@@ -565,7 +565,7 @@ function ForgeModal({
                   whileTap={{ scale: 0.97 }}
                   transition={{ type: "spring", stiffness: 400, damping: 22 }}
                   className="flex items-center justify-center gap-2 mx-auto px-6 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer"
-                  style={{ background: "#0f1c18", color: "#89d7b7" }}
+                  style={{ background: "#1a312c", color: "#89d7b7" }}
                 >
                   <CheckCircle size={14} weight="fill" /> View Blueprint
                 </motion.button>
@@ -590,7 +590,6 @@ interface Props {
   onClearForge?: () => void;
   profileComplete?: boolean;
   onCompleteProfile?: () => void;
-  topActions?: React.ReactNode;
 }
 
 export function WorkspaceTab({
@@ -602,7 +601,6 @@ export function WorkspaceTab({
   onClearForge,
   profileComplete = true,
   onCompleteProfile,
-  topActions
 }: Props) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
@@ -650,11 +648,10 @@ export function WorkspaceTab({
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold cursor-pointer"
-            style={{ background: "#0f1c18", color: "#89d7b7" }}
+            style={{ background: "#1a312c", color: "#89d7b7" }}
           >
             <Plus size={14} weight="bold" /> Forge New Blueprint
           </motion.button>
-          {topActions}
         </div>
       </div>
 
