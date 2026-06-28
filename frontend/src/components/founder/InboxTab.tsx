@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChatCircleDots,
@@ -644,6 +644,7 @@ export function InboxTab({
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const messageListRef = useRef<HTMLDivElement>(null);
 
   const mergedContacts = useMemo(() => {
     const existingIds = new Set(contacts.map((contact) => contact.id));
@@ -695,6 +696,17 @@ export function InboxTab({
     setContacts((prev) => prev.map((item) => (item.id === id ? { ...item, unread: 0 } : item)));
     setViewingProfile(false);
   };
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (!list) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      list.scrollTop = list.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeId, thread.length]);
 
   const sendMsg = () => {
     if (!draft.trim()) return;
@@ -977,7 +989,7 @@ export function InboxTab({
               </div>
             )}
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div ref={messageListRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               <div className="flex flex-col gap-6">
                 <AnimatePresence initial={false}>
                   {thread.map((msg) => (
