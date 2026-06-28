@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChatCircleDots,
-  Code,
   DotsThree,
-  Handshake,
   Microphone,
   MicrophoneSlash,
   PaperPlaneTilt,
@@ -293,41 +291,6 @@ function Avatar({
     >
       {!avatarUrl && (initials || getInitials(name))}
     </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  detail,
-  icon,
-}: {
-  label: string;
-  value: number;
-  detail: string;
-  icon: ReactNode;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -2, boxShadow: "0 4px 16px rgba(15,28,24,0.08)", borderColor: "#c5ddd0" }}
-      className="bg-white p-4"
-      style={{ border: "1px solid #e8ede9", borderRadius: 12 }}
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
-          {label}
-        </span>
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "#f0f5f2", color: MID }}>
-          {icon}
-        </span>
-      </div>
-      <div className="text-[1.65rem] font-bold leading-none" style={{ color: TEXT }}>
-        {value}
-      </div>
-      <div className="mt-1 text-[10px]" style={{ color: "#2e7d5c" }}>
-        {detail}
-      </div>
-    </motion.div>
   );
 }
 
@@ -677,19 +640,6 @@ export function InboxTab({
   const thread = contact ? messages[contact.id] ?? [] : [];
   const contactProfile = buildProfileFromContact(contact);
 
-  const stats = useMemo(() => {
-    const unreadChats = mergedContacts.filter((item) => item.unread > 0).length;
-    const founders = mergedContacts.filter((item) => item.personType === "Founder").length;
-    const developers = mergedContacts.filter((item) => item.personType === "Developer").length;
-
-    return [
-      { label: "Total chats", value: mergedContacts.length, detail: `${mergedContacts.length} people`, icon: <ChatCircleDots size={15} weight="bold" /> },
-      { label: "Unread chats", value: unreadChats, detail: `${unreadChats} waiting`, icon: <WarningCircle size={15} weight="bold" /> },
-      { label: "Founders", value: founders, detail: `${founders} founder${founders === 1 ? "" : "s"}`, icon: <Handshake size={15} weight="bold" /> },
-      { label: "Developers", value: developers, detail: `${developers} builder${developers === 1 ? "" : "s"}`, icon: <Code size={15} weight="bold" /> },
-    ];
-  }, [mergedContacts]);
-
   const selectContact = (id: string) => {
     if (onActiveContactChange) onActiveContactChange(id);
     else setLocalActiveId(id);
@@ -804,28 +754,14 @@ export function InboxTab({
   }
 
   return (
-    <div className="h-full overflow-y-auto" style={{ background: "#f5f6f4", padding: "24px 28px" }}>
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden" style={{ background: "#f5f6f4", padding: "24px 28px" }}>
+      <div className="mb-4 flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-[1.2rem] font-bold" style={{ color: TEXT }}>
             Inbox
           </h2>
           <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>
             Manage founder and developer conversations in one place.
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-5 grid gap-3 xl:grid-cols-4">
-        {stats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
-        ))}
-      </div>
-
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[12px]" style={{ color: MUTED }}>
-            Track founder and developer conversations without counting every message inside a thread.
           </p>
         </div>
         <motion.button
@@ -841,16 +777,22 @@ export function InboxTab({
         </motion.button>
       </div>
 
-      <div className="pb-8">
+      <div className="min-h-0 flex-1">
         <div
-          className="grid min-h-[660px] gap-4 xl:grid-cols-[310px_1fr]"
-          style={{ height: "clamp(660px, calc(100vh - 300px), 820px)" }}
+          className="grid h-full min-h-0 gap-5 xl:grid-cols-[330px_1fr]"
         >
           <section
             className="flex min-h-0 flex-col overflow-hidden bg-white"
-            style={{ border: `1.5px solid ${BORDER}`, borderRadius: 8 }}
+            style={{
+              border: `1px solid ${BORDER}`,
+              borderRadius: 14,
+              boxShadow: "0 16px 38px rgba(15,28,24,0.06)",
+            }}
           >
-            <div className="shrink-0 px-5 py-4" style={{ borderBottom: "1px solid #eaf0eb" }}>
+            <div
+              className="shrink-0 px-5 py-4"
+              style={{ borderBottom: "1px solid #eaf0eb", background: "#fbfdfb" }}
+            >
               <div className="flex items-center gap-2 text-[13px] font-extrabold" style={{ color: TEXT }}>
                 <ChatCircleDots size={16} weight="fill" style={{ color: MID }} />
                 Conversations
@@ -868,10 +810,11 @@ export function InboxTab({
                     key={item.id}
                     type="button"
                     onClick={() => selectContact(item.id)}
-                    className="w-full px-4 py-3.5 text-left transition-all"
+                    className="w-full px-4 py-4 text-left transition-all"
                     style={{
                       background: isActive ? "#f0f5f2" : "#fff",
-                      borderBottom: "1px solid #f0f5f2",
+                      borderBottom: "1px solid #edf3ef",
+                      boxShadow: isActive ? "inset 3px 0 0 #428475" : "none",
                     }}
                   >
                     <div className="flex items-start gap-3">
@@ -930,9 +873,16 @@ export function InboxTab({
 
           <section
             className="flex min-h-0 flex-col overflow-hidden bg-white"
-            style={{ border: `1.5px solid ${BORDER}`, borderRadius: 8 }}
+            style={{
+              border: `1px solid ${BORDER}`,
+              borderRadius: 14,
+              boxShadow: "0 16px 38px rgba(15,28,24,0.06)",
+            }}
           >
-            <div className="flex shrink-0 items-center px-5 py-4" style={{ borderBottom: "1px solid #e8ede9" }}>
+            <div
+              className="flex shrink-0 items-center px-5 py-4"
+              style={{ borderBottom: "1px solid #e8ede9", background: "#fbfdfb" }}
+            >
               <button
                 type="button"
                 onClick={() => setViewingProfile(true)}
@@ -989,7 +939,7 @@ export function InboxTab({
               </div>
             )}
 
-            <div ref={messageListRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div ref={messageListRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5" style={{ background: "#fbfcfb" }}>
               <div className="flex flex-col gap-6">
                 <AnimatePresence initial={false}>
                   {thread.map((msg) => (
