@@ -267,6 +267,7 @@ const MODALS = {
 const DeveloperDashboard = ({ onNavigate }) => {
     const [modal, setModal] = useState(null);
     const [userName, setUserName] = useState('Sarah');
+    const [profile, setProfile] = useState(profileData);
     const openModal = useCallback((cfg) => setModal(cfg), []);
     const closeModal = useCallback(() => setModal(null), []);
 
@@ -278,19 +279,26 @@ const DeveloperDashboard = ({ onNavigate }) => {
                 if (user.firstName) {
                     setUserName(user.firstName);
                 }
+                setProfile(prev => ({
+                    ...prev,
+                    name: [user.firstName, user.lastName].filter(Boolean).join(' ') || prev.name,
+                    role: user.jobTitle || prev.role,
+                    location: user.location || prev.location,
+                    experience: user.experience ? `${user.experience} Experience` : prev.experience,
+                    availability: user.openToOpportunities !== false ? "Open to Opportunities" : "Not Looking",
+                    image: user.avatarUrl || ""
+                }));
             }
         } catch (_) {}
     }, []);
 
     return (
-        <div className={"DeveloperDashboard_dashboardContainer"}>
-            <Sidebar currentPage="dashboard" onNavigate={onNavigate} />
+        <div className={"DeveloperDashboard_dashboardContainer"} suppressHydrationWarning>
             <main className={"DeveloperDashboard_mainWrapper"}>
                 <TopbarWithModal
                     title={`Hi, ${userName}`}
                     subtitle="Here's your developer dashboard overview."
                     onNavigate={onNavigate}
-                    openModal={openModal}
                 />
 
                 {/* Row 1: KPI Cards */}
@@ -306,7 +314,7 @@ const DeveloperDashboard = ({ onNavigate }) => {
                         <FeaturedMatchWithModal data={featuredMatch} openModal={openModal} />
                     </div>
                     <div className={"DeveloperDashboard_profileWrapper"}>
-                        <ProfileCardWithModal data={profileData} openModal={openModal} />
+                        <ProfileCardWithModal data={profile} openModal={openModal} />
                     </div>
                 </div>
 
@@ -352,23 +360,6 @@ const DeveloperDashboard = ({ onNavigate }) => {
                     </div>
                 </div>
 
-                
-                {/* Row 5: AI Insights */}
-                <div className={"DeveloperDashboard_row5"}>
-                    <div className={"DeveloperDashboard_sectionHeader"}>
-                        <div className={"DeveloperDashboard_insightsTitle"}>
-                            <div className={"DeveloperDashboard_greenDot"}></div>
-                            <h3>AI Insights</h3>
-                        </div>
-                        <a href="#">View all insights &rarr;</a>
-                    </div>
-                    <div className={"DeveloperDashboard_insightsGrid"}>
-                        {insightsData.map((insight) => (
-                            <InsightCard key={insight.id} data={insight} />
-                        ))}
-                    </div>
-                </div>
-
                 {/* Footer */}
                 <div className={"DeveloperDashboard_footer"}>
                     <span>Evolv · Developer Dashboard</span>
@@ -386,14 +377,13 @@ const DeveloperDashboard = ({ onNavigate }) => {
 
 
 
-const TopbarWithModal = ({ title, subtitle, onNavigate, openModal }) => {
+const TopbarWithModal = ({ title, subtitle, onNavigate }) => {
     return (
         <div style={{ position: 'relative' }}>
             <Topbar
                 title={title}
                 subtitle={subtitle}
                 onNavigate={onNavigate}
-                onNotifClick={() => openModal(MODALS.notification)}
             />
         </div>
     );
@@ -401,6 +391,7 @@ const TopbarWithModal = ({ title, subtitle, onNavigate, openModal }) => {
 
 const FeaturedMatchWithModal = ({ data, openModal }) => {
     const { name, icon, matchScore, description, techStack, whyMatched } = data;
+    const logo = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'S';
     return (
         <div className={"FeaturedMatch_featuredMatch"}>
             <div className={"FeaturedMatch_sectionTop"}>
@@ -408,8 +399,8 @@ const FeaturedMatchWithModal = ({ data, openModal }) => {
                 <span className={"FeaturedMatch_secLabel"}>Latest AI Match</span>
             </div>
             <div className={"FeaturedMatch_card"}>
-                <div className={"FeaturedMatch_icon"}>
-                    <i className={`fas fa-${icon}`}></i>
+                <div className={"FeaturedMatch_icon"} style={{ fontWeight: 'bold' }}>
+                    {logo}
                 </div>
                 <div className={"FeaturedMatch_body"}>
                     <div className={"FeaturedMatch_topRow"}>
@@ -458,12 +449,13 @@ const FeaturedMatchWithModal = ({ data, openModal }) => {
 
 const MatchCardWithModal = ({ data, openModal }) => {
     const { name, icon, matchScore, description, techStack, industry, stage, budget, teamSize, iconClass } = data;
+    const logo = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'S';
     return (
         <div className={"MatchCard_matchCard"}>
             <div className={"MatchCard_top"}>
                 <div className={"MatchCard_left"}>
-                    <div className={`${"MatchCard_icon"} ${iconClass ? 'MatchCard_' + iconClass : ''}`}>
-                        <i className={`fas fa-${icon}`}></i>
+                    <div className={`${"MatchCard_icon"} ${iconClass ? 'MatchCard_' + iconClass : ''}`} style={{ fontWeight: 'bold' }}>
+                        {logo}
                     </div>
                     <span className={"MatchCard_name"}>{name}</span>
                 </div>
@@ -500,7 +492,8 @@ const MatchCardWithModal = ({ data, openModal }) => {
 };
 
 const ProfileCardWithModal = ({ data, openModal }) => {
-    const { name, role, location, experience, availability, matchRate, profileStrength, founderRating, image } = data;
+    const { name, role, location, experience, availability, profileStrength, founderRating, image } = data;
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'D';
     return (
         <div className={"ProfileCard_profileCard"}>
             <div className={"ProfileCard_header"}>
@@ -509,7 +502,25 @@ const ProfileCardWithModal = ({ data, openModal }) => {
             </div>
             <div className={"ProfileCard_content"}>
                 <div className={"ProfileCard_avatarWrap"}>
-                    <img src={image} alt={name} className={"ProfileCard_avatar"} />
+                    {image ? (
+                        <img src={image} alt={name} className={"ProfileCard_avatar"} />
+                    ) : (
+                        <div
+                            style={{
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "1.15rem",
+                                fontWeight: "bold",
+                                background: "linear-gradient(135deg, #4cb896, #89d7b7)",
+                                color: "#0f1c18"
+                            }}
+                        >
+                            {initials}
+                        </div>
+                    )}
                     <div className={"ProfileCard_statusDot"}></div>
                 </div>
                 <div className={"ProfileCard_right"}>
@@ -523,10 +534,6 @@ const ProfileCardWithModal = ({ data, openModal }) => {
                 </div>
             </div>
             <div className={"ProfileCard_stats"}>
-                <div className={"ProfileCard_stat"}>
-                    <span className={"ProfileCard_statLabel"}>Match Rate</span>
-                    <div className={"ProfileCard_statNum"}>{matchRate}</div>
-                </div>
                 <div className={"ProfileCard_stat"}>
                     <span className={"ProfileCard_statLabel"}>Profile Strength</span>
                     <div className={"ProfileCard_statNum"}>{profileStrength}</div>

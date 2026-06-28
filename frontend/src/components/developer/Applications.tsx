@@ -22,7 +22,7 @@ const applicationsData = [
         description: 'AI-driven diagnostics platform for early-stage oncology detection, reducing false positives by 40%.',
         techStack: ['Python', 'FastAPI', 'AI/ML', 'React', 'Docker'],
         whyMatched: ['Strong Python & FastAPI expertise', 'AI/ML background aligns perfectly', 'Healthcare domain interest'],
-        upcomingInterviews: [{ date: 'Jun 28, 2025', time: '2:00 PM', type: 'Technical Round' }],
+        upcomingInterviews: [{ date: 'Jun 28', time: '2:00 PM', type: 'Technical Round' }],
         timeline: [
             { date: 'Jun 22', event: 'Application Submitted', icon: 'paper-plane', color: '#5BC8A0' },
             { date: 'Jun 23', event: 'Application Viewed by Founder', icon: 'eye', color: '#C4973A' },
@@ -77,7 +77,7 @@ const applicationsData = [
             { date: 'Jun 18', event: 'Application Submitted', icon: 'paper-plane', color: '#5BC8A0' },
             { date: 'Jun 19', event: 'Reviewed by Founder', icon: 'eye', color: '#C4973A' },
             { date: 'Jun 20', event: 'Culture Fit Interview', icon: 'comments', color: '#5BC8A0' },
-            { date: 'Jun 22', event: 'Offer Extended 🎉', icon: 'check-circle', color: '#5BC8A0' },
+            { date: 'Jun 22', event: 'Offer Extended', icon: 'check-circle', color: '#5BC8A0' },
         ],
     },
     {
@@ -161,7 +161,6 @@ const Applications = ({ onNavigate }) => {
 
     return (
         <div className={"Applications_container"}>
-            <Sidebar currentPage="applications" onNavigate={onNavigate} />
             <main className={"Applications_mainWrapper"}>
                 <Topbar
                     title="My Applications"
@@ -360,11 +359,6 @@ const Applications = ({ onNavigate }) => {
                                 </div>
                             </div>
 
-                            {/* AI Insight */}
-                            <div className={"Applications_aiInsight"}>
-                                <div className={"Applications_aiInsightLabel"}><i className="fas fa-robot"></i> AI Insight</div>
-                                <p>Your profile is a strong match. Highlight your {selectedApp.techStack[0]} experience in the upcoming interview for maximum impact.</p>
-                            </div>
                         </div>
                     )}
                 </div>

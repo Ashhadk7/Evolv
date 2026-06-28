@@ -165,7 +165,6 @@ const Network = ({ onNavigate }) => {
 
     return (
         <div className={"Network_container"}>
-            <Sidebar currentPage="network" onNavigate={onNavigate} />
             <main className={"Network_mainWrapper"}>
                 <Topbar
                     title="My Network"

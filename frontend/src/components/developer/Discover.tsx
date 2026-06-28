@@ -47,7 +47,6 @@ const Discover = ({ onNavigate }) => {
 
     return (
         <div className={"Discover_discoverContainer"}>
-            <Sidebar currentPage="discover" onNavigate={onNavigate} />
             <main className={"Discover_mainWrapper"}>
                 <Topbar
                     title="Discover Opportunities"
@@ -141,7 +140,7 @@ const Discover = ({ onNavigate }) => {
                     <div className={"Discover_filterGroup"}>
                         <span className={"Discover_filterLabel"}><i className="fas fa-chart-bar"></i> Viability:</span>
                         {filterOptions.viabilityRanges.map((range) => {
-                            const labels = { '0-50': '<50%', '50-70': '50–70%', '70-85': '70–85%', '85-100': '85%+' };
+                            const labels = { '0-50': '<50%', '50-70': '50-70%', '70-85': '70-85%', '85-100': '85%+' };
                             return (
                                 <button
                                     key={range}
