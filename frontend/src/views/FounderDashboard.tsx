@@ -36,7 +36,7 @@ type StoredFounderRecord = Partial<FounderProfile> & {
 
 function mergeFounderProfiles(...profiles: Array<Partial<FounderProfile> | null | undefined>): FounderProfile {
   const merged: FounderProfile = { ...DEFAULT_PROFILE, domains: [] };
-  const target = merged as Record<string, unknown>;
+  const target = merged as unknown as Record<string, unknown>;
 
   profiles.forEach((profile) => {
     if (!profile) return;
@@ -241,6 +241,7 @@ export default function FounderDashboard() {
             activeContactId={inboxActiveContactId}
             onActiveContactChange={setInboxActiveContactId}
             extraContacts={networkInboxContacts}
+            currentUser={profile}
           />
         )}
         {tab === "settings" && (
