@@ -119,6 +119,12 @@ export default function FounderDashboard() {
     window.location.href = "/sign-in";
   };
 
+  const handleOpenProfile = () => {
+    setSettingsSection("profile");
+    setShowOnboarding(false);
+    setTab("settings");
+  };
+
   return (
     <div className="founder-shell flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
       <style dangerouslySetInnerHTML={{ __html: `.founder-shell button:not(:disabled){cursor:pointer}.founder-shell button:disabled{cursor:not-allowed}` }} />
@@ -129,6 +135,7 @@ export default function FounderDashboard() {
         profile={profile}
         inboxCount={3}
         networkCount={networkRequestCount}
+        onOpenProfile={handleOpenProfile}
         onLogout={handleLogout}
       />
 
