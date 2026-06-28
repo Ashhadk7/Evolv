@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-// @ts-nocheck
+import dynamic from 'next/dynamic';
 import DeveloperDashboardPage from '../components/developer/DeveloperDashboard';
-import Applications from '../components/developer/Applications';
-import Discover from '../components/developer/Discover';
-import Network from '../components/developer/Network';
-import Projects from '../components/developer/Projects';
-import Inbox from '../components/developer/Inbox';
-import Settings from '../components/developer/Settings';
-import { DevOnboardingModal, DeveloperGlobalStyles } from '../components/developer/DeveloperShared';
+import { DevOnboardingModal } from '../components/developer/shared';
 
+// Lazy-load non-default tabs to reduce initial bundle
+const Applications = dynamic(() => import('../components/developer/Applications'));
+const Discover     = dynamic(() => import('../components/developer/Discover'));
+const Network      = dynamic(() => import('../components/developer/Network'));
+const Projects     = dynamic(() => import('../components/developer/Projects'));
+const Inbox        = dynamic(() => import('../components/developer/Inbox'));
+const Settings     = dynamic(() => import('../components/developer/Settings'));
 
 const pages: Record<string, any> = {
     dashboard: DeveloperDashboardPage,
@@ -66,21 +67,14 @@ export default function DeveloperDashboard() {
 
     return (
         <>
-            <style dangerouslySetInnerHTML={{ __html: DeveloperGlobalStyles }} />
             <Page onNavigate={handleNavigate} />
             {!profileComplete && !showOnboarding && (
                 <div
                     style={{
-                        position: 'fixed',
-                        right: 24,
-                        bottom: 24,
-                        width: 340,
-                        background: '#ffffff',
-                        border: '1px solid #DDE5E0',
-                        borderRadius: 12,
-                        boxShadow: '0 18px 42px rgba(13,43,34,0.14)',
-                        padding: 16,
-                        zIndex: 20,
+                        position: 'fixed', right: 24, bottom: 24, width: 340,
+                        background: '#ffffff', border: '1px solid #DDE5E0',
+                        borderRadius: 12, boxShadow: '0 18px 42px rgba(13,43,34,0.14)',
+                        padding: 16, zIndex: 20,
                     }}
                 >
                     <div style={{ color: '#1A2E26', fontWeight: 800, fontSize: 14, marginBottom: 4 }}>Complete your developer profile</div>
@@ -89,28 +83,13 @@ export default function DeveloperDashboard() {
                     </div>
                     <button
                         onClick={() => setShowOnboarding(true)}
-                        style={{
-                            width: '100%',
-                            background: '#0F1C18',
-                            color: '#89D7B7',
-                            border: 0,
-                            borderRadius: 8,
-                            padding: '0.65rem 0.85rem',
-                            fontSize: 12,
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                        }}
+                        style={{ width: '100%', background: '#0F1C18', color: '#89D7B7', border: 0, borderRadius: 8, padding: '0.65rem 0.85rem', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
                     >
                         Finish profile
                     </button>
                 </div>
             )}
-            {showOnboarding && (
-                <DevOnboardingModal
-                    onComplete={handleOnboardingComplete}
-                    userName={userName}
-                />
-            )}
+            {showOnboarding && <DevOnboardingModal onComplete={handleOnboardingComplete} userName={userName} />}
         </>
     );
 }

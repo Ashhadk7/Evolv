@@ -11,7 +11,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -434,8 +434,6 @@ function ScrollIndicator() {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function Hero() {
-  const router = useRouter();
-
   const scrollToHowItWorks = () => {
     document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -505,16 +503,16 @@ export function Hero() {
               className="mb-8 flex flex-col gap-2.5 sm:flex-row"
             >
               {/* PRIMARY — goes to /sign-up */}
-              <motion.button
-                whileHover={{ scale: 1.025 }}
-                whileTap={{ scale: 0.975 }}
-                onClick={() => router.push("/sign-up")}
-                className="flex items-center justify-center gap-2 rounded-xl bg-mint px-7 py-3.5 text-[13px] font-semibold tracking-tight text-dark transition-all"
-                style={{ boxShadow: "0 0 40px rgba(137,215,183,0.28), 0 4px 16px rgba(137,215,183,0.14)" }}
-              >
-                <RocketLaunch size={15} weight="bold" />
-                Forge your blueprint
-              </motion.button>
+              <motion.div whileHover={{ scale: 1.025 }} whileTap={{ scale: 0.975 }}>
+                <Link
+                  href="/sign-up"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-mint px-7 py-3.5 text-[13px] font-semibold tracking-tight text-dark transition-all"
+                  style={{ boxShadow: "0 0 40px rgba(137,215,183,0.28), 0 4px 16px rgba(137,215,183,0.14)" }}
+                >
+                  <RocketLaunch size={15} weight="bold" />
+                  Forge your blueprint
+                </Link>
+              </motion.div>
 
               {/* SECONDARY — smooth scrolls to #how-it-works */}
               <motion.button

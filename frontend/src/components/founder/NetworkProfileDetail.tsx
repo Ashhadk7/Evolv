@@ -15,368 +15,51 @@ import {
   UserPlus,
   Users,
 } from "@phosphor-icons/react";
+import {
+  type FounderContactProfile,
+  type NetworkReview,
+  type NetworkType,
+  FOUNDER_NETWORK_PROFILES,
+  INITIAL_PENDING_IDS,
+  buildProfileFromContact,
+  getFounderNetworkProfile,
+} from "./founderData";
+import { TypeBadge } from "./ui/TypeBadge";
+import { SkillPill } from "./ui/SkillPill";
+import { RatingStars, clampRating } from "./ui/RatingStars";
 
-export type NetworkType = "Developer" | "Founder";
+// Re-export everything consumers expect from this module
+export type { FounderContactProfile, NetworkReview, NetworkType };
+export {
+  FOUNDER_NETWORK_PROFILES,
+  INITIAL_PENDING_IDS,
+  buildProfileFromContact,
+  getFounderNetworkProfile,
+  TypeBadge,
+  SkillPill,
+  RatingStars,
+};
 
-export interface NetworkReview {
-  id: string;
-  reviewer: string;
-  rating: number;
-  comment: string;
-  date: string;
-}
+const REVIEW_STORAGE_KEY = "evolv_founder_network_reviews";
 
-export interface FounderContactProfile {
-  id: string;
-  name: string;
-  role: string;
-  company: string;
-  type: NetworkType;
-  initials: string;
-  avatarColor: string;
-  skills: string[];
-  experience: string;
-  mutual: number;
-  location: string;
-  connected: boolean;
-  match: number;
-  availability: string;
-  focus: string;
-  bio: string;
-  highlights: string[];
-  rating?: number;
-  reviews?: NetworkReview[];
-  online?: boolean;
-}
-
-export const FOUNDER_NETWORK_PROFILES: FounderContactProfile[] = [
-  {
-    id: "sarah",
-    name: "Sarah Mitchell",
-    role: "AI Engineer",
-    company: "Independent",
-    type: "Developer",
-    initials: "SM",
-    avatarColor: "#428475",
-    skills: ["Python", "FastAPI", "AI/ML"],
-    experience: "6 years",
-    mutual: 12,
-    location: "San Francisco, US",
-    connected: true,
-    match: 94,
-    availability: "Open to contract",
-    focus: "Clinical AI workflows and model deployment",
-    bio: "AI engineer with production experience across healthcare data pipelines, model serving, and secure APIs.",
-    highlights: ["Built 3 health data pipelines", "FastAPI and TensorFlow stack", "Strong async collaboration"],
-    rating: 4,
-    reviews: [
-      {
-        id: "sarah-review-1",
-        reviewer: "Amina Hassan",
-        rating: 5,
-        comment: "Sarah turned a fuzzy AI workflow into a clear backend plan and kept the team calm during scope changes.",
-        date: "2 weeks ago",
-      },
-      {
-        id: "sarah-review-2",
-        reviewer: "Noah Williams",
-        rating: 4,
-        comment: "Strong communicator around data handoffs, model risks, and production timelines.",
-        date: "1 month ago",
-      },
-    ],
-    online: true,
-  },
-  {
-    id: "james",
-    name: "James Okafor",
-    role: "Backend Developer",
-    company: "CloudBridge Labs",
-    type: "Developer",
-    initials: "JO",
-    avatarColor: "#7C5CBF",
-    skills: ["Go", "PostgreSQL", "DevOps"],
-    experience: "7 years",
-    mutual: 8,
-    location: "London, UK",
-    connected: true,
-    match: 88,
-    availability: "Part-time",
-    focus: "Scalable APIs, infra automation, and observability",
-    bio: "Backend specialist who has taken multiple B2B systems from prototype to production reliability.",
-    highlights: ["Led API migration to Go", "Kubernetes and CI/CD", "FinTech compliance exposure"],
-    rating: 4,
-    reviews: [
-      {
-        id: "james-review-1",
-        reviewer: "Hamza Ali",
-        rating: 4,
-        comment: "James is dependable with infrastructure decisions and explains tradeoffs in founder-friendly language.",
-        date: "3 weeks ago",
-      },
-      {
-        id: "james-review-2",
-        reviewer: "Asad Khan",
-        rating: 4,
-        comment: "Very clear API planning and clean handover notes. Great fit for serious backend work.",
-        date: "2 months ago",
-      },
-    ],
-    online: true,
-  },
-  {
-    id: "priya",
-    name: "Priya Nair",
-    role: "Full Stack Developer",
-    company: "Studio North",
-    type: "Developer",
-    initials: "PN",
-    avatarColor: "#C4973A",
-    skills: ["Next.js", "Node.js", "Design Systems"],
-    experience: "5 years",
-    mutual: 6,
-    location: "Bangalore, IN",
-    connected: true,
-    match: 81,
-    availability: "Available next month",
-    focus: "MVP builds with polished founder-facing UX",
-    bio: "Full stack builder with a strong eye for product flow, dashboards, and practical launch timelines.",
-    highlights: ["Shipped 9 MVPs", "Next.js and Node.js", "Strong product instincts"],
-    rating: 3,
-    reviews: [
-      {
-        id: "priya-review-1",
-        reviewer: "Amina Hassan",
-        rating: 3,
-        comment: "Good product sense and fast UI iteration. Best when requirements are already fairly clear.",
-        date: "1 month ago",
-      },
-      {
-        id: "priya-review-2",
-        reviewer: "Noah Williams",
-        rating: 4,
-        comment: "Priya made our dashboard feel polished without slowing the MVP timeline.",
-        date: "2 months ago",
-      },
-    ],
-    online: false,
-  },
-  {
-    id: "lars",
-    name: "Lars Eriksson",
-    role: "ML Engineer",
-    company: "Nordic Models",
-    type: "Developer",
-    initials: "LE",
-    avatarColor: "#4A90D9",
-    skills: ["Computer Vision", "NLP", "PyTorch"],
-    experience: "4 years",
-    mutual: 5,
-    location: "Stockholm, SE",
-    connected: false,
-    match: 76,
-    availability: "Exploring roles",
-    focus: "Applied ML for image and text intelligence",
-    bio: "Machine learning engineer focused on fast experiments, deployment discipline, and measurable model quality.",
-    highlights: ["Vision model deployment", "NLP search pipelines", "Experiment tracking"],
-    rating: 3,
-    reviews: [
-      {
-        id: "lars-review-1",
-        reviewer: "Amina Hassan",
-        rating: 3,
-        comment: "Strong with experiments and model quality notes, but needs crisp product acceptance criteria.",
-        date: "6 weeks ago",
-      },
-    ],
-    online: false,
-  },
-  {
-    id: "maya",
-    name: "Maya Chen",
-    role: "Frontend Engineer",
-    company: "LaunchCraft",
-    type: "Developer",
-    initials: "MC",
-    avatarColor: "#5BC8A0",
-    skills: ["React", "Three.js", "Motion"],
-    experience: "6 years",
-    mutual: 9,
-    location: "Toronto, CA",
-    connected: false,
-    match: 90,
-    availability: "Open this week",
-    focus: "Interactive product experiences and data-rich dashboards",
-    bio: "Frontend engineer who blends product taste, accessible UI, and motion systems for early-stage teams.",
-    highlights: ["Built investor demo portals", "Motion-rich dashboards", "Accessibility-minded UI"],
-    rating: 5,
-    reviews: [
-      {
-        id: "maya-review-1",
-        reviewer: "Hamza Ali",
-        rating: 5,
-        comment: "Maya built a beautiful investor demo quickly and handled interaction details with real care.",
-        date: "1 week ago",
-      },
-      {
-        id: "maya-review-2",
-        reviewer: "Noah Williams",
-        rating: 5,
-        comment: "Excellent frontend partner for a founder who needs polish, speed, and sensible UX judgment.",
-        date: "4 weeks ago",
-      },
-    ],
-    online: true,
-  },
-  {
-    id: "hamza",
-    name: "Hamza Ali",
-    role: "Founder",
-    company: "PayEase",
-    type: "Founder",
-    initials: "HA",
-    avatarColor: "#0F1C18",
-    skills: ["FinTech", "Payments", "Go-to-market"],
-    experience: "8 years",
-    mutual: 4,
-    location: "Lahore, PK",
-    connected: false,
-    match: 84,
-    availability: "Open to partnerships",
-    focus: "Embedded payments for small commerce teams",
-    bio: "Founder building payment tooling for regional businesses, with a strong operator network in Pakistan.",
-    highlights: ["Pilot with 40 merchants", "Payments and compliance", "Seeking dev partners"],
-    online: true,
-  },
-  {
-    id: "noah",
-    name: "Noah Williams",
-    role: "Product Founder",
-    company: "CareLoop",
-    type: "Founder",
-    initials: "NW",
-    avatarColor: "#E8A87C",
-    skills: ["HealthTech", "Product", "Operations"],
-    experience: "10 years",
-    mutual: 7,
-    location: "Austin, US",
-    connected: false,
-    match: 82,
-    availability: "Hiring advisors",
-    focus: "Patient retention tools for specialty clinics",
-    bio: "Product founder with clinical operations experience and a clear roadmap for care coordination workflows.",
-    highlights: ["Clinic operations background", "2 pilots in progress", "Strong problem discovery"],
-    online: false,
-  },
-  {
-    id: "amina",
-    name: "Amina Hassan",
-    role: "Founder & CEO",
-    company: "AgriTwin",
-    type: "Founder",
-    initials: "AH",
-    avatarColor: "#F7B731",
-    skills: ["AgriTech", "IoT", "Fundraising"],
-    experience: "9 years",
-    mutual: 10,
-    location: "Dubai, UAE",
-    connected: true,
-    match: 79,
-    availability: "Open to founder intros",
-    focus: "Digital twins for crop planning and water efficiency",
-    bio: "Founder scaling AgriTwin across MENA with pilots, investor interest, and a deep climate-tech network.",
-    highlights: ["Seed round in progress", "IoT field pilots", "Climate-tech operator network"],
-    online: false,
-  },
-  {
-    id: "diego",
-    name: "Diego Ramos",
-    role: "Mobile Developer",
-    company: "Freelance",
-    type: "Developer",
-    initials: "DR",
-    avatarColor: "#FF6B6B",
-    skills: ["React Native", "Expo", "Stripe"],
-    experience: "5 years",
-    mutual: 3,
-    location: "Mexico City, MX",
-    connected: false,
-    match: 73,
-    availability: "Project-based",
-    focus: "Mobile MVPs with payments and realtime features",
-    bio: "Mobile developer comfortable taking early products from sketches to App Store-ready releases.",
-    highlights: ["React Native launches", "Payments and notifications", "Lean MVP process"],
-    rating: 3,
-    reviews: [
-      {
-        id: "diego-review-1",
-        reviewer: "Hamza Ali",
-        rating: 3,
-        comment: "Good mobile velocity and practical Stripe setup. Communication is best with weekly checkpoints.",
-        date: "3 weeks ago",
-      },
-    ],
-    online: true,
-  },
-];
-
-export const INITIAL_PENDING_IDS = ["maya", "hamza", "noah"];
-
-export function getFounderNetworkProfile(id: string) {
-  return FOUNDER_NETWORK_PROFILES.find((profile) => profile.id === id);
-}
-
-export function buildProfileFromContact(contact: {
-  id: string;
-  name: string;
-  role: string;
-  match?: number;
-  initials?: string;
-  online?: boolean;
-}): FounderContactProfile {
-  const knownProfile = getFounderNetworkProfile(contact.id);
-  if (knownProfile) {
-    return {
-      ...knownProfile,
-      match: contact.match ?? knownProfile.match,
-      online: contact.online ?? knownProfile.online,
-    };
+function loadStoredReviews(profileId: string): NetworkReview[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw    = localStorage.getItem(REVIEW_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, NetworkReview[]> : {};
+    return Array.isArray(parsed[profileId]) ? parsed[profileId] : [];
+  } catch {
+    return [];
   }
+}
 
-  const [rolePart, companyPart] = contact.role.split(" - ");
-  const type: NetworkType = rolePart.toLowerCase().includes("founder") ? "Founder" : "Developer";
-  const initials =
-    contact.initials ||
-    contact.name
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
-
-  return {
-    id: contact.id,
-    name: contact.name,
-    role: rolePart || contact.role,
-    company: companyPart || "Evolv Network",
-    type,
-    initials,
-    avatarColor: type === "Founder" ? "#0F1C18" : "#428475",
-    skills: type === "Founder" ? ["Product", "Strategy", "Hiring"] : ["Product Engineering", "Collaboration", "MVP Build"],
-    experience: type === "Founder" ? "Founder profile" : "Developer profile",
-    mutual: 0,
-    location: "Remote",
-    connected: true,
-    match: contact.match ?? 80,
-    availability: "In conversation",
-    focus: type === "Founder" ? "Startup execution and partnership building" : "Founder-facing product execution",
-    bio: `${contact.name} is already in your inbox. Their public profile is being prepared from your current conversation context.`,
-    highlights: ["Active conversation", "Shared Evolv network", "Profile details available from connected context"],
-    rating: type === "Developer" ? 3 : undefined,
-    reviews: type === "Developer" ? [] : undefined,
-    online: contact.online,
-  };
+function saveStoredReviews(profileId: string, reviews: NetworkReview[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw    = localStorage.getItem(REVIEW_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, NetworkReview[]> : {};
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify({ ...parsed, [profileId]: reviews }));
+  } catch { /* ignore storage errors */ }
 }
 
 function ProfileAvatar({ profile, size = 64 }: { profile: FounderContactProfile; size?: number }) {
@@ -393,109 +76,6 @@ function ProfileAvatar({ profile, size = 64 }: { profile: FounderContactProfile;
     >
       {profile.initials}
     </div>
-  );
-}
-
-export function TypeBadge({ type }: { type: NetworkType }) {
-  const isFounder = type === "Founder";
-  return (
-    <span
-      className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
-      style={{
-        background: isFounder ? "rgba(196,151,58,0.1)" : "#e8f5ef",
-        color: isFounder ? "#a87316" : "#2e7d5c",
-        border: `1px solid ${isFounder ? "rgba(196,151,58,0.22)" : "#c5ddd0"}`,
-      }}
-    >
-      {type}
-    </span>
-  );
-}
-
-export function SkillPill({ label }: { label: string }) {
-  return (
-    <span
-      className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-      style={{ background: "#f5f7f5", border: "1px solid #e8ede9", color: "#428475" }}
-    >
-      {label}
-    </span>
-  );
-}
-
-const REVIEW_STORAGE_KEY = "evolv_founder_network_reviews";
-
-function clampRating(rating: number) {
-  return Math.max(0, Math.min(5, Math.round(rating)));
-}
-
-function loadStoredReviews(profileId: string): NetworkReview[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) as Record<string, NetworkReview[]> : {};
-    return Array.isArray(parsed[profileId]) ? parsed[profileId] : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveStoredReviews(profileId: string, reviews: NetworkReview[]) {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) as Record<string, NetworkReview[]> : {};
-    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify({ ...parsed, [profileId]: reviews }));
-  } catch {
-    /* ignore storage errors */
-  }
-}
-
-export function RatingStars({
-  rating,
-  size = 14,
-  interactive = false,
-  onChange,
-  className = "",
-}: {
-  rating: number;
-  size?: number;
-  interactive?: boolean;
-  onChange?: (rating: number) => void;
-  className?: string;
-}) {
-  const safeRating = clampRating(rating);
-  const stars = [1, 2, 3, 4, 5];
-
-  return (
-    <span className={`inline-flex items-center gap-0.5 ${className}`} aria-label={`${safeRating} out of 5 stars`}>
-      {stars.map((star) => {
-        const filled = star <= safeRating;
-        const icon = (
-          <Star
-            size={size}
-            weight={filled ? "fill" : "regular"}
-            style={{ color: filled ? "#C4973A" : "#c7d2cc" }}
-          />
-        );
-
-        if (!interactive) {
-          return <span key={star} className="leading-none">{icon}</span>;
-        }
-
-        return (
-          <button
-            key={star}
-            type="button"
-            onClick={() => onChange?.(star)}
-            className="h-6 w-6 rounded-md flex items-center justify-center transition-colors hover:bg-[#f5f7f5]"
-            aria-label={`Set rating to ${star} out of 5`}
-          >
-            {icon}
-          </button>
-        );
-      })}
-    </span>
   );
 }
 
@@ -537,25 +117,22 @@ export function NetworkProfileDetailScreen({
   messageLabel?: string;
   topActions?: React.ReactNode;
 }) {
-  const canManagePending = pending && onAccept && onIgnore;
-  const canToggleConnection = !pending && onToggleConnection;
-  const isDeveloper = profile.type === "Developer";
+  const canManagePending     = pending && onAccept && onIgnore;
+  const canToggleConnection  = !pending && onToggleConnection;
+  const isDeveloper          = profile.type === "Developer";
   const [customReviews, setCustomReviews] = useState<NetworkReview[]>(() => loadStoredReviews(profile.id));
-  const [reviewRating, setReviewRating] = useState(3);
-  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating]   = useState(3);
+  const [reviewText, setReviewText]       = useState("");
   const allReviews = isDeveloper ? [...customReviews, ...(profile.reviews ?? [])] : [];
   const averageReviewRating = allReviews.length
     ? allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length
     : 0;
-  const displayRating = isDeveloper
-    ? clampRating(profile.rating ?? averageReviewRating)
-    : 0;
-  const reviewCount = allReviews.length;
+  const displayRating = isDeveloper ? clampRating(profile.rating ?? averageReviewRating) : 0;
+  const reviewCount   = allReviews.length;
 
   const handleAddReview = () => {
     const comment = reviewText.trim();
     if (!comment) return;
-
     const nextReview: NetworkReview = {
       id: `review-${profile.id}-${Date.now()}`,
       reviewer: "You",
@@ -702,9 +279,7 @@ export function NetworkProfileDetailScreen({
                   Professional summary
                 </span>
               </div>
-              <p className="text-[13px] leading-6" style={{ color: "#334d42" }}>
-                {profile.bio}
-              </p>
+              <p className="text-[13px] leading-6" style={{ color: "#334d42" }}>{profile.bio}</p>
             </motion.div>
 
             <motion.div

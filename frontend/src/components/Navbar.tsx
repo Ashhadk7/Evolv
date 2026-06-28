@@ -8,8 +8,8 @@ import {
   useTransform,
 } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 const NAV_LINKS = [
   { label: "Home",         href: "#home"         },
@@ -42,12 +42,10 @@ function EvolvMark() {
 
 export function Navbar() {
   const { scrollY } = useScroll();
-  const router = useRouter();
   const [menuOpen, setMenuOpen]       = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // ── Scroll-based glass background ────────────────────────────
   const bgOpacity     = useTransform(scrollY, [0, 90], [0.0,  0.92]);
   const borderOpacity = useTransform(scrollY, [0, 90], [0.06, 0.18]);
   const backgroundColor = useMotionTemplate`rgba(16, 34, 30, ${bgOpacity})`;
@@ -148,24 +146,23 @@ export function Navbar() {
 
           {/* Desktop actions */}
           <div className="hidden items-center gap-1 md:flex">
-            <button
-              onClick={() => router.push("/sign-in")}
+            <Link
+              href="/sign-in"
               className="px-4 py-2 text-sm text-cream/48 transition-colors hover:text-cream/75"
             >
               Sign in
-            </button>
-            <motion.button
-              whileHover={{ scale: 1.025 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => router.push("/sign-up")}
-              className="rounded-lg bg-mint px-5 py-2 text-sm font-semibold text-dark"
-              style={{
-                boxShadow:
-                  "0 0 20px rgba(137,215,183,0.22), 0 2px 8px rgba(137,215,183,0.1)",
-              }}
-            >
-              Get started free
-            </motion.button>
+            </Link>
+            <motion.div whileHover={{ scale: 1.025 }} whileTap={{ scale: 0.97 }}>
+              <Link
+                href="/sign-up"
+                className="rounded-lg bg-mint px-5 py-2 text-sm font-semibold text-dark inline-block"
+                style={{
+                  boxShadow: "0 0 20px rgba(137,215,183,0.22), 0 2px 8px rgba(137,215,183,0.1)",
+                }}
+              >
+                Get started free
+              </Link>
+            </motion.div>
           </div>
 
           {/* Mobile toggle */}
@@ -202,18 +199,20 @@ export function Navbar() {
               </a>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-mint/8 pt-3">
-              <button
-                onClick={() => { router.push("/sign-in"); setMenuOpen(false); }}
+              <Link
+                href="/sign-in"
+                onClick={() => setMenuOpen(false)}
                 className="px-3 py-2.5 text-left text-sm text-cream/55 transition-colors hover:text-cream/80"
               >
                 Sign in
-              </button>
-              <button
-                onClick={() => { router.push("/sign-up"); setMenuOpen(false); }}
-                className="rounded-lg bg-mint px-4 py-2.5 text-sm font-semibold text-dark"
+              </Link>
+              <Link
+                href="/sign-up"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg bg-mint px-4 py-2.5 text-sm font-semibold text-dark text-center"
               >
                 Get started free
-              </button>
+              </Link>
             </div>
           </motion.div>
         )}

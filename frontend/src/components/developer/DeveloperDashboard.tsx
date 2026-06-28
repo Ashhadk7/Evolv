@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useCallback, useEffect } from 'react';
 
-import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './DeveloperShared';
+import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
 import { statsData, featuredMatch, recentMatches, applications, projects, profileData, insightsData } from './developerData';
 
 
