@@ -279,7 +279,7 @@ function ProfileDetailRow({
         target="_blank"
         rel="noreferrer"
         whileHover={{ x: 2, backgroundColor: "#f8fbf9" }}
-        className="flex items-center gap-3 px-3 py-2 transition-colors"
+        className="flex items-center gap-3 px-3.5 py-2.5 transition-colors"
         style={{ borderRadius: 8 }}
       >
         {content}
@@ -290,7 +290,7 @@ function ProfileDetailRow({
   return (
     <motion.div
       whileHover={{ x: 2, backgroundColor: "#f8fbf9" }}
-      className="flex items-center gap-3 px-3 py-2 transition-colors"
+      className="flex items-center gap-3 px-3.5 py-2.5 transition-colors"
       style={{ borderRadius: 8 }}
     >
       {content}
@@ -340,17 +340,19 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
   const safeDomains = Array.isArray(local.domains) ? local.domains : [];
   const fullName = getProfileName(local);
   const initials = getProfileInitials(local);
-  const headline = local.bio?.trim() || "Founder building on Evolv";
-  const about = local.description?.trim() || "Add a fuller founder story so developers, investors, and collaborators can understand what you are building and why it matters.";
+  const headline = local.headline?.trim() || local.bio?.trim() || "Founder building on Evolv";
+  const about = local.description?.trim() || local.bio?.trim() || local.headline?.trim() || "Add a fuller founder story so developers, investors, and collaborators can understand what you are building and why it matters.";
+  const locationText = local.location?.trim() || local.country?.trim() || "Evolv Network";
+  const founderFocus = safeDomains[0] ? `${safeDomains[0]} founder` : local.primaryGoal?.trim() || "Startup founder";
   const normalizedLinkedin = normalizeUrl(local.linkedin);
   const completionItems = [
     local.firstName,
     local.lastName,
-    local.bio,
+    local.bio || local.headline,
     safeDomains.length ? "domains" : "",
-    local.description,
+    local.description || local.primaryGoal,
     local.linkedin,
-    local.education,
+    local.education || local.location || local.country,
     local.avatarUrl,
   ];
   const completion = Math.round((completionItems.filter(Boolean).length / completionItems.length) * 100);
@@ -390,7 +392,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
   };
 
   return (
-    <div className="relative flex flex-col gap-4">
+    <div className="relative flex flex-col gap-5 pb-10">
       <AnimatePresence>
         {saved && (
           <motion.div
@@ -420,7 +422,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-6 pb-2"
           >
             <motion.section
               initial={{ opacity: 0, y: 12 }}
@@ -428,7 +430,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
               whileHover={{ boxShadow: "0 20px 48px rgba(15,28,24,0.10)" }}
               transition={{ duration: 0.24, ease: "easeOut" }}
               className="overflow-hidden bg-white"
-              style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}
+              style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}
             >
               <div
                 className="relative h-36"
@@ -444,19 +446,19 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                     backgroundSize: "28px 28px",
                   }}
                 />
-                <div className="absolute bottom-4 left-6 flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 backdrop-blur">
+                <div className="absolute bottom-5 left-8 flex max-w-[calc(100%-4rem)] items-center gap-2 rounded-full bg-white/12 px-5 py-2.5 backdrop-blur">
                   <Sparkle size={13} weight="fill" style={{ color: MINT }} />
-                  <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "#e8f4ef" }}>
+                  <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "#e8f4ef" }}>
                     Public Founder Profile
                   </span>
                 </div>
               </div>
 
-              <div className="relative px-6 pb-6">
-                <div className="-mt-14 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                  <ProfileAvatar avatarUrl={local.avatarUrl} fullName={fullName} initials={initials} />
+              <div className="relative px-9 pb-10">
+                <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="pl-6" style={{marginTop:"1rem", marginBottom:"1rem"}}><ProfileAvatar avatarUrl={local.avatarUrl} fullName={fullName} initials={initials} /></div>
 
-                  <div className="flex flex-wrap gap-2 sm:pb-1">
+                  <div className="flex flex-wrap gap-2 sm:pb-2">
                     {normalizedLinkedin && (
                       <motion.a
                         href={normalizedLinkedin}
@@ -465,7 +467,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                         whileHover={{ y: -2 }}
                         whileTap={{ scale: 0.98 }}
                         className="flex items-center gap-2 rounded-lg border bg-white px-3.5 py-2 text-[12px] font-bold"
-                        style={{ borderColor: BORDER, color: MID }}
+                        style={{ borderColor: BORDER, color: MID, paddingLeft: '1rem', paddingRight: '1rem' }}
                       >
                         <LinkedinLogo size={15} weight="bold" />
                         LinkedIn
@@ -477,7 +479,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                       whileHover={{ y: -2, boxShadow: "0 8px 18px rgba(26,49,44,0.18)" }}
                       whileTap={{ scale: 0.98 }}
                       className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold"
-                      style={{ background: INK, color: MINT }}
+                      style={{ background: INK, color: MINT, marginRight: '1rem' }}
                     >
                       <PencilSimple size={15} weight="bold" />
                       Edit Profile
@@ -485,9 +487,9 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                   </div>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-[1.55rem] font-extrabold leading-tight" style={{ color: TEXT_BODY }}>
+                    <h3 className="pl-6 text-[1.55rem] font-extrabold leading-tight" style={{ color: TEXT_BODY }}>
                       {fullName}
                     </h3>
                     <span
@@ -498,20 +500,20 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                       Founder
                     </span>
                   </div>
-                  <p className="mt-1 max-w-2xl text-[14px] leading-6" style={{ color: "#334d42" }}>
+                  <p className="pl-6 mt-3 max-w-2xl text-[14px] leading-6" style={{ color: "#334d42" }}>
                     {headline}
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px]" style={{ color: TEXT_MUTED }}>
-                    <span className="flex items-center gap-1.5">
+                  <div className="mb-4 mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 py-1.5 text-[12px]" style={{ color: TEXT_MUTED }}>
+                    <span className="pl-6 flex items-center gap-1.5 leading-5">
                       <Briefcase size={13} weight="bold" />
-                      {safeDomains[0] || "Startup"} founder
+                      {founderFocus}
                     </span>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 leading-5">
                       <MapPin size={13} weight="bold" />
-                      Evolv Network
+                      {locationText}
                     </span>
                     {local.email && (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 leading-5">
                         <EnvelopeSimple size={13} weight="bold" />
                         {local.email}
                       </span>
@@ -519,7 +521,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="mb-6 pl-6 mt-8 grid gap-2 sm:grid-cols-3">
                   {[
                     { label: "Profile strength", value: `${completion}%`, detail: "Public readiness" },
                     { label: "Focus areas", value: `${safeDomains.length}`, detail: safeDomains.slice(0, 2).join(" / ") || "Add domains" },
@@ -531,16 +533,16 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ y: -2, borderColor: "#c5ddd0" }}
-                      className="bg-[#f8faf8] px-4 py-3"
-                      style={{ border: "1px solid #edf1ee", borderRadius: 8 }}
+                      className="bg-[#f8faf8] px-5 py-5"
+                      style={{ border: "1.5px solid #d8e7df",marginRight: "1.5rem",borderRadius: 8, boxShadow: "0 8px 20px rgba(15,28,24,0.04)" }}
                     >
                       <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: TEXT_DIM }}>
                         {item.label}
                       </p>
-                      <p className="mt-1 text-[20px] font-extrabold leading-none" style={{ color: TEXT_BODY }}>
+                      <p className="mt-2 text-[20px] font-extrabold leading-none" style={{ color: TEXT_BODY }}>
                         {item.value}
                       </p>
-                      <p className="mt-1 truncate text-[11px]" style={{ color: TEXT_MUTED }}>
+                      <p className="mt-2 truncate text-[11px]" style={{ color: TEXT_MUTED }}>
                         {item.detail}
                       </p>
                     </motion.div>
@@ -549,15 +551,15 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
               </div>
             </motion.section>
 
-            <div className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
+            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.85fr]">
               <motion.section
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 }}
-                className="bg-white p-5"
-                style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}
+                className="bg-white p-7"
+                style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}
               >
-                <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="mb-2 flex items-center justify-between gap-5">
                   <div>
                     <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>About</h4>
                     <p className="text-[11px]" style={{ color: TEXT_MUTED }}>The story people see on your profile.</p>
@@ -574,51 +576,51 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                     <PencilSimple size={14} weight="bold" />
                   </motion.button>
                 </div>
-                <p className="text-[13px] leading-6" style={{ color: "#334d42" }}>
+                <p className="text-[13px] leading-7" style={{ color: "#334d42" }}>
                   {about}
                 </p>
 
-                <div className="mt-5" style={{ height: 1, background: "#edf1ee" }} />
+                <div className="my-7" style={{ height: 1, marginBottom:"1rem", background: "#dfe9e3" }} />
 
-                <div className="mt-5">
+                <div>
                   <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Founder Focus</h4>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2.5 pb-1">
                     {safeDomains.length > 0 ? (
                       safeDomains.map((domain) => (
                         <motion.span
                           key={domain}
                           whileHover={{ y: -2, backgroundColor: "#e8f5ef" }}
                           className="rounded-full px-3 py-1.5 text-[12px] font-bold"
-                          style={{ background: "#f0f5f2", color: MID, border: "1px solid #dce9e2" }}
+                          style={{ background: "#f0f5f2", color: MID, border: "1px solid #dce9e2", marginTop:"0.5rem" }}
                         >
                           {domain}
                         </motion.span>
                       ))
                     ) : (
-                      <span className="text-[12px]" style={{ color: TEXT_DIM }}>Add domains to show your focus areas.</span>
+                      <span className="block py-2 text-[12px]" style={{ color: TEXT_DIM }}>Add domains to show your focus areas.</span>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-5" style={{ height: 1, background: "#edf1ee" }} />
+                <div className="my-7" style={{ height: 1, background: "#dfe9e3" ,marginBottom:"1rem", marginTop: "0.5rem"}} />
 
-                <div className="mt-5">
-                  <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Experience</h4>
-                  <div className="mt-3 flex gap-3">
+                <div>
+                  <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY , marginBottom:"1rem"}}>Education</h4>
+                  <div className="mt-5 flex gap-4">
                     <span
-                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                      className="mt-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                       style={{ background: "#edf5f1", color: MID }}
                     >
                       <GraduationCap size={17} weight="bold" />
                     </span>
                     <div className="min-w-0">
                       <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>
-                        {local.education || "Add education or founder background"}
+                        {local.education || "Add education"}
                       </p>
                       <p className="mt-1 text-[12px] leading-5" style={{ color: TEXT_MUTED }}>
                         {local.education
-                          ? "Background shown to investors, developers, and collaborators."
-                          : "Your education or prior experience helps others understand your credibility."}
+                          ? "Background shown to developers, and collaborators."
+                          : "Your education helps others understand your credibility."}
                       </p>
                     </div>
                   </div>
@@ -629,23 +631,23 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-5"
               >
-                <section className="bg-white p-4" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-                  <h4 className="mb-3 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Contact</h4>
-                  <div className="flex flex-col gap-1">
+                <section className="bg-white p-6" style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}>
+                  <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Contact</h4>
+                  <div className="flex flex-col gap-2">
                     <ProfileDetailRow Icon={EnvelopeSimple} label="Email" value={local.email} href={local.email ? `mailto:${local.email}` : undefined} />
                     <ProfileDetailRow Icon={Phone} label="Phone" value={local.phone} href={local.phone ? `tel:${local.phone}` : undefined} />
                     <ProfileDetailRow Icon={LinkedinLogo} label="LinkedIn" value={local.linkedin} href={normalizedLinkedin || undefined} />
                     {!local.email && !local.phone && !local.linkedin && (
-                      <p className="px-3 py-2 text-[12px]" style={{ color: TEXT_DIM }}>Add contact links in edit mode.</p>
+                      <p className="px-3.5 py-2.5 text-[12px]" style={{ color: TEXT_DIM }}>Add contact links in edit mode.</p>
                     )}
                   </div>
                 </section>
 
-                <section className="bg-white p-4" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-                  <h4 className="mb-3 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Profile Details</h4>
-                  <div className="flex flex-col gap-1">
+                <section className="bg-white p-6" style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}>
+                  <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Profile Details</h4>
+                  <div className="flex flex-col gap-2">
                     <ProfileDetailRow Icon={GlobeHemisphereWest} label="Network" value="Founder on Evolv" />
                     <ProfileDetailRow Icon={Briefcase} label="Role" value="Founder" />
                     <ProfileDetailRow Icon={LinkSimple} label="Top domain" value={safeDomains[0] || "Add a domain"} />
@@ -661,7 +663,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-4 pb-10"
           >
             <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -770,7 +772,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
               whileHover={{ y: -2, boxShadow: "0 10px 26px rgba(26,49,44,0.22)" }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 24 }}
-              className="flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
+              className="mb-2 flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
               style={{ background: INK, color: MINT }}
             >
               <Check size={15} weight="bold" />

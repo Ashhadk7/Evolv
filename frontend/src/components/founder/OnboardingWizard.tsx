@@ -19,6 +19,11 @@ export interface FounderProfile {
   avatarUrl?: string;
   profileComplete?: boolean;
   ventureStage?: string;
+  headline?: string;
+  location?: string;
+  country?: string;
+  primaryGoal?: string;
+  idNumber?: string;
 }
 
 interface Props {

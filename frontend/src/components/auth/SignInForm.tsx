@@ -13,6 +13,15 @@ const BRAND_INK  = "#0f1c18";
 const BRAND_MID  = "#428475";
 const BRAND_MINT = "#89d7b7";
 
+interface StoredUser {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: "founder" | "developer";
+  profile?: Record<string, unknown>;
+}
+
 export function SignInForm() {
   const router = useRouter();
   const [email, setEmail]               = useState("");
@@ -42,13 +51,26 @@ export function SignInForm() {
     }
 
     try {
-      const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]");
-      const user  = users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+      const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredUser[];
+      const user  = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
       if (!user) { setError("Account not found. Please sign up."); return; }
       if (user.password !== password) { setError("Incorrect password."); return; }
 
       if (user.role === "founder") {
-        localStorage.setItem("evolv_founder_profile", JSON.stringify({ firstName: user.firstName, lastName: user.lastName, email: user.email, bio: "", domains: [], linkedin: "", dob: "", gender: "", phone: "", education: "", description: "" }));
+        localStorage.setItem("evolv_founder_profile", JSON.stringify({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          bio: "",
+          domains: [],
+          linkedin: "",
+          dob: "",
+          gender: "",
+          phone: "",
+          education: "",
+          description: "",
+          ...(user.profile ?? {}),
+        }));
         router.push("/founder-dashboard");
       } else {
         localStorage.setItem("evolv_user", JSON.stringify({ firstName: user.firstName, lastName: user.lastName, email: user.email }));
