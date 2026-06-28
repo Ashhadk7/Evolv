@@ -3480,7 +3480,7 @@
     }
 }
 /* --- Inbox --- */
-﻿.Inbox_container { display: flex; min-height: 100vh; background: #F7F6F3; }
+.Inbox_container { display: flex; min-height: 100vh; background: #f5f6f4; }
 .Inbox_mainWrapper { flex: 1; padding: 1.75rem 2rem 2rem; overflow-x: hidden; min-width: 0; display: flex; flex-direction: column; gap: 0; }
 .Inbox_kpiRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin-bottom: 1.25rem; }
 .Inbox_actionBar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -5544,7 +5544,7 @@
 }
 
 /* --- Settings --- */
-﻿.Settings_container { display: flex; min-height: 100vh; background: #F7F6F3; }
+.Settings_container { display: flex; min-height: 100vh; background: #f5f6f4; }
 .Settings_mainWrapper { flex: 1; padding: 1.75rem 2rem 2rem; overflow-x: hidden; min-width: 0; }
 .Settings_settingsLayout { display: grid; grid-template-columns: 200px 1fr; gap: 1.5rem; align-items: start; margin-bottom: 1.5rem; }
 .Settings_tabsCol { display: flex; flex-direction: column; gap: 0.2rem; }

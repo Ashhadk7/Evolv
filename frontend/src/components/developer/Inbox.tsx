@@ -1,7 +1,9 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
-import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
+import { Sidebar } from './shared/Sidebar';
+import { Topbar } from './shared/Topbar';
+import { StatCard } from './shared/StatCard';
+import { ActionModal } from './shared/ActionModal';
 
 const inboxStats = [
     { id: 1, label: 'Total Messages', value: '24', trend: '+5', trendUp: true },
@@ -14,7 +16,7 @@ const threads = [
     {
         id: 1,
         from: 'Asad Ahmed',
-        role: 'CEO & Founder · Nexus Health',
+        role: 'CEO · FinFlow AI',
         avatar: 'A',
         avatarColor: '#5BC8A0',
         subject: 'Technical Interview — June 28',
@@ -138,7 +140,6 @@ const Inbox = ({ onNavigate }) => {
 
     return (
         <div className={"Inbox_container"}>
-            <Sidebar currentPage="inbox" onNavigate={onNavigate} />
             <main className={"Inbox_mainWrapper"}>
                 <Topbar title="Inbox" subtitle={unreadCount + ' unread message' + (unreadCount !== 1 ? 's' : '') + ' — stay on top of your conversations.'} onNavigate={onNavigate} />
                 <div className={"Inbox_kpiRow"}>

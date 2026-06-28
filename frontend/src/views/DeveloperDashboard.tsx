@@ -1,17 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import DeveloperDashboardPage from '../components/developer/DeveloperDashboard';
 import { DevOnboardingModal } from '../components/developer/shared';
+import { Sidebar, type DeveloperTab } from '../components/developer/shared/Sidebar';
 
-// Lazy-load non-default tabs to reduce initial bundle
-const Applications = dynamic(() => import('../components/developer/Applications'));
-const Discover     = dynamic(() => import('../components/developer/Discover'));
-const Network      = dynamic(() => import('../components/developer/Network'));
-const Projects     = dynamic(() => import('../components/developer/Projects'));
-const Inbox        = dynamic(() => import('../components/developer/Inbox'));
-const Settings     = dynamic(() => import('../components/developer/Settings'));
+import Applications from '../components/developer/Applications';
+import Discover     from '../components/developer/Discover';
+import Network      from '../components/developer/Network';
+import Projects     from '../components/developer/Projects';
+import Inbox        from '../components/developer/Inbox';
+import Settings     from '../components/developer/Settings';
 
 const pages: Record<string, any> = {
     dashboard: DeveloperDashboardPage,
@@ -24,7 +23,7 @@ const pages: Record<string, any> = {
 };
 
 export default function DeveloperDashboard() {
-    const [currentPage, setCurrentPage] = useState('dashboard');
+    const [currentPage, setCurrentPage] = useState<DeveloperTab>('dashboard');
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [profileComplete, setProfileComplete] = useState(true);
     const [userName, setUserName] = useState('');
@@ -40,6 +39,13 @@ export default function DeveloperDashboard() {
                     setUserName(name);
                     setShowOnboarding(true);
                 }
+            } else {
+                // If no user exists, set default firstTime flag to trigger onboarding
+                const defaultUser = { firstTime: true, profileComplete: false, firstName: "Sarah", lastName: "Mitchell" };
+                localStorage.setItem('evolv_user', JSON.stringify(defaultUser));
+                setUserName("Sarah Mitchell");
+                setProfileComplete(false);
+                setShowOnboarding(true);
             }
         } catch (_) {}
     }, []);
@@ -53,8 +59,12 @@ export default function DeveloperDashboard() {
         setShowOnboarding(false);
     };
 
+    const handleOnboardingSkip = () => {
+        setShowOnboarding(false);
+    };
+
     const protectedPages = ['applications', 'discover', 'network', 'inbox'];
-    const handleNavigate = (page: string) => {
+    const handleNavigate = (page: DeveloperTab) => {
         if (!profileComplete && protectedPages.includes(page)) {
             setShowOnboarding(true);
             setCurrentPage('settings');
@@ -66,8 +76,11 @@ export default function DeveloperDashboard() {
     const Page = pages[currentPage] || DeveloperDashboardPage;
 
     return (
-        <>
-            <Page onNavigate={handleNavigate} />
+        <div style={{ display: 'flex', background: '#f5f6f4', minHeight: '100vh' }}>
+            <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <Page onNavigate={handleNavigate} />
+            </div>
             {!profileComplete && !showOnboarding && (
                 <div
                     style={{
@@ -75,6 +88,7 @@ export default function DeveloperDashboard() {
                         background: '#ffffff', border: '1px solid #DDE5E0',
                         borderRadius: 12, boxShadow: '0 18px 42px rgba(13,43,34,0.14)',
                         padding: 16, zIndex: 20,
+                        fontFamily: 'sans-serif'
                     }}
                 >
                     <div style={{ color: '#1A2E26', fontWeight: 800, fontSize: 14, marginBottom: 4 }}>Complete your developer profile</div>
@@ -89,7 +103,13 @@ export default function DeveloperDashboard() {
                     </button>
                 </div>
             )}
-            {showOnboarding && <DevOnboardingModal onComplete={handleOnboardingComplete} userName={userName} />}
-        </>
+            {showOnboarding && (
+                <DevOnboardingModal
+                    onComplete={handleOnboardingComplete}
+                    onSkip={handleOnboardingSkip}
+                    userName={userName}
+                />
+            )}
+        </div>
     );
 }

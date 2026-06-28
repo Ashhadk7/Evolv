@@ -1,8 +1,8 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
 
-import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
-import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
+import { Sidebar } from './shared/Sidebar';
+import { Topbar } from './shared/Topbar';
 const defaultProfile = {
     name: 'Sarah Mitchell',
     email: 'sarah.mitchell@evolv.dev',
@@ -14,7 +14,7 @@ const defaultProfile = {
     openToRemote: true,
     preferredBudget: '$180K – $250K',
     experienceYears: '5',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+    avatarUrl: '',
 };
 
 const defaultNotifications = {
@@ -116,7 +116,6 @@ const Settings = ({ onNavigate }) => {
 
     return (
         <div className={"Settings_container"}>
-            <Sidebar currentPage="settings" onNavigate={onNavigate} />
             <main className={"Settings_mainWrapper"}>
                 <Topbar title="Settings" subtitle="Manage your profile, preferences, and account security." onNavigate={onNavigate} />
 
@@ -147,7 +146,26 @@ const Settings = ({ onNavigate }) => {
 
                                 <div className={"Settings_avatarSection"}>
                                     <div className={"Settings_avatarCircle"}>
-                                        <img src={profile.avatarUrl} alt="Sarah" />
+                                        {profile.avatarUrl ? (
+                                            <img src={profile.avatarUrl} alt="Avatar" />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    fontSize: "1.2rem",
+                                                    fontWeight: "bold",
+                                                    background: "linear-gradient(135deg, #4cb896, #89d7b7)",
+                                                    color: "#0f1c18",
+                                                    borderRadius: "50%"
+                                                }}
+                                            >
+                                                {profile.name.split(' ').map(n => n[0]).join('').toUpperCase() || 'D'}
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <div className={"Settings_avatarName"}>{profile.name}</div>
