@@ -1,27 +1,31 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Phone,
-  VideoCamera,
+  ChatCircleDots,
+  DotsThree,
   Microphone,
   MicrophoneSlash,
-  PhoneSlash,
   PaperPlaneTilt,
-  DotsThree,
+  PencilSimple,
+  Phone,
+  PhoneSlash,
+  VideoCamera,
+  WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 import { buildProfileFromContact, NetworkProfileDetailScreen } from "./NetworkProfileDetail";
 
-/* ────────────────────────────────────────────────────────── */
-/* Types & static data                                         */
-/* ────────────────────────────────────────────────────────── */
+type PersonType = "Founder" | "Developer";
 
 interface Message {
   id: string;
   from: "me" | "them";
   text: string;
   time: string;
+  date: string;
+  subject?: string;
 }
 
 export interface InboxLaunchContact {
@@ -31,54 +35,465 @@ export interface InboxLaunchContact {
   match?: number;
   initials?: string;
   online?: boolean;
+  email?: string;
+  avatarUrl?: string;
+  personType?: PersonType;
 }
 
 interface Contact {
   id: string;
   name: string;
   role: string;
+  personType: PersonType;
   match: number;
   lastMsg: string;
   lastTime: string;
   unread: number;
   initials: string;
   online: boolean;
+  email?: string;
+  avatarUrl?: string;
+  subject?: string;
 }
 
+interface CurrentFounder {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  avatarUrl?: string;
+}
+
+interface StoredProfile {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  headline?: string;
+  bio?: string;
+  jobTitle?: string;
+  role?: string;
+  location?: string;
+  avatarUrl?: string;
+  photo?: string;
+  image?: string;
+  primaryGoal?: string;
+}
+
+interface StoredAppUser {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+  profile?: StoredProfile;
+}
+
+const INK = "#0f1c18";
+const DARK = "#1a312c";
+const MID = "#428475";
+const MINT = "#89d7b7";
+const BORDER = "#dce7e1";
+const TEXT = "#1a2e26";
+const MUTED = "#6f9283";
+const DIM = "#9aaea5";
+
 const CONTACTS: Contact[] = [
-  { id: "sarah", name: "Sarah Mitchell", role: "AI Engineer", match: 94, lastMsg: "Sounds great, let's sync tomorrow!", lastTime: "2m", unread: 2, initials: "SM", online: true },
-  { id: "james", name: "James Okafor", role: "Backend Dev", match: 88, lastMsg: "I've reviewed the blueprint…", lastTime: "1h", unread: 0, initials: "JO", online: true },
-  { id: "priya", name: "Priya Nair", role: "Full Stack Dev", match: 81, lastMsg: "Can you share the API docs?", lastTime: "3h", unread: 1, initials: "PN", online: false },
-  { id: "lars", name: "Lars Eriksson", role: "ML Engineer", match: 76, lastMsg: "I'm interested in the AI role.", lastTime: "1d", unread: 0, initials: "LE", online: false },
+  {
+    id: "sarah",
+    name: "Sarah Mitchell",
+    role: "AI Engineer",
+    personType: "Developer",
+    match: 94,
+    lastMsg: "Sounds great, let's sync tomorrow!",
+    lastTime: "2m",
+    unread: 2,
+    initials: "SM",
+    online: true,
+    email: "sarah.mitchell@evolv.app",
+    subject: "Nexus Health blueprint",
+  },
+  {
+    id: "james",
+    name: "James Okafor",
+    role: "Backend Developer",
+    personType: "Developer",
+    match: 88,
+    lastMsg: "I've reviewed the blueprint.",
+    lastTime: "1h",
+    unread: 0,
+    initials: "JO",
+    online: true,
+    email: "james.okafor@evolv.app",
+    subject: "API ownership",
+  },
+  {
+    id: "priya-founder",
+    name: "Priya Sharma",
+    role: "Founder - MedTech",
+    personType: "Founder",
+    match: 79,
+    lastMsg: "Would love to compare launch notes.",
+    lastTime: "Jun 24",
+    unread: 1,
+    initials: "PS",
+    online: false,
+    email: "priya.sharma@evolv.app",
+    subject: "Founder intro",
+  },
+  {
+    id: "priya",
+    name: "Priya Nair",
+    role: "Full Stack Developer",
+    personType: "Developer",
+    match: 81,
+    lastMsg: "Can you share the API docs?",
+    lastTime: "3h",
+    unread: 1,
+    initials: "PN",
+    online: false,
+    email: "priya.nair@evolv.app",
+    subject: "API docs",
+  },
+  {
+    id: "lars",
+    name: "Lars Eriksson",
+    role: "ML Engineer",
+    personType: "Developer",
+    match: 76,
+    lastMsg: "I'm interested in the AI role.",
+    lastTime: "1d",
+    unread: 0,
+    initials: "LE",
+    online: false,
+    email: "lars.eriksson@evolv.app",
+    subject: "AI role",
+  },
 ];
 
 const MOCK_MSGS: Record<string, Message[]> = {
   sarah: [
-    { id: "1", from: "them", text: "Hi! I saw your Nexus Health blueprint — really impressive viability score.", time: "10:02" },
-    { id: "2", from: "me", text: "Thank you! We're targeting early-stage oncology clinics. Your FastAPI experience is exactly what we need.", time: "10:05" },
-    { id: "3", from: "them", text: "I've worked on 3 DICOM processing pipelines before. Happy to walk you through my previous work.", time: "10:07" },
-    { id: "4", from: "me", text: "That would be perfect. Can we schedule a quick call this week?", time: "10:08" },
-    { id: "5", from: "them", text: "Sounds great, let's sync tomorrow!", time: "10:09" },
+    { id: "1", from: "them", text: "Hi! I saw your Nexus Health blueprint. The viability score is really impressive.", time: "10:02 AM", date: "Jun 24, 2025" },
+    { id: "2", from: "me", text: "Thank you! We're targeting early-stage oncology clinics. Your FastAPI experience is exactly what we need.", time: "10:05 AM", date: "Jun 24, 2025" },
+    { id: "3", from: "them", text: "I've worked on 3 DICOM processing pipelines before. Happy to walk you through my previous work.", time: "10:07 AM", date: "Jun 24, 2025" },
+    { id: "4", from: "me", text: "That would be perfect. Can we schedule a quick call this week?", time: "10:08 AM", date: "Jun 24, 2025" },
+    { id: "5", from: "them", text: "Sounds great, let's sync tomorrow!", time: "10:09 AM", date: "Jun 24, 2025" },
   ],
   james: [
-    { id: "1", from: "them", text: "I've reviewed the blueprint — the tech stack looks solid. Node.js + Go hybrid is a good call.", time: "09:30" },
-    { id: "2", from: "me", text: "Glad you think so! We'd need someone to own the API layer and DevOps side.", time: "09:33" },
+    { id: "1", from: "them", text: "I've reviewed the blueprint. The tech stack looks solid. Node.js + Go hybrid is a good call.", time: "09:30 AM", date: "Jun 24, 2025" },
+    { id: "2", from: "me", text: "Glad you think so! We'd need someone to own the API layer and DevOps side.", time: "09:33 AM", date: "Jun 24, 2025" },
+  ],
+  "priya-founder": [
+    { id: "1", from: "them", text: "I liked your positioning around clinical workflows. Would love to compare launch notes.", time: "08:00 AM", date: "Jun 24, 2025", subject: "Founder intro" },
   ],
   priya: [
-    { id: "1", from: "them", text: "Can you share the API docs?", time: "08:15" },
+    { id: "1", from: "them", text: "Can you share the API docs?", time: "08:15 AM", date: "Jun 24, 2025" },
   ],
   lars: [
-    { id: "1", from: "them", text: "I'm interested in the AI role. My background is in computer vision and NLP.", time: "Yesterday" },
+    { id: "1", from: "them", text: "I'm interested in the AI role. My background is in computer vision and NLP.", time: "Yesterday", date: "Jun 23, 2025" },
   ],
 };
 
 const AUDIO_BAR_DURATIONS = [0.52, 0.64, 0.78, 0.58, 0.86, 0.68, 0.74, 0.9, 0.62, 0.8, 0.56, 0.7];
 
-/* ────────────────────────────────────────────────────────── */
-/* Sub-components                                              */
-/* ────────────────────────────────────────────────────────── */
+function getInitials(name: string) {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "U"
+  );
+}
 
-/* Call overlay */
+function getFounderName(currentUser?: CurrentFounder) {
+  return `${currentUser?.firstName ?? ""} ${currentUser?.lastName ?? ""}`.trim() || "You";
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatTime(date: Date) {
+  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function readStoredUsers() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("evolv_users") ?? "[]");
+    return Array.isArray(parsed) ? (parsed as StoredAppUser[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function roleToPersonType(role?: string, fallbackRole?: string): PersonType {
+  const value = `${role ?? ""} ${fallbackRole ?? ""}`.toLowerCase();
+  return value.includes("founder") ? "Founder" : "Developer";
+}
+
+function contactFromStoredUser(user: StoredAppUser): Contact | null {
+  const email = user.email || user.profile?.email;
+  if (!email) return null;
+
+  const name =
+    `${user.profile?.firstName ?? user.firstName ?? ""} ${user.profile?.lastName ?? user.lastName ?? ""}`.trim() ||
+    email.split("@")[0];
+  const personType = roleToPersonType(user.role, user.profile?.role);
+  const role =
+    personType === "Founder"
+      ? user.profile?.headline || user.profile?.primaryGoal || user.profile?.bio || "Founder"
+      : user.profile?.jobTitle || user.profile?.role || user.profile?.bio || "Developer";
+
+  return {
+    id: `user-${email.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    name,
+    role,
+    personType,
+    match: personType === "Developer" ? 82 : 72,
+    lastMsg: "New conversation",
+    lastTime: "Now",
+    unread: 0,
+    initials: getInitials(name),
+    online: false,
+    email,
+    avatarUrl: user.profile?.avatarUrl || user.profile?.photo || user.profile?.image,
+  };
+}
+
+function Avatar({
+  name,
+  initials,
+  avatarUrl,
+  size = 40,
+  dark = false,
+}: {
+  name: string;
+  initials?: string;
+  avatarUrl?: string;
+  size?: number;
+  dark?: boolean;
+}) {
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold"
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: avatarUrl ? undefined : dark ? DARK : "#e8f0eb",
+        backgroundImage: avatarUrl ? `url(${avatarUrl})` : undefined,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+        color: dark ? MINT : MID,
+        fontSize: Math.max(10, Math.round(size * 0.28)),
+        border: dark ? "1px solid rgba(137,215,183,0.25)" : "1px solid #dce9e2",
+      }}
+      aria-label={`${name} avatar`}
+    >
+      {!avatarUrl && (initials || getInitials(name))}
+    </div>
+  );
+}
+
+function MessageRow({
+  msg,
+  contact,
+  currentUser,
+}: {
+  msg: Message;
+  contact: Contact;
+  currentUser?: CurrentFounder;
+}) {
+  const mine = msg.from === "me";
+  const founderName = getFounderName(currentUser);
+  const founderInitials = getInitials(founderName);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex items-start gap-3 ${mine ? "justify-end" : "justify-start"}`}
+    >
+      {!mine && <Avatar name={contact.name} initials={contact.initials} avatarUrl={contact.avatarUrl} size={42} />}
+
+      <div className={`flex max-w-[74%] flex-col ${mine ? "items-end" : "items-start"}`}>
+        <div
+          className={`mb-2 flex flex-wrap items-center gap-2 text-[12px] leading-5 ${mine ? "justify-end" : "justify-start"}`}
+          style={{ color: DIM }}
+        >
+          {!mine && <span className="font-extrabold" style={{ color: INK }}>{contact.name}</span>}
+          <span>{msg.date} · {msg.time}</span>
+          {mine && <span className="font-extrabold" style={{ color: INK }}>You</span>}
+        </div>
+
+        <div
+          className="px-4 py-3 text-[13px] leading-6"
+          style={
+            mine
+              ? { background: DARK, color: "#e8f5ef", borderRadius: "18px 18px 4px 18px" }
+              : { background: "#fff", color: TEXT, border: "1px solid #e4ebe7", borderRadius: "18px 18px 18px 4px" }
+          }
+        >
+          {msg.subject && (
+            <div
+              className="mb-2 rounded-md px-2.5 py-1.5 text-[11px] font-bold"
+              style={{
+                background: mine ? "rgba(137,215,183,0.12)" : "#f0f6f3",
+                color: mine ? MINT : MID,
+              }}
+            >
+              Subject: {msg.subject}
+            </div>
+          )}
+          <p className="whitespace-pre-wrap">{msg.text}</p>
+        </div>
+      </div>
+
+      {mine && <Avatar name={founderName} initials={founderInitials} avatarUrl={currentUser?.avatarUrl} size={42} dark />}
+    </motion.div>
+  );
+}
+
+function ComposeModal({
+  onClose,
+  onSend,
+}: {
+  onClose: () => void;
+  onSend: (data: { email: string; subject: string; message: string }) => string | null;
+}) {
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const submit = () => {
+    setError("");
+    const nextError = onSend({ email, subject, message });
+    if (nextError) {
+      setError(nextError);
+      return;
+    }
+    setEmail("");
+    setSubject("");
+    setMessage("");
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-5"
+      style={{ background: "rgba(15,28,24,0.34)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 360, damping: 32 }}
+        className="w-full max-w-[780px] overflow-hidden bg-white shadow-2xl"
+        style={{ borderRadius: 14, border: `1px solid ${BORDER}` }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-7 py-5" style={{ background: "#0b3327", color: "#fff" }}>
+          <h3 className="text-[1.05rem] font-extrabold">New Message</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-white/10"
+            aria-label="Close compose"
+          >
+            <X size={16} weight="bold" />
+          </button>
+        </div>
+
+        <div>
+          <div className="grid grid-cols-[92px_1fr] items-center gap-4 border-b border-[#edf1ee] px-7 py-3">
+            <label className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#777" }}>
+              To
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Recipient email..."
+              className="h-14 rounded-2xl border px-4 text-[15px] outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+              style={{ borderColor: "#cfdcd6", color: TEXT }}
+            />
+          </div>
+
+          <div className="grid grid-cols-[92px_1fr] items-center gap-4 border-b border-[#edf1ee] px-7 py-3">
+            <label className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#777" }}>
+              Subject
+            </label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              placeholder="Subject optional..."
+              className="h-14 rounded-2xl border px-4 text-[15px] outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+              style={{ borderColor: "#cfdcd6", color: TEXT }}
+            />
+          </div>
+
+          <div className="grid grid-cols-[92px_1fr] gap-4 border-b border-[#edf1ee] px-7 py-4">
+            <label className="pt-3 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#777" }}>
+              Message
+            </label>
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Write your message..."
+              rows={7}
+              className="resize-none rounded-2xl border px-4 py-3 text-[15px] leading-6 outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+              style={{ borderColor: "#cfdcd6", color: TEXT }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 px-7 py-5 sm:flex-row sm:items-center sm:justify-between" style={{ background: "#fbfcfb" }}>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="flex items-center gap-2 text-[12px] font-semibold"
+                style={{ color: "#b42318" }}
+              >
+                <WarningCircle size={15} weight="fill" />
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-12 rounded-xl border bg-white px-6 text-[14px] font-semibold transition hover:bg-[#f5f7f5]"
+              style={{ borderColor: "#ded9d0", color: TEXT }}
+            >
+              Cancel
+            </button>
+            <motion.button
+              type="button"
+              onClick={submit}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex h-12 items-center gap-2 rounded-xl px-7 text-[14px] font-extrabold"
+              style={{ background: "#0b3327", color: "#fff" }}
+            >
+              <PaperPlaneTilt size={15} weight="fill" />
+              Send Message
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function CallOverlay({
   contact,
   mode,
@@ -92,49 +507,38 @@ function CallOverlay({
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
   }, []);
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
-  /* Audio visualiser bars */
-  const BAR_COUNT = 12;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(15,28,24,0.88)" }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="rounded-2xl overflow-hidden text-center"
-        style={{ width: 320, background: "#1a312c", border: "1px solid rgba(137,215,183,0.15)" }}
+        className="overflow-hidden rounded-2xl text-center"
+        style={{ width: 320, background: DARK, border: "1px solid rgba(137,215,183,0.15)" }}
       >
         <div className="px-8 py-8">
-          {/* Avatar */}
-          <div
-            className="h-20 w-20 rounded-full mx-auto mb-3 flex items-center justify-center text-[1.5rem] font-bold"
-            style={{ background: "#1a3028", color: "#89d7b7", border: "2px solid rgba(137,215,183,0.2)" }}
-          >
-            {contact.initials}
-          </div>
-
-          <div className="text-[15px] font-semibold mb-0.5" style={{ color: "rgba(255,255,255,0.9)" }}>
+          <Avatar name={contact.name} initials={contact.initials} avatarUrl={contact.avatarUrl} size={80} dark />
+          <div className="mb-0.5 mt-3 text-[15px] font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
             {contact.name}
           </div>
-          <div className="text-[12px] mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <div className="mb-1 text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
             {contact.role}
           </div>
-          <div className="text-[13px] font-mono mb-6" style={{ color: "#89d7b7" }}>
+          <div className="mb-6 font-mono text-[13px]" style={{ color: MINT }}>
             {fmt(seconds)}
           </div>
 
-          {/* Visualiser */}
-          <div className="flex items-end justify-center gap-1 mb-6" style={{ height: 32 }}>
-            {Array.from({ length: BAR_COUNT }).map((_, i) => (
+          <div className="mb-6 flex items-end justify-center gap-1" style={{ height: 32 }}>
+            {Array.from({ length: 12 }).map((_, i) => (
               <motion.div
                 key={i}
                 className="w-1 rounded-full"
-                style={{ background: muted ? "#334d42" : "#428475" }}
+                style={{ background: muted ? "#334d42" : MID }}
                 animate={{ height: muted ? 4 : [4, 8, 16, 24, 12, 20, 8, 28, 12, 6][i % 10] }}
                 transition={{
                   repeat: Infinity,
@@ -146,23 +550,24 @@ function CallOverlay({
             ))}
           </div>
 
-          {/* Controls */}
           <div className="flex items-center justify-center gap-4">
             <button
+              type="button"
               onClick={() => setMuted((m) => !m)}
-              className="h-12 w-12 rounded-full flex items-center justify-center transition-colors"
+              className="flex h-12 w-12 items-center justify-center rounded-full transition-colors"
               style={{ background: muted ? "rgba(255,255,255,0.08)" : "rgba(137,215,183,0.12)" }}
             >
               {muted ? (
                 <MicrophoneSlash size={20} style={{ color: "rgba(255,255,255,0.4)" }} />
               ) : (
-                <Microphone size={20} style={{ color: "#89d7b7" }} />
+                <Microphone size={20} style={{ color: MINT }} />
               )}
             </button>
 
             <button
+              type="button"
               onClick={onEnd}
-              className="h-14 w-14 rounded-full flex items-center justify-center"
+              className="flex h-14 w-14 items-center justify-center rounded-full"
               style={{ background: "#c0392b" }}
             >
               <PhoneSlash size={22} style={{ color: "#fff" }} weight="fill" />
@@ -170,10 +575,11 @@ function CallOverlay({
 
             {mode === "video" && (
               <button
-                className="h-12 w-12 rounded-full flex items-center justify-center"
+                type="button"
+                className="flex h-12 w-12 items-center justify-center rounded-full"
                 style={{ background: "rgba(137,215,183,0.12)" }}
               >
-                <VideoCamera size={20} style={{ color: "#89d7b7" }} />
+                <VideoCamera size={20} style={{ color: MINT }} />
               </button>
             )}
           </div>
@@ -183,18 +589,16 @@ function CallOverlay({
   );
 }
 
-/* ────────────────────────────────────────────────────────── */
-/* Main export                                                 */
-/* ────────────────────────────────────────────────────────── */
-
 export function InboxTab({
   activeContactId,
   onActiveContactChange,
   extraContacts = [],
+  currentUser,
 }: {
   activeContactId?: string;
   onActiveContactChange?: (id: string) => void;
   extraContacts?: InboxLaunchContact[];
+  currentUser?: CurrentFounder;
 }) {
   const [localActiveId, setLocalActiveId] = useState("sarah");
   const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
@@ -202,36 +606,34 @@ export function InboxTab({
   const [draft, setDraft] = useState("");
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const messageListRef = useRef<HTMLDivElement>(null);
 
-  const mergedContacts = [
-    ...extraContacts
-      .filter((extra) => !contacts.some((contact) => contact.id === extra.id))
+  const mergedContacts = useMemo(() => {
+    const existingIds = new Set(contacts.map((contact) => contact.id));
+    const existingEmails = new Set(contacts.map((contact) => contact.email?.toLowerCase()).filter(Boolean));
+    const extras = extraContacts
+      .filter((extra) => !existingIds.has(extra.id) && !existingEmails.has(extra.email?.toLowerCase()))
       .map<Contact>((extra) => {
-        const initials =
-          extra.initials ||
-          extra.name
-            .split(" ")
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0])
-            .join("")
-            .toUpperCase();
-
+        const personType = extra.personType ?? roleToPersonType(extra.role);
         return {
           id: extra.id,
           name: extra.name,
           role: extra.role,
+          personType,
           match: extra.match ?? 80,
           lastMsg: "New conversation",
           lastTime: "Now",
           unread: 0,
-          initials,
+          initials: extra.initials || getInitials(extra.name),
           online: Boolean(extra.online),
+          email: extra.email,
+          avatarUrl: extra.avatarUrl,
         };
-      }),
-    ...contacts,
-  ];
+      });
+
+    return [...extras, ...contacts];
+  }, [contacts, extraContacts]);
 
   const activeId = activeContactId ?? localActiveId;
   const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0] ?? CONTACTS[0];
@@ -241,32 +643,100 @@ export function InboxTab({
   const selectContact = (id: string) => {
     if (onActiveContactChange) onActiveContactChange(id);
     else setLocalActiveId(id);
+    setContacts((prev) => prev.map((item) => (item.id === id ? { ...item, unread: 0 } : item)));
     setViewingProfile(false);
   };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const list = messageListRef.current;
+    if (!list) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      list.scrollTop = list.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [activeId, thread.length]);
 
   const sendMsg = () => {
     if (!draft.trim()) return;
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const msg: Message = { id: Date.now().toString(), from: "me", text: draft.trim(), time: now };
+    const now = new Date();
+    const body = draft.trim();
+    const msg: Message = {
+      id: Date.now().toString(),
+      from: "me",
+      text: body,
+      time: formatTime(now),
+      date: formatDate(now),
+    };
+
     setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
     setContacts((prev) => {
-      const nextContact = { ...contact, lastMsg: draft.trim(), lastTime: "Now", unread: 0 };
+      const nextContact = { ...contact, lastMsg: body, lastTime: "Now", unread: 0 };
       return prev.some((item) => item.id === contact.id)
-        ? prev.map((item) => item.id === contact.id ? nextContact : item)
+        ? prev.map((item) => (item.id === contact.id ? nextContact : item))
         : [nextContact, ...prev];
     });
     setDraft("");
   };
 
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       sendMsg();
     }
+  };
+
+  const findRecipient = (email: string) => {
+    const normalized = email.toLowerCase();
+    const existing = mergedContacts.find((item) => item.email?.toLowerCase() === normalized);
+    if (existing) return existing;
+
+    const storedUser = readStoredUsers().find((user) => (user.email || user.profile?.email)?.toLowerCase() === normalized);
+    return storedUser ? contactFromStoredUser(storedUser) : null;
+  };
+
+  const sendComposedMessage = ({ email, subject, message }: { email: string; subject: string; message: string }) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const trimmedMessage = message.trim();
+    const trimmedSubject = subject.trim();
+
+    if (!normalizedEmail) return "Enter the recipient's email.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return "Enter a valid email address.";
+    if (!trimmedMessage) return "Write a message before sending.";
+
+    const recipient = findRecipient(normalizedEmail);
+    if (!recipient) return "No Evolv account was found with that email.";
+
+    const now = new Date();
+    const msg: Message = {
+      id: Date.now().toString(),
+      from: "me",
+      text: trimmedMessage,
+      time: formatTime(now),
+      date: formatDate(now),
+      subject: trimmedSubject || undefined,
+    };
+
+    const nextContact: Contact = {
+      ...recipient,
+      email: recipient.email || normalizedEmail,
+      lastMsg: trimmedMessage,
+      lastTime: "Now",
+      unread: 0,
+      subject: trimmedSubject || recipient.subject,
+    };
+
+    setContacts((prev) => [nextContact, ...prev.filter((item) => item.id !== nextContact.id)]);
+    setMessages((prev) => ({
+      ...prev,
+      [nextContact.id]: [...(prev[nextContact.id] ?? []), msg],
+    }));
+    if (onActiveContactChange) onActiveContactChange(nextContact.id);
+    else setLocalActiveId(nextContact.id);
+    setViewingProfile(false);
+    setComposeOpen(false);
+    return null;
   };
 
   if (viewingProfile) {
@@ -284,203 +754,234 @@ export function InboxTab({
   }
 
   return (
-    <div
-      className="h-full flex overflow-hidden"
-      style={{ background: "#f5f6f4" }}
-    >
-      {/* ── Contact list ── */}
-      <div className="flex flex-col shrink-0 overflow-hidden" style={{ width: 260, background: "#fff", borderRight: "1px solid #e8ede9" }}>
-        <div className="px-4 py-4 shrink-0" style={{ borderBottom: "1px solid #eaf0eb" }}>
-          <div className="text-[13px] font-bold" style={{ color: "#1a2e26" }}>Inbox</div>
-          <div className="text-[11px] mt-0.5" style={{ color: "#7a9e8e" }}>Developer connections</div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden" style={{ background: "#f5f6f4", padding: "24px 28px" }}>
+      <div className="mb-4 flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-[1.2rem] font-bold" style={{ color: TEXT }}>
+            Inbox
+          </h2>
+          <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>
+            Manage founder and developer conversations in one place.
+          </p>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {mergedContacts.map((c) => {
-            const isActive = c.id === activeId;
-            return (
-              <button
-                key={c.id}
-                onClick={() => {
-                  selectContact(c.id);
-                  setContacts((prev) => prev.map((item) => item.id === c.id ? { ...item, unread: 0 } : item));
-                }}
-                className={`w-full text-left px-4 py-3.5 transition-all cursor-pointer ${isActive ? 'bg-[#f0f5f2]' : 'hover:bg-[#f5f7f5]'}`}
-                style={{
-                  borderBottom: "1px solid #f0f5f2",
-                }}
-              >
-                <div className="flex items-start gap-2.5">
-                  <div className="relative shrink-0">
-                    <div
-                      className="h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold"
-                      style={{ background: isActive ? "#0f1c18" : "#e8f0eb", color: isActive ? "#89d7b7" : "#428475" }}
-                    >
-                      {c.initials}
-                    </div>
-                    {c.online && (
-                      <span
-                        className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full"
-                        style={{ background: "#2e7d5c", border: "2px solid #fff" }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[12px] font-semibold truncate" style={{ color: "#1a2e26" }}>{c.name}</span>
-                      <span className="text-[10px] shrink-0 ml-1" style={{ color: "#b0c0b8" }}>{c.lastTime}</span>
-                    </div>
-                    <div className="text-[10px] mb-0.5" style={{ color: "#7a9e8e" }}>{c.role}</div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] truncate" style={{ color: "#7a9e8e" }}>{c.lastMsg}</span>
-                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                        <span className="text-[10px] font-semibold" style={{ color: "#2e7d5c" }}>{c.match}%</span>
-                        {c.unread > 0 && (
+        <motion.button
+          type="button"
+          onClick={() => setComposeOpen(true)}
+          whileHover={{ y: -2, boxShadow: "0 12px 24px rgba(15,28,24,0.16)" }}
+          whileTap={{ scale: 0.98 }}
+          className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
+          style={{ background: DARK, color: MINT }}
+        >
+          <PencilSimple size={15} weight="bold" />
+          Compose
+        </motion.button>
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <div
+          className="grid h-full min-h-0 gap-5 xl:grid-cols-[330px_1fr]"
+        >
+          <section
+            className="flex min-h-0 flex-col overflow-hidden bg-white"
+            style={{
+              border: `1px solid ${BORDER}`,
+              borderRadius: 14,
+              boxShadow: "0 16px 38px rgba(15,28,24,0.06)",
+            }}
+          >
+            <div
+              className="shrink-0 px-5 py-4"
+              style={{ borderBottom: "1px solid #eaf0eb", background: "#fbfdfb" }}
+            >
+              <div className="flex items-center gap-2 text-[13px] font-extrabold" style={{ color: TEXT }}>
+                <ChatCircleDots size={16} weight="fill" style={{ color: MID }} />
+                Conversations
+              </div>
+              <div className="mt-1 text-[11px]" style={{ color: MUTED }}>
+                {mergedContacts.length} people in your inbox
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {mergedContacts.map((item) => {
+                const isActive = item.id === activeId;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => selectContact(item.id)}
+                    className="w-full px-4 py-4 text-left transition-all"
+                    style={{
+                      background: isActive ? "#f0f5f2" : "#fff",
+                      borderBottom: "1px solid #edf3ef",
+                      boxShadow: isActive ? "inset 3px 0 0 #428475" : "none",
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="relative">
+                        <Avatar name={item.name} initials={item.initials} avatarUrl={item.avatarUrl} size={40} dark={isActive} />
+                        {item.online && (
                           <span
-                            className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-bold"
-                            style={{ background: "#89d7b7", color: "#0f1c18" }}
-                          >
-                            {c.unread}
-                          </span>
+                            className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full"
+                            style={{ background: "#2e7d5c", border: "2px solid #fff" }}
+                          />
                         )}
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-[12px] font-extrabold" style={{ color: TEXT }}>
+                            {item.name}
+                          </span>
+                          <span className="shrink-0 text-[10px]" style={{ color: DIM }}>
+                            {item.lastTime}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase"
+                            style={{
+                              background: item.personType === "Founder" ? "#eef2ff" : "#e8f5ef",
+                              color: item.personType === "Founder" ? "#4f46e5" : "#2e7d5c",
+                            }}
+                          >
+                            {item.personType}
+                          </span>
+                          <span className="truncate text-[10px]" style={{ color: MUTED }}>
+                            {item.role}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="truncate text-[11px]" style={{ color: MUTED }}>
+                            {item.lastMsg}
+                          </span>
+                          {item.unread > 0 && (
+                            <span
+                              className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold"
+                              style={{ background: MINT, color: INK }}
+                            >
+                              {item.unread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section
+            className="flex min-h-0 flex-col overflow-hidden bg-white"
+            style={{
+              border: `1px solid ${BORDER}`,
+              borderRadius: 14,
+              boxShadow: "0 16px 38px rgba(15,28,24,0.06)",
+            }}
+          >
+            <div
+              className="flex shrink-0 items-center px-5 py-4"
+              style={{ borderBottom: "1px solid #e8ede9", background: "#fbfdfb" }}
+            >
+              <button
+                type="button"
+                onClick={() => setViewingProfile(true)}
+                className="-ml-2 flex flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition-all hover:bg-[#f5f7f5]"
+              >
+                <Avatar name={contact.name} initials={contact.initials} avatarUrl={contact.avatarUrl} size={44} dark />
+                <div className="min-w-0">
+                  <div className="truncate text-[14px] font-extrabold" style={{ color: TEXT }}>
+                    {contact.name}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]" style={{ color: MUTED }}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: contact.online ? "#2e7d5c" : DIM }} />
+                    {contact.online ? "Online" : "Offline"}
+                    <span>- {contact.role}</span>
+                    <span
+                      className="ml-1 rounded-full px-1.5 py-0.5 font-bold"
+                      style={{ background: "#e8f5ef", color: "#2e7d5c" }}
+                    >
+                      {contact.match}% Match
+                    </span>
                   </div>
                 </div>
               </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* ── Chat panel ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Chat header */}
-        <div
-          className="flex items-center px-5 py-3.5 shrink-0 bg-white"
-          style={{ borderBottom: "1px solid #e8ede9" }}
-        >
-          <button
-            type="button"
-            onClick={() => setViewingProfile(true)}
-            className="flex items-center gap-2.5 flex-1 rounded-xl px-2 py-1.5 -ml-2 text-left transition-all hover:bg-[#f5f7f5] cursor-pointer"
-          >
-            <div
-              className="h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-              style={{ background: "#1a312c", color: "#89d7b7" }}
-            >
-              {contact.initials}
-            </div>
-            <div>
-              <div className="text-[13px] font-semibold" style={{ color: "#1a2e26" }}>{contact.name}</div>
-              <div className="flex items-center gap-1.5 text-[10px]" style={{ color: "#7a9e8e" }}>
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: contact.online ? "#2e7d5c" : "#b0c0b8" }}
-                />
-                {contact.online ? "Online" : "Offline"}
-                <span>· {contact.role}</span>
-                <span
-                  className="px-1.5 py-0.5 rounded-full font-semibold ml-1"
-                  style={{ background: "#e8f5ef", color: "#2e7d5c" }}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCall({ mode: "voice" })}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all hover:bg-[#e8ede9]"
+                  style={{ color: INK, border: "1px solid #e8ede9" }}
                 >
-                  {contact.match}% Match
-                </span>
+                  <Phone size={14} /> Voice
+                </button>
+                <motion.button
+                  type="button"
+                  onClick={() => setCall({ mode: "video" })}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-semibold"
+                  style={{ background: DARK, color: MINT }}
+                >
+                  <VideoCamera size={14} /> Video
+                </motion.button>
+                <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-[#e8ede9]">
+                  <DotsThree size={16} style={{ color: MUTED }} />
+                </button>
               </div>
             </div>
-          </button>
-          {/* Call buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCall({ mode: "voice" })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all hover:bg-[#e8ede9] cursor-pointer"
-              style={{ color: "#0f1c18", border: "1px solid #e8ede9" }}
-            >
-              <Phone size={14} /> Voice
-            </button>
-            <motion.button
-              onClick={() => setCall({ mode: "video" })}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium cursor-pointer"
-              style={{ background: "#1a312c", color: "#89d7b7" }}
-            >
-              <VideoCamera size={14} /> Video
-            </motion.button>
-            <button className="p-1.5 rounded-lg hover:bg-[#e8ede9] transition-all cursor-pointer">
-              <DotsThree size={16} style={{ color: "#7a9e8e" }} />
-            </button>
-          </div>
-        </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          <AnimatePresence>
-            {thread.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}
+            {contact.subject && (
+              <div className="shrink-0 px-6 py-3 text-[12px] font-bold" style={{ color: MID, borderBottom: "1px solid #eef3f0" }}>
+                Subject: {contact.subject}
+              </div>
+            )}
+
+            <div ref={messageListRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5" style={{ background: "#fbfcfb" }}>
+              <div className="flex flex-col gap-6">
+                <AnimatePresence initial={false}>
+                  {thread.map((msg) => (
+                    <MessageRow key={msg.id} msg={msg} contact={contact} currentUser={currentUser} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-3 bg-white px-4 py-3" style={{ borderTop: "1px solid #e8ede9" }}>
+              <Avatar name={getFounderName(currentUser)} initials={getInitials(getFounderName(currentUser))} avatarUrl={currentUser?.avatarUrl} size={36} dark />
+              <input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Type a message..."
+                className="h-11 flex-1 rounded-xl px-4 text-[13px] outline-none"
+                style={{ background: "#f5f7f5", border: "1px solid #e8ede9", color: TEXT }}
+              />
+              <motion.button
+                type="button"
+                onClick={sendMsg}
+                disabled={!draft.trim()}
+                whileHover={draft.trim() ? { scale: 1.08 } : {}}
+                whileTap={draft.trim() ? { scale: 0.92 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: DARK, opacity: draft.trim() ? 1 : 0.4 }}
+                aria-label="Send message"
               >
-                <div
-                  className="max-w-[68%] px-4 py-2.5 rounded-2xl text-[13px]"
-                  style={
-                    msg.from === "me"
-                      ? { background: "#1a312c", color: "#e8f5ef", borderBottomRightRadius: 4 }
-                      : { background: "#fff", color: "#1a2e26", border: "1px solid #e8ede9", borderBottomLeftRadius: 4 }
-                  }
-                >
-                  {msg.text}
-                  <div
-                    className="text-[10px] mt-1 text-right"
-                    style={{ color: msg.from === "me" ? "rgba(137,215,183,0.5)" : "#b0c0b8" }}
-                  >
-                    {msg.time}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Input */}
-        <div
-          className="px-4 py-3 bg-white shrink-0 flex items-center gap-2"
-          style={{ borderTop: "1px solid #e8ede9" }}
-        >
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="Type a message…"
-            className="flex-1 rounded-xl px-4 py-2.5 text-[13px] outline-none"
-            style={{ background: "#f5f7f5", border: "1px solid #e8ede9", color: "#1a2e26" }}
-          />
-          <motion.button
-            onClick={sendMsg}
-            disabled={!draft.trim()}
-            whileHover={draft.trim() ? { scale: 1.08 } : {}}
-            whileTap={draft.trim() ? { scale: 0.92 } : {}}
-            transition={{ type: "spring", stiffness: 400, damping: 22 }}
-            className="h-9 w-9 rounded-xl flex items-center justify-center cursor-pointer"
-            style={{ background: "#1a312c", opacity: draft.trim() ? 1 : 0.4 }}
-          >
-            <PaperPlaneTilt size={15} style={{ color: "#89d7b7" }} weight="fill" />
-          </motion.button>
+                <PaperPlaneTilt size={16} style={{ color: MINT }} weight="fill" />
+              </motion.button>
+            </div>
+          </section>
         </div>
       </div>
 
-      {/* Call overlay */}
-      {call && (
-        <CallOverlay
-          contact={contact}
-          mode={call.mode}
-          onEnd={() => setCall(null)}
-        />
-      )}
+      <AnimatePresence>
+        {composeOpen && <ComposeModal onClose={() => setComposeOpen(false)} onSend={sendComposedMessage} />}
+      </AnimatePresence>
+
+      {call && <CallOverlay contact={contact} mode={call.mode} onEnd={() => setCall(null)} />}
     </div>
   );
 }
