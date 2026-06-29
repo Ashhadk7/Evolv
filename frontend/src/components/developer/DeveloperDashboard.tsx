@@ -267,7 +267,6 @@ const MODALS = {
 const DeveloperDashboard = ({ onNavigate }) => {
     const [modal, setModal] = useState(null);
     const [userName, setUserName] = useState('Sarah');
-    const [profile, setProfile] = useState(profileData);
     const openModal = useCallback((cfg) => setModal(cfg), []);
     const closeModal = useCallback(() => setModal(null), []);
 
@@ -279,15 +278,6 @@ const DeveloperDashboard = ({ onNavigate }) => {
                 if (user.firstName) {
                     setUserName(user.firstName);
                 }
-                setProfile(prev => ({
-                    ...prev,
-                    name: [user.firstName, user.lastName].filter(Boolean).join(' ') || prev.name,
-                    role: user.jobTitle || prev.role,
-                    location: user.location || prev.location,
-                    experience: user.experience ? `${user.experience} Experience` : prev.experience,
-                    availability: user.openToOpportunities !== false ? "Open to Opportunities" : "Not Looking",
-                    image: user.avatarUrl || ""
-                }));
             }
         } catch (_) {}
     }, []);
@@ -301,21 +291,14 @@ const DeveloperDashboard = ({ onNavigate }) => {
                     onNavigate={onNavigate}
                 />
 
+                {/* Compact Horizontal AI Match Banner */}
+                <FeaturedMatchWithModal data={featuredMatch} openModal={openModal} />
+
                 {/* Row 1: KPI Cards */}
                 <div className={"DeveloperDashboard_kpiRow"}>
                     {statsData.map((stat) => (
                         <StatCard key={stat.id} {...stat} />
                     ))}
-                </div>
-
-                {/* Row 2: Latest AI Match | Developer Profile */}
-                <div className={"DeveloperDashboard_row2"}>
-                    <div className={"DeveloperDashboard_latestMatchWrapper"}>
-                        <FeaturedMatchWithModal data={featuredMatch} openModal={openModal} />
-                    </div>
-                    <div className={"DeveloperDashboard_profileWrapper"}>
-                        <ProfileCardWithModal data={profile} openModal={openModal} />
-                    </div>
                 </div>
 
                 {/* Row 3: Recent Top Matches (Full Width) */}
@@ -384,6 +367,7 @@ const TopbarWithModal = ({ title, subtitle, onNavigate }) => {
                 title={title}
                 subtitle={subtitle}
                 onNavigate={onNavigate}
+                animateTitle={true}
             />
         </div>
     );
@@ -391,58 +375,33 @@ const TopbarWithModal = ({ title, subtitle, onNavigate }) => {
 
 const FeaturedMatchWithModal = ({ data, openModal }) => {
     const { name, icon, matchScore, description, techStack, whyMatched } = data;
-    const logo = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'S';
     return (
-        <div className={"FeaturedMatch_featuredMatch"}>
-            <div className={"FeaturedMatch_sectionTop"}>
-                <i className="fas fa-fire" style={{ color: '#FF6B6B' }}></i>
-                <span className={"FeaturedMatch_secLabel"}>Latest AI Match</span>
-            </div>
-            <div className={"FeaturedMatch_card"}>
-                <div className={"FeaturedMatch_icon"} style={{ fontWeight: 'bold' }}>
-                    {logo}
+        <div className="AiMatchBanner_container">
+            <div className="AiMatchBanner_left">
+                <div className="AiMatchBanner_iconBadge">
+                    <i className="fas fa-bolt"></i>
                 </div>
-                <div className={"FeaturedMatch_body"}>
-                    <div className={"FeaturedMatch_topRow"}>
-                        <span className={"FeaturedMatch_name"}>{name}</span>
-                        <span className={"FeaturedMatch_score"}>{matchScore}% Match</span>
+                <div className="AiMatchBanner_content">
+                    <div className="AiMatchBanner_header">
+                        <span className="AiMatchBanner_label">AI Match Briefing</span>
+                        <span className="AiMatchBanner_badge">OPPORTUNITY</span>
                     </div>
-                    <div className={"FeaturedMatch_desc"}>{description}</div>
-                    <div className={"FeaturedMatch_techTags"}>
-                        {techStack.map((tech, idx) => (
-                            <span key={idx} className={"FeaturedMatch_techTag"}>{tech}</span>
-                        ))}
-                    </div>
-                    <div className={"FeaturedMatch_whyBox"}>
-                        <div className={"FeaturedMatch_whyLabel"}>Why matched?</div>
-                        <ul>
-                            {whyMatched.map((item, idx) => (
-                                <li key={idx}><i className="fas fa-check-circle"></i> {item}</li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div className={"FeaturedMatch_actions"}>
-                        <button
-                            className={`${"FeaturedMatch_btn"} ${"FeaturedMatch_primary"}`}
-                            onClick={() => openModal(MODALS.reviewMatch(data))}
-                        >
-                            <i className="fas fa-eye"></i> Review Match
-                        </button>
-                        <button
-                            className={`${"FeaturedMatch_btn"} ${"FeaturedMatch_iconOnly"}`}
-                            onClick={() => openModal(MODALS.saveMatch(data))}
-                        >
-                            <i className="fas fa-bookmark"></i>
-                        </button>
-                        <button
-                            className={"FeaturedMatch_btn"}
-                            onClick={() => openModal(MODALS.shareMatch)}
-                        >
-                            <i className="fas fa-share-alt"></i>
-                        </button>
+                    <p className="AiMatchBanner_text">
+                        <strong>High-viability match detected</strong> &mdash; <strong>{name}</strong> matches <strong>{matchScore}%</strong> with your profile. They are looking for expertise in {techStack.slice(0, 3).join(', ')}.
+                    </p>
+                    <div className="AiMatchBanner_pills">
+                        <span className="AiMatchBanner_pill AiMatchBanner_scorePill">Match rate: {matchScore}%</span>
+                        <span className="AiMatchBanner_pill">HealthTech &middot; Series A ready</span>
+                        <span className="AiMatchBanner_pill">Updated 2h ago</span>
                     </div>
                 </div>
             </div>
+            <button
+                className="AiMatchBanner_btn"
+                onClick={() => openModal(MODALS.reviewMatch(data))}
+            >
+                Review Match <i className="fas fa-arrow-right"></i>
+            </button>
         </div>
     );
 };
@@ -486,72 +445,6 @@ const MatchCardWithModal = ({ data, openModal }) => {
                 >
                     <i className="fas fa-bookmark"></i> Save
                 </button>
-            </div>
-        </div>
-    );
-};
-
-const ProfileCardWithModal = ({ data, openModal }) => {
-    const { name, role, location, experience, availability, profileStrength, founderRating, image } = data;
-    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'D';
-    return (
-        <div className={"ProfileCard_profileCard"}>
-            <div className={"ProfileCard_header"}>
-                <span className={"ProfileCard_title"}><i className="fas fa-user-circle"></i> Developer Profile</span>
-                <a href="#" onClick={(e) => { e.preventDefault(); openModal(MODALS.editProfile); }}>Edit Profile</a>
-            </div>
-            <div className={"ProfileCard_content"}>
-                <div className={"ProfileCard_avatarWrap"}>
-                    {image ? (
-                        <img src={image} alt={name} className={"ProfileCard_avatar"} />
-                    ) : (
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "100%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "1.15rem",
-                                fontWeight: "bold",
-                                background: "linear-gradient(135deg, #4cb896, #89d7b7)",
-                                color: "#0f1c18"
-                            }}
-                        >
-                            {initials}
-                        </div>
-                    )}
-                    <div className={"ProfileCard_statusDot"}></div>
-                </div>
-                <div className={"ProfileCard_right"}>
-                    <div className={"ProfileCard_name"}>{name}</div>
-                    <div className={"ProfileCard_role"}>{role}</div>
-                    <div className={"ProfileCard_meta"}>
-                        <div className={"ProfileCard_metaItem"}><i className="fas fa-map-marker-alt"></i> {location}</div>
-                        <div className={"ProfileCard_metaItem"}><i className="fas fa-briefcase"></i> {experience}</div>
-                        <div className={`${"ProfileCard_metaItem"} ${"ProfileCard_avail"}`}><i className="fas fa-circle"></i> Availability: {availability}</div>
-                    </div>
-                </div>
-            </div>
-            <div className={"ProfileCard_stats"}>
-                <div className={"ProfileCard_stat"}>
-                    <span className={"ProfileCard_statLabel"}>Profile Strength</span>
-                    <div className={"ProfileCard_statNum"}>{profileStrength}</div>
-                </div>
-                <div className={"ProfileCard_stat"}>
-                    <span className={"ProfileCard_statLabel"}>Founder Rating</span>
-                    <div className={"ProfileCard_statNum"}><span className={"ProfileCard_star"}>★</span> {founderRating}</div>
-                </div>
-            </div>
-            <div className={"ProfileCard_bottomRow"}>
-                <button className={"ProfileCard_portfolioBtn"} onClick={() => openModal(MODALS.viewPortfolio)}>
-                    <i className="fas fa-briefcase"></i> View Portfolio
-                </button>
-                <div className={"ProfileCard_socials"}>
-                    <a href="#" onClick={(e) => { e.preventDefault(); openModal(MODALS.github); }}><i className="fab fa-github"></i></a>
-                    <a href="#" onClick={(e) => { e.preventDefault(); openModal(MODALS.linkedin); }}><i className="fab fa-linkedin"></i></a>
-                    <a href="#" onClick={(e) => { e.preventDefault(); openModal(MODALS.twitter); }}><i className="fab fa-twitter"></i></a>
-                </div>
             </div>
         </div>
     );

@@ -7,7 +7,7 @@ const applicationsData = [
     {
         id: 1,
         startup: 'Nexus Health',
-        logo: '🏥',
+        logo: 'NH',
         role: 'AI Engineer',
         matchScore: 94,
         appliedDate: 'Jun 22, 2025',
@@ -33,7 +33,7 @@ const applicationsData = [
     {
         id: 2,
         startup: 'Aura Logistics',
-        logo: '🚚',
+        logo: 'AL',
         role: 'Full Stack Developer',
         matchScore: 88,
         appliedDate: 'Jun 21, 2025',
@@ -57,7 +57,7 @@ const applicationsData = [
     {
         id: 3,
         startup: 'FinFlow AI',
-        logo: '💰',
+        logo: 'FF',
         role: 'Backend Engineer',
         matchScore: 76,
         appliedDate: 'Jun 18, 2025',
@@ -83,7 +83,7 @@ const applicationsData = [
     {
         id: 4,
         startup: 'Veritas Energy',
-        logo: '⚡',
+        logo: 'VE',
         role: 'Blockchain Developer',
         matchScore: 82,
         appliedDate: 'Jun 12, 2025',
@@ -102,54 +102,87 @@ const applicationsData = [
         timeline: [
             { date: 'Jun 12', event: 'Application Submitted', icon: 'paper-plane', color: '#5BC8A0' },
             { date: 'Jun 14', event: 'Profile Reviewed', icon: 'eye', color: '#C4973A' },
-            { date: 'Jun 16', event: 'Shortlisted by Founder', icon: 'bookmark', color: '#7C5CBF' },
+            { date: 'Jun 16', event: 'Reviewed by Founder', icon: 'eye', color: '#C4973A' },
             { date: 'Jun 18', event: 'Position Filled Internally', icon: 'times-circle', color: '#FF6B6B' },
         ],
     },
     {
         id: 5,
-        startup: 'AgriTwin',
-        logo: '🌱',
-        role: 'Full Stack Developer',
-        matchScore: 71,
+        startup: 'CloudScale AI',
+        logo: 'CS',
+        role: 'DevOps Engineer',
+        matchScore: 84,
         appliedDate: 'Jun 10, 2025',
-        status: 'Withdrawn',
-        founder: 'Ahmed Raza',
-        founderRole: 'CEO',
-        industry: 'EdTech',
-        stage: 'Idea',
-        budget: '$50K',
-        teamSize: '3',
-        nextAction: 'Application withdrawn by you',
-        description: 'Digital twin platform for agricultural education and training.',
-        techStack: ['React', 'Node.js', 'Three.js', 'PostgreSQL'],
-        whyMatched: ['React & Node.js skills', '3D visualization experience'],
+        status: 'Pending',
+        founder: 'Marcus Aurelius',
+        founderRole: 'Founder',
+        industry: 'CloudTech',
+        stage: 'Seed',
+        budget: '$150K',
+        teamSize: '5',
+        nextAction: 'Awaiting initial screen',
+        description: 'Auto-scaling and cost-optimization orchestration platform for multi-cloud deployments.',
+        techStack: ['Python', 'Terraform', 'AWS', 'Kubernetes'],
+        whyMatched: ['Solid AWS infrastructure background', 'Kubernetes experience', 'Python dev skills'],
         upcomingInterviews: [],
         timeline: [
             { date: 'Jun 10', event: 'Application Submitted', icon: 'paper-plane', color: '#5BC8A0' },
-            { date: 'Jun 15', event: 'Application Withdrawn', icon: 'undo', color: '#888' },
+            { date: 'Jun 12', event: 'Under Review by Team', icon: 'search', color: '#C4973A' },
+        ],
+    },
+    {
+        id: 6,
+        startup: 'MedConnect',
+        logo: 'MC',
+        role: 'Frontend Engineer',
+        matchScore: 91,
+        appliedDate: 'Jun 08, 2025',
+        status: 'Interview',
+        founder: 'Sarah Jenkins',
+        founderRole: 'Co-Founder',
+        industry: 'HealthTech',
+        stage: 'Series A',
+        budget: '$200K',
+        teamSize: '12',
+        nextAction: 'Technical Interview — Jun 30',
+        description: 'HIPAA-compliant telemedicine routing and remote patient scheduling application.',
+        techStack: ['React', 'Node.js', 'GraphQL', 'TypeScript'],
+        whyMatched: ['Strong React & TypeScript expertise', 'GraphQL API development experience', 'HealthTech domain alignment'],
+        upcomingInterviews: [{ date: 'Jun 30', time: '11:00 AM', type: 'Technical Panel' }],
+        timeline: [
+            { date: 'Jun 08', event: 'Application Submitted', icon: 'paper-plane', color: '#5BC8A0' },
+            { date: 'Jun 09', event: 'Reviewed by Founder', icon: 'eye', color: '#C4973A' },
+            { date: 'Jun 15', event: 'Moved to Interview Stage', icon: 'comments', color: '#5BC8A0' },
+            { date: 'Jun 22', event: 'Technical Interview Scheduled', icon: 'calendar', color: '#7C5CBF' },
         ],
     },
 ];
 
 const appStats = [
-    { id: 1, label: 'Total Applications', value: '5', trend: '+3', trendUp: true },
-    { id: 2, label: 'Pending', value: '1', trend: '+1', trendUp: true },
-    { id: 3, label: 'Interviews', value: '1', trend: '+1', trendUp: true },
+    { id: 1, label: 'Total Applications', value: '6', trend: '+4', trendUp: true },
+    { id: 2, label: 'Pending', value: '2', trend: '+2', trendUp: true },
+    { id: 3, label: 'Interviews', value: '2', trend: '+2', trendUp: true },
     { id: 4, label: 'Accepted', value: '1', trend: '+1', trendUp: true },
 ];
 
 const statusConfig = {
     'Interview':    { color: '#7C5CBF', bg: 'rgba(124, 92, 191, 0.1)', icon: 'comments' },
     'Pending':      { color: '#C4973A', bg: 'rgba(196, 151, 58, 0.1)', icon: 'hourglass-half' },
-    'Shortlisted':  { color: '#4A90D9', bg: 'rgba(74, 144, 217, 0.1)', icon: 'bookmark' },
     'Accepted':     { color: '#5BC8A0', bg: 'rgba(91, 200, 160, 0.1)', icon: 'check-circle' },
     'Declined':     { color: '#FF6B6B', bg: 'rgba(255, 107, 107, 0.1)', icon: 'times-circle' },
-    'Withdrawn':    { color: '#888',    bg: 'rgba(136, 136, 136, 0.1)', icon: 'undo' },
     'Applied':      { color: '#5BC8A0', bg: 'rgba(91, 200, 160, 0.1)', icon: 'paper-plane' },
 };
 
-const pipelineStages = ['Applied', 'Pending', 'Shortlisted', 'Interview', 'Accepted', 'Declined', 'Withdrawn'];
+const pipelineStages = ['Applied', 'Pending', 'Interview', 'Accepted', 'Declined'];
+
+const logoColors = {
+    'Nexus Health': { bg: '#EAF5F0', color: '#2e7d5c' },
+    'Aura Logistics': { bg: '#FDF3E7', color: '#C07830' },
+    'FinFlow AI': { bg: '#E6F4F8', color: '#10708C' },
+    'Veritas Energy': { bg: '#F3EAF5', color: '#7B2E8B' },
+    'CloudScale AI': { bg: '#EAF5F5', color: '#108C8C' },
+    'MedConnect': { bg: '#F5EAEF', color: '#8B2E58' },
+};
 
 const Applications = ({ onNavigate }) => {
     const [selectedApp, setSelectedApp] = useState(applicationsData[0]);
@@ -228,7 +261,17 @@ const Applications = ({ onNavigate }) => {
                                         onClick={() => setSelectedApp(app)}
                                     >
                                         <div className={"Applications_startupCell"}>
-                                            <span className={"Applications_startupLogo"}>{app.logo}</span>
+                                            <span
+                                                className={"Applications_startupLogo"}
+                                                style={{
+                                                    background: logoColors[app.startup]?.bg || '#F7F6F3',
+                                                    color: logoColors[app.startup]?.color || '#1B1B1B',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '0.85rem'
+                                                }}
+                                            >
+                                                {app.logo}
+                                            </span>
                                             <div>
                                                 <div className={"Applications_startupName"}>{app.startup}</div>
                                                 <div className={"Applications_startupIndustry"}>{app.industry}</div>
@@ -250,11 +293,12 @@ const Applications = ({ onNavigate }) => {
                             })}
                             {filtered.length === 0 && (
                                 <div className={"Applications_emptyRow"}>
-                                    <div className={"Applications_emptyIcon"}>📋</div>
+                                    <div className={"Applications_emptyIcon"}><i className="fas fa-clipboard-list"></i></div>
                                     <p>No applications found for this filter.</p>
                                 </div>
                             )}
                         </div>
+
                     </div>
 
                     {/* Right: Application Detail Panel */}
@@ -262,7 +306,17 @@ const Applications = ({ onNavigate }) => {
                         <div className={"Applications_detailPanel"}>
                             {/* Header */}
                             <div className={"Applications_dpHeader"}>
-                                <div className={"Applications_dpLogo"}>{selectedApp.logo}</div>
+                                <div
+                                    className={"Applications_dpLogo"}
+                                    style={{
+                                        background: logoColors[selectedApp.startup]?.bg || '#F7F6F3',
+                                        color: logoColors[selectedApp.startup]?.color || '#1B1B1B',
+                                        fontWeight: 'bold',
+                                        fontSize: '1.25rem'
+                                    }}
+                                >
+                                    {selectedApp.logo}
+                                </div>
                                 <div className={"Applications_dpInfo"}>
                                     <div className={"Applications_dpStartup"}>{selectedApp.startup}</div>
                                     <div className={"Applications_dpRole"}>{selectedApp.role}</div>
