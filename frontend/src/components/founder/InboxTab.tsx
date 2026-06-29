@@ -988,11 +988,11 @@ export function InboxTab({
               {visibleContacts.map((item) => {
                 const isActive = item.id === activeId;
                 const requestLabel =
-                  item.requestDirection === "incoming"
+                  isIncomingRequest(item)
                     ? item.requestStatus === "rejected"
                       ? "Rejected"
                       : "Request"
-                    : item.requestDirection === "outgoing" && item.requestStatus === "pending"
+                    : isOutgoingPending(item)
                       ? "Requested"
                       : item.personType;
                 return (
