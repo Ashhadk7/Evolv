@@ -208,6 +208,7 @@ const MOCK_MSGS: Record<string, Message[]> = {
 };
 
 const AUDIO_BAR_DURATIONS = [0.52, 0.64, 0.78, 0.58, 0.86, 0.68, 0.74, 0.9, 0.62, 0.8, 0.56, 0.7];
+const DEFAULT_DEVELOPER_USER: CurrentDeveloper = { firstName: "Sarah", lastName: "Mitchell" };
 
 function getInitials(name: string) {
   return (
@@ -286,17 +287,19 @@ function contactFromStoredUser(user: StoredAppUser): Contact | null {
 }
 
 function getDeveloperUser(): CurrentDeveloper {
+  if (typeof window === "undefined") return DEFAULT_DEVELOPER_USER;
+
   try {
     const user = JSON.parse(localStorage.getItem("evolv_user") ?? "null") as StoredAppUser | null;
-    if (!user) return { firstName: "Sarah", lastName: "Mitchell" };
+    if (!user) return DEFAULT_DEVELOPER_USER;
     return {
-      firstName: user.firstName || user.profile?.firstName || "Sarah",
-      lastName: user.lastName || user.profile?.lastName || "Mitchell",
+      firstName: user.firstName || user.profile?.firstName || DEFAULT_DEVELOPER_USER.firstName,
+      lastName: user.lastName || user.profile?.lastName || DEFAULT_DEVELOPER_USER.lastName,
       email: user.email || user.profile?.email,
       avatarUrl: user.avatarUrl || user.profile?.avatarUrl || user.profile?.photo || user.profile?.image,
     };
   } catch {
-    return { firstName: "Sarah", lastName: "Mitchell" };
+    return DEFAULT_DEVELOPER_USER;
   }
 }
 
@@ -664,7 +667,7 @@ export default function Inbox({
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [currentUser] = useState<CurrentDeveloper>(() => getDeveloperUser());
+  const [currentUser, setCurrentUser] = useState<CurrentDeveloper>(DEFAULT_DEVELOPER_USER);
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>(() =>
     extraContacts.some((extra) => extra.id === activeContactId && extra.requestDirection === "outgoing")
       ? "pending"
@@ -791,6 +794,14 @@ export default function Inbox({
     setContacts((prev) => prev.map((item) => (item.id === id ? { ...item, unread: 0 } : item)));
     setViewingProfile(false);
   };
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setCurrentUser(getDeveloperUser());
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     const list = messageListRef.current;
@@ -1022,11 +1033,11 @@ export default function Inbox({
               {visibleContacts.map((item) => {
                 const isActive = item.id === activeId;
                 const requestLabel =
-                  item.requestDirection === "incoming"
+                  isIncomingRequest(item)
                     ? item.requestStatus === "rejected"
                       ? "Rejected"
                       : "Request"
-                    : item.requestDirection === "outgoing" && item.requestStatus === "pending"
+                    : isOutgoingPending(item)
                       ? "Requested"
                       : item.personType;
                 return (
