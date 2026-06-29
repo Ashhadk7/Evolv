@@ -733,13 +733,13 @@ function ProfileSection({
               </div>
             </motion.section>
 
-            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.85fr]">
+            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.85fr] ">
               <motion.section
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 }}
                 className="bg-white p-7"
-                style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}
+                style={{ border: "1.5px solid #d4e4db", borderRadius: 8 , marginBottom: 30}}
               >
                 <div className="mb-2 flex items-center justify-between gap-5">
                   <div>
@@ -843,7 +843,7 @@ function ProfileSection({
                   </div>
                 </section>
 
-                <section className="bg-white p-6" style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}>
+                <section className="bg-white p-6" style={{ border: "1.5px solid #d4e4db", borderRadius: 8 , marginBottom: 30}}>
                   <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Profile Details</h4>
                   <div className="flex flex-col gap-2">
                     <ProfileDetailRow Icon={GlobeHemisphereWest} label="Network" value="Founder on Evolv" />
@@ -1414,13 +1414,6 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
               Delete Account
             </button>
           </div>
-          <button
-            onClick={() => (window.location.href = "/")}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors hover:bg-red-50"
-            style={{ color: "#c0392b" }}
-          >
-            <span className="text-[13px] font-medium">Log out</span>
-          </button>
         </div>
       </div>
 
