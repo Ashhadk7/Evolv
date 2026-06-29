@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface TopbarProps {
   title?: string;
@@ -13,47 +13,25 @@ interface TopbarProps {
 
 const ACCENT = "#89d7b7";
 
-export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNotifClick, animateTitle = false }: TopbarProps) {
-  const [localProfile, setLocalProfile] = useState({ firstName: "Sarah", lastName: "Mitchell", avatarUrl: "" });
 
-  useEffect(() => {
+export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNotifClick }: TopbarProps) {
+  const [localProfile] = useState(() => {
     try {
       const raw = localStorage.getItem("evolv_user");
       if (raw) {
         const user = JSON.parse(raw);
-        setLocalProfile({
+        return {
           firstName: user.firstName || "Sarah",
           lastName: user.lastName || "Mitchell",
           avatarUrl: user.avatarUrl || ""
-        });
+        };
       }
-    } catch (_) {}
-  }, []);
+    } catch {}
+    return { firstName: "Sarah", lastName: "Mitchell", avatarUrl: "" };
+  });
 
   const activeProfile = propProfile || localProfile;
   const fullText = title || `Welcome back, ${activeProfile.firstName || "Developer"}`;
-  const [displayed, setDisplayed] = useState(animateTitle ? "" : fullText);
-  const [done, setDone]           = useState(!animateTitle);
-
-  useEffect(() => {
-    if (!animateTitle) {
-      setDisplayed(fullText);
-      setDone(true);
-      return;
-    }
-    setDisplayed("");
-    setDone(false);
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setDisplayed(fullText.slice(0, i));
-      if (i >= fullText.length) {
-        clearInterval(interval);
-        setTimeout(() => setDone(true), 1500);
-      }
-    }, 45);
-    return () => clearInterval(interval);
-  }, [fullText, animateTitle]);
 
   const initials =
     `${activeProfile.firstName?.[0] ?? ""}${activeProfile.lastName?.[0] ?? ""}`.toUpperCase() || "D";
@@ -80,21 +58,7 @@ export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNo
             margin: 0,
           }}
         >
-          {displayed}
-          <span
-            style={{
-              display: "inline-block",
-              width: 2,
-              height: "1.1em",
-              background: "#428475",
-              borderRadius: 1,
-              marginLeft: 2,
-              verticalAlign: "text-bottom",
-              opacity: done ? 0 : 1,
-              animation: done ? "none" : "topbar-blink 0.75s step-end infinite",
-              transition: "opacity 0.4s ease",
-            }}
-          />
+          {fullText}
         </h1>
         <p style={{ color: "#7a9e8e", fontSize: "0.85rem", marginTop: "0.15rem", marginBottom: 0 }}>
           {subtitle || "Here's your developer dashboard overview."}
@@ -145,10 +109,16 @@ export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNo
           title="Open settings"
         >
           {activeProfile.avatarUrl ? (
-            <img
-              src={activeProfile.avatarUrl}
-              alt={`${activeProfile.firstName || "Developer"} profile`}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            <span
+              aria-label={`${activeProfile.firstName || "Developer"} profile`}
+              role="img"
+              style={{
+                width: "100%",
+                height: "100%",
+                backgroundImage: `url(${activeProfile.avatarUrl})`,
+                backgroundPosition: "center",
+                backgroundSize: "cover",
+              }}
             />
           ) : (
             <span
@@ -169,13 +139,6 @@ export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNo
           )}
         </button>
       </div>
-
-      <style>{`
-        @keyframes topbar-blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
