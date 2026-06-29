@@ -103,6 +103,8 @@ export function NetworkProfileDetailScreen({
   onToggleConnection,
   onMessage,
   messageLabel = "Message",
+  connectionLabel,
+  connectionDisabled = false,
 }: {
   profile: FounderContactProfile;
   connected?: boolean;
@@ -114,6 +116,8 @@ export function NetworkProfileDetailScreen({
   onToggleConnection?: (id: string) => void;
   onMessage?: (profile: FounderContactProfile) => void;
   messageLabel?: string;
+  connectionLabel?: string;
+  connectionDisabled?: boolean;
 }) {
   const canManagePending     = pending && onAccept && onIgnore;
   const canToggleConnection  = !pending && onToggleConnection;
@@ -226,18 +230,19 @@ export function NetworkProfileDetailScreen({
                 {canToggleConnection && (
                   <motion.button
                     onClick={() => onToggleConnection(profile.id)}
+                    disabled={connectionDisabled}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-60"
                     style={{
-                      background: connected ? "#e8f5ef" : "#0f1c18",
-                      color: connected ? "#2e7d5c" : "#89d7b7",
-                      border: connected ? "1px solid #c5ddd0" : "1px solid #1a312c",
+                      background: connected || connectionDisabled ? "#e8f5ef" : "#0f1c18",
+                      color: connected || connectionDisabled ? "#2e7d5c" : "#89d7b7",
+                      border: connected || connectionDisabled ? "1px solid #c5ddd0" : "1px solid #1a312c",
                     }}
                   >
                     {connected ? <CheckCircle size={14} weight="fill" /> : <UserPlus size={14} weight="bold" />}
-                    {connected ? "Connected" : "Connect"}
+                    {connectionLabel ?? (connected ? "Connected" : "Connect")}
                   </motion.button>
                 )}
                 {onMessage && (
@@ -256,7 +261,7 @@ export function NetworkProfileDetailScreen({
               <DetailTile label="Match" value={`${profile.match}%`} />
               {isDeveloper && <DetailTile label="Rating" value={`${displayRating}/5 (${reviewCount} reviews)`} />}
               <DetailTile label={profile.type === "Developer" ? "Availability" : "Status"} value={profile.availability} />
-              <DetailTile label="Connection" value={pending ? "Pending" : connected ? "Connected" : "Suggested"} />
+              <DetailTile label="Connection" value={pending ? "Pending" : connectionLabel ?? (connected ? "Connected" : "Suggested")} />
             </div>
           </motion.section>
 

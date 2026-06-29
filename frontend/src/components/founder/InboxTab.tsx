@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChatCircleDots,
+  CheckCircle,
   DotsThree,
   Microphone,
   MicrophoneSlash,
@@ -11,13 +12,18 @@ import {
   PencilSimple,
   Phone,
   PhoneSlash,
+  UserPlus,
   VideoCamera,
   WarningCircle,
   X,
+  XCircle,
 } from "@phosphor-icons/react";
 import { buildProfileFromContact, NetworkProfileDetailScreen } from "./NetworkProfileDetail";
 
 type PersonType = "Founder" | "Developer";
+type InboxFilter = "general" | "unread" | "requests" | "pending";
+type RequestStatus = "pending" | "accepted" | "rejected";
+type RequestDirection = "incoming" | "outgoing";
 
 interface Message {
   id: string;
@@ -38,6 +44,10 @@ export interface InboxLaunchContact {
   email?: string;
   avatarUrl?: string;
   personType?: PersonType;
+  requestStatus?: RequestStatus;
+  requestDirection?: RequestDirection;
+  initialMessage?: string;
+  subject?: string;
 }
 
 interface Contact {
@@ -54,6 +64,8 @@ interface Contact {
   email?: string;
   avatarUrl?: string;
   subject?: string;
+  requestStatus?: RequestStatus;
+  requestDirection?: RequestDirection;
 }
 
 interface CurrentFounder {
@@ -137,6 +149,8 @@ const CONTACTS: Contact[] = [
     online: false,
     email: "priya.sharma@evolv.app",
     subject: "Founder intro",
+    requestStatus: "pending",
+    requestDirection: "incoming",
   },
   {
     id: "priya",
@@ -165,6 +179,8 @@ const CONTACTS: Contact[] = [
     online: false,
     email: "lars.eriksson@evolv.app",
     subject: "AI role",
+    requestStatus: "pending",
+    requestDirection: "incoming",
   },
 ];
 
@@ -229,6 +245,18 @@ function readStoredUsers() {
 function roleToPersonType(role?: string, fallbackRole?: string): PersonType {
   const value = `${role ?? ""} ${fallbackRole ?? ""}`.toLowerCase();
   return value.includes("founder") ? "Founder" : "Developer";
+}
+
+function isIncomingRequest(contact: Contact) {
+  return contact.requestDirection === "incoming" && contact.requestStatus !== "accepted";
+}
+
+function isOutgoingPending(contact: Contact) {
+  return contact.requestDirection === "outgoing" && contact.requestStatus === "pending";
+}
+
+function hasSentIntro(thread: Message[]) {
+  return thread.some((msg) => msg.from === "me");
 }
 
 function contactFromStoredUser(user: StoredAppUser): Contact | null {
@@ -607,38 +635,126 @@ export function InboxTab({
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>(() =>
+    extraContacts.some((extra) => extra.id === activeContactId && extra.requestDirection === "outgoing")
+      ? "pending"
+      : "general"
+  );
   const messageListRef = useRef<HTMLDivElement>(null);
 
   const mergedContacts = useMemo(() => {
-    const existingIds = new Set(contacts.map((contact) => contact.id));
-    const existingEmails = new Set(contacts.map((contact) => contact.email?.toLowerCase()).filter(Boolean));
-    const extras = extraContacts
-      .filter((extra) => !existingIds.has(extra.id) && !existingEmails.has(extra.email?.toLowerCase()))
-      .map<Contact>((extra) => {
-        const personType = extra.personType ?? roleToPersonType(extra.role);
-        return {
-          id: extra.id,
-          name: extra.name,
-          role: extra.role,
-          personType,
-          match: extra.match ?? 80,
-          lastMsg: "New conversation",
-          lastTime: "Now",
-          unread: 0,
-          initials: extra.initials || getInitials(extra.name),
-          online: Boolean(extra.online),
-          email: extra.email,
-          avatarUrl: extra.avatarUrl,
-        };
-      });
+    const toContact = (extra: InboxLaunchContact, base?: Contact): Contact => {
+      const personType = extra.personType ?? base?.personType ?? roleToPersonType(extra.role);
+      const initialMessage = extra.initialMessage?.trim();
+      return {
+        id: base?.id ?? extra.id,
+        name: extra.name || base?.name || "Evolv member",
+        role: extra.role || base?.role || "Evolv Network",
+        personType,
+        match: extra.match ?? base?.match ?? 80,
+        lastMsg: initialMessage || base?.lastMsg || (extra.requestDirection === "outgoing" ? "Connection request sent" : "New conversation"),
+        lastTime: initialMessage ? "Now" : base?.lastTime ?? "Now",
+        unread: extra.requestDirection === "outgoing" ? 0 : base?.unread ?? 0,
+        initials: extra.initials || base?.initials || getInitials(extra.name),
+        online: extra.online ?? base?.online ?? false,
+        email: extra.email || base?.email,
+        avatarUrl: extra.avatarUrl || base?.avatarUrl,
+        subject: extra.subject || base?.subject,
+        requestStatus: extra.requestStatus ?? base?.requestStatus,
+        requestDirection: extra.requestDirection ?? base?.requestDirection,
+      };
+    };
 
-    return [...extras, ...contacts];
+    const contactMap = new Map(contacts.map((item) => [item.id, item] as const));
+    const promotedIds: string[] = [];
+
+    extraContacts.forEach((extra) => {
+      const normalizedEmail = extra.email?.toLowerCase();
+      const existing = contacts.find((item) =>
+        item.id === extra.id || (normalizedEmail ? item.email?.toLowerCase() === normalizedEmail : false)
+      );
+      const nextContact = toContact(extra, existing);
+      contactMap.set(nextContact.id, nextContact);
+      promotedIds.push(nextContact.id);
+    });
+
+    const promoted = Array.from(new Set(promotedIds))
+      .map((id) => contactMap.get(id))
+      .filter((item): item is Contact => Boolean(item));
+    const rest = contacts
+      .map((item) => contactMap.get(item.id) ?? item)
+      .filter((item) => !promotedIds.includes(item.id));
+
+    return [...promoted, ...rest];
   }, [contacts, extraContacts]);
 
   const activeId = activeContactId ?? localActiveId;
   const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0] ?? CONTACTS[0];
-  const thread = contact ? messages[contact.id] ?? [] : [];
+  const thread = useMemo(() => {
+    const rawThread = contact ? messages[contact.id] ?? [] : [];
+    const launchContact = extraContacts.find((extra) =>
+      extra.id === contact.id || (extra.email && contact.email?.toLowerCase() === extra.email.toLowerCase())
+    );
+    const initialMessage = launchContact?.initialMessage?.trim();
+    if (!initialMessage || rawThread.some((msg) => msg.from === "me" && msg.text === initialMessage)) return rawThread;
+
+    return [
+      ...rawThread,
+      {
+        id: `launch-${contact.id}`,
+        from: "me" as const,
+        text: initialMessage,
+        time: "Now",
+        date: "Today",
+        subject: launchContact?.subject || "Connection request",
+      },
+    ];
+  }, [contact, extraContacts, messages]);
   const contactProfile = buildProfileFromContact(contact);
+  const incomingRequestActive = isIncomingRequest(contact);
+  const outgoingPendingActive = isOutgoingPending(contact);
+  const sentOutgoingIntro = outgoingPendingActive && hasSentIntro(thread);
+  const messageLocked = incomingRequestActive || (outgoingPendingActive && sentOutgoingIntro);
+  const inputPlaceholder = incomingRequestActive
+    ? contact.requestStatus === "rejected"
+      ? "Request rejected. Accept it to reply."
+      : "Accept the request before replying."
+    : sentOutgoingIntro
+      ? "Requested - waiting for them to accept."
+      : outgoingPendingActive
+        ? "Request pending - send one intro message..."
+        : "Type a message...";
+  const requestContacts = useMemo(
+    () => mergedContacts.filter((item) => isIncomingRequest(item) && (messages[item.id]?.length ?? 0) <= 1),
+    [mergedContacts, messages]
+  );
+  const pendingContacts = useMemo(
+    () => mergedContacts.filter((item) => isOutgoingPending(item)),
+    [mergedContacts]
+  );
+  const generalContacts = useMemo(
+    () => mergedContacts.filter((item) => !isIncomingRequest(item) && !isOutgoingPending(item)),
+    [mergedContacts]
+  );
+  const unreadContacts = useMemo(
+    () => generalContacts.filter((item) => item.unread > 0),
+    [generalContacts]
+  );
+  const visibleContacts =
+    inboxFilter === "requests"
+      ? requestContacts
+      : inboxFilter === "pending"
+        ? pendingContacts
+        : inboxFilter === "unread"
+          ? unreadContacts
+          : generalContacts;
+  const unreadChatCount = unreadContacts.length;
+  const inboxTabs = [
+    { id: "general" as const, label: "General", count: generalContacts.length },
+    { id: "unread" as const, label: "Unread", count: unreadChatCount },
+    { id: "requests" as const, label: "Requests", count: requestContacts.length },
+    { id: "pending" as const, label: "Pending", count: pendingContacts.length },
+  ];
 
   const selectContact = (id: string) => {
     if (onActiveContactChange) onActiveContactChange(id);
@@ -659,6 +775,7 @@ export function InboxTab({
   }, [activeId, thread.length]);
 
   const sendMsg = () => {
+    if (messageLocked) return;
     if (!draft.trim()) return;
     const now = new Date();
     const body = draft.trim();
@@ -678,6 +795,27 @@ export function InboxTab({
         : [nextContact, ...prev];
     });
     setDraft("");
+  };
+
+  const acceptRequest = (id: string) => {
+    setContacts((prev) => {
+      const acceptedContact = { ...contact, requestStatus: "accepted" as const, unread: 0, lastTime: "Now" };
+      return prev.some((item) => item.id === id)
+        ? prev.map((item) => (item.id === id ? { ...item, requestStatus: "accepted", unread: 0, lastTime: "Now" } : item))
+        : [acceptedContact, ...prev];
+    });
+    setInboxFilter("general");
+  };
+
+  const rejectRequest = (id: string) => {
+    setContacts((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, requestStatus: "rejected", unread: 0, lastTime: "Now" }
+          : item
+      )
+    );
+    setInboxFilter("requests");
   };
 
   const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -707,6 +845,9 @@ export function InboxTab({
 
     const recipient = findRecipient(normalizedEmail);
     if (!recipient) return "No Evolv account was found with that email.";
+    const existingRecipient = mergedContacts.some((item) =>
+      item.id === recipient.id || item.email?.toLowerCase() === normalizedEmail
+    );
 
     const now = new Date();
     const msg: Message = {
@@ -725,6 +866,8 @@ export function InboxTab({
       lastTime: "Now",
       unread: 0,
       subject: trimmedSubject || recipient.subject,
+      requestStatus: existingRecipient ? recipient.requestStatus : "pending",
+      requestDirection: existingRecipient ? recipient.requestDirection : "outgoing",
     };
 
     setContacts((prev) => [nextContact, ...prev.filter((item) => item.id !== nextContact.id)]);
@@ -734,6 +877,7 @@ export function InboxTab({
     }));
     if (onActiveContactChange) onActiveContactChange(nextContact.id);
     else setLocalActiveId(nextContact.id);
+    if (nextContact.requestDirection === "outgoing") setInboxFilter("pending");
     setViewingProfile(false);
     setComposeOpen(false);
     return null;
@@ -779,7 +923,7 @@ export function InboxTab({
 
       <div className="min-h-0 flex-1">
         <div
-          className="grid h-full min-h-0 gap-5 xl:grid-cols-[330px_1fr]"
+          className="grid h-full min-h-0 gap-4 xl:grid-cols-[390px_minmax(0,1fr)]"
         >
           <section
             className="flex min-h-0 flex-col overflow-hidden bg-white"
@@ -797,14 +941,60 @@ export function InboxTab({
                 <ChatCircleDots size={16} weight="fill" style={{ color: MID }} />
                 Conversations
               </div>
-              <div className="mt-1 text-[11px]" style={{ color: MUTED }}>
-                {mergedContacts.length} people in your inbox
+              <div className="mt-3 grid grid-cols-[1fr_1fr_1.25fr_1.15fr] rounded-xl p-1" style={{ background: "#eef4f0", border: "1px solid #e2ebe5" }}>
+                {inboxTabs.map((tab) => {
+                  const isActive = inboxFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setInboxFilter(tab.id)}
+                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[10px] font-extrabold transition-all"
+                      style={{
+                        background: isActive ? DARK : "transparent",
+                        color: isActive ? MINT : MUTED,
+                      }}
+                    >
+                      <span className="whitespace-nowrap">{tab.label}</span>
+                      {(tab.id !== "general" || tab.count > 0) && (
+                        <span
+                          className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px]"
+                          style={{
+                            background: isActive ? "rgba(137,215,183,0.14)" : "#fff",
+                            color: isActive ? MINT : MID,
+                          }}
+                        >
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {mergedContacts.map((item) => {
+              {visibleContacts.length === 0 && (
+                <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center text-[12px]" style={{ color: MUTED }}>
+                  {inboxFilter === "unread"
+                    ? "No unread chats right now."
+                    : inboxFilter === "requests"
+                      ? "No message requests waiting."
+                      : inboxFilter === "pending"
+                        ? "No pending requests from your side."
+                        : "No conversations yet."}
+                </div>
+              )}
+              {visibleContacts.map((item) => {
                 const isActive = item.id === activeId;
+                const requestLabel =
+                  isIncomingRequest(item)
+                    ? item.requestStatus === "rejected"
+                      ? "Rejected"
+                      : "Request"
+                    : isOutgoingPending(item)
+                      ? "Requested"
+                      : item.personType;
                 return (
                   <button
                     key={item.id}
@@ -840,11 +1030,21 @@ export function InboxTab({
                           <span
                             className="rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase"
                             style={{
-                              background: item.personType === "Founder" ? "#eef2ff" : "#e8f5ef",
-                              color: item.personType === "Founder" ? "#4f46e5" : "#2e7d5c",
+                              background:
+                                item.requestDirection === "incoming"
+                                  ? "#fff7ed"
+                                  : item.personType === "Founder"
+                                    ? "#eef2ff"
+                                    : "#e8f5ef",
+                              color:
+                                item.requestDirection === "incoming"
+                                  ? "#b45309"
+                                  : item.personType === "Founder"
+                                    ? "#4f46e5"
+                                    : "#2e7d5c",
                             }}
                           >
-                            {item.personType}
+                            {requestLabel}
                           </span>
                           <span className="truncate text-[10px]" style={{ color: MUTED }}>
                             {item.role}
@@ -939,6 +1139,81 @@ export function InboxTab({
               </div>
             )}
 
+            {incomingRequestActive && (
+              <div
+                className="flex shrink-0 flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+                style={{
+                  background: contact.requestStatus === "rejected" ? "#fff7f4" : "#fffaf0",
+                  borderBottom: "1px solid #f1e4d0",
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: contact.requestStatus === "rejected" ? "#ffe7df" : "#fff1d6",
+                      color: contact.requestStatus === "rejected" ? "#b42318" : "#b45309",
+                    }}
+                  >
+                    {contact.requestStatus === "rejected" ? <XCircle size={18} weight="fill" /> : <UserPlus size={18} weight="fill" />}
+                  </span>
+                  <div>
+                    <div className="text-[13px] font-extrabold" style={{ color: TEXT }}>
+                      {contact.requestStatus === "rejected" ? "Rejected message request" : "Message request"}
+                    </div>
+                    <p className="mt-0.5 max-w-[620px] text-[12px] leading-5" style={{ color: MUTED }}>
+                      {contact.requestStatus === "rejected"
+                        ? "This request is still kept here. Accept it if you want to move it into General and reply."
+                        : "Accept this request to move the chat into General, or reject it to keep it in Requests."}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => rejectRequest(contact.id)}
+                    disabled={contact.requestStatus === "rejected"}
+                    className="rounded-lg border px-3 py-2 text-[12px] font-bold transition hover:bg-white disabled:opacity-45"
+                    style={{ borderColor: "#ead7c4", color: "#9a5b1e" }}
+                  >
+                    Reject
+                  </button>
+                  <motion.button
+                    type="button"
+                    onClick={() => acceptRequest(contact.id)}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-extrabold"
+                    style={{ background: DARK, color: MINT }}
+                  >
+                    <CheckCircle size={14} weight="fill" />
+                    Accept
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {outgoingPendingActive && (
+              <div
+                className="flex shrink-0 items-start gap-3 px-6 py-4"
+                style={{ background: "#eef7f2", borderBottom: "1px solid #dcebe3" }}
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "#dff1e8", color: MID }}>
+                  <UserPlus size={18} weight="fill" />
+                </span>
+                <div>
+                  <div className="text-[13px] font-extrabold" style={{ color: TEXT }}>
+                    Requested
+                  </div>
+                  <p className="mt-0.5 max-w-[680px] text-[12px] leading-5" style={{ color: MUTED }}>
+                    {sentOutgoingIntro
+                      ? "Your request and intro message are sent. You cannot message again until they accept."
+                      : "Your request is pending. You can send one intro message here, then wait for them to accept."}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div ref={messageListRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5" style={{ background: "#fbfcfb" }}>
               <div className="flex flex-col gap-6">
                 <AnimatePresence initial={false}>
@@ -955,19 +1230,20 @@ export function InboxTab({
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Type a message..."
+                disabled={messageLocked}
+                placeholder={inputPlaceholder}
                 className="h-11 flex-1 rounded-xl px-4 text-[13px] outline-none"
-                style={{ background: "#f5f7f5", border: "1px solid #e8ede9", color: TEXT }}
+                style={{ background: messageLocked ? "#eef3ef" : "#f5f7f5", border: "1px solid #e8ede9", color: TEXT }}
               />
               <motion.button
                 type="button"
                 onClick={sendMsg}
-                disabled={!draft.trim()}
-                whileHover={draft.trim() ? { scale: 1.08 } : {}}
-                whileTap={draft.trim() ? { scale: 0.92 } : {}}
+                disabled={!draft.trim() || messageLocked}
+                whileHover={draft.trim() && !messageLocked ? { scale: 1.08 } : {}}
+                whileTap={draft.trim() && !messageLocked ? { scale: 0.92 } : {}}
                 transition={{ type: "spring", stiffness: 400, damping: 22 }}
                 className="flex h-10 w-10 items-center justify-center rounded-xl"
-                style={{ background: DARK, opacity: draft.trim() ? 1 : 0.4 }}
+                style={{ background: DARK, opacity: draft.trim() && !messageLocked ? 1 : 0.4 }}
                 aria-label="Send message"
               >
                 <PaperPlaneTilt size={16} style={{ color: MINT }} weight="fill" />
