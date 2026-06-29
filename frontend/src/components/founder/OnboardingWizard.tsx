@@ -22,6 +22,9 @@ export interface FounderProfile {
   headline?: string;
   location?: string;
   country?: string;
+  countryCode?: string;
+  stateProvince?: string;
+  city?: string;
   primaryGoal?: string;
   idNumber?: string;
 }
