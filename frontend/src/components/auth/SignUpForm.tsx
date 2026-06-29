@@ -22,14 +22,20 @@ const BRAND_MINT = "#89d7b7";
 
 type Role = "founder" | "developer";
 
-const SKILLS = ["React", "Next.js", "Node.js", "Python", "FastAPI", "AI/ML", "PostgreSQL", "AWS", "Docker", "Solidity"];
+const SKILLS = [
+  "React", "Next.js", "Node.js", "Python", "FastAPI", "AI/ML", "PostgreSQL", "AWS", "Docker", "Solidity",
+  "TypeScript", "JavaScript", "Vue", "Angular", "Svelte", "React Native", "Flutter", "Swift", "Kotlin",
+  "Java", "C#", ".NET", "Go", "Rust", "PHP", "Laravel", "Ruby on Rails", "Django", "Flask", "Express",
+  "NestJS", "GraphQL", "MongoDB", "MySQL", "Redis", "Firebase", "Supabase", "Azure", "Google Cloud",
+  "Kubernetes", "Terraform", "CI/CD", "DevOps", "Data Engineering", "TensorFlow", "PyTorch", "OpenAI API",
+  "UI/UX", "Figma", "Three.js", "Unity", "Unreal Engine", "Blockchain", "Smart Contracts",
+];
 const PRIMARY_GOALS = [
   "Turn my idea into a structured startup blueprint",
   "Find and hire developers to build my product",
   "Get my startup in front of investors",
   "Test and validate my startup concept",
 ];
-const WORK_TYPES = ["Remote", "Hybrid", "Onsite"];
 const EDUCATION_LEVELS = [
   "Student",
   "Intermediate / Higher Secondary",
@@ -616,6 +622,61 @@ function PhoneNumberField({
   );
 }
 
+function SearchableSkills({
+  skills,
+  selected,
+  onToggle,
+}: {
+  skills: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const trimmedQuery = query.trim();
+  const normalizedQuery = normalize(trimmedQuery);
+  const matchingSkills = useMemo(() => {
+    if (!normalizedQuery) return skills.slice(0, 14);
+    return skills.filter((skill) => normalize(skill).includes(normalizedQuery)).slice(0, 14);
+  }, [normalizedQuery, skills]);
+  const exactMatch = skills.some((skill) => normalize(skill) === normalizedQuery);
+  const canAddCustom = trimmedQuery.length > 1 && !exactMatch && !selected.some((skill) => normalize(skill) === normalizedQuery);
+
+  return (
+    <div>
+      <span className="mb-2 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Core skills</span>
+      <div className="mb-3 flex gap-2">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search or add a skill"
+          className="h-10 min-w-0 flex-1 rounded-lg border bg-white px-3.5 pl-6 text-[13px] outline-none transition placeholder:text-[#0f1c18]/35 focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+          style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}
+        />
+        {canAddCustom && (
+          <button
+            type="button"
+            onClick={() => {
+              onToggle(trimmedQuery);
+              setQuery("");
+            }}
+            className="h-10 rounded-lg px-4 text-[12px] font-bold transition hover:opacity-90"
+            style={{ background: BRAND_INK, color: BRAND_MINT }}
+          >
+            Add
+          </button>
+        )}
+      </div>
+      <ChoiceGrid items={matchingSkills} selected={selected} onToggle={onToggle} />
+      {selected.length > 0 && (
+        <div className="mt-3">
+          <span className="mb-2 block text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgba(15,28,24,0.35)" }}>Selected</span>
+          <ChoiceGrid items={selected} selected={selected} onToggle={onToggle} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SignUpForm() {
   const router = useRouter();
   const scrollRef = useRef<HTMLElement | null>(null);
@@ -645,8 +706,9 @@ export function SignUpForm() {
   });
 
   const [developer, setDeveloper] = useState({
-    jobTitle: "", experience: "", location: "", skills: [] as string[],
-    workType: "Remote", bio: "", github: "", linkedIn: "",
+    jobTitle: "", experience: "", skills: [] as string[],
+    educationLevel: "", degreeName: "", customDegreeName: "",
+    bio: "", github: "", linkedIn: "",
   });
 
   const profileCompleteness = useMemo(() => {
@@ -657,9 +719,10 @@ export function SignUpForm() {
       return Math.round((filled / 7) * 100);
     }
     if (role === "developer") {
-      const filled = [developer.jobTitle, developer.experience, developer.location, developer.bio].filter(Boolean).length
+      const degreeValue = developer.degreeName === "Other" ? developer.customDegreeName : developer.degreeName;
+      const filled = [developer.jobTitle, developer.experience, developer.educationLevel, degreeValue, developer.bio, developer.github, developer.linkedIn].filter(Boolean).length
         + (developer.skills.length ? 1 : 0);
-      return Math.round((filled / 5) * 100);
+      return Math.round((filled / 8) * 100);
     }
     return 0;
   }, [developer, founder, role]);
@@ -690,6 +753,10 @@ export function SignUpForm() {
   const founderDegreeOptions = useMemo(
     () => founder.educationLevel ? DEGREE_OPTIONS_BY_LEVEL[founder.educationLevel] ?? ["Other"] : DEFAULT_DEGREE_OPTIONS,
     [founder.educationLevel]
+  );
+  const developerDegreeOptions = useMemo(
+    () => developer.educationLevel ? DEGREE_OPTIONS_BY_LEVEL[developer.educationLevel] ?? ["Other"] : DEFAULT_DEGREE_OPTIONS,
+    [developer.educationLevel]
   );
 
   useEffect(() => {
@@ -817,9 +884,11 @@ export function SignUpForm() {
     const base = { firstName: account.firstName, lastName: account.lastName, email: account.email, password: account.password, role, ...accountLocation };
     const founderDegreeName = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
     const founderEducation = [founder.educationLevel, founderDegreeName].filter(Boolean).join(" - ");
+    const developerDegreeName = developer.degreeName === "Other" ? developer.customDegreeName : developer.degreeName;
+    const developerEducation = [developer.educationLevel, developerDegreeName].filter(Boolean).join(" - ");
     const profile = role === "founder"
       ? { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, headline: founder.headline, bio: founder.bio, domains: founder.domains, primaryGoal: founder.primaryGoal, education: founderEducation, educationLevel: founder.educationLevel, degreeName: founderDegreeName, degreeSelection: founder.degreeName, customDegreeName: founder.customDegreeName, location: account.city, linkedin: founder.linkedin, profileComplete }
-      : { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, jobTitle: developer.jobTitle, role: developer.jobTitle, location: developer.location, experience: developer.experience, bio: developer.bio, techStack: developer.skills, workType: developer.workType, github: developer.github, linkedin: developer.linkedIn, availability: true, profileComplete, firstTime: !profileComplete };
+      : { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, jobTitle: developer.jobTitle, role: developer.jobTitle, location: account.city, experience: developer.experience, education: developerEducation, educationLevel: developer.educationLevel, degreeName: developerDegreeName, degreeSelection: developer.degreeName, customDegreeName: developer.customDegreeName, bio: developer.bio, techStack: developer.skills, github: developer.github, linkedin: developer.linkedIn, availability: true, profileComplete, firstTime: !profileComplete };
 
     const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredSignupUser[];
     const filtered = users.filter((user) => user.email?.toLowerCase() !== account.email.toLowerCase());
@@ -841,11 +910,7 @@ export function SignUpForm() {
       try { persistAccount(!skip); } catch { setError("Something went wrong while creating your account."); }
       return;
     }
-    const complete = Boolean(developer.jobTitle && developer.experience && developer.location && developer.bio && developer.skills.length);
-    if (!skip && !complete) {
-      setError("Add a role, experience, location, bio, and at least one skill.");
-      return;
-    }
+    const complete = Boolean(developer.jobTitle || developer.experience || developer.educationLevel || developer.degreeName || developer.bio || developer.github || developer.linkedIn || developer.skills.length);
     try { persistAccount(!skip && complete); } catch { setError("Something went wrong while creating your account."); }
   };
 
@@ -1119,9 +1184,6 @@ export function SignUpForm() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextInput label="Professional role" value={developer.jobTitle} onChange={(v) => setDevField("jobTitle", v)} placeholder="Full Stack Developer" />
-                  <TextInput label="Location" value={developer.location} onChange={(v) => setDevField("location", v)} placeholder="Islamabad, Pakistan" />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Experience</span>
                     <select value={developer.experience} onChange={(e) => setDevField("experience", e.target.value)} className="h-11 w-full rounded-lg border bg-white px-4 text-[14px] outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20" style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}>
@@ -1129,21 +1191,41 @@ export function SignUpForm() {
                       {["< 1 year", "1-2 years", "3-5 years", "5-8 years", "8+ years"].map((x) => <option key={x}>{x}</option>)}
                     </select>
                   </label>
-                  <label className="block">
-                    <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Preferred work type</span>
-                    <select value={developer.workType} onChange={(e) => setDevField("workType", e.target.value)} className="h-11 w-full rounded-lg border bg-white px-4 text-[14px] outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20" style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}>
-                      {WORK_TYPES.map((x) => <option key={x}>{x}</option>)}
-                    </select>
-                  </label>
                 </div>
-                <div>
-                  <span className="mb-2 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Core skills</span>
-                  <ChoiceGrid items={SKILLS} selected={developer.skills} onToggle={toggleSkill} />
-                </div>
-                <TextArea label="Professional summary" value={developer.bio} onChange={(v) => setDevField("bio", v)} placeholder="Summarize the products you build, your strongest stack, and the startup environments you prefer." />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextInput label="GitHub (optional)" value={developer.github} onChange={(v) => setDevField("github", v)} placeholder="https://github.com/…" />
-                  <TextInput label="LinkedIn (optional)" value={developer.linkedIn} onChange={(v) => setDevField("linkedIn", v)} placeholder="https://linkedin.com/in/…" />
+                  <StaticSelect
+                    label="Highest education"
+                    value={developer.educationLevel}
+                    onChange={(value) => {
+                      setDevField("educationLevel", value);
+                      setDevField("degreeName", "");
+                      setDevField("customDegreeName", "");
+                    }}
+                    placeholder="Select education level"
+                    options={EDUCATION_LEVELS}
+                  />
+                  <StaticSelect
+                    label="Degree / program"
+                    value={developer.degreeName}
+                    onChange={(value) => {
+                      setDevField("degreeName", value);
+                      if (value !== "Other") setDevField("customDegreeName", "");
+                    }}
+                    placeholder={developer.educationLevel ? "Select degree" : "Select education first"}
+                    options={developerDegreeOptions}
+                    disabled={!developer.educationLevel}
+                  />
+                </div>
+                {developer.degreeName === "Other" && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextInput label="Other degree" value={developer.customDegreeName} onChange={(v) => setDevField("customDegreeName", v)} placeholder="Write your degree name" />
+                  </div>
+                )}
+                <SearchableSkills skills={SKILLS} selected={developer.skills} onToggle={toggleSkill} />
+                <TextArea label="Professional summary" value={developer.bio} onChange={(v) => setDevField("bio", v)} placeholder="Summarize the products you build, your strongest stack, and the startup environments you prefer." />
+                <div className="grid gap-4 sm:grid-cols-2 h-25">
+                  <TextInput label="GitHub" value={developer.github} onChange={(v) => setDevField("github", v)} placeholder="https://github.com/…" />
+                  <TextInput label="LinkedIn" value={developer.linkedIn} onChange={(v) => setDevField("linkedIn", v)} placeholder="https://linkedin.com/in/…" />
                 </div>
               </motion.div>
             )}
