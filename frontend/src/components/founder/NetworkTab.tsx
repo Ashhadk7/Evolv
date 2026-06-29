@@ -12,10 +12,12 @@ import {
   Code,
   Handshake,
   MapPin,
+  PaperPlaneTilt,
   Star,
   TrendUp,
   UserPlus,
   Users,
+  X,
 } from "@phosphor-icons/react";
 import {
   FOUNDER_NETWORK_PROFILES,
@@ -28,6 +30,7 @@ import {
 } from "./NetworkProfileDetail";
 
 type NetworkTabFilter = "all" | "developers" | "founders";
+type OutgoingRequestStatus = "pending";
 
 export interface FounderNetworkMessageTarget {
   id: string;
@@ -36,12 +39,19 @@ export interface FounderNetworkMessageTarget {
   match: number;
   initials: string;
   online?: boolean;
+  personType?: "Founder" | "Developer";
+  requestStatus?: OutgoingRequestStatus;
+  requestDirection?: "outgoing";
+  initialMessage?: string;
+  subject?: string;
 }
 
 interface StoredNetworkState {
   connected: Record<string, boolean>;
   pendingIds: string[];
   ignoredIds: string[];
+  outgoingIds: string[];
+  requestNotes: Record<string, string>;
 }
 
 interface NetworkTabProps {
@@ -67,12 +77,23 @@ function loadStoredState(): StoredNetworkState | null {
   }
 }
 
+function saveStoredState(state: StoredNetworkState) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Keep the in-memory state even if browser storage is unavailable.
+  }
+}
+
 function getInitialNetworkState(): StoredNetworkState {
   const stored = loadStoredState();
   return {
     connected: { ...initialConnected, ...(stored?.connected ?? {}) },
     pendingIds: stored?.pendingIds ?? INITIAL_PENDING_IDS,
     ignoredIds: stored?.ignoredIds ?? [],
+    outgoingIds: stored?.outgoingIds ?? [],
+    requestNotes: stored?.requestNotes ?? {},
   };
 }
 
@@ -129,15 +150,140 @@ function Avatar({ person, size = 44 }: { person: FounderContactProfile; size?: n
   );
 }
 
+function ConnectionRequestModal({
+  person,
+  onClose,
+  onWithoutNote,
+  onWithNote,
+}: {
+  person: FounderContactProfile;
+  onClose: () => void;
+  onWithoutNote: () => void;
+  onWithNote: (note: string) => void;
+}) {
+  const [addingNote, setAddingNote] = useState(false);
+  const [note, setNote] = useState("");
+  const trimmedNote = note.trim();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-5"
+      style={{ background: "rgba(15,28,24,0.34)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 360, damping: 32 }}
+        className="w-full max-w-[520px] overflow-hidden bg-white shadow-2xl"
+        style={{ borderRadius: 16, border: "1px solid #c5ddd0" }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4" style={{ background: "#1a312c", color: "#e8f5ef" }}>
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar person={person} size={42} />
+            <div className="min-w-0">
+              <h3 className="truncate text-[15px] font-extrabold">Connect with {person.name}</h3>
+              <p className="truncate text-[11px]" style={{ color: "#89d7b7" }}>
+                {person.role} at {person.company}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10"
+            aria-label="Close connection request"
+          >
+            <X size={16} weight="bold" />
+          </button>
+        </div>
+
+        <div className="px-5 py-5">
+          {!addingNote ? (
+            <p className="text-[13px] leading-6" style={{ color: "#334d42" }}>
+              Send the request now, or add a short note. If you add a note, their pending chat will open with your intro attached.
+            </p>
+          ) : (
+            <div>
+              <label className="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "#7a9e8e" }}>
+                Add a note
+              </label>
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Write a short intro..."
+                className="h-32 w-full resize-none rounded-2xl px-4 py-3 text-[13px] leading-6 outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+                style={{ border: "1px solid #c5ddd0", color: "#1a2e26", background: "#fbfdfb" }}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-end" style={{ background: "#f5f7f5", borderTop: "1px solid #dce7e1" }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 rounded-xl border bg-white px-5 text-[13px] font-semibold transition hover:bg-[#f5f7f5]"
+            style={{ borderColor: "#ded9d0", color: "#1a2e26" }}
+          >
+            Cancel
+          </button>
+          {!addingNote ? (
+            <>
+              <button
+                type="button"
+                onClick={onWithoutNote}
+                className="h-11 rounded-xl border bg-white px-5 text-[13px] font-extrabold transition hover:bg-[#f5f7f5]"
+                style={{ borderColor: "#c5ddd0", color: "#1a312c" }}
+              >
+                Without note
+              </button>
+              <motion.button
+                type="button"
+                onClick={() => setAddingNote(true)}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
+                style={{ background: "#1a312c", color: "#89d7b7" }}
+              >
+                Add a note
+              </motion.button>
+            </>
+          ) : (
+            <motion.button
+              type="button"
+              onClick={() => onWithNote(trimmedNote)}
+              disabled={!trimmedNote}
+              whileHover={trimmedNote ? { y: -1 } : {}}
+              whileTap={trimmedNote ? { scale: 0.98 } : {}}
+              className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold disabled:opacity-45"
+              style={{ background: "#1a312c", color: "#89d7b7" }}
+            >
+              <PaperPlaneTilt size={14} weight="fill" />
+              Send note
+            </motion.button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps) {
   const [activeTab, setActiveTab] = useState<NetworkTabFilter>("all");
   const [networkState, setNetworkState] = useState<StoredNetworkState>(getInitialNetworkState);
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
-  const { connected, pendingIds, ignoredIds } = networkState;
+  const [requestModalPerson, setRequestModalPerson] = useState<FounderContactProfile | null>(null);
+  const { connected, pendingIds, ignoredIds, outgoingIds, requestNotes } = networkState;
+  const outgoingSet = useMemo(() => new Set(outgoingIds), [outgoingIds]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(networkState));
+    saveStoredState(networkState);
   }, [networkState]);
 
   useEffect(() => {
@@ -163,7 +309,9 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
   const connectedPeople = visiblePeople.filter((person) => connected[person.id]);
   const developerConnections = connectedPeople.filter((person) => person.type === "Developer").length;
   const founderConnections = connectedPeople.filter((person) => person.type === "Founder").length;
-  const suggestedPeople = visiblePeople.filter((person) => !connected[person.id]).sort((a, b) => b.match - a.match);
+  const suggestedPeople = visiblePeople
+    .filter((person) => !connected[person.id] && !outgoingSet.has(person.id))
+    .sort((a, b) => b.match - a.match);
 
   const tabs = [
     { id: "all" as const, label: "All", count: visiblePeople.length },
@@ -173,15 +321,17 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
 
   const handleAcceptRequest = (id: string) => {
     setNetworkState((prev) => ({
+      ...prev,
       connected: { ...prev.connected, [id]: true },
       pendingIds: prev.pendingIds.filter((pendingId) => pendingId !== id),
       ignoredIds: prev.ignoredIds.filter((ignoredId) => ignoredId !== id),
+      outgoingIds: prev.outgoingIds.filter((outgoingId) => outgoingId !== id),
     }));
   };
 
   const handleIgnoreRequest = (id: string) => {
     setNetworkState((prev) => ({
-      connected: prev.connected,
+      ...prev,
       pendingIds: prev.pendingIds.filter((pendingId) => pendingId !== id),
       ignoredIds: Array.from(new Set([...prev.ignoredIds, id])),
     }));
@@ -189,43 +339,110 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
   };
 
   const handleToggleConnection = (id: string) => {
-    setNetworkState((prev) => ({
-      ...prev,
-      connected: { ...prev.connected, [id]: !prev.connected[id] },
-    }));
-  };
-
-  const handleMessage = (person: FounderContactProfile) => {
-    onMessage({
-      id: person.id,
-      name: person.name,
-      role: `${person.role} - ${person.company}`,
-      match: person.match,
-      initials: person.initials,
-      online: person.online,
+    setNetworkState((prev) => {
+      const nextConnected = !prev.connected[id];
+      return {
+        ...prev,
+        connected: { ...prev.connected, [id]: nextConnected },
+        outgoingIds: nextConnected ? prev.outgoingIds.filter((outgoingId) => outgoingId !== id) : prev.outgoingIds,
+      };
     });
   };
 
+  const markOutgoingRequest = (person: FounderContactProfile, note?: string) => {
+    setNetworkState((prev) => {
+      const next = {
+        ...prev,
+        connected: { ...prev.connected, [person.id]: false },
+        outgoingIds: Array.from(new Set([...prev.outgoingIds, person.id])),
+        requestNotes: note ? { ...prev.requestNotes, [person.id]: note } : prev.requestNotes,
+      };
+      saveStoredState(next);
+      return next;
+    });
+  };
+
+  const buildMessageTarget = (person: FounderContactProfile, note?: string): FounderNetworkMessageTarget => ({
+    id: person.id,
+    name: person.name,
+    role: `${person.role} - ${person.company}`,
+    match: person.match,
+    initials: person.initials,
+    online: person.online,
+    personType: person.type,
+    requestStatus: connected[person.id] ? undefined : "pending",
+    requestDirection: connected[person.id] ? undefined : "outgoing",
+    initialMessage: note,
+    subject: connected[person.id] ? undefined : "Connection request",
+  });
+
+  const handleConnectionButton = (person: FounderContactProfile) => {
+    if (connected[person.id]) {
+      handleToggleConnection(person.id);
+      return;
+    }
+    if (outgoingSet.has(person.id)) return;
+    setRequestModalPerson(person);
+  };
+
+  const handleMessage = (person: FounderContactProfile) => {
+    if (!connected[person.id]) {
+      markOutgoingRequest(person);
+      onMessage(buildMessageTarget(person, requestNotes[person.id]));
+      return;
+    }
+    onMessage(buildMessageTarget(person));
+  };
+
+  const handleSendRequestWithoutNote = () => {
+    if (!requestModalPerson) return;
+    markOutgoingRequest(requestModalPerson);
+    setRequestModalPerson(null);
+  };
+
+  const handleSendRequestWithNote = (note: string) => {
+    if (!requestModalPerson) return;
+    markOutgoingRequest(requestModalPerson, note);
+    onMessage(buildMessageTarget(requestModalPerson, note));
+    setRequestModalPerson(null);
+  };
+
   if (selectedPerson) {
+    const selectedRequested = outgoingSet.has(selectedPerson.id);
     return (
-      <NetworkProfileDetailScreen
-        key={selectedPerson.id}
-        profile={selectedPerson}
-        connected={Boolean(connected[selectedPerson.id])}
-        pending={pendingIds.includes(selectedPerson.id)}
-        backLabel="Back to Network"
-        onBack={() => setSelectedPerson(null)}
-        onAccept={handleAcceptRequest}
-        onIgnore={handleIgnoreRequest}
-        onToggleConnection={handleToggleConnection}
-        onMessage={handleMessage}
-      />
+      <>
+        <NetworkProfileDetailScreen
+          key={selectedPerson.id}
+          profile={selectedPerson}
+          connected={Boolean(connected[selectedPerson.id])}
+          pending={pendingIds.includes(selectedPerson.id)}
+          backLabel="Back to Network"
+          onBack={() => setSelectedPerson(null)}
+          onAccept={handleAcceptRequest}
+          onIgnore={handleIgnoreRequest}
+          onToggleConnection={() => handleConnectionButton(selectedPerson)}
+          onMessage={handleMessage}
+          connectionLabel={selectedRequested ? "Requested" : undefined}
+          connectionDisabled={selectedRequested}
+        />
+        <AnimatePresence>
+          {requestModalPerson && (
+            <ConnectionRequestModal
+              person={requestModalPerson}
+              onClose={() => setRequestModalPerson(null)}
+              onWithoutNote={handleSendRequestWithoutNote}
+              onWithNote={handleSendRequestWithNote}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
   const breakdownTotal = Math.max(connectedPeople.length, 1);
 
   return (
+    <>
     <div className="h-full flex flex-col overflow-y-auto" style={{ background: "#f5f6f4", padding: "24px 28px" }}>
       <div className="flex items-start justify-between mb-5 shrink-0">
         <div>
@@ -355,6 +572,7 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
             <AnimatePresence mode="popLayout">
               {filteredPeople.map((person) => {
                 const isConnected = connected[person.id];
+                const isRequested = outgoingSet.has(person.id);
                 return (
                   <motion.div
                     layout
@@ -404,20 +622,21 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                       <motion.button
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleToggleConnection(person.id);
+                          handleConnectionButton(person);
                         }}
+                        disabled={isRequested}
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.96 }}
                         transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-60"
                         style={{
-                          background: isConnected ? "#e8f5ef" : "#0f1c18",
-                          color: isConnected ? "#2e7d5c" : "#89d7b7",
-                          border: isConnected ? "1px solid #c5ddd0" : "1px solid #1a312c",
+                          background: isConnected || isRequested ? "#e8f5ef" : "#0f1c18",
+                          color: isConnected || isRequested ? "#2e7d5c" : "#89d7b7",
+                          border: isConnected || isRequested ? "1px solid #c5ddd0" : "1px solid #1a312c",
                         }}
                       >
                         {isConnected ? <CheckCircle size={13} weight="fill" /> : <UserPlus size={13} weight="bold" />}
-                        {isConnected ? "Connected" : "Connect"}
+                        {isConnected ? "Connected" : isRequested ? "Requested" : "Connect"}
                       </motion.button>
                       <button
                         onClick={(event) => {
@@ -469,7 +688,7 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
                   <button
                     onClick={(event) => {
                       event.stopPropagation();
-                      handleToggleConnection(person.id);
+                      handleConnectionButton(person);
                     }}
                     className="h-7 w-7 rounded-full flex items-center justify-center transition-colors hover:bg-[#0f1c18]"
                     style={{ background: "#e8f5ef", color: "#2e7d5c", border: "1px solid #c5ddd0" }}
@@ -508,5 +727,16 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
         </div>
       </div>
     </div>
+    <AnimatePresence>
+      {requestModalPerson && (
+        <ConnectionRequestModal
+          person={requestModalPerson}
+          onClose={() => setRequestModalPerson(null)}
+          onWithoutNote={handleSendRequestWithoutNote}
+          onWithNote={handleSendRequestWithNote}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
