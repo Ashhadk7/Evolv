@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Icon } from "@iconify/react";
+import { ClientIcon as Icon } from "./ClientIcon";
 
 export interface DeveloperProfile {
   firstName: string;
