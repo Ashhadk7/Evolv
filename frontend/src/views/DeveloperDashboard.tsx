@@ -7,18 +7,20 @@ import { Sidebar, type DeveloperTab } from '../components/developer/shared/Sideb
 
 import Applications from '../components/developer/Applications';
 import Discover     from '../components/developer/Discover';
-import Network      from '../components/developer/Network';
+import Network, { type DeveloperNetworkMessageTarget } from '../components/developer/Network';
 import Projects     from '../components/developer/Projects';
-import Inbox        from '../components/developer/Inbox';
+import Inbox, { type DeveloperInboxLaunchContact } from '../components/developer/Inbox';
 import Settings     from '../components/developer/Settings';
 
-const pages: Record<string, any> = {
+type DeveloperPageProps = {
+    onNavigate: (page: DeveloperTab) => void;
+};
+
+const pages: Partial<Record<DeveloperTab, React.ComponentType<DeveloperPageProps>>> = {
     dashboard: DeveloperDashboardPage,
     applications: Applications,
     discover: Discover,
-    network: Network,
     projects: Projects,
-    inbox: Inbox,
     settings: Settings,
 };
 
@@ -27,27 +29,32 @@ export default function DeveloperDashboard() {
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [profileComplete, setProfileComplete] = useState(true);
     const [userName, setUserName] = useState('');
+    const [inboxActiveContactId, setInboxActiveContactId] = useState('asad');
+    const [networkInboxContacts, setNetworkInboxContacts] = useState<DeveloperInboxLaunchContact[]>([]);
 
     useEffect(() => {
-        try {
-            const raw = localStorage.getItem('evolv_user');
-            if (raw) {
-                const user = JSON.parse(raw);
-                setProfileComplete(Boolean(user.profileComplete));
-                if (user.firstTime === true) {
-                    const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
-                    setUserName(name);
+        const loadTimer = window.setTimeout(() => {
+            try {
+                const raw = localStorage.getItem('evolv_user');
+                if (raw) {
+                    const user = JSON.parse(raw);
+                    setProfileComplete(Boolean(user.profileComplete));
+                    if (user.firstTime === true) {
+                        const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+                        setUserName(name);
+                        setShowOnboarding(true);
+                    }
+                } else {
+                    // If no user exists, set default firstTime flag to trigger onboarding
+                    const defaultUser = { firstTime: true, profileComplete: false, firstName: "Sarah", lastName: "Mitchell" };
+                    localStorage.setItem('evolv_user', JSON.stringify(defaultUser));
+                    setUserName("Sarah Mitchell");
+                    setProfileComplete(false);
                     setShowOnboarding(true);
                 }
-            } else {
-                // If no user exists, set default firstTime flag to trigger onboarding
-                const defaultUser = { firstTime: true, profileComplete: false, firstName: "Sarah", lastName: "Mitchell" };
-                localStorage.setItem('evolv_user', JSON.stringify(defaultUser));
-                setUserName("Sarah Mitchell");
-                setProfileComplete(false);
-                setShowOnboarding(true);
-            }
-        } catch (_) {}
+            } catch {}
+        }, 0);
+        return () => window.clearTimeout(loadTimer);
     }, []);
 
     const handleOnboardingComplete = () => {
@@ -55,7 +62,7 @@ export default function DeveloperDashboard() {
             const raw = localStorage.getItem('evolv_user');
             const user = raw ? JSON.parse(raw) : {};
             setProfileComplete(Boolean(user.profileComplete));
-        } catch (_) {}
+        } catch {}
         setShowOnboarding(false);
     };
 
@@ -73,13 +80,32 @@ export default function DeveloperDashboard() {
         setCurrentPage(page);
     };
 
+    const handleOpenNetworkMessage = (contact: DeveloperNetworkMessageTarget) => {
+        setNetworkInboxContacts((prev) => [contact, ...prev.filter((item) => item.id !== contact.id)]);
+        setInboxActiveContactId(contact.id);
+        setCurrentPage('inbox');
+    };
+
     const Page = pages[currentPage] || DeveloperDashboardPage;
 
     return (
         <div style={{ display: 'flex', background: '#f5f6f4', minHeight: '100vh' }}>
             <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />
             <div style={{ flex: 1, minWidth: 0 }}>
-                <Page onNavigate={handleNavigate} />
+                {currentPage === 'network' ? (
+                    <Network
+                        onNavigate={handleNavigate}
+                        onMessage={handleOpenNetworkMessage}
+                    />
+                ) : currentPage === 'inbox' ? (
+                    <Inbox
+                        activeContactId={inboxActiveContactId}
+                        onActiveContactChange={setInboxActiveContactId}
+                        extraContacts={networkInboxContacts}
+                    />
+                ) : (
+                    <Page onNavigate={handleNavigate} />
+                )}
             </div>
             {!profileComplete && !showOnboarding && (
                 <div
