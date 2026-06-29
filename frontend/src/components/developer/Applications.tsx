@@ -206,24 +206,6 @@ const Applications = ({ onNavigate }) => {
                     {appStats.map((s) => <StatCard key={s.id} {...s} />)}
                 </div>
 
-                {/* Pipeline */}
-                <div className={"Applications_pipeline"}>
-                    {pipelineStages.map((stage) => {
-                        const count = applicationsData.filter(a => a.status === stage).length;
-                        const cfg = statusConfig[stage] || {};
-                        return (
-                            <div
-                                key={stage}
-                                className={`${"Applications_pipelineStage"} ${filterStatus === stage ? "Applications_pipelineActive" : ''}`}
-                                onClick={() => setFilterStatus(filterStatus === stage ? 'All' : stage)}
-                            >
-                                <div className={"Applications_pipelineCount"} style={{ color: cfg.color }}>{count}</div>
-                                <div className={"Applications_pipelineLabel"}>{stage}</div>
-                                <div className={"Applications_pipelineDot"} style={{ background: cfg.color }}></div>
-                            </div>
-                        );
-                    })}
-                </div>
 
                 {/* Filters */}
                 <div className={"Applications_filterBar"}>
