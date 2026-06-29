@@ -30,6 +30,102 @@ const PRIMARY_GOALS = [
   "Test and validate my startup concept",
 ];
 const WORK_TYPES = ["Remote", "Hybrid", "Onsite"];
+const EDUCATION_LEVELS = [
+  "Student",
+  "Intermediate / Higher Secondary",
+  "Diploma",
+  "Undergraduate",
+  "Bachelor's",
+  "Master's",
+  "MBA",
+  "MPhil",
+  "PhD / Doctorate",
+  "Professional Certification",
+  "Self-taught / Bootcamp",
+  "Prefer not to say",
+  "Other",
+];
+const DEGREE_OPTIONS_BY_LEVEL: Record<string, string[]> = {
+  "Student": ["Currently studying", "No formal degree yet", "Other"],
+  "Intermediate / Higher Secondary": [
+    "High School / Secondary School",
+    "Intermediate / FSc",
+    "Intermediate / FA",
+    "A-Levels",
+    "GED / Equivalent",
+    "Other",
+  ],
+  "Diploma": [
+    "Diploma in Business",
+    "Diploma in Computer Science",
+    "Diploma in Information Technology",
+    "Diploma in Engineering",
+    "Diploma in Design",
+    "Associate Degree",
+    "Other",
+  ],
+  "Undergraduate": [
+    "Undergraduate - Business",
+    "Undergraduate - Computer Science",
+    "Undergraduate - Engineering",
+    "Undergraduate - Arts",
+    "Undergraduate - Medicine",
+    "Undergraduate - Law",
+    "Other",
+  ],
+  "Bachelor's": [
+    "BA",
+    "BSc",
+    "BBA",
+    "BCom",
+    "BS Computer Science",
+    "BS Software Engineering",
+    "BS Information Technology",
+    "BS Data Science",
+    "BS Artificial Intelligence",
+    "BS Cybersecurity",
+    "BS Electrical Engineering",
+    "BS Mechanical Engineering",
+    "BS Civil Engineering",
+    "BS Biomedical Engineering",
+    "BEng / BE",
+    "BTech",
+    "BArch",
+    "BFA",
+    "LLB",
+    "MBBS",
+    "BDS",
+    "Pharm-D",
+    "BEd",
+    "Other",
+  ],
+  "Master's": [
+    "MA",
+    "MSc",
+    "MCom",
+    "MEd",
+    "MS Computer Science",
+    "MS Software Engineering",
+    "MS Data Science",
+    "MS Artificial Intelligence",
+    "MS Cybersecurity",
+    "MS Electrical Engineering",
+    "MS Mechanical Engineering",
+    "MEng / ME",
+    "MPH",
+    "LLM",
+    "Other",
+  ],
+  "MBA": ["MBA", "Executive MBA", "MBA Finance", "MBA Marketing", "MBA Entrepreneurship", "MBA Technology Management", "Other"],
+  "MPhil": ["MPhil", "MPhil Computer Science", "MPhil Business", "MPhil Economics", "MPhil Education", "MPhil Psychology", "Other"],
+  "PhD / Doctorate": ["PhD", "DBA", "EdD", "MD", "Doctorate in Engineering", "Doctorate in Computer Science", "Other"],
+  "Professional Certification": ["CA", "ACCA", "CFA", "CPA", "PMP", "AWS Certification", "Google Certification", "Microsoft Certification", "Other"],
+  "Self-taught / Bootcamp": ["Self-taught", "Coding Bootcamp", "Design Bootcamp", "Founder Fellowship", "Online Certification", "Other"],
+  "Prefer not to say": ["Prefer not to say"],
+  "Other": ["Other"],
+};
+
+const DEFAULT_DEGREE_OPTIONS = ["Select education level first"];
 
 const COUNTRIES_STATES_URL = "https://countriesnow.space/api/v0.1/countries/states";
 const COUNTRY_CODES_URL = "https://countriesnow.space/api/v0.1/countries/codes";
@@ -306,9 +402,9 @@ function ThemedSelect({
           if (disabled) return;
           setOpen((current) => !current);
         }}
-        className="flex h-11 w-full items-center justify-between rounded-lg border bg-white pr-3.5  text-left text-[14px] outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20 disabled:cursor-not-allowed disabled:bg-[#f5f7f5] disabled:text-[#0f1c18]/35"
-        // className="flex h-11 w-full items-center justify-between rounded-lg border bg-white px-3.5"
-        style={{ borderColor: error ? "#dc2626" : "rgba(15,28,24,0.12)", color: value ? BRAND_INK : "rgba(15,28,24,0.38)" }}
+        className="flex h-11 w-full items-center justify-between space-around rounded-lg border bg-white px-3.5  text-left text-[14px] outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20 disabled:cursor-not-allowed disabled:bg-[#f5f7f5] disabled:text-[#0f1c18]/35"
+      
+        style={{paddingRight:"1rem", borderColor: error ? "#dc2626" : "rgba(15,28,24,0.12)", color: value ? BRAND_INK : "rgba(15,28,24,0.38)" }}
       >
         <span className="truncate pl-6">{loading ? "Loading..." : displayValue}</span>
         <CaretDown size={15} weight="bold" className={`ml-3 shrink-0 transition ${open ? "rotate-180" : ""}`} style={{ color: "rgba(15,28,24,0.45)" }} />
@@ -363,6 +459,41 @@ function ThemedSelect({
 
       {error && <span className="mt-1.5 block text-[11.5px] font-medium text-red-600">{error}</span>}
     </div>
+  );
+}
+
+function StaticSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block">
+      <RequiredLabel label={label} />
+      <span className="relative block">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          className="h-11 w-full appearance-none rounded-lg border bg-white px-4 pr-10 text-[14px] outline-none transition focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20 disabled:cursor-not-allowed disabled:bg-[#f5f7f5] disabled:text-[#0f1c18]/35"
+          style={{ borderColor: "rgba(15,28,24,0.12)", color: value ? BRAND_INK : "rgba(15,28,24,0.38)" }}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+        <CaretDown size={15} weight="bold" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "rgba(15,28,24,0.45)" }} />
+      </span>
+    </label>
   );
 }
 
@@ -509,7 +640,8 @@ export function SignUpForm() {
   });
 
   const [founder, setFounder] = useState({
-    headline: "", bio: "", domains: [] as string[], primaryGoal: "", location: "", linkedin: "",
+    headline: "", bio: "", domains: [] as string[], primaryGoal: "",
+    educationLevel: "", degreeName: "", customDegreeName: "", linkedin: "",
   });
 
   const [developer, setDeveloper] = useState({
@@ -519,9 +651,10 @@ export function SignUpForm() {
 
   const profileCompleteness = useMemo(() => {
     if (role === "founder") {
-      const filled = [founder.headline, founder.bio, founder.location, founder.primaryGoal].filter(Boolean).length
+      const degreeValue = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
+      const filled = [founder.headline, founder.bio, founder.educationLevel, degreeValue, founder.primaryGoal, founder.linkedin].filter(Boolean).length
         + (founder.domains.length ? 1 : 0);
-      return Math.round((filled / 5) * 100);
+      return Math.round((filled / 7) * 100);
     }
     if (role === "developer") {
       const filled = [developer.jobTitle, developer.experience, developer.location, developer.bio].filter(Boolean).length
@@ -553,6 +686,10 @@ export function SignUpForm() {
       .map((country) => ({ value: country.dialCode, label: country.name }))
       .sort((a, b) => a.label!.localeCompare(b.label!)),
     [countryOptions]
+  );
+  const founderDegreeOptions = useMemo(
+    () => founder.educationLevel ? DEGREE_OPTIONS_BY_LEVEL[founder.educationLevel] ?? ["Other"] : DEFAULT_DEGREE_OPTIONS,
+    [founder.educationLevel]
   );
 
   useEffect(() => {
@@ -678,8 +815,10 @@ export function SignUpForm() {
       idNumber: account.idNumber,
     };
     const base = { firstName: account.firstName, lastName: account.lastName, email: account.email, password: account.password, role, ...accountLocation };
+    const founderDegreeName = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
+    const founderEducation = [founder.educationLevel, founderDegreeName].filter(Boolean).join(" - ");
     const profile = role === "founder"
-      ? { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, headline: founder.headline, bio: founder.bio, domains: founder.domains, primaryGoal: founder.primaryGoal, location: founder.location, linkedin: founder.linkedin, profileComplete }
+      ? { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, headline: founder.headline, bio: founder.bio, domains: founder.domains, primaryGoal: founder.primaryGoal, education: founderEducation, educationLevel: founder.educationLevel, degreeName: founderDegreeName, degreeSelection: founder.degreeName, customDegreeName: founder.customDegreeName, location: account.city, linkedin: founder.linkedin, profileComplete }
       : { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, jobTitle: developer.jobTitle, role: developer.jobTitle, location: developer.location, experience: developer.experience, bio: developer.bio, techStack: developer.skills, workType: developer.workType, github: developer.github, linkedin: developer.linkedIn, availability: true, profileComplete, firstTime: !profileComplete };
 
     const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredSignupUser[];
@@ -698,13 +837,13 @@ export function SignUpForm() {
   const finish = (skip = false) => {
     setError("");
     if (!role) return;
-    const complete = role === "founder"
-      ? Boolean(founder.headline && founder.bio && founder.location && founder.primaryGoal && founder.domains.length)
-      : Boolean(developer.jobTitle && developer.experience && developer.location && developer.bio && developer.skills.length);
+    if (role === "founder") {
+      try { persistAccount(!skip); } catch { setError("Something went wrong while creating your account."); }
+      return;
+    }
+    const complete = Boolean(developer.jobTitle && developer.experience && developer.location && developer.bio && developer.skills.length);
     if (!skip && !complete) {
-      setError(role === "founder"
-        ? "Add a headline, bio, location, primary goal, and at least one domain."
-        : "Add a role, experience, location, bio, and at least one skill.");
+      setError("Add a role, experience, location, bio, and at least one skill.");
       return;
     }
     try { persistAccount(!skip && complete); } catch { setError("Something went wrong while creating your account."); }
@@ -910,8 +1049,35 @@ export function SignUpForm() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextInput label="Location / city" value={founder.location} onChange={(v) => setFounderField("location", v)} placeholder="Lahore, Pakistan" />
-                  <TextInput label="LinkedIn (optional)" value={founder.linkedin} onChange={(v) => setFounderField("linkedin", v)} placeholder="https://linkedin.com/in/…" />
+                  <StaticSelect
+                    label="Highest education"
+                    value={founder.educationLevel}
+                    onChange={(value) => {
+                      setFounderField("educationLevel", value);
+                      setFounderField("degreeName", "");
+                      setFounderField("customDegreeName", "");
+                    }}
+                    placeholder="Select education level"
+                    options={EDUCATION_LEVELS}
+                  />
+                  <StaticSelect
+                    label="Degree / program"
+                    value={founder.degreeName}
+                    onChange={(value) => {
+                      setFounderField("degreeName", value);
+                      if (value !== "Other") setFounderField("customDegreeName", "");
+                    }}
+                    placeholder={founder.educationLevel ? "Select degree" : "Select education first"}
+                    options={founderDegreeOptions}
+                    disabled={!founder.educationLevel}
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {founder.degreeName === "Other" && (
+                    <TextInput label="Other degree" value={founder.customDegreeName} onChange={(v) => setFounderField("customDegreeName", v)} placeholder="Write your degree name" />
+                  )}
+                  <TextInput label="LinkedIn" value={founder.linkedin} onChange={(v) => setFounderField("linkedin", v)} placeholder="https://linkedin.com/in/…" />
                 </div>
 
                 <div className="rounded-xl border bg-white px-5 py-5" style={{ borderColor: "rgba(15,28,24,0.1)" }}>

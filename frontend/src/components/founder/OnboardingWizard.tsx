@@ -14,6 +14,10 @@ export interface FounderProfile {
   gender: string;
   phone: string;
   education: string;
+  educationLevel?: string;
+  degreeName?: string;
+  degreeSelection?: string;
+  customDegreeName?: string;
   description: string;
   email: string;
   avatarUrl?: string;

@@ -21,7 +21,7 @@ const SettingsTab   = dynamic(() => import("@/components/founder/SettingsTab").t
 
 const DEFAULT_PROFILE: FounderProfile = {
   firstName: "Asad", lastName: "", bio: "", domains: [], linkedin: "",
-  dob: "", gender: "", phone: "", education: "", description: "",
+  dob: "", gender: "", phone: "", education: "", educationLevel: "", degreeName: "", degreeSelection: "", customDegreeName: "", description: "",
   headline: "", location: "", country: "", countryCode: "", stateProvince: "", city: "", primaryGoal: "", idNumber: "",
   email: "", avatarUrl: "", profileComplete: false,
 };
