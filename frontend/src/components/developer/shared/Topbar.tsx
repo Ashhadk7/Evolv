@@ -8,11 +8,12 @@ interface TopbarProps {
   profile?: { firstName: string; lastName: string; avatarUrl?: string };
   onNavigate?: (tab: string) => void;
   onNotifClick?: () => void; // Support legacy prop
+  animateTitle?: boolean;
 }
 
 const ACCENT = "#89d7b7";
 
-export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNotifClick }: TopbarProps) {
+export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNotifClick, animateTitle = false }: TopbarProps) {
   const [localProfile, setLocalProfile] = useState({ firstName: "Sarah", lastName: "Mitchell", avatarUrl: "" });
 
   useEffect(() => {
@@ -31,10 +32,15 @@ export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNo
 
   const activeProfile = propProfile || localProfile;
   const fullText = title || `Welcome back, ${activeProfile.firstName || "Developer"}`;
-  const [displayed, setDisplayed] = useState("");
-  const [done, setDone]           = useState(false);
+  const [displayed, setDisplayed] = useState(animateTitle ? "" : fullText);
+  const [done, setDone]           = useState(!animateTitle);
 
   useEffect(() => {
+    if (!animateTitle) {
+      setDisplayed(fullText);
+      setDone(true);
+      return;
+    }
     setDisplayed("");
     setDone(false);
     let i = 0;
@@ -47,7 +53,7 @@ export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNo
       }
     }, 45);
     return () => clearInterval(interval);
-  }, [fullText]);
+  }, [fullText, animateTitle]);
 
   const initials =
     `${activeProfile.firstName?.[0] ?? ""}${activeProfile.lastName?.[0] ?? ""}`.toUpperCase() || "D";

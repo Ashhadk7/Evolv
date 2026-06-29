@@ -393,7 +393,7 @@
 /* Pipeline */
 .Applications_pipeline {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 0;
     background: #FFFFFF;
     border: 1px solid #E6E0D7;
@@ -533,7 +533,7 @@
     display: grid;
     grid-template-columns: 1.8fr 1fr 0.6fr 0.9fr 1fr 1.2fr;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 1.15rem 1rem;
     border-bottom: 1px solid #F7F6F3;
     align-items: center;
     cursor: pointer;
@@ -6639,4 +6639,123 @@ to{
 opacity:1;
 }
 
+}
+
+/* --- AiMatchBanner --- */
+.AiMatchBanner_container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f4fbf8;
+    border: 1px solid #c9ebd8;
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 1.5rem;
+    gap: 1.25rem;
+    box-shadow: 0 4px 18px rgba(46, 125, 92, 0.03);
+}
+
+.AiMatchBanner_left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.AiMatchBanner_iconBadge {
+    width: 38px;
+    height: 38px;
+    background: rgba(46, 125, 92, 0.1);
+    color: #2e7d5c;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.AiMatchBanner_content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.AiMatchBanner_header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.AiMatchBanner_label {
+    color: #2e7d5c;
+}
+
+.AiMatchBanner_badge {
+    background: #2e7d5c;
+    color: #ffffff;
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.6rem;
+}
+
+.AiMatchBanner_text {
+    font-size: 0.85rem;
+    color: #1a2e26;
+    line-height: 1.45;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.AiMatchBanner_pills {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.15rem;
+}
+
+.AiMatchBanner_pill {
+    font-size: 0.68rem;
+    color: #7a9e8e;
+    background: rgba(122, 158, 142, 0.06);
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+}
+
+.AiMatchBanner_pill.AiMatchBanner_scorePill {
+    color: #2e7d5c;
+    background: rgba(46, 125, 92, 0.08);
+    border: 1px solid rgba(46, 125, 92, 0.15);
+    font-weight: 600;
+}
+
+.AiMatchBanner_btn {
+    background: #0f1c18;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.AiMatchBanner_btn:hover {
+    background: #1a312c;
+    transform: translateY(-1px);
 }
