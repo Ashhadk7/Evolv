@@ -884,10 +884,13 @@ export function SignUpForm() {
     const base = { firstName: account.firstName, lastName: account.lastName, email: account.email, password: account.password, role, ...accountLocation };
     const founderDegreeName = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
     const founderEducation = [founder.educationLevel, founderDegreeName].filter(Boolean).join(" - ");
+    const founderEducations = founderEducation
+      ? [{ id: "signup_education", level: founder.educationLevel, degree: founderDegreeName, customDegree: founder.degreeName === "Other" ? founder.customDegreeName : "", school: "" }]
+      : [];
     const developerDegreeName = developer.degreeName === "Other" ? developer.customDegreeName : developer.degreeName;
     const developerEducation = [developer.educationLevel, developerDegreeName].filter(Boolean).join(" - ");
     const profile = role === "founder"
-      ? { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, headline: founder.headline, bio: founder.bio, domains: founder.domains, primaryGoal: founder.primaryGoal, education: founderEducation, educationLevel: founder.educationLevel, degreeName: founderDegreeName, degreeSelection: founder.degreeName, customDegreeName: founder.customDegreeName, location: account.city, linkedin: founder.linkedin, profileComplete }
+      ? { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, headline: founder.headline, bio: founder.bio, domains: founder.domains, primaryGoal: founder.primaryGoal, education: founderEducation, educationLevel: founder.educationLevel, degreeName: founderDegreeName, degreeSelection: founder.degreeName, customDegreeName: founder.customDegreeName, educations: founderEducations, location: account.city, linkedin: founder.linkedin, profileComplete }
       : { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, jobTitle: developer.jobTitle, role: developer.jobTitle, location: account.city, experience: developer.experience, education: developerEducation, educationLevel: developer.educationLevel, degreeName: developerDegreeName, degreeSelection: developer.degreeName, customDegreeName: developer.customDegreeName, bio: developer.bio, techStack: developer.skills, github: developer.github, linkedin: developer.linkedIn, availability: true, profileComplete, firstTime: !profileComplete };
 
     const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredSignupUser[];
@@ -895,7 +898,7 @@ export function SignUpForm() {
     localStorage.setItem("evolv_users", JSON.stringify([...filtered, { ...base, profile }]));
     if (role === "founder") {
       localStorage.setItem("evolv_founder_profile", JSON.stringify(profile));
-      router.push(profileComplete ? "/founder-dashboard" : "/founder-dashboard?setup=true");
+      router.push("/founder-dashboard");
     } else {
       localStorage.setItem("evolv_user", JSON.stringify(profile));
       router.push("/developer-dashboard");
@@ -907,7 +910,9 @@ export function SignUpForm() {
     setError("");
     if (!role) return;
     if (role === "founder") {
-      try { persistAccount(!skip); } catch { setError("Something went wrong while creating your account."); }
+      const founderDegreeName = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
+      const complete = Boolean(founder.headline && founder.bio && founder.domains.length && founder.educationLevel && founderDegreeName);
+      try { persistAccount(!skip && complete); } catch { setError("Something went wrong while creating your account."); }
       return;
     }
     const complete = Boolean(developer.jobTitle || developer.experience || developer.educationLevel || developer.degreeName || developer.bio || developer.github || developer.linkedIn || developer.skills.length);

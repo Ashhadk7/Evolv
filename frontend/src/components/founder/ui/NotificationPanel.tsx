@@ -2,7 +2,7 @@
 
 import { forwardRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Icon } from "@iconify/react";
+import { ClientIcon as Icon } from "./ClientIcon";
 import {
   NOTIF_COLORS,
   NOTIF_ICONS,

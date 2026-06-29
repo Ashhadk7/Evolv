@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ElementType } from "react";
+import { useEffect, useRef, useState, type ElementType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -21,8 +21,28 @@ import {
   Sparkle,
   CheckCircle,
   LinkSimple,
+  Plus,
+  Trash,
+  CreditCard,
+  LockKey,
+  SlidersHorizontal,
+  WarningCircle,
+  ShieldCheck,
+  CurrencyDollar,
 } from "@phosphor-icons/react";
 import type { FounderProfile } from "./OnboardingWizard";
+import {
+  EDUCATION_LEVELS,
+  createBlankEducation,
+  formatFounderEducation,
+  formatFounderEducations,
+  getDegreeOptions,
+  getFounderEducationSummary,
+  getFounderEducations,
+  isFounderProfileComplete,
+  normalizeFounderProfileForSave,
+  type FounderEducation,
+} from "./profileUtils";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const INK        = "#1a312c";
@@ -227,6 +247,116 @@ function DomainSearch({ selected, onToggle }: { selected: string[]; onToggle: (d
 }
 
 // ── ProfileSection ────────────────────────────────────────────────────────────
+function EducationEditor({
+  educations,
+  onChange,
+}: {
+  educations: FounderEducation[];
+  onChange: (next: FounderEducation[]) => void;
+}) {
+  const update = (id: string, patch: Partial<FounderEducation>) => {
+    onChange(educations.map((education) => {
+      if (education.id !== id) return education;
+      const next = { ...education, ...patch };
+      if (patch.level !== undefined) {
+        next.degree = "";
+        next.customDegree = "";
+      }
+      if (patch.degree && patch.degree !== "Other") next.customDegree = "";
+      return next;
+    }));
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {educations.map((education, index) => {
+        const degreeOptions = getDegreeOptions(education.level);
+        return (
+          <div key={education.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: BORDER }}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: TEXT_BODY }}>
+                <GraduationCap size={14} weight="bold" style={{ color: MID }} />
+                Education {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(educations.filter((item) => item.id !== education.id))}
+                className="rounded-lg p-1.5 transition hover:bg-red-50"
+                aria-label="Remove education"
+                style={{ color: "#c0392b" }}
+              >
+                <Trash size={14} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Education level</span>
+                <select
+                  value={education.level}
+                  onChange={(event) => update(education.id, { level: event.target.value })}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+                  style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+                >
+                  <option value="">Select level</option>
+                  {EDUCATION_LEVELS.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Degree / program</span>
+                <select
+                  value={education.degree}
+                  onChange={(event) => update(education.id, { degree: event.target.value })}
+                  disabled={!education.level}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30 disabled:cursor-not-allowed disabled:text-[#1a2e26]/35"
+                  style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+                >
+                  <option value="">{education.level ? "Select degree" : "Select level first"}</option>
+                  {degreeOptions.map((degree) => (
+                    <option key={degree} value={degree}>{degree}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className={`mt-3 grid gap-3 ${education.degree === "Other" ? "sm:grid-cols-2" : ""}`}>
+              {education.degree === "Other" && (
+                <input
+                  value={education.customDegree ?? ""}
+                  onChange={(event) => update(education.id, { customDegree: event.target.value })}
+                  placeholder="Write degree name"
+                  className="h-10 rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+                  style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+                />
+              )}
+              <input
+                value={education.school ?? ""}
+                onChange={(event) => update(education.id, { school: event.target.value })}
+                placeholder="School / university"
+                className="h-10 rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+                style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange([...educations, createBlankEducation()])}
+        className="flex h-10 items-center justify-center gap-2 rounded-xl border bg-white text-[12px] font-bold transition hover:bg-[#f8faf8]"
+        style={{ borderColor: BORDER, color: MID }}
+      >
+        <Plus size={14} weight="bold" />
+        Add education
+      </button>
+    </div>
+  );
+}
+
 function getProfileName(profile: FounderProfile) {
   return `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Founder Profile";
 }
@@ -331,33 +461,71 @@ function ProfileAvatar({
   );
 }
 
-function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: (p: FounderProfile) => void }) {
+function ProfileSection({
+  profile,
+  onSave,
+  startEditingSignal = 0,
+}: {
+  profile: FounderProfile;
+  onSave: (p: FounderProfile) => void;
+  startEditingSignal?: number;
+}) {
   const [local, setLocal] = useState<FounderProfile>(profile);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const safeDomains = Array.isArray(local.domains) ? local.domains : [];
+  const safeEducations = getFounderEducations(local);
+  const educationItems = safeEducations.map(formatFounderEducation).filter(Boolean);
+  const educationSummary = getFounderEducationSummary(local);
   const fullName = getProfileName(local);
   const initials = getProfileInitials(local);
   const headline = local.headline?.trim() || local.bio?.trim() || "Founder building on Evolv";
-  const about = local.description?.trim() || local.bio?.trim() || local.headline?.trim() || "Add a fuller founder story so developers, investors, and collaborators can understand what you are building and why it matters.";
-  const locationText = local.location?.trim() || local.country?.trim() || "Evolv Network";
+  const bioText = local.bio?.trim() || "Add a short bio so developers, investors, and collaborators understand what you are building.";
+  const cityCountryParts: string[] = [];
+  [local.city, local.country].forEach((item) => {
+    const value = item?.trim();
+    if (value && !cityCountryParts.some((part) => part.toLowerCase() === value.toLowerCase())) {
+      cityCountryParts.push(value);
+    }
+  });
+  const cityCountry = cityCountryParts.join(", ");
+  const locationText = cityCountry || local.location?.trim() || local.country?.trim() || "Evolv Network";
   const founderFocus = safeDomains[0] ? `${safeDomains[0]} founder` : local.primaryGoal?.trim() || "Startup founder";
   const normalizedLinkedin = normalizeUrl(local.linkedin);
   const completionItems = [
     local.firstName,
     local.lastName,
-    local.bio || local.headline,
+    local.headline,
+    local.bio,
     safeDomains.length ? "domains" : "",
-    local.description || local.primaryGoal,
+    educationSummary,
     local.linkedin,
-    local.education || local.location || local.country,
-    local.avatarUrl,
   ];
   const completion = Math.round((completionItems.filter(Boolean).length / completionItems.length) * 100);
 
   const set = (key: keyof FounderProfile, val: string) => setLocal((p) => ({ ...p, [key]: val }));
+
+  useEffect(() => {
+    if (editing) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setLocal(profile);
+    });
+    return () => { active = false; };
+  }, [editing, profile]);
+
+  useEffect(() => {
+    if (startEditingSignal <= 0) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setLocal(profile);
+      setEditing(true);
+    });
+    return () => { active = false; };
+  }, [profile, startEditingSignal]);
 
   const toggleDomain = (d: string) =>
     setLocal((p) => {
@@ -369,10 +537,18 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
     });
 
   const handleSave = () => {
-    onSave({ ...local, domains: safeDomains });
+    onSave(normalizeFounderProfileForSave({ ...local, domains: safeDomains, educations: safeEducations }) as FounderProfile);
     setEditing(false);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  const handleEducationsChange = (next: FounderEducation[]) => {
+    setLocal((current) => ({
+      ...current,
+      educations: next,
+      education: formatFounderEducations(next),
+    }));
   };
 
   const handleCancel = () => {
@@ -500,7 +676,13 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                       Founder
                     </span>
                   </div>
-                  <p className="pl-6 mt-3 max-w-2xl text-[14px] leading-6" style={{ color: "#334d42" }}>
+                  <p className="pl-6 mt-2 text-[12px] font-bold uppercase tracking-widest" style={{ color: TEXT_MUTED }}>
+                    Professional Role
+                  </p>
+                  <p className="pl-6 mt-1 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
+                    Founder
+                  </p>
+                  <p className="pl-6 mt-2 max-w-2xl text-[14px] font-semibold leading-6" style={{ color: "#334d42" }}>
                     {headline}
                   </p>
                   <div className="mb-4 mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 py-1.5 text-[12px]" style={{ color: TEXT_MUTED }}>
@@ -525,7 +707,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                   {[
                     { label: "Profile strength", value: `${completion}%`, detail: "Public readiness" },
                     { label: "Focus areas", value: `${safeDomains.length}`, detail: safeDomains.slice(0, 2).join(" / ") || "Add domains" },
-                    { label: "Visibility", value: local.profileComplete ? "Live" : "Draft", detail: "Founder network" },
+                    { label: "Visibility", value: isFounderProfileComplete(local) ? "Live" : "Draft", detail: "Founder network" },
                   ].map((item, index) => (
                     <motion.div
                       key={item.label}
@@ -561,8 +743,8 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
               >
                 <div className="mb-2 flex items-center justify-between gap-5">
                   <div>
-                    <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>About</h4>
-                    <p className="text-[11px]" style={{ color: TEXT_MUTED }}>The story people see on your profile.</p>
+                    <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Bio</h4>
+                    <p className="text-[11px]" style={{ color: TEXT_MUTED }}>The short intro people see on your profile.</p>
                   </div>
                   <motion.button
                     type="button"
@@ -571,19 +753,19 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                     whileTap={{ scale: 0.96 }}
                     className="flex h-8 w-8 items-center justify-center rounded-full"
                     style={{ background: "#edf5f1", color: MID }}
-                    aria-label="Edit about section"
+                    aria-label="Edit bio section"
                   >
                     <PencilSimple size={14} weight="bold" />
                   </motion.button>
                 </div>
                 <p className="text-[13px] leading-7" style={{ color: "#334d42" }}>
-                  {about}
+                  {bioText}
                 </p>
 
                 <div className="my-7" style={{ height: 1, marginBottom:"1rem", background: "#dfe9e3" }} />
 
                 <div>
-                  <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Founder Focus</h4>
+                  <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Interested Domains</h4>
                   <div className="mt-4 flex flex-wrap gap-2.5 pb-1">
                     {safeDomains.length > 0 ? (
                       safeDomains.map((domain) => (
@@ -613,15 +795,31 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                     >
                       <GraduationCap size={17} weight="bold" />
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>
-                        {local.education || "Add education"}
-                      </p>
-                      <p className="mt-1 text-[12px] leading-5" style={{ color: TEXT_MUTED }}>
-                        {local.education
-                          ? "Background shown to developers, and collaborators."
-                          : "Your education helps others understand your credibility."}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      {educationItems.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {educationItems.map((education) => (
+                            <div
+                              key={education}
+                              className="rounded-lg px-3.5 py-2.5"
+                              style={{ background: "#f8faf8", border: "1px solid #dfe9e3" }}
+                            >
+                              <p className="text-[13px] font-bold leading-5" style={{ color: TEXT_BODY }}>
+                                {education}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>
+                            Add education
+                          </p>
+                          <p className="mt-1 text-[12px] leading-5" style={{ color: TEXT_MUTED }}>
+                            Your education helps others understand your credibility.
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -718,7 +916,10 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                   <Field label="Last Name" value={local.lastName} onChange={(v) => set("lastName", v)} placeholder="Ahmed" />
                 </div>
                 <div className="mt-4">
-                  <Field label="Bio Line" value={local.bio} onChange={(v) => set("bio", v)} placeholder="Building the future of healthcare" />
+                  <Field label="Founder Headline" value={local.headline ?? ""} onChange={(v) => set("headline", v)} placeholder="Building the future of healthcare" />
+                </div>
+                <div className="mt-4">
+                  <Field label="Short Bio" value={local.bio} onChange={(v) => set("bio", v)} placeholder="Tell collaborators what you are building and why it matters." />
                 </div>
                 <div className="mt-4">
                   <Field label="Email" type="email" value={local.email} onChange={(v) => set("email", v)} placeholder="you@example.com" />
@@ -735,7 +936,7 @@ function ProfileSection({ profile, onSave }: { profile: FounderProfile; onSave: 
                 <div className="flex flex-col gap-4">
                   <Field label="LinkedIn Profile" value={local.linkedin} onChange={(v) => set("linkedin", v)} placeholder="https://linkedin.com/in/yourname" optional />
                   <Field label="Phone Number" value={local.phone} onChange={(v) => set("phone", v)} placeholder="+92 300 0000000" optional />
-                  <Field label="Education" value={local.education} onChange={(v) => set("education", v)} placeholder="BSc Computer Science, LUMS" optional />
+                  <EducationEditor educations={safeEducations} onChange={handleEducationsChange} />
                 </div>
               </section>
 
@@ -853,24 +1054,324 @@ function NotificationsSection() {
 /* Main export                                                 */
 /* ────────────────────────────────────────────────────────── */
 
-export type SettingsSection = "profile" | "notifications";
+function PaymentSection({ profile }: { profile: FounderProfile }) {
+  const [saved, setSaved] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [billing, setBilling] = useState({
+    plan: "Founder Launch",
+    billingEmail: profile.email || "",
+    currency: "USD",
+    budgetRange: "$50K - $100K",
+    companyName: "My Startup",
+  });
+
+  const save = () => {
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <CreditCard size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Payment & Billing</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Company / Startup Name" value={billing.companyName} onChange={(value) => setBilling((current) => ({ ...current, companyName: value }))} placeholder="Your startup" />
+          <Field label="Billing Email" type="email" value={billing.billingEmail} onChange={(value) => setBilling((current) => ({ ...current, billingEmail: value }))} placeholder="billing@example.com" />
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Workspace plan</span>
+            <select
+              value={billing.plan}
+              onChange={(event) => setBilling((current) => ({ ...current, plan: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Founder Launch</option>
+              <option>Founder Growth</option>
+              <option>Investor Ready</option>
+              <option>Enterprise Founder Team</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Preferred currency</span>
+            <select
+              value={billing.currency}
+              onChange={(event) => setBilling((current) => ({ ...current, currency: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+              <option>PKR</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <CurrencyDollar size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Founder Funding Preferences</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Expected build budget</span>
+            <select
+              value={billing.budgetRange}
+              onChange={(event) => setBilling((current) => ({ ...current, budgetRange: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Under $25K</option>
+              <option>$25K - $50K</option>
+              <option>$50K - $100K</option>
+              <option>$100K - $250K</option>
+              <option>$250K+</option>
+            </select>
+          </label>
+          <div>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Payment method</span>
+            <div className="flex flex-wrap gap-2 ">
+              {["card", "bank", "stripe"].map((method) => {
+                const active = paymentMethod === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className="rounded-lg border px-3.5 py-2 text-[12px] font-bold capitalize transition w-15"
+                    style={{ borderColor: active ? MID : BORDER, background: active ? "#e8f5ef" : "#fff", color: active ? MID : TEXT_MUTED }}
+                  >
+                    {method === "card" ? "Card" : method}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold ="
+          style={{ background: INK, color: MINT, margin:15 }}
+        >
+          <Check size={15} weight="bold"/>
+          {saved ? "Saved" : "Save Payment Info"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function SecuritySection() {
+  const [saved, setSaved] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [loginAlerts, setLoginAlerts] = useState(true);
+  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
+
+  const save = () => {
+    setSaved(true);
+    setPasswords({ current: "", next: "", confirm: "" });
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <LockKey size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Security</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Field label="Current Password" type="password" value={passwords.current} onChange={(value) => setPasswords((current) => ({ ...current, current: value }))} placeholder="Enter current password" />
+          </div>
+          <Field label="New Password" type="password" value={passwords.next} onChange={(value) => setPasswords((current) => ({ ...current, next: value }))} placeholder="Enter new password" />
+          <Field label="Confirm New Password" type="password" value={passwords.confirm} onChange={(value) => setPasswords((current) => ({ ...current, confirm: value }))} placeholder="Confirm new password" />
+        </div>
+        <div className="mt-4 flex items-start gap-3 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+          <ShieldCheck size={15} weight="bold" style={{ color: MID, marginTop: 1 }} />
+          <p className="text-[11px] leading-5" style={{ color: TEXT_MUTED }}>
+            Protect your founder workspace, saved blueprints, investor activity, and team conversations.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+          style={{ background: INK, color: MINT }}
+        >
+          <Check size={15} weight="bold" />
+          {saved ? "Password Updated" : "Update Password"}
+        </button>
+      </section>
+
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Account Protection</h4>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+            <div>
+              <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>Two-factor authentication</p>
+              <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>Require an authenticator code before opening your founder workspace.</p>
+            </div>
+            <Toggle on={twoFactor} onChange={() => setTwoFactor((value) => !value)} />
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+            <div>
+              <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>Login alerts</p>
+              <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>Notify you when a new device accesses your account.</p>
+            </div>
+            <Toggle on={loginAlerts} onChange={() => setLoginAlerts((value) => !value)} />
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type FounderPrefs = {
+  blueprintVisibility: string;
+  founderStage: string;
+  matchPriority: string;
+  developerRequests: boolean;
+  investorIntros: boolean;
+  weeklyDigest: boolean;
+};
+
+function PreferencesSection() {
+  const [saved, setSaved] = useState(false);
+  const [prefs, setPrefs] = useState<FounderPrefs>({
+    blueprintVisibility: "Private by default",
+    founderStage: "Idea / MVP",
+    matchPriority: "Technical cofounder",
+    developerRequests: true,
+    investorIntros: true,
+    weeklyDigest: true,
+  });
+
+  const save = () => {
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <SlidersHorizontal size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Founder Preferences</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Blueprint visibility</span>
+            <select
+              value={prefs.blueprintVisibility}
+              onChange={(event) => setPrefs((current) => ({ ...current, blueprintVisibility: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Private by default</option>
+              <option>Ask before publishing</option>
+              <option>Public after approval</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Startup stage</span>
+            <select
+              value={prefs.founderStage}
+              onChange={(event) => setPrefs((current) => ({ ...current, founderStage: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Idea / MVP</option>
+              <option>Prototype</option>
+              <option>Pre-seed</option>
+              <option>Seed</option>
+              <option>Scaling</option>
+            </select>
+          </label>
+          <label className="sm:col-span-2">
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Match priority</span>
+            <select
+              value={prefs.matchPriority}
+              onChange={(event) => setPrefs((current) => ({ ...current, matchPriority: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Technical cofounder</option>
+              <option>MVP developer team</option>
+              <option>Investor introductions</option>
+              <option>Advisor network</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Discovery Controls</h4>
+        <div className="flex flex-col gap-3">
+          {[
+            { key: "developerRequests" as const, label: "Developer interest requests", sub: "Allow matched developers to request a conversation." },
+            { key: "investorIntros" as const, label: "Investor introduction suggestions", sub: "Let Evolv surface relevant investor intros for public blueprints." },
+            { key: "weeklyDigest" as const, label: "Weekly founder digest", sub: "Receive weekly progress, match, and blueprint summaries." },
+          ].map(({ key, label, sub }) => (
+            <div key={key} className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+              <div>
+                <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>{label}</p>
+                <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>{sub}</p>
+              </div>
+              <Toggle on={prefs[key]} onChange={() => setPrefs((current) => ({ ...current, [key]: !current[key] }))} />
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+          style={{ background: INK, color: MINT }}
+        >
+          <Check size={15} weight="bold" />
+          {saved ? "Saved" : "Save Preferences"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+export type SettingsSection = "profile" | "payment" | "notifications" | "security";
 
 interface Props {
   profile: FounderProfile;
   onProfileSave: (p: FounderProfile) => void;
   section?: SettingsSection;
   onSectionChange?: (section: SettingsSection) => void;
+  editSignal?: number;
 }
 
-export function SettingsTab({ profile, onProfileSave, section, onSectionChange }: Props) {
+export function SettingsTab({ profile, onProfileSave, section, onSectionChange, editSignal = 0 }: Props) {
   const [localSection, setLocalSection] = useState<SettingsSection>("profile");
   const activeSection = section ?? localSection;
   const setSection = onSectionChange ?? setLocalSection;
 
-  const NAV: { id: SettingsSection; label: string; Icon: React.ElementType }[] = [
+  const NAV: { id: SettingsSection; label: string; Icon: ElementType }[] = [
     { id: "profile",       label: "Profile",       Icon: User },
+    { id: "payment",       label: "Payment",       Icon: CreditCard },
     { id: "notifications", label: "Notifications", Icon: Bell },
+    { id: "security",      label: "Security",      Icon: LockKey },
   ];
+
+  const handleDeleteAccount = () => {
+    const confirmed = window.confirm("Delete this founder account from this browser? This removes saved founder profile and blueprint data.");
+    if (!confirmed) return;
+    try {
+      localStorage.removeItem("evolv_founder_profile");
+      localStorage.removeItem("evolv_founder_blueprints");
+    } catch { /* ignore */ }
+    window.location.href = "/sign-in";
+  };
 
   return (
     <div className="h-full flex overflow-hidden" style={{ background: "#f5f6f4" }}>
@@ -910,6 +1411,21 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
         </div>
 
         <div className="mt-auto pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <div className="mb-3 rounded-xl px-3 py-3" style={{ background: "#fff7f6", border: "1px solid #f4d5d2" }}>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest" style={{ color: "#b03030" }}>
+              <WarningCircle size={13} weight="fill" />
+              Danger Zone
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-bold transition hover:bg-red-50"
+              style={{ color: "#c0392b" }}
+            >
+              <Trash size={13} weight="bold" />
+              Delete Account
+            </button>
+          </div>
           <button
             onClick={() => (window.location.href = "/")}
             className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors hover:bg-red-50"
@@ -924,11 +1440,21 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
       <div className="relative flex-1 overflow-y-auto px-8 py-7">
         <div style={{ maxWidth: activeSection === "profile" ? 920 : 560 }}>
           <h2 className="font-bold mb-1" style={{ fontSize: "1.15rem", color: TEXT_BODY }}>
-            {activeSection === "profile" ? "Profile" : "Notifications"}
+            {activeSection === "profile"
+              ? "Profile"
+              : activeSection === "payment"
+              ? "Payment"
+              : activeSection === "security"
+              ? "Security"
+              : "Notifications"}
           </h2>
           <p className="text-[12px] mb-6" style={{ color: TEXT_MUTED }}>
             {activeSection === "profile"
               ? "Update your personal details and public profile."
+              : activeSection === "payment"
+              ? "Manage founder billing, plans, and funding preferences."
+              : activeSection === "security"
+              ? "Protect your founder account and workspace access."
               : "Control which notifications you receive."}
           </p>
           <AnimatePresence mode="wait" initial={false}>
@@ -940,7 +1466,11 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
               {activeSection === "profile" ? (
-                <ProfileSection profile={profile} onSave={onProfileSave} />
+                <ProfileSection profile={profile} onSave={onProfileSave} startEditingSignal={editSignal} />
+              ) : activeSection === "payment" ? (
+                <PaymentSection profile={profile} />
+              ) : activeSection === "security" ? (
+                <SecuritySection />
               ) : (
                 <NotificationsSection />
               )}

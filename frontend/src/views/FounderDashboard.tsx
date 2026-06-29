@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, CheckCircle, X } from "@phosphor-icons/react";
 import { Sidebar, type FounderTab } from "@/components/founder/Sidebar";
 import { OnboardingWizard, type FounderProfile } from "@/components/founder/OnboardingWizard";
 import { type SettingsSection } from "@/components/founder/SettingsTab";
 import { type FounderNetworkMessageTarget } from "@/components/founder/NetworkTab";
 import { type InboxLaunchContact } from "@/components/founder/InboxTab";
+import {
+  getMissingFounderProfileFields,
+  isFounderProfileComplete,
+  normalizeFounderProfileForSave,
+} from "@/components/founder/profileUtils";
 
 // Eagerly load the default tab
 import { DashboardOverview } from "@/components/founder/DashboardOverview";
@@ -21,7 +28,7 @@ const SettingsTab   = dynamic(() => import("@/components/founder/SettingsTab").t
 
 const DEFAULT_PROFILE: FounderProfile = {
   firstName: "Asad", lastName: "", bio: "", domains: [], linkedin: "",
-  dob: "", gender: "", phone: "", education: "", educationLevel: "", degreeName: "", degreeSelection: "", customDegreeName: "", description: "",
+  dob: "", gender: "", phone: "", education: "", educationLevel: "", degreeName: "", degreeSelection: "", customDegreeName: "", educations: [], description: "",
   headline: "", location: "", country: "", countryCode: "", stateProvince: "", city: "", primaryGoal: "", idNumber: "",
   email: "", avatarUrl: "", profileComplete: false,
 };
@@ -46,6 +53,10 @@ function mergeFounderProfiles(...profiles: Array<Partial<FounderProfile> | null 
         if (Array.isArray(value) && value.length > 0) target.domains = value;
         return;
       }
+      if (key === "educations") {
+        if (Array.isArray(value) && value.length > 0) target.educations = value;
+        return;
+      }
       if (key === "profileComplete") {
         if (value === true) target.profileComplete = true;
         return;
@@ -56,9 +67,10 @@ function mergeFounderProfiles(...profiles: Array<Partial<FounderProfile> | null 
   });
 
   merged.domains = Array.isArray(merged.domains) ? merged.domains : [];
+  merged.educations = Array.isArray(merged.educations) ? merged.educations : [];
   merged.bio = merged.bio || merged.headline || "";
   merged.description = merged.description || "";
-  return merged;
+  return normalizeFounderProfileForSave(merged) as FounderProfile;
 }
 
 export default function FounderDashboard() {
@@ -72,9 +84,12 @@ export default function FounderDashboard() {
   const [inboxActiveContactId, setInboxActiveContactId] = useState("sarah");
   const [networkInboxContacts, setNetworkInboxContacts] = useState<InboxLaunchContact[]>([]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("profile");
+  const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
+  const [pendingProtectedTab, setPendingProtectedTab] = useState<FounderTab | null>(null);
+  const [settingsEditSignal, setSettingsEditSignal] = useState(0);
 
   const isProfileComplete = (p: FounderProfile) =>
-    Boolean(p.profileComplete || (p.firstName && p.lastName && (p.bio || p.headline) && p.domains.length > 0));
+    isFounderProfileComplete(p);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -98,15 +113,19 @@ export default function FounderDashboard() {
         const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
         if (storedBlueprints) setBlueprints(JSON.parse(storedBlueprints));
       } catch { /* ignore */ }
-
       const params = new URLSearchParams(window.location.search);
-      if (params.get("setup") === "true") setShowOnboarding(true);
+      if (params.get("setup") === "true") {
+        params.delete("setup");
+        const url = new URL(window.location.href);
+        url.searchParams.delete("setup");
+        window.history.replaceState({}, "", url.toString());
+      }
     }, 0);
     return () => window.clearTimeout(loadTimer);
   }, []);
 
   const saveProfile = (p: FounderProfile) => {
-    const nextProfile = { ...p, profileComplete: isProfileComplete(p) };
+    const nextProfile = normalizeFounderProfileForSave(p) as FounderProfile;
     setProfile(nextProfile);
     try {
       localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(nextProfile));
@@ -139,8 +158,13 @@ export default function FounderDashboard() {
   };
 
   const handleOnboardingComplete = (p: FounderProfile) => {
-    saveProfile({ ...p, profileComplete: true });
+    saveProfile(p);
     setShowOnboarding(false);
+    setProfilePromptDismissed(true);
+    if (pendingProtectedTab) {
+      setTab(pendingProtectedTab);
+      setPendingProtectedTab(null);
+    }
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("setup");
@@ -150,6 +174,8 @@ export default function FounderDashboard() {
 
   const handleOnboardingSkip = () => {
     setShowOnboarding(false);
+    setProfilePromptDismissed(true);
+    setPendingProtectedTab(null);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("setup");
@@ -161,10 +187,11 @@ export default function FounderDashboard() {
 
   const navigateFounder = (nextTab: FounderTab) => {
     if (!profileComplete && (nextTab === "network" || nextTab === "inbox")) {
+      setPendingProtectedTab(nextTab);
       setShowOnboarding(true);
-      setTab("settings");
       return;
     }
+    setPendingProtectedTab(null);
     setTab(nextTab);
   };
 
@@ -190,8 +217,13 @@ export default function FounderDashboard() {
   const handleOpenProfile = () => {
     setSettingsSection("profile");
     setShowOnboarding(false);
+    setPendingProtectedTab(null);
+    setProfilePromptDismissed(true);
+    setSettingsEditSignal((value) => value + 1);
     setTab("settings");
   };
+
+  const missingProfileFields = getMissingFounderProfileFields(profile);
 
   return (
     <div className="founder-shell flex overflow-hidden" style={{ height: "100vh", background: "#f5f6f4" }}>
@@ -226,7 +258,7 @@ export default function FounderDashboard() {
             triggerForge={triggerForge}
             onClearForge={() => setTriggerForge(false)}
             profileComplete={profileComplete}
-            onCompleteProfile={() => { setTab("settings"); setSettingsSection("profile"); setShowOnboarding(true); }}
+            onCompleteProfile={handleOpenProfile}
           />
         )}
         {tab === "analysis" && <AnalysisTab />}
@@ -250,9 +282,55 @@ export default function FounderDashboard() {
             onProfileSave={saveProfile}
             section={settingsSection}
             onSectionChange={setSettingsSection}
+            editSignal={settingsEditSignal}
           />
         )}
       </main>
+
+      <AnimatePresence>
+        {!profileComplete && !showOnboarding && !profilePromptDismissed && (
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+            className="fixed bottom-5 right-5 z-40 w-[320px] overflow-hidden bg-white"
+            style={{ border: "1px solid #d9e7df", borderRadius: 12, boxShadow: "0 18px 44px rgba(15,28,24,0.16)" }}
+          >
+            <div className="flex items-start gap-3 px-4 py-4">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "#e8f5ef", color: "#428475" }}>
+                <CheckCircle size={17} weight="fill" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[13px] font-extrabold" style={{ color: "#1a2e26" }}>Complete profile setup</p>
+                  <button
+                    type="button"
+                    onClick={() => setProfilePromptDismissed(true)}
+                    className="rounded-md p-1 transition hover:bg-[#f0f5f2]"
+                    aria-label="Dismiss profile setup reminder"
+                    style={{ color: "#7a9e8e" }}
+                  >
+                    <X size={13} weight="bold" />
+                  </button>
+                </div>
+                <p className="mt-1 text-[12px] leading-5" style={{ color: "#6b8e7e" }}>
+                  Add {missingProfileFields.slice(0, 2).join(", ") || "your details"} to unlock Network and Inbox smoothly.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenProfile}
+                  className="mt-3 flex h-9 items-center gap-2 rounded-lg px-3.5 text-[12px] font-bold"
+                  style={{ background: "#1a312c", color: "#89d7b7" }}
+                >
+                  Complete profile
+                  <ArrowRight size={13} weight="bold" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {showOnboarding && (
         <OnboardingWizard
