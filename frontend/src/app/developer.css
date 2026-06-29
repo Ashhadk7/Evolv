@@ -393,7 +393,7 @@
 /* Pipeline */
 .Applications_pipeline {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 0;
     background: #FFFFFF;
     border: 1px solid #E6E0D7;

@@ -11,7 +11,7 @@ const applicationsData = [
         role: 'AI Engineer',
         matchScore: 94,
         appliedDate: 'Jun 22, 2025',
-        status: 'Interview',
+        status: 'Pending',
         founder: 'Asad Ahmed',
         founderRole: 'CEO & Founder',
         industry: 'HealthTech',
@@ -137,7 +137,7 @@ const applicationsData = [
         role: 'Frontend Engineer',
         matchScore: 91,
         appliedDate: 'Jun 08, 2025',
-        status: 'Interview',
+        status: 'Pending',
         founder: 'Sarah Jenkins',
         founderRole: 'Co-Founder',
         industry: 'HealthTech',
@@ -160,9 +160,9 @@ const applicationsData = [
 
 const appStats = [
     { id: 1, label: 'Total Applications', value: '6', trend: '+4', trendUp: true },
-    { id: 2, label: 'Pending', value: '2', trend: '+2', trendUp: true },
-    { id: 3, label: 'Interviews', value: '2', trend: '+2', trendUp: true },
-    { id: 4, label: 'Accepted', value: '1', trend: '+1', trendUp: true },
+    { id: 2, label: 'Pending', value: '4', trend: '+2', trendUp: true },
+    { id: 3, label: 'Accepted', value: '1', trend: '+1', trendUp: true },
+    { id: 4, label: 'Declined', value: '1', trend: '+1', trendUp: true },
 ];
 
 const statusConfig = {
@@ -173,7 +173,7 @@ const statusConfig = {
     'Applied':      { color: '#5BC8A0', bg: 'rgba(91, 200, 160, 0.1)', icon: 'paper-plane' },
 };
 
-const pipelineStages = ['Applied', 'Pending', 'Interview', 'Accepted', 'Declined'];
+const pipelineStages = ['Pending', 'Accepted', 'Declined'];
 
 const logoColors = {
     'Nexus Health': { bg: '#EAF5F0', color: '#2e7d5c' },
@@ -206,24 +206,6 @@ const Applications = ({ onNavigate }) => {
                     {appStats.map((s) => <StatCard key={s.id} {...s} />)}
                 </div>
 
-                {/* Pipeline */}
-                <div className={"Applications_pipeline"}>
-                    {pipelineStages.map((stage) => {
-                        const count = applicationsData.filter(a => a.status === stage).length;
-                        const cfg = statusConfig[stage] || {};
-                        return (
-                            <div
-                                key={stage}
-                                className={`${"Applications_pipelineStage"} ${filterStatus === stage ? "Applications_pipelineActive" : ''}`}
-                                onClick={() => setFilterStatus(filterStatus === stage ? 'All' : stage)}
-                            >
-                                <div className={"Applications_pipelineCount"} style={{ color: cfg.color }}>{count}</div>
-                                <div className={"Applications_pipelineLabel"}>{stage}</div>
-                                <div className={"Applications_pipelineDot"} style={{ background: cfg.color }}></div>
-                            </div>
-                        );
-                    })}
-                </div>
 
                 {/* Filters */}
                 <div className={"Applications_filterBar"}>
