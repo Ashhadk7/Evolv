@@ -272,7 +272,7 @@ function EducationEditor({
       {educations.map((education, index) => {
         const degreeOptions = getDegreeOptions(education.level);
         return (
-          <div key={education.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: BORDER }}>
+          <div key={education.id} className="rounded-xl border bg-white p-4" style={{ borderColor: BORDER }}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: TEXT_BODY }}>
                 <GraduationCap size={14} weight="bold" style={{ color: MID }} />
@@ -804,7 +804,7 @@ function ProfileSection({
                               className="rounded-lg px-3.5 py-2.5"
                               style={{ background: "#f8faf8", border: "1px solid #dfe9e3" }}
                             >
-                              <p className="text-[13px] font-bold leading-5" style={{ color: TEXT_BODY }}>
+                              <p className="text-[13px] p-3 font-bold leading-5" style={{ color: TEXT_BODY }}>
                                 {education}
                               </p>
                             </div>
@@ -900,7 +900,7 @@ function ProfileSection({
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="rounded-lg border bg-white px-3.5 py-2 text-[12px] font-bold transition hover:bg-[#f8faf8]"
+                  className="rounded-lg border bg-white px-3.5 py-2 p-6 text-[12px] font-bold transition hover:bg-[#f8faf8]"
                   style={{ borderColor: BORDER, color: TEXT_MUTED }}
                 >
                   Cancel
@@ -915,13 +915,13 @@ function ProfileSection({
                   <Field label="First Name" value={local.firstName} onChange={(v) => set("firstName", v)} placeholder="Sara" />
                   <Field label="Last Name" value={local.lastName} onChange={(v) => set("lastName", v)} placeholder="Ahmed" />
                 </div>
-                <div className="mt-4">
+                <div className="mt-4" style={{marginTop:10}}>
                   <Field label="Founder Headline" value={local.headline ?? ""} onChange={(v) => set("headline", v)} placeholder="Building the future of healthcare" />
                 </div>
-                <div className="mt-4">
+                <div className="mt-4" style={{marginTop:10}}>
                   <Field label="Short Bio" value={local.bio} onChange={(v) => set("bio", v)} placeholder="Tell collaborators what you are building and why it matters." />
                 </div>
-                <div className="mt-4">
+                <div className="mt-4" style={{marginTop:10}}>
                   <Field label="Email" type="email" value={local.email} onChange={(v) => set("email", v)} placeholder="you@example.com" />
                 </div>
               </section>
@@ -935,7 +935,7 @@ function ProfileSection({
                 <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Links & Background</h4>
                 <div className="flex flex-col gap-4">
                   <Field label="LinkedIn Profile" value={local.linkedin} onChange={(v) => set("linkedin", v)} placeholder="https://linkedin.com/in/yourname" optional />
-                  <Field label="Phone Number" value={local.phone} onChange={(v) => set("phone", v)} placeholder="+92 300 0000000" optional />
+                  <Field label="Phone Number" value={local.phone} onChange={(v) => set("phone", v)} placeholder="+92 300 0000000" />
                   <EducationEditor educations={safeEducations} onChange={handleEducationsChange} />
                 </div>
               </section>
@@ -943,27 +943,15 @@ function ProfileSection({
               <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
                 <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Private Details</h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Date of Birth" type="date" value={local.dob} onChange={(v) => set("dob", v)} optional />
+                  <Field label="Date of Birth" type="date" value={local.dob} onChange={(v) => set("dob", v)} />
                   <Field label="Gender" type="select" value={local.gender} onChange={(v) => set("gender", v)} optional />
                 </div>
-                <div className="mt-4 flex items-start gap-3 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+                <div className="mt-4 flex items-start gap-3 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee", marginTop: 10}}>
                   <CalendarBlank size={15} weight="bold" style={{ color: MID, marginTop: 1 }} />
                   <p className="text-[11px] leading-5" style={{ color: TEXT_MUTED }}>
                     Birthday and gender help account context, but they are not shown on the public profile preview.
                   </p>
                 </div>
-              </section>
-
-              <section className="bg-white p-5 xl:col-span-2" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-                <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>About</h4>
-                <Field
-                  label="Description"
-                  type="textarea"
-                  value={local.description}
-                  onChange={(v) => set("description", v)}
-                  placeholder="Tell developers and investors about your journey, traction, and what you are building."
-                  optional
-                />
               </section>
             </div>
 
@@ -974,7 +962,7 @@ function ProfileSection({
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 24 }}
               className="mb-2 flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
-              style={{ background: INK, color: MINT }}
+              style={{ background: INK, color: MINT, marginBottom: 35 }}
             >
               <Check size={15} weight="bold" />
               Save Changes
