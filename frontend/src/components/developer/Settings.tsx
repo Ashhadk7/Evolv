@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
 
-import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
+import { Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
 import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
 import {
     createBlankDeveloperProject,
@@ -205,7 +205,6 @@ const Settings = ({ onNavigate }) => {
 
     return (
         <div className={"Settings_container"}>
-            <Sidebar currentPage="settings" onNavigate={onNavigate} />
             <main className={"Settings_mainWrapper"}>
                 <Topbar title="Settings" subtitle="Manage your profile, preferences, and account security." onNavigate={onNavigate} />
 
