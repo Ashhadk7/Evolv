@@ -102,6 +102,8 @@ export function NetworkProfileDetailScreen({
   onIgnore,
   onToggleConnection,
   onMessage,
+  profileComplete = true,
+  onRequireProfile,
   messageLabel = "Message",
   connectionLabel,
   connectionDisabled = false,
@@ -115,6 +117,8 @@ export function NetworkProfileDetailScreen({
   onIgnore?: (id: string) => void;
   onToggleConnection?: (id: string) => void;
   onMessage?: (profile: FounderContactProfile) => void;
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
   messageLabel?: string;
   connectionLabel?: string;
   connectionDisabled?: boolean;
@@ -132,7 +136,18 @@ export function NetworkProfileDetailScreen({
   const displayRating = isDeveloper ? clampRating(profile.rating ?? averageReviewRating) : 0;
   const reviewCount   = allReviews.length;
 
-  const handleAddReview = () => {
+  const requireProfileBeforeAction = (afterComplete?: () => void) => {
+    if (profileComplete || !onRequireProfile) return false;
+    onRequireProfile(afterComplete);
+    return true;
+  };
+
+  const handleReviewRatingChange = (rating: number) => {
+    if (requireProfileBeforeAction(() => setReviewRating(rating))) return;
+    setReviewRating(rating);
+  };
+
+  const saveReview = () => {
     const comment = reviewText.trim();
     if (!comment) return;
     const nextReview: NetworkReview = {
@@ -147,6 +162,11 @@ export function NetworkProfileDetailScreen({
     saveStoredReviews(profile.id, nextReviews);
     setReviewText("");
     setReviewRating(3);
+  };
+
+  const handleAddReview = () => {
+    if (requireProfileBeforeAction(saveReview)) return;
+    saveReview();
   };
 
   return (
@@ -329,7 +349,7 @@ export function NetworkProfileDetailScreen({
               <div className="rounded-xl p-3 mb-3" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <div className="text-[12px] font-semibold" style={{ color: "#1a2e26" }}>Add your review</div>
-                  <RatingStars rating={reviewRating} size={16} interactive onChange={setReviewRating} />
+                  <RatingStars rating={reviewRating} size={16} interactive onChange={handleReviewRatingChange} />
                 </div>
                 <textarea
                   value={reviewText}
