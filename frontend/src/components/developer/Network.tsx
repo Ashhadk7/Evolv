@@ -1,22 +1,36 @@
-"use client";
+﻿"use client";
 
-import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
-import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
-
-export type DeveloperNetworkMessageTarget = {
-    id: string;
-    name: string;
-    role?: string;
-    company?: string;
-    avatar?: string;
-    avatarColor?: string;
-};
-const networkStats = [
-    { id: 1, label: 'Total Connections', value: '142', trend: '+8', trendUp: true },
-    { id: 2, label: 'Founder Connections', value: '38', trend: '+3', trendUp: true },
-    { id: 3, label: 'Developer Connections', value: '94', trend: '+5', trendUp: true },
-    { id: 4, label: 'Pending Requests', value: '7', trend: '+2', trendUp: true },
-];
+import { useEffect, useMemo, useState, type ElementType } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowUp,
+  Buildings,
+  Briefcase,
+  ChartPieSlice,
+  ChatCircle,
+  CheckCircle,
+  Code,
+  Handshake,
+  MapPin,
+  PaperPlaneTilt,
+  Star,
+  TrendUp,
+  UserPlus,
+  Users,
+  X,
+} from "@phosphor-icons/react";
+import {
+  NetworkProfileDetailScreen,
+  RatingStars,
+  SkillPill,
+  TypeBadge,
+  type FounderContactProfile,
+} from "../founder/NetworkProfileDetail";
+import {
+  DEVELOPER_NETWORK_PROFILES,
+  INITIAL_DEVELOPER_PENDING_IDS,
+} from "./developerNetworkData";
+import { type DeveloperTab } from "./shared/Sidebar";
 
 type NetworkTabFilter = "all" | "developers" | "founders";
 
@@ -42,12 +56,13 @@ interface StoredNetworkState {
   requestNotes: Record<string, string>;
 }
 
-const Network = ({ onNavigate, onMessage, profileComplete = true, onRequireProfile }) => {
-    const [activeTab, setActiveTab] = useState('all');
-    const [connected, setConnected] = useState(
-        connections.reduce((acc, c) => ({ ...acc, [c.id]: c.connected }), {})
-    );
-    const [pendingRequests, setPendingRequests] = useState(connectionRequests);
+interface NetworkProps {
+  onNavigate?: (tab: DeveloperTab) => void;
+  onMessage?: (contact: DeveloperNetworkMessageTarget) => void;
+  onPendingCountChange?: (count: number) => void;
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
+}
 
 const STORAGE_KEY = "evolv_developer_network_state";
 const NETWORK_PEOPLE = DEVELOPER_NETWORK_PROFILES;
@@ -87,26 +102,41 @@ function getInitialNetworkState(): StoredNetworkState {
   };
 }
 
-    const handleMessage = (connection) => {
-        const openMessage = () => {
-            if (onMessage) {
-                onMessage({
-                    id: String(connection.id),
-                    name: connection.name,
-                    role: connection.role,
-                    company: connection.company,
-                    avatar: connection.avatar,
-                    avatarColor: connection.avatarColor,
-                });
-                return;
-            }
-
-            onNavigate('inbox');
-        };
-
-        if (requireProfileBeforeAction(openMessage)) return;
-        openMessage();
-    };
+function StatCard({
+  label,
+  value,
+  sub,
+  Icon,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  Icon: ElementType;
+}) {
+  return (
+    <motion.div
+      whileHover={{ y: -2, boxShadow: "0 4px 16px rgba(15,28,24,0.08)", borderColor: "#c5ddd0" }}
+      className="rounded-xl bg-white p-4"
+      style={{ border: "1px solid #e8ede9" }}
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
+          {label}
+        </span>
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "#f0f5f2", color: "#428475" }}>
+          <Icon size={15} weight="bold" />
+        </span>
+      </div>
+      <div className="text-[1.65rem] font-bold leading-none" style={{ color: "#1a2e26" }}>
+        {value}
+      </div>
+      <div className="mt-1 flex items-center gap-1 text-[10px]" style={{ color: "#2e7d5c" }}>
+        <ArrowUp size={10} weight="bold" />
+        <span>{sub}</span>
+      </div>
+    </motion.div>
+  );
+}
 
 function Avatar({ person, size = 44 }: { person: FounderContactProfile; size?: number }) {
   return (
@@ -140,171 +170,42 @@ function ConnectionRequestModal({
   const [note, setNote] = useState("");
   const trimmedNote = note.trim();
 
-                {/* Main Grid */}
-                <div className={"Network_mainGrid"}>
-                    {/* Left: Connections */}
-                    <div className={"Network_leftCol"}>
-                        {/* Connection Requests */}
-                        {pendingRequests.length > 0 && (
-                            <div className={"Network_requestsBox"}>
-                                <div className={"Network_boxTitle"}>
-                                    <i className="fas fa-user-plus"></i>
-                                    Connection Requests
-                                    <span className={"Network_requestCount"}>{pendingRequests.length}</span>
-                                </div>
-                                <div className={"Network_requestList"}>
-                                    {pendingRequests.map((req) => (
-                                        <div key={req.id} className={"Network_requestCard"}>
-                                            <div className={"Network_reqAvatar"} style={{ background: req.avatarColor }}>{req.avatar}</div>
-                                            <div className={"Network_reqInfo"}>
-                                                <div className={"Network_reqName"}>{req.name}</div>
-                                                <div className={"Network_reqRole"}>{req.role} · {req.company}</div>
-                                                <div className={"Network_reqMutual"}><i className="fas fa-users"></i> {req.mutual} mutual connections</div>
-                                            </div>
-                                            <div className={"Network_reqActions"}>
-                                                <button className={"Network_acceptBtn"} onClick={() => handleAcceptRequest(req.id)}>Accept</button>
-                                                <button className={"Network_ignoreBtn"} onClick={() => handleAcceptRequest(req.id)}>Ignore</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Tabs */}
-                        <div className={"Network_tabs"}>
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab}
-                                    className={`${"Network_tab"} ${activeTab === tab ? "Network_tabActive" : ''}`}
-                                    onClick={() => setActiveTab(tab)}
-                                >
-                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                    <span className={"Network_tabCount"}>
-                                        {tab === 'all' ? connections.length : connections.filter(c => c.type === (tab === 'founders' ? 'Founder' : 'Developer')).length}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Connections Grid */}
-                        <div className={"Network_connectionsGrid"}>
-                            {filteredConnections.map((conn) => (
-                                <div key={conn.id} className={"Network_connectionCard"}>
-                                    <div className={"Network_ccTop"}>
-                                        <div className={"Network_ccAvatar"} style={{ background: conn.avatarColor }}>{conn.avatar}</div>
-                                        <div className={"Network_ccInfo"}>
-                                            <div className={"Network_ccName"}>{conn.name}</div>
-                                            <div className={"Network_ccRole"}>{conn.role}</div>
-                                            <div className={"Network_ccCompany"}><i className="fas fa-building"></i> {conn.company}</div>
-                                        </div>
-                                        <span className={`${"Network_typeTag"} ${conn.type === 'Founder' ? "Network_founderTag" : "Network_devTag"}`}>
-                                            {conn.type}
-                                        </span>
-                                    </div>
-                                    <div className={"Network_ccMeta"}>
-                                        <span><i className="fas fa-map-marker-alt"></i> {conn.location}</span>
-                                        <span><i className="fas fa-briefcase"></i> {conn.experience}</span>
-                                        <span><i className="fas fa-users"></i> {conn.mutual} mutual</span>
-                                    </div>
-                                    <div className={"Network_ccSkills"}>
-                                        {conn.skills.map((s, i) => (
-                                            <span key={i} className={"Network_skillTag"}>{s}</span>
-                                        ))}
-                                    </div>
-                                    <div className={"Network_ccActions"}>
-                                        <button
-                                            className={connected[conn.id] ? "Network_connectedBtn" : "Network_connectBtn"}
-                                            onClick={() => handleConnect(conn.id)}
-                                        >
-                                            <i className={`fas fa-${connected[conn.id] ? 'check' : 'user-plus'}`}></i>
-                                            {connected[conn.id] ? 'Connected' : 'Connect'}
-                                        </button>
-                                        <button className={"Network_msgBtn"} onClick={() => handleMessage(conn)}>
-                                            <i className="fas fa-comment-alt"></i> Message
-                                        </button>
-                                        <button className={"Network_profileBtn"}>
-                                            <i className="fas fa-external-link-alt"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Right: Activity Feed + Recommended */}
-                    <div className={"Network_rightCol"}>
-                        {/* Activity Feed */}
-                        <div className={"Network_sideCard"}>
-                            <div className={"Network_sideCardTitle"}><i className="fas fa-bolt"></i> Activity Feed</div>
-                            <div className={"Network_feedList"}>
-                                {activityFeed.map((item) => (
-                                    <div key={item.id} className={"Network_feedItem"}>
-                                        <div className={"Network_feedAvatar"} style={{ background: item.color }}>{item.avatar}</div>
-                                        <div className={"Network_feedContent"}>
-                                            <div className={"Network_feedText"}>
-                                                <strong>{item.actor}</strong> {item.action}
-                                            </div>
-                                            <div className={"Network_feedTime"}>{item.time}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Recommended */}
-                        <div className={"Network_sideCard"}>
-                            <div className={"Network_sideCardTitle"}><i className="fas fa-star"></i> Recommended for You</div>
-                            <div className={"Network_recommendedList"}>
-                                {connections.filter((c) => !connected[c.id]).slice(0, 3).map((c) => (
-                                    <div key={c.id} className={"Network_recommendedCard"}>
-                                        <div className={"Network_recAvatar"} style={{ background: c.avatarColor }}>{c.avatar}</div>
-                                        <div className={"Network_recInfo"}>
-                                            <div className={"Network_recName"}>{c.name}</div>
-                                            <div className={"Network_recRole"}>{c.role}</div>
-                                            <div className={"Network_recMutual"}>{c.mutual} mutual connections</div>
-                                        </div>
-                                        <button className={"Network_connectBtnSm"} onClick={() => handleConnect(c.id)}>
-                                            {connected[c.id] ? '✓' : '+'}
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Network Stats */}
-                        <div className={"Network_sideCard"}>
-                            <div className={"Network_sideCardTitle"}><i className="fas fa-chart-pie"></i> Network Breakdown</div>
-                            <div className={"Network_breakdownList"}>
-                                <div className={"Network_breakdownItem"}>
-                                    <div className={"Network_breakdownLabel"}><span className={"Network_bdDot"} style={{ background: '#5BC8A0' }}></span> Developers</div>
-                                    <div className={"Network_breakdownBar"}><div className={"Network_breakdownFill"} style={{ width: '66%', background: '#5BC8A0' }}></div></div>
-                                    <div className={"Network_breakdownVal"}>94</div>
-                                </div>
-                                <div className={"Network_breakdownItem"}>
-                                    <div className={"Network_breakdownLabel"}><span className={"Network_bdDot"} style={{ background: '#C4973A' }}></span> Founders</div>
-                                    <div className={"Network_breakdownBar"}><div className={"Network_breakdownFill"} style={{ width: '27%', background: '#C4973A' }}></div></div>
-                                    <div className={"Network_breakdownVal"}>38</div>
-                                </div>
-                                <div className={"Network_breakdownItem"}>
-                                    <div className={"Network_breakdownLabel"}><span className={"Network_bdDot"} style={{ background: '#7C5CBF' }}></span> Investors</div>
-                                    <div className={"Network_breakdownBar"}><div className={"Network_breakdownFill"} style={{ width: '7%', background: '#7C5CBF' }}></div></div>
-                                    <div className={"Network_breakdownVal"}>10</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className={"Network_footer"}>
-                    <span>Evolv · Network</span>
-                    <div className={"Network_footerRight"}>
-                        <div className={"Network_greenDot"}></div>
-                        <span>© 2025 Evolv. All rights reserved.</span>
-                    </div>
-                </div>
-            </main>
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-5"
+      style={{ background: "rgba(15,28,24,0.34)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 360, damping: 32 }}
+        className="w-full max-w-[520px] overflow-hidden bg-white shadow-2xl"
+        style={{ borderRadius: 16, border: "1px solid #c5ddd0" }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4" style={{ background: "#1a312c", color: "#e8f5ef" }}>
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar person={person} size={42} />
+            <div className="min-w-0">
+              <h3 className="truncate text-[15px] font-extrabold">Connect with {person.name}</h3>
+              <p className="truncate text-[11px]" style={{ color: "#89d7b7" }}>
+                {person.role} at {person.company}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10"
+            aria-label="Close connection request"
+          >
+            <X size={16} weight="bold" />
+          </button>
         </div>
 
         <div className="px-5 py-5">
