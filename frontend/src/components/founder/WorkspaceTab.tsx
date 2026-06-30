@@ -1,12 +1,18 @@
 ﻿"use client";
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  Plus, X, Eye, PencilSimple,
-  ArrowLeft, CheckCircle, Sparkle,
-  MagnifyingGlass, CaretDown,
-  Lightbulb, Clock,
+  Plus, X, Eye, PencilSimple, ArrowLeft, ArrowRight,
+  CheckCircle, Sparkle, MagnifyingGlass, CaretDown, CaretRight,
+  Lightbulb, Clock, LinkSimple, DownloadSimple, RocketLaunch,
+  Robot, FloppyDisk, PaperPlaneTilt,
+  CodeBlock, Browser, Stack, Cpu, Database, CloudArrowUp, Plugs, Cube,
+  Target, Crosshair, Compass, ChartLineUp, Strategy, ShieldCheck,
+  Warning, SealCheck, ListChecks,
+  Coins, Money, Receipt, Lock, Briefcase, Users, UsersThree,
+  Flag, Megaphone, Storefront, Notebook, FileText, GitBranch,
+  Pulse, Gauge, Trophy, TrendUp, TrendDown,
 } from "@phosphor-icons/react";
 
 /* ─────────────────────────────────────────────────────── */
@@ -383,125 +389,1345 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
   );
 }
 
-/* ─────────────────────────────────────────────────────── */
-/* Blueprint detail view                                  */
-/* ─────────────────────────────────────────────────────── */
-function BlueprintDetail({ bp, onBack }: { bp: Blueprint; onBack: () => void }) {
-  const sections = [
-    {
-      agent: "Market Analysis", icon: "🔍",
-      content: (
-        <div className="grid grid-cols-3 gap-3 mt-3">
-          {[
-            { label: "Market Size",    val: bp.market.size     },
-            { label: "CAGR",           val: bp.market.cagr     },
-            { label: "Entry Barriers", val: bp.market.barriers },
-          ].map(({ label, val }) => (
-            <div key={label} style={{ background: "#f3f8f5", borderRadius: 12, padding: "12px 14px" }}>
-              <div style={{ fontSize: 10, color: "#7a9e8e", marginBottom: 5 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>{val}</div>
-            </div>
-          ))}
-          <div className="col-span-3 flex items-center gap-3 mt-2">
-            <div style={{ fontSize: 11, color: "#7a9e8e", flexShrink: 0 }}>Market Score</div>
-            <div style={{ flex: 1, height: 6, background: "#e0ede6", borderRadius: 999, overflow: "hidden" }}>
-              <div style={{ width: `${bp.market.score}%`, height: "100%", background: "linear-gradient(90deg, #428475, #89d7b7)", borderRadius: 999 }} />
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26", flexShrink: 0 }}>{bp.market.score}</div>
+/* ═══════════════════════════════════════════════════════ */
+/* Blueprint Detail — design tokens & primitives           */
+/* ═══════════════════════════════════════════════════════ */
+
+const C = {
+  forest: "#1a312c",
+  deep: "#11221b",
+  teal: "#428475",
+  mint: "#89d7b7",
+  mintSoft: "#a8dfc9",
+  page: "#f0f3f1",
+  card: "#ffffff",
+  border: "#e6ede9",
+  borderSoft: "#eef3f0",
+  ink: "#15271f",
+  body: "#4f6358",
+  muted: "#647a6e",
+  label: "#8aa99c",
+  amber: "#b07d10",
+  amberBg: "#fffaef",
+  amberLine: "#f0dfa0",
+  red: "#c0392b",
+  redBg: "#fdeeec",
+  redLine: "#f3d4cf",
+  success: "#2e7d5c",
+  successBg: "#e7f4ed",
+  tint: "#f4f8f6",
+};
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
+const NUM: CSSProperties = { fontVariantNumeric: "tabular-nums" };
+
+const cardStyle = (extra?: CSSProperties): CSSProperties => ({
+  background: C.card,
+  border: `1px solid ${C.border}`,
+  borderRadius: 18,
+  boxShadow: "0 1px 2px rgba(19,36,29,0.04), 0 10px 30px rgba(19,36,29,0.045)",
+  ...extra,
+});
+
+/* Number that eases up from 0 → target on mount */
+function useCountUp(target: number, duration = 1200, run = true) {
+  const [val, setVal] = useState(run ? 0 : target);
+  useEffect(() => {
+    if (!run) { setVal(target); return; }
+    let raf = 0;
+    let start: number | null = null;
+    const step = (ts: number) => {
+      if (start === null) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(target * eased);
+      if (p < 1) raf = requestAnimationFrame(step);
+      else setVal(target);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, run]);
+  return val;
+}
+
+function CountNum({ value, suffix = "", decimals = 0, run = true }: { value: number; suffix?: string; decimals?: number; run?: boolean }) {
+  const v = useCountUp(value, 1200, run);
+  return <>{v.toFixed(decimals)}{suffix}</>;
+}
+
+/* Scroll-into-view reveal — calm, expo-out, honours reduced motion */
+function Reveal({ children, delay = 0, y = 18, style }: { children: ReactNode; delay?: number; y?: number; style?: CSSProperties }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-70px" }}
+      transition={{ duration: 0.6, ease: EASE, delay }}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* Section heading — icon chip · kicker · title · description */
+function SectionHead({ icon, kicker, title, desc, right }: { icon: ReactNode; kicker?: string; title: string; desc?: string; right?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, marginBottom: 20 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 11, background: C.tint, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
+          <div>
+            {kicker && <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: C.label, marginBottom: 2, fontFamily: MONO }}>{kicker}</div>}
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: C.ink, letterSpacing: "-0.022em", lineHeight: 1.1 }}>{title}</h2>
           </div>
         </div>
-      ),
-    },
-    {
-      agent: "Competitor Scout", icon: "🏁",
-      content: (
-        <div className="mt-3">
-          <div className="flex flex-wrap gap-2 mb-3">
-            {bp.competitors.map((c) => (
-              <span key={c.name} style={{ fontSize: 12, fontWeight: 600, background: "#eef4f1", color: "#1a2e26", padding: "5px 12px", borderRadius: 999 }}>
-                {c.name}<span style={{ fontSize: 10, color: "#7a9e8e", marginLeft: 6 }}>· {c.type}</span>
-              </span>
-            ))}
-          </div>
-          <p style={{ fontSize: 12, color: "#7a9e8e", lineHeight: 1.5 }}>
-            <strong style={{ color: "#1a2e26" }}>Differentiator: </strong>{bp.differentiator}
-          </p>
-        </div>
-      ),
-    },
-    {
-      agent: "Feature Architect", icon: "⚡",
-      content: (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {bp.features.map((f) => (
-            <span key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, background: "#eef4f1", color: "#1a2e26", padding: "6px 12px", borderRadius: 8 }}>
-              <CheckCircle size={12} style={{ color: "#2e7d5c" }} weight="fill" />{f}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      agent: "Tech Stack", icon: "🖥️",
-      content: (
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          {Object.entries(bp.techStack).map(([key, val]) => (
-            <div key={key} style={{ background: "#f3f8f5", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: "#7a9e8e", textTransform: "capitalize", marginBottom: 3 }}>{key}</div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2e26" }}>{val}</div>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    {
-      agent: "Financial Modeler", icon: "💰",
-      content: (
-        <div className="grid grid-cols-4 gap-3 mt-3">
-          {Object.entries(bp.cost).map(([key, val]) => (
-            <div key={key} style={{ background: "#f3f8f5", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "#7a9e8e", marginBottom: 5 }}>
-                {key === "hosting" ? "Hosting/mo" : key === "budget" ? "Budget" : key === "team" ? "Team" : "Timeline"}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#1a2e26" }}>{val}</div>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-  ];
+        {desc && <p style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.65, marginTop: 12, maxWidth: 640 }}>{desc}</p>}
+      </div>
+      {right && <div style={{ flexShrink: 0 }}>{right}</div>}
+    </div>
+  );
+}
+
+const Kicker = ({ children }: { children: ReactNode }) => (
+  <div style={{ fontSize: 10, fontWeight: 600, color: C.label, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7, fontFamily: MONO }}>{children}</div>
+);
+
+function Chip({ children, tone = "neutral", icon }: { children: ReactNode; tone?: "neutral" | "mint" | "amber" | "red" | "dark"; icon?: ReactNode }) {
+  const map = {
+    neutral: { bg: C.tint, color: C.teal, bd: C.borderSoft },
+    mint: { bg: C.successBg, color: "#1d6e47", bd: "#cfeadd" },
+    amber: { bg: C.amberBg, color: C.amber, bd: C.amberLine },
+    red: { bg: C.redBg, color: C.red, bd: C.redLine },
+    dark: { bg: C.forest, color: C.mint, bd: "transparent" },
+  }[tone];
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: map.color, background: map.bg, border: `1px solid ${map.bd}`, padding: "4px 10px", borderRadius: 999, whiteSpace: "nowrap" }}>
+      {icon}{children}
+    </span>
+  );
+}
+
+function Avatar({ initials, size = 44 }: { initials: string; size?: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 999, background: "linear-gradient(150deg, #1f3a30, #15271f)", color: C.mint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.32, fontWeight: 700, flexShrink: 0, letterSpacing: "0.02em" }}>
+      {initials}
+    </div>
+  );
+}
+
+function Trend({ value, positive }: { value: string; positive: boolean }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: positive ? C.success : C.red, background: positive ? C.successBg : C.redBg, padding: "3px 8px", borderRadius: 999, ...NUM }}>
+      {positive ? <TrendUp size={11} weight="bold" /> : <TrendDown size={11} weight="bold" />} {value}
+    </span>
+  );
+}
+
+/* Segmented meter — segments light up left→right on view */
+function SegmentedBar({ value, total = 14, lit: litOverride, height = 22 }: { value: number; total?: number; lit?: number; height?: number }) {
+  const reduce = useReducedMotion();
+  const lit = litOverride ?? Math.round((value / 100) * total);
+  return (
+    <div style={{ display: "flex", gap: 3 }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <motion.div
+          key={i}
+          initial={reduce ? false : { opacity: 0.25, transform: "scaleY(0.5)" }}
+          whileInView={{ opacity: 1, transform: "scaleY(1)" }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.035, duration: 0.3, ease: "easeOut" }}
+          style={{ flex: 1, height, borderRadius: 3, background: i < lit ? C.mint : "#e7eee9", transformOrigin: "bottom" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* Thin gradient meter line */
+function MeterBar({ value, height = 8 }: { value: number; height?: number }) {
+  return (
+    <div style={{ height, background: "#e7eee9", borderRadius: 999, overflow: "hidden" }}>
+      <motion.div
+        initial={{ width: 0 }}
+        whileInView={{ width: `${value}%` }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.1, ease: EASE }}
+        style={{ height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #428475, #89d7b7)" }}
+      />
+    </div>
+  );
+}
+
+/* Circular viability gauge — gradient arc, soft glow, counting centre */
+function ViabilityGauge({ score }: { score: number }) {
+  const reduce = useReducedMotion();
+  const r = 76, cx = 95, cy = 95, sw = 12;
+  const Circ = 2 * Math.PI * r;
+  return (
+    <div style={{ position: "relative", width: 190, height: 190 }}>
+      <svg width={190} height={190} viewBox="0 0 190 190" style={{ transform: "rotate(-90deg)" }}>
+        <defs>
+          <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#428475" />
+            <stop offset="100%" stopColor="#89d7b7" />
+          </linearGradient>
+        </defs>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e7eee9" strokeWidth={sw} />
+        <motion.circle
+          cx={cx} cy={cy} r={r} fill="none" stroke="url(#gaugeGrad)" strokeWidth={sw} strokeLinecap="round"
+          strokeDasharray={Circ}
+          initial={reduce ? { strokeDashoffset: Circ * (1 - score / 100) } : { strokeDashoffset: Circ }}
+          whileInView={{ strokeDashoffset: Circ * (1 - score / 100) }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.4, ease: EASE }}
+        />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 50, fontWeight: 800, color: C.ink, lineHeight: 1, letterSpacing: "-0.04em", ...NUM }}><CountNum value={score} /></div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.2em", marginTop: 6, fontFamily: MONO }}>VIABILITY</div>
+      </div>
+    </div>
+  );
+}
+
+const Label = ({ children }: { children: ReactNode }) => (
+  <div style={{ fontSize: 10, fontWeight: 600, color: C.label, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 7, fontFamily: MONO }}>{children}</div>
+);
+
+/* ═══════════════════════════════════════════════════════ */
+/* Floating Blueprint AI assistant                         */
+/* ═══════════════════════════════════════════════════════ */
+type ChatMsg = { from: "ai" | "user"; text: string };
+function ChatPanel({ bp }: { bp: Blueprint }) {
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState<ChatMsg[]>([
+    { from: "ai", text: `I'm the blueprint assistant for ${bp.name}. Ask about the recommended stack, scope, budget, or what to build first.` },
+  ]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [msgs, typing]);
+
+  const send = () => {
+    const text = input.trim();
+    if (!text) return;
+    setMsgs((m) => [...m, { from: "user", text }]);
+    setInput("");
+    setTyping(true);
+    const replies = [
+      `For ${bp.name}, I'd build the ${bp.techStack.frontend} client and ${bp.techStack.backend} API first — that unlocks the core flow and lets a developer demo value early.`,
+      `The biggest lever is the AI layer (${bp.techStack.ai}). Ship a thin inference pipeline behind a clean API, then iterate on accuracy once real data flows in.`,
+      `Budget-wise, front-load the must-have milestones. Payments release per approved milestone, so keep each phase independently shippable.`,
+    ];
+    const reply = replies[msgs.filter((m) => m.from === "user").length % replies.length];
+    window.setTimeout(() => {
+      setTyping(false);
+      setMsgs((m) => [...m, { from: "ai", text: reply }]);
+    }, 1200);
+  };
 
   return (
-    <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} className="h-full flex flex-col overflow-hidden">
-      <div className="flex items-center gap-3 mb-6 shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-colors hover:bg-[#e8ede9] cursor-pointer"
-          style={{ fontSize: 13, color: "#428475" }}
-        >
-          <ArrowLeft size={14} /> Back
-        </button>
-        <div style={{ width: 1, height: 18, background: "#dde5e0" }} />
-        <span style={{ fontSize: 15, fontWeight: 800, color: "#1a2e26" }}>{bp.name}</span>
-        <span style={{ fontSize: 12, color: "#7a9e8e" }}>{bp.industry}</span>
-        <div className="ml-auto flex items-center gap-2">
-          <StatusBadge status={bp.status} />
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 14px", borderRadius: 10, background: "#1a312c", color: "#89d7b7" }}>
-            {bp.viability}% Viability
-          </span>
+    <>
+      <motion.button
+        className="blueprint-no-print"
+        onClick={() => setOpen((o) => !o)}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        transition={{ type: "spring", stiffness: 420, damping: 22 }}
+        style={{
+          position: "fixed", bottom: 26, right: 26, zIndex: 60,
+          width: 54, height: 54, borderRadius: 999,
+          background: C.forest, border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 12px 34px rgba(17,34,27,0.42)",
+        }}
+        aria-label="Blueprint assistant"
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {open
+            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} style={{ display: "flex" }}><X size={20} weight="bold" style={{ color: C.mint }} /></motion.span>
+            : <motion.span key="s" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} style={{ display: "flex" }}><Sparkle size={22} weight="fill" style={{ color: C.mint }} /></motion.span>}
+        </AnimatePresence>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="blueprint-no-print"
+            initial={{ y: 24, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 24, opacity: 0, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 360, damping: 30 }}
+            style={{
+              position: "fixed", bottom: 92, right: 26, zIndex: 59,
+              width: 336, height: 440,
+              background: C.card, borderRadius: 20,
+              border: `1px solid ${C.border}`,
+              boxShadow: "0 24px 60px rgba(17,34,27,0.28)",
+              display: "flex", flexDirection: "column", overflow: "hidden",
+            }}
+          >
+            <div style={{ background: C.forest, padding: "15px 18px", display: "flex", alignItems: "center", gap: 11 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(137,215,183,0.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkle size={15} weight="fill" style={{ color: C.mint }} />
+              </div>
+              <div style={{ lineHeight: 1.25 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Blueprint Assistant</div>
+                <div style={{ fontSize: 10.5, color: C.mintSoft }}>Ask anything about this build</div>
+              </div>
+            </div>
+
+            <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {msgs.map((m, i) => (
+                <div key={i} style={{ alignSelf: m.from === "ai" ? "flex-start" : "flex-end", maxWidth: "85%" }}>
+                  <div style={{
+                    fontSize: 12.5, lineHeight: 1.55, padding: "10px 13px", borderRadius: 14,
+                    background: m.from === "ai" ? C.tint : C.forest,
+                    color: m.from === "ai" ? C.body : "#dbf0e5",
+                    borderTopLeftRadius: m.from === "ai" ? 4 : 14,
+                    borderTopRightRadius: m.from === "ai" ? 14 : 4,
+                  }}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {typing && (
+                <div style={{ alignSelf: "flex-start", display: "flex", gap: 4, padding: "11px 13px", background: C.tint, borderRadius: 14 }}>
+                  {[0, 1, 2].map((d) => (
+                    <motion.span key={d} animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.18 }} style={{ width: 6, height: 6, borderRadius: 999, background: C.mint, display: "inline-block" }} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", borderTop: `1px solid ${C.borderSoft}` }}>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+                placeholder="Ask about the stack, scope, budget…"
+                style={{ flex: 1, fontSize: 12.5, padding: "10px 13px", borderRadius: 11, background: C.tint, border: `1px solid ${C.borderSoft}`, outline: "none", color: C.ink, fontFamily: "inherit" }}
+              />
+              <motion.button onClick={send} whileTap={{ scale: 0.9 }} style={{ width: 38, height: 38, borderRadius: 11, background: C.forest, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <PaperPlaneTilt size={16} weight="fill" style={{ color: C.mint }} />
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════ */
+/* Content derivation — turns a Blueprint into doc-grade data */
+/* ═══════════════════════════════════════════════════════ */
+type Phase = { name: string; layer: string; weeks: number; deliverables: string[]; status: "In Progress" | "Planned" };
+function buildPhases(bp: Blueprint): Phase[] {
+  return [
+    { name: "Foundation & UI", layer: bp.techStack.frontend, weeks: 3, deliverables: ["Design system & component library", "Responsive app shell", "Auth & onboarding screens"], status: "In Progress" },
+    { name: "Core Backend & API", layer: bp.techStack.backend, weeks: 4, deliverables: ["Data model & migrations", "REST API + auth middleware", "Core business logic"], status: "Planned" },
+    { name: "Intelligence Layer", layer: bp.techStack.ai, weeks: 3, deliverables: ["Model integration", "Inference pipeline & caching", "Results & insights API"], status: "Planned" },
+    { name: "Payments & Integrations", layer: "Stripe Connect", weeks: 2, deliverables: ["Milestone escrow flow", "Connected accounts & payouts", "Email & notifications"], status: "Planned" },
+    { name: "Hardening & Launch", layer: "QA · CI/CD", weeks: 2, deliverables: ["E2E + load testing", "Observability & alerts", "Production deploy pipeline"], status: "Planned" },
+  ];
+}
+
+function parseBudget(s: string): number {
+  const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kKmM])?/);
+  if (!m) return 80000;
+  let n = parseFloat(m[1]);
+  const u = (m[2] || "").toLowerCase();
+  if (u === "k") n *= 1000; else if (u === "m") n *= 1000000;
+  return n;
+}
+function fmtMoney(n: number): string {
+  if (n >= 1000000) return "$" + (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "M";
+  if (n >= 1000) return "$" + Math.round(n / 1000) + "K";
+  return "$" + Math.round(n);
+}
+function gradeFor(v: number): string {
+  if (v >= 88) return "A+"; if (v >= 82) return "A"; if (v >= 76) return "A−";
+  if (v >= 70) return "B+"; if (v >= 64) return "B"; return "B−";
+}
+
+type Persona = { name: string; role: string; goals: string; pains: string; initials: string };
+function derivePersonas(bp: Blueprint): Persona[] {
+  const ind = bp.industry.toLowerCase();
+  if (ind.includes("health")) return [
+    { initials: "DR", name: "Dr. Lena Okafor", role: "Oncologist · primary user", goals: "Faster, more confident diagnoses with fewer false positives.", pains: "Manual review is slow; existing tools don't explain their reasoning." },
+    { initials: "OM", name: "Marcus Bell", role: "Clinic Operations Lead · buyer", goals: "Higher throughput and clear ROI on new tooling.", pains: "Hard to justify cost; integration with EHR is painful." },
+    { initials: "IT", name: "Priya Nair", role: "Health-system IT · gatekeeper", goals: "Secure, compliant, easy-to-deploy software.", pains: "Data privacy, audit trails, and vendor risk." },
+  ];
+  return [
+    { initials: "P1", name: "The Power User", role: `Daily ${bp.industry} operator`, goals: `Get the core ${bp.industry} job done faster, with less friction.`, pains: "Current tools are clunky, generic, and slow to deliver value." },
+    { initials: "DM", name: "The Decision Maker", role: "Team lead / buyer", goals: "Clear ROI, easy rollout, measurable impact.", pains: "Hard to evaluate; switching costs feel high." },
+    { initials: "AD", name: "The Admin", role: "Ops / IT owner", goals: "Reliable, secure, low-maintenance software.", pains: "Security, permissions, and integration overhead." },
+  ];
+}
+
+type StackCat = { icon: ReactNode; name: string; primary: string; rows: { k: string; v: string }[] };
+function deriveStack(bp: Blueprint): StackCat[] {
+  const fe = bp.techStack.frontend;
+  const be = bp.techStack.backend;
+  const ai = bp.techStack.ai;
+  const db = bp.techStack.db;
+  return [
+    {
+      icon: <Browser size={18} weight="duotone" style={{ color: C.teal }} />, name: "Frontend", primary: fe,
+      rows: [
+        { k: "Framework", v: "Next.js 16 (App Router) + React" },
+        { k: "Language", v: "TypeScript (strict)" },
+        { k: "Styling", v: "Tailwind CSS + Framer Motion" },
+        { k: "Data / state", v: "TanStack Query + Zustand" },
+        { k: "Components", v: "Radix Primitives + custom UI kit" },
+      ],
+    },
+    {
+      icon: <Stack size={18} weight="duotone" style={{ color: C.teal }} />, name: "Backend", primary: be,
+      rows: [
+        { k: "Service", v: be },
+        { k: "API", v: "REST + OpenAPI (typed client)" },
+        { k: "Auth", v: "Auth.js / Clerk — JWT + OAuth" },
+        { k: "Validation", v: be.toLowerCase().includes("python") ? "Pydantic" : "Zod" },
+        { k: "Background jobs", v: be.toLowerCase().includes("python") ? "Celery + Redis" : "BullMQ + Redis" },
+      ],
+    },
+    {
+      icon: <Cpu size={18} weight="duotone" style={{ color: C.teal }} />, name: "AI / ML", primary: ai,
+      rows: [
+        { k: "Models", v: ai },
+        { k: "Serving", v: "FastAPI + ONNX Runtime" },
+        { k: "Orchestration", v: "LangChain / typed pipeline" },
+        { k: "Vector store", v: "pgvector (Postgres)" },
+        { k: "Evaluation", v: "Weights & Biases + golden sets" },
+      ],
+    },
+    {
+      icon: <Database size={18} weight="duotone" style={{ color: C.teal }} />, name: "Data", primary: db,
+      rows: [
+        { k: "Primary DB", v: db },
+        { k: "Cache / queue", v: "Redis" },
+        { k: "Object storage", v: "Amazon S3 / Cloudflare R2" },
+        { k: "ORM", v: be.toLowerCase().includes("python") ? "SQLAlchemy + Alembic" : "Prisma" },
+        { k: "Analytics", v: "ClickHouse / warehouse sync" },
+      ],
+    },
+    {
+      icon: <CloudArrowUp size={18} weight="duotone" style={{ color: C.teal }} />, name: "Infra & DevOps", primary: "Vercel · AWS",
+      rows: [
+        { k: "Hosting", v: "Vercel (web) + AWS / Render (API)" },
+        { k: "Containers", v: "Docker" },
+        { k: "CI / CD", v: "GitHub Actions" },
+        { k: "IaC", v: "Terraform" },
+        { k: "Observability", v: "Sentry + Grafana / OpenTelemetry" },
+      ],
+    },
+    {
+      icon: <Plugs size={18} weight="duotone" style={{ color: C.teal }} />, name: "Integrations", primary: "Stripe Connect",
+      rows: [
+        { k: "Payments", v: "Stripe Connect — milestone escrow" },
+        { k: "Email", v: "Resend / Postmark" },
+        { k: "Product analytics", v: "PostHog" },
+        { k: "Notifications", v: "Knock / Novu" },
+        { k: "Error tracking", v: "Sentry" },
+      ],
+    },
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════ */
+/* Blueprint Detail view                                   */
+/* ═══════════════════════════════════════════════════════ */
+function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => void; onSave?: (updated: Blueprint) => void }) {
+  const reduce = useReducedMotion();
+  const [editing, setEditing] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [phases, setPhases] = useState<Phase[]>(() => buildPhases(bp));
+  const [editPhase, setEditPhase] = useState<number | null>(null);
+  const [draftDesc, setDraftDesc] = useState(bp.ideaDesc);
+  const [draftFeatures, setDraftFeatures] = useState<string[]>(bp.features);
+  const [draftCost, setDraftCost] = useState(bp.cost);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  const published = bp.status === "PUBLISHED";
+
+  /* URL deep-link + browser back */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "workspace");
+    url.searchParams.set("blueprint", bp.id);
+    window.history.pushState({}, "", url.toString());
+    const handlePop = () => {
+      const p = new URLSearchParams(window.location.search);
+      if (!p.get("blueprint")) onBack();
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bp.id]);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    setProgress(max > 0 ? Math.min(1, el.scrollTop / max) : 0);
+  };
+
+  const handleBack = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("blueprint");
+    window.history.pushState({}, "", url.toString());
+    onBack();
+  };
+  const showToast = (m: string) => { setToast(m); window.setTimeout(() => setToast(null), 2000); };
+  const copyLink = () => {
+    const url = window.location.href;
+    const fallback = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta);
+      } catch { /* ignore */ }
+    };
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).catch(fallback);
+      } else { fallback(); }
+    } catch { fallback(); }
+    showToast("Link copied to clipboard");
+  };
+  const togglePublish = () => { onSave?.({ ...bp, status: published ? "DRAFT" : "PUBLISHED", isPublic: !published }); showToast(published ? "Blueprint unpublished" : "Blueprint published"); };
+  const saveEdits = () => { onSave?.({ ...bp, ideaDesc: draftDesc, features: draftFeatures, cost: draftCost }); setEditing(false); showToast("Changes saved"); };
+  const cancelEdits = () => { setDraftDesc(bp.ideaDesc); setDraftFeatures(bp.features); setDraftCost(bp.cost); setEditing(false); };
+
+  /* ── derived metrics ── */
+  const grade = gradeFor(bp.viability);
+  const topPct = Math.max(3, Math.round((100 - bp.viability) * 0.55));
+  const pmf = Math.min(99, Math.round((bp.marketPotential + bp.viability) / 2));
+  const demandPct = bp.developerDemand === "High" ? 88 : bp.developerDemand === "Medium" ? 72 : 58;
+  const execReadiness = Math.round(bp.viability * 0.88);
+  const complexity = Math.round(100 - bp.viability * 0.4);
+  const growth = Math.round(bp.marketPotential * 0.96);
+  const stageLabel = bp.viability >= 82 ? "Launch Ready" : bp.viability >= 72 ? "Build Ready" : bp.viability >= 62 ? "Validation Stage" : "Concept Stage";
+
+  const heroPills = [
+    { label: "Product-Market Fit", value: `${pmf}%` },
+    { label: "Developer Demand", value: `${demandPct}%` },
+    { label: "Market Strength", value: `${bp.market.score}%` },
+    { label: "Execution Readiness", value: `${execReadiness}%` },
+  ];
+
+  const kpis = [
+    { label: "Market Potential", value: bp.marketPotential, trend: "+12%", up: true },
+    { label: "Product-Market Fit", value: pmf, trend: "+9%", up: true },
+    { label: "Technical Complexity", value: complexity, trend: "−3%", up: false },
+    { label: "Growth Potential", value: growth, trend: "+15%", up: true },
+  ];
+
+  const strengths = ["Clear, sizeable market demand", "Strong developer interest & matchability", "Defensible differentiation vs. incumbents"];
+  const risks = ["Competitive, well-funded incumbents", bp.market.barriers];
+
+  const desc = editing ? draftDesc : bp.ideaDesc;
+  const infoGrid = [
+    { icon: <Target size={16} weight="duotone" style={{ color: C.success }} />, label: "Mission", text: `Make ${bp.industry} outcomes dramatically better by ${bp.differentiator.toLowerCase()} — and make that accessible to the teams who are priced out or under-served today.` },
+    { icon: <Compass size={16} weight="duotone" style={{ color: C.teal }} />, label: "Vision", text: `A world where ${bp.industry.toLowerCase()} capabilities once exclusive to large incumbents are available to everyone, on demand.` },
+    { icon: <Warning size={16} weight="duotone" style={{ color: C.red }} />, label: "Problem", text: `Existing ${bp.industry} solutions are expensive, slow to adopt, and built for large players. ${bp.market.barriers} compounds this — leaving smaller teams with wasted time, higher costs, and outcomes that lag what is now technically possible.` },
+    { icon: <Lightbulb size={16} weight="duotone" style={{ color: C.amber }} />, label: "Solution", text: `${desc} The platform packages this into a focused product that delivers measurable value from the first session.` },
+    { icon: <Crosshair size={16} weight="duotone" style={{ color: C.teal }} />, label: "Value Proposition", text: `${bp.differentiator} — delivered faster, and at a fraction of the cost and complexity of incumbent tools.` },
+    { icon: <Coins size={16} weight="duotone" style={{ color: C.success }} />, label: "Revenue Model", text: `B2B SaaS subscription with usage-based tiers. Founders fund development directly and pay contributing developers per approved milestone through Evolv's escrow.` },
+  ];
+
+  const personas = derivePersonas(bp);
+
+  const featureItems: { name: string; note?: string; priority: string }[] = (editing ? draftFeatures : bp.features).map((f, i) => ({
+    name: f,
+    priority: i < 2 ? "Must-have" : i < 4 ? "Should-have" : "Nice-to-have",
+  }));
+  const platformFeatures: { name: string; note?: string; priority: string }[] = [
+    { name: "Authentication & onboarding", note: "Auth.js / Clerk", priority: "Must-have" },
+    { name: "Milestone payments & escrow", note: "Stripe Connect", priority: "Must-have" },
+    { name: "Notifications & email", note: "Knock · Resend", priority: "Should-have" },
+    { name: "Admin & analytics dashboard", note: "PostHog", priority: "Nice-to-have" },
+  ];
+
+  const stack = deriveStack(bp);
+
+  const budgetTotal = parseBudget(draftCost.budget);
+  const devBudget = budgetTotal * 0.7;
+  const totalWeeks = phases.reduce((s, p) => s + p.weeks, 0) || 1;
+  const breakdown = [
+    { k: "Development (developer payouts)", v: devBudget, tone: C.mint },
+    { k: "Infrastructure & hosting", v: budgetTotal * 0.1, tone: C.teal },
+    { k: "Tools & services", v: budgetTotal * 0.08, tone: C.mintSoft },
+    { k: "Contingency", v: budgetTotal * 0.12, tone: "#cfe3d8" },
+  ];
+
+  const competitorRows = bp.competitors.length ? bp.competitors : [{ name: "Established incumbent", type: "Direct" }, { name: "Adjacent tool", type: "Indirect" }];
+
+  const gaps = [
+    { title: "Priced for large players only", text: `Incumbents target enterprise budgets, leaving smaller ${bp.industry} teams unserved.` },
+    { title: "Thin explainability & trust", text: "Outputs are delivered as black boxes, slowing adoption in high-stakes decisions." },
+    { title: "Poor workflow integration", text: "Tools live in isolation instead of fitting the systems teams already use daily." },
+    { title: "Slow time-to-value", text: "Heavy setup and onboarding delay the first real outcome by weeks." },
+  ];
+  const additions = [
+    { title: "Explainability layer", impact: "Differentiator", text: "Surface the “why” behind every AI result to build trust and speed approvals." },
+    { title: "Native workflow integrations", impact: "High impact", text: `Connect to the systems ${bp.industry} teams already use so the product fits in, not around.` },
+    { title: "Self-serve onboarding", impact: "Quick win", text: "A guided first-run that delivers a real result inside 10 minutes." },
+    { title: "Usage-based starter tier", impact: "Growth", text: "A low-friction entry price that converts smaller teams the incumbents ignore." },
+  ];
+  const pathToComplete = [
+    "Ship the must-have MVP and validate the core loop with 3–5 design partners.",
+    "Add the explainability + integration layers that turn a feature into a defensible product.",
+    "Layer self-serve onboarding and a usage-based tier to open a scalable growth channel.",
+  ];
+
+  const gtmChannels = [
+    { icon: <UsersThree size={16} weight="duotone" style={{ color: C.teal }} />, title: "Design partners", text: `Hand-pick 3–5 ${bp.industry} teams for deep, co-built early adoption.` },
+    { icon: <Megaphone size={16} weight="duotone" style={{ color: C.teal }} />, title: "Content & community", text: "Publish in-the-weeds expertise where the audience already gathers." },
+    { icon: <Storefront size={16} weight="duotone" style={{ color: C.teal }} />, title: "Product-led self-serve", text: "A free entry tier that turns usage into qualified, expanding accounts." },
+    { icon: <Plugs size={16} weight="duotone" style={{ color: C.teal }} />, title: "Integration partners", text: "Distribute through the platforms your users already live in." },
+  ];
+  const gtmPhases = ["Private beta", "Design-partner rollout", "Public launch", "Scale & expand"];
+
+  const roles = [
+    { role: "Full-Stack Engineer", count: 1, skills: "Next.js · TypeScript · API design", lead: true },
+    { role: bp.techStack.ai ? "ML / AI Engineer" : "Backend Engineer", count: 1, skills: `${bp.techStack.ai || bp.techStack.backend} · pipelines`, lead: false },
+    { role: "Backend Engineer", count: 1, skills: `${bp.techStack.backend} · ${bp.techStack.db}`, lead: false },
+    { role: "Product Designer", count: 1, skills: "UX · design systems (part-time)", lead: false },
+  ];
+  const devs = [
+    { initials: "JD", name: "John Doe", role: "Full Stack · React · Python · 5 yrs", avail: "Available", match: 94 },
+    { initials: "SM", name: "Sarah Mitchell", role: "ML Engineer · TensorFlow · AWS · 3 yrs", avail: "Available", match: 88 },
+    { initials: "AK", name: "Alex Kim", role: "DevOps · Kubernetes · GCP · 4 yrs", avail: "Interested", match: 76 },
+  ];
+
+  const riskRows = [
+    { risk: "Well-funded incumbents move into the niche", sev: "Medium", mit: "Win on focus, speed, and price for under-served teams; build integration moat early." },
+    { risk: bp.market.barriers, sev: "High", mit: "Engage requirements early, design for compliance, and ship audit-ready from day one." },
+    { risk: "Model accuracy below user trust threshold", sev: "Medium", mit: "Ship explainability, keep a human-in-the-loop, and improve on real usage data." },
+    { risk: "Slow developer ramp delays milestones", sev: "Low", mit: "Scope independently-shippable milestones; pay on approval to keep momentum." },
+  ];
+
+  const metrics = [
+    { label: "North-star metric", value: bp.industry.toLowerCase().includes("health") ? "Confident diagnoses / week" : "Weekly active value events", big: true },
+    { label: "Activation rate", value: "≥ 45%", sub: "first-value within session 1" },
+    { label: "Week-4 retention", value: "≥ 35%", sub: "of activated users" },
+    { label: "Time-to-value", value: "< 10 min", sub: "to first real result" },
+    { label: "Net revenue retention", value: "≥ 115%", sub: "by month 12" },
+  ];
+
+  const analytics = [
+    { label: "Blueprint Views", value: String(bp.views), trend: "+24%", up: true, cap: "vs last month", lit: 6 },
+    { label: "Developer Applications", value: String(bp.devMatches + 7), trend: "+3", up: true, cap: "vs 9 last month", lit: 5 },
+    { label: "Market Interest", value: `${bp.marketPotential - 4}%`, trend: "+8%", up: true, cap: "vs 79% last month", lit: 7 },
+    { label: "Profile Saves", value: String(bp.interested + 4), trend: "+2", up: true, cap: "vs 2 last month", lit: 4 },
+  ];
+  const extended = [
+    { icon: <Gauge size={26} weight="duotone" style={{ color: C.mint }} />, label: "Build Feasibility", value: 84 },
+    { icon: <Clock size={26} weight="duotone" style={{ color: C.mint }} />, label: "Market Timing", value: 76 },
+    { icon: <Trophy size={26} weight="duotone" style={{ color: C.mint }} />, label: "Competition Advantage", value: 91 },
+    { icon: <UsersThree size={26} weight="duotone" style={{ color: C.mint }} />, label: "Developer Availability", value: 78 },
+  ];
+
+  const aiRecs = [
+    { p: "High", text: bp.aiRecommend },
+    { p: "High", text: "Lock in a technical co-founder or lead developer from your matched candidates." },
+    { p: "Medium", text: "Build the explainability layer — it's your clearest differentiation." },
+    { p: "Medium", text: "Line up 3–5 design partners before the public launch milestone." },
+    { p: "Low", text: "Draft a usage-based starter tier to widen the top of funnel." },
+  ];
+  const activity = [
+    { icon: <Eye size={14} weight="duotone" />, text: "Blueprint viewed by a matched developer", time: "2h ago" },
+    { icon: <GitBranch size={14} weight="duotone" />, text: "Developer matched — Sarah Mitchell (88%)", time: "4h ago" },
+    { icon: <PencilSimple size={14} weight="duotone" />, text: "Blueprint updated — scope refined", time: "1d ago" },
+    { icon: <FileText size={14} weight="duotone" />, text: "Milestone plan generated", time: "2d ago" },
+    { icon: <Sparkle size={14} weight="duotone" />, text: "AI analysis completed", time: "3d ago" },
+  ];
+
+  const sevTone = (s: string) => (s === "High" ? "red" : s === "Medium" ? "amber" : "neutral") as "red" | "amber" | "neutral";
+  const priTone = (p: string) => (p === "Must-have" || p === "High" ? "red" : p === "Should-have" || p === "Medium" ? "amber" : "mint") as "red" | "amber" | "mint";
+
+  const iconBtn: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 11, background: C.card, border: `1px solid ${C.border}`, cursor: "pointer" };
+  const colGap = { display: "flex", flexDirection: "column", gap: 22 } as CSSProperties;
+
+  return (
+    <motion.div key="detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="h-full flex flex-col overflow-hidden" style={{ position: "relative", background: C.page }}>
+
+      {/* ── Action bar ── */}
+      <div className="blueprint-no-print" style={{ flexShrink: 0, position: "relative", background: "rgba(240,243,241,0.86)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.border}`, zIndex: 20 }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto", display: "flex", alignItems: "center", gap: 14, padding: "12px 2px" }}>
+          <button onClick={handleBack} className="hover:bg-[#e3ede8] transition-colors" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: C.teal, padding: "8px 12px", borderRadius: 10, background: "transparent", border: "none", cursor: "pointer" }}>
+            <ArrowLeft size={15} weight="bold" /> Back
+          </button>
+          <div style={{ width: 1, height: 22, background: C.border }} />
+          <span style={{ fontSize: 15, fontWeight: 800, color: C.ink, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bp.name}</span>
+          <Chip tone="mint" icon={<span style={{ width: 5, height: 5, borderRadius: 999, background: bp.isPublic ? "#1d6e47" : "#9ab4a4", display: "inline-block" }} />}>{bp.isPublic ? "Public" : "Private"}</Chip>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            <motion.button onClick={togglePublish} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 11, background: C.forest, color: C.mint, border: "none", cursor: "pointer", boxShadow: "0 2px 10px rgba(17,34,27,0.18)" }}>
+              <RocketLaunch size={15} weight="fill" /> {published ? "Unpublish" : "Publish"}
+            </motion.button>
+            <motion.button onClick={copyLink} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={iconBtn} title="Copy link"><LinkSimple size={16} style={{ color: C.teal }} /></motion.button>
+            <motion.button onClick={() => window.print()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={iconBtn} title="Export PDF"><DownloadSimple size={16} style={{ color: C.teal }} /></motion.button>
+            <motion.button onClick={() => setEditing((e) => !e)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ ...iconBtn, background: editing ? C.forest : C.card, borderColor: editing ? C.forest : C.border }} title="Edit"><PencilSimple size={16} style={{ color: editing ? C.mint : C.teal }} /></motion.button>
+          </div>
+        </div>
+        <div style={{ position: "absolute", left: 0, bottom: -1, height: 2, width: `${progress * 100}%`, background: "linear-gradient(90deg, #428475, #89d7b7)", transition: "width 0.1s linear" }} />
+      </div>
+
+      {/* ── Scroll body ── */}
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto blueprint-scroll">
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "24px 2px 8px", ...colGap }}>
+
+          {/* ── HERO ── */}
+          <Reveal y={14}>
+            <div style={cardStyle({ position: "relative", overflow: "hidden", padding: "40px 44px" })}>
+              <div style={{ position: "absolute", top: -120, right: -80, width: 360, height: 360, background: "radial-gradient(circle, rgba(137,215,183,0.16), transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ position: "relative", display: "flex", gap: 40, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                {/* left */}
+                <div style={{ flex: "1 1 420px", minWidth: 300 }}>
+                  <Kicker>Venture Blueprint · {stageLabel}</Kicker>
+                  <h1 style={{ fontSize: 38, fontWeight: 800, color: C.ink, letterSpacing: "-0.032em", lineHeight: 1.04 }}>{bp.name}</h1>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                    <Chip tone="mint" icon={<span style={{ width: 5, height: 5, borderRadius: 999, background: "#89d7b7", display: "inline-block" }} />}>{bp.industry}</Chip>
+                    <Chip>{stageLabel}</Chip>
+                    <Chip>Updated {bp.updatedAt}</Chip>
+                  </div>
+                  {editing ? (
+                    <textarea value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} style={{ width: "100%", marginTop: 18, background: C.tint, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", color: C.ink, fontSize: 15, lineHeight: 1.65, resize: "vertical", minHeight: 84, outline: "none", fontFamily: "inherit" }} />
+                  ) : (
+                    <p style={{ fontSize: 16, color: C.body, lineHeight: 1.7, marginTop: 18, maxWidth: 540 }}>{bp.ideaDesc}</p>
+                  )}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginTop: 20, fontSize: 12, color: C.label, fontFamily: MONO }}>
+                    <span>{bp.wordCount} words</span><span>·</span>
+                    <span>{bp.devMatches} developer matches</span><span>·</span>
+                    <span>ID {bp.id}</span>
+                  </div>
+                </div>
+                {/* right */}
+                <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 18, minWidth: 300 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                    <ViabilityGauge score={bp.viability} />
+                    <div>
+                      <div style={{ fontSize: 40, fontWeight: 800, color: C.ink, lineHeight: 1, letterSpacing: "-0.03em" }}>{grade}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: C.teal, marginTop: 4 }}>Venture Grade</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Top {topPct}% of blueprints</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {heroPills.map((p) => (
+                      <div key={p.label} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12, padding: "11px 14px" }}>
+                        <div style={{ fontSize: 19, fontWeight: 800, color: C.ink, ...NUM }}>{p.value}</div>
+                        <div style={{ fontSize: 9.5, color: C.label, textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 3, fontFamily: MONO }}>{p.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── AI VENTURE ASSESSMENT ── */}
+          <Reveal>
+            <div style={cardStyle({ borderLeft: `3px solid ${C.mint}`, padding: "28px 30px" })}>
+              <SectionHead icon={<Robot size={18} weight="duotone" style={{ color: C.success }} />} kicker="AI Analysis" title="Venture Assessment" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.1fr", gap: 30 }}>
+                <div>
+                  <Label>Strengths</Label>
+                  {strengths.map((s) => (
+                    <div key={s} style={{ display: "flex", gap: 9, marginBottom: 11 }}>
+                      <SealCheck size={15} weight="fill" style={{ color: C.success, flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ fontSize: 13, color: C.body, lineHeight: 1.5 }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <Label>Risks</Label>
+                  {risks.map((r, i) => (
+                    <div key={i} style={{ display: "flex", gap: 9, marginBottom: 11 }}>
+                      <Warning size={15} weight="fill" style={{ color: i === 0 ? C.red : C.amber, flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ fontSize: 13, color: C.body, lineHeight: 1.5 }}>{r}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <Label>Recommendation</Label>
+                  <div style={{ display: "flex", gap: 10, background: C.amberBg, border: `1px solid ${C.amberLine}`, borderRadius: 12, padding: "13px 15px" }}>
+                    <ArrowRight size={15} weight="bold" style={{ color: C.amber, flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13, color: "#7a5c10", lineHeight: 1.55 }}>{bp.aiRecommend}</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 12 }}>
+                    <Chip tone="mint">Market Leader</Chip>
+                    <Chip tone="mint">High Growth</Chip>
+                    <Chip tone="amber">Medium Risk</Chip>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── EXECUTIVE SUMMARY ── */}
+          <Reveal>
+            <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 22 }}>
+              <div style={cardStyle({ padding: "28px 30px" })}>
+                <SectionHead icon={<Notebook size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Overview" title="Executive Summary" />
+                <p style={{ fontSize: 14.5, color: C.body, lineHeight: 1.75, marginBottom: 14 }}>
+                  <strong style={{ color: C.ink }}>{bp.name}</strong> is a {bp.industry} venture built around a simple thesis: {bp.differentiator.toLowerCase()}. {bp.ideaDesc}
+                </p>
+                <p style={{ fontSize: 14.5, color: C.body, lineHeight: 1.75 }}>
+                  This blueprint translates that idea into an executable plan — a recommended architecture, a milestone-based build roadmap, a budget the founder funds directly, and the developer profiles best matched to ship it. Everything below is structured so a developer could pick it up and start building.
+                </p>
+              </div>
+              <div style={cardStyle({ padding: "26px 28px" })}>
+                <Label>At a glance</Label>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {[
+                    ["Industry", bp.industry],
+                    ["Stage", stageLabel],
+                    ["Timeline", draftCost.timeline],
+                    ["Team", draftCost.team],
+                    ["Build cost", draftCost.budget],
+                    ["Viability", `${bp.viability} / 100`],
+                  ].map(([k, v], i) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
+                      <span style={{ fontSize: 12.5, color: C.muted }}>{k}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, ...NUM }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── KPI CARDS ── */}
+          <Reveal>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
+              {kpis.map((k) => (
+                <motion.div key={k.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "20px 20px 22px" })}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Label>{k.label}</Label>
+                    <Trend value={k.trend.replace("−", "")} positive={k.up} />
+                  </div>
+                  <div style={{ fontSize: 34, fontWeight: 800, color: C.ink, lineHeight: 1, marginTop: 2, ...NUM }}><CountNum value={k.value} suffix="%" /></div>
+                  <div style={{ marginTop: 16 }}><SegmentedBar value={k.value} /></div>
+                </motion.div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* ── THE IDEA ── */}
+          <Reveal>
+            <SectionHead icon={<Lightbulb size={18} weight="duotone" style={{ color: C.amber }} />} kicker="Concept" title="The Idea" desc="The product narrative — what it is, who it serves, and how it makes money." />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+              {infoGrid.map((c) => (
+                <motion.div key={c.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 24px" })}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 9, background: C.tint, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.icon}</div>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: MONO }}>{c.label}</span>
+                  </div>
+                  <p style={{ fontSize: 13.5, color: C.body, lineHeight: 1.65, margin: 0 }}>{c.text}</p>
+                </motion.div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* ── PERSONAS ── */}
+          <Reveal>
+            <SectionHead icon={<Users size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Audience" title="Target Users & Personas" desc="Who this is built for — and what they're really trying to get done." />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
+              {personas.map((p) => (
+                <motion.div key={p.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 24px" })}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                    <Avatar initials={p.initials} size={42} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{p.name}</div>
+                      <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>{p.role}</div>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <Label>Goals</Label>
+                    <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{p.goals}</p>
+                  </div>
+                  <div>
+                    <Label>Pain points</Label>
+                    <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{p.pains}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* ── PRODUCT SCOPE ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<ListChecks size={18} weight="duotone" style={{ color: C.success }} />} kicker="Scope" title="Product Scope" desc="The feature set, prioritised so the team builds the right thing first." />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {[...featureItems, ...platformFeatures].map((f, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderRadius: 12, background: C.tint, border: `1px solid ${C.borderSoft}` }}>
+                    <CheckCircle size={16} weight="fill" style={{ color: C.mint, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{f.name}</div>
+                      {f.note ? <div style={{ fontSize: 11, color: C.muted, marginTop: 1, fontFamily: MONO }}>{f.note}</div> : null}
+                    </div>
+                    <Chip tone={priTone(f.priority)}>{f.priority}</Chip>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── RECOMMENDED TECH STACK ── */}
+          <Reveal>
+            <SectionHead icon={<Cube size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Engineering" title="Recommended Tech Stack" desc="A complete, opinionated stack — frameworks and libraries for every layer of the build." />
+            {/* architecture flow */}
+            <div style={cardStyle({ padding: "20px 24px", marginBottom: 18 })}>
+              <Label>Architecture at a glance</Label>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+                {[
+                  { ic: <Browser size={15} weight="duotone" />, t: `Client · ${bp.techStack.frontend.split(",")[0]}` },
+                  { ic: <Stack size={15} weight="duotone" />, t: `API · ${bp.techStack.backend.split(",")[0]}` },
+                  { ic: <Cpu size={15} weight="duotone" />, t: `AI · ${bp.techStack.ai.split(",")[0]}` },
+                  { ic: <Database size={15} weight="duotone" />, t: `Data · ${bp.techStack.db.split(",")[0]}` },
+                ].map((n, i, arr) => (
+                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: C.ink, background: C.tint, border: `1px solid ${C.borderSoft}`, padding: "8px 13px", borderRadius: 10 }}>
+                      <span style={{ color: C.teal, display: "flex" }}>{n.ic}</span>{n.t}
+                    </span>
+                    {i < arr.length - 1 && <CaretRight size={14} style={{ color: C.label }} />}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
+              {stack.map((cat) => (
+                <motion.div key={cat.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 24px" })}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 4 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: C.tint, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center" }}>{cat.icon}</div>
+                    <div>
+                      <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink }}>{cat.name}</div>
+                      <div style={{ fontSize: 11, color: C.teal, fontFamily: MONO, marginTop: 1 }}>{cat.primary}</div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14, display: "flex", flexDirection: "column" }}>
+                    {cat.rows.map((r, i) => (
+                      <div key={r.k} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "9px 0", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
+                        <span style={{ fontSize: 11.5, color: C.label, fontFamily: MONO, flexShrink: 0 }}>{r.k}</span>
+                        <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, textAlign: "right" }}>{r.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* ── ROADMAP ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<Flag size={18} weight="duotone" style={{ color: C.success }} />} kicker="Delivery" title="Development Roadmap"
+                desc="Milestone-based build plan. Each milestone is independently shippable, with its developer payout released on approval."
+                right={<Chip tone="dark">{totalWeeks} weeks total</Chip>} />
+              <div style={{ position: "relative", paddingLeft: 6 }}>
+                <motion.div initial={reduce ? false : { scaleY: 0 }} whileInView={{ scaleY: 1 }} viewport={{ once: true }} transition={{ duration: 0.9, ease: "easeInOut" }}
+                  style={{ position: "absolute", left: 20, top: 14, bottom: 14, width: 2, background: `linear-gradient(${C.mint}, ${C.border})`, transformOrigin: "top" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {phases.map((ph, i) => {
+                    const inProg = ph.status === "In Progress";
+                    const pay = devBudget * (ph.weeks / totalWeeks);
+                    const isEdit = editPhase === i;
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 16 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 999, background: C.forest, color: C.mint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, flexShrink: 0, zIndex: 1, ...NUM }}>{i + 1}</div>
+                        <div style={{ flex: 1, background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: "16px 18px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                            {isEdit ? (
+                              <input value={ph.name} onChange={(e) => setPhases((p) => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={{ flex: 1, fontSize: 14, fontWeight: 700, color: C.ink, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", outline: "none", fontFamily: "inherit" }} />
+                            ) : (
+                              <span style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>{ph.name}</span>
+                            )}
+                            <span style={{ fontSize: 11, color: C.teal, fontFamily: MONO }}>{ph.layer}</span>
+                            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                              <Chip>{ph.weeks}w</Chip>
+                              <Chip tone="mint" icon={<Coins size={11} weight="fill" />}>{fmtMoney(pay)}</Chip>
+                              <Chip tone={inProg ? "mint" : "neutral"}>{ph.status}</Chip>
+                              {editing && (
+                                <button onClick={() => setEditPhase(isEdit ? null : i)} style={{ ...iconBtn, width: 28, height: 28 }} title="Edit phase">
+                                  {isEdit ? <CheckCircle size={14} weight="fill" style={{ color: C.success }} /> : <PencilSimple size={13} style={{ color: C.teal }} />}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {ph.deliverables.map((d, di) => isEdit ? (
+                              <input key={di} value={d} onChange={(e) => setPhases((p) => p.map((x, j) => j === i ? { ...x, deliverables: x.deliverables.map((y, k) => k === di ? e.target.value : y) } : x))} style={{ fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", outline: "none", fontFamily: "inherit", color: C.ink }} />
+                            ) : (
+                              <span key={di} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.body, background: C.card, border: `1px solid ${C.borderSoft}`, padding: "5px 11px", borderRadius: 8 }}>
+                                <CheckCircle size={11} weight="fill" style={{ color: C.mint }} />{d}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── MARKET ANALYSIS ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<ChartLineUp size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Market" title="Market Analysis" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                {[{ l: "Market Size", v: bp.market.size }, { l: "Growth (CAGR)", v: bp.market.cagr }, { l: "Entry Barriers", v: bp.market.barriers }].map((m) => (
+                  <div key={m.l} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: "16px 18px" }}>
+                    <Label>{m.l}</Label>
+                    <div style={{ fontSize: 19, fontWeight: 800, color: C.ink, ...NUM }}>{m.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 22 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>Market Score</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: C.ink, ...NUM }}>{bp.market.score} / 100</span>
+                </div>
+                <MeterBar value={bp.market.score} />
+              </div>
+              <div style={{ marginTop: 24 }}>
+                <Label>Competitive landscape</Label>
+                <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", padding: "11px 18px", background: C.tint, fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>
+                    <span>Competitor</span><span>Positioning</span><span>Opportunity Gap</span>
+                  </div>
+                  {competitorRows.map((c, i) => (
+                    <div key={c.name + i} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", padding: "13px 18px", fontSize: 13, color: C.ink, borderTop: `1px solid ${C.borderSoft}`, alignItems: "center" }}>
+                      <span style={{ fontWeight: 600 }}>{c.name}</span>
+                      <span style={{ color: C.muted }}>{c.type}</span>
+                      <span><Chip tone={c.type === "Direct" ? "amber" : "mint"}>{c.type === "Direct" ? "Medium" : "High"}</Chip></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── GAP ANALYSIS & RECOMMENDATIONS ── */}
+          <Reveal>
+            <div style={cardStyle({ borderLeft: `3px solid ${C.amber}`, padding: "28px 30px" })}>
+              <SectionHead icon={<Strategy size={18} weight="duotone" style={{ color: C.amber }} />} kicker="Opportunity" title="Gap Analysis & Recommendations" desc="Where the market falls short today — and exactly what to add to turn this into a complete, defensible product." />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div>
+                  <Label>What the market lacks</Label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {gaps.map((g) => (
+                      <div key={g.title} style={{ display: "flex", gap: 11, padding: "13px 15px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12 }}>
+                        <Warning size={15} weight="duotone" style={{ color: C.amber, flexShrink: 0, marginTop: 1 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{g.title}</div>
+                          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{g.text}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label>Recommended additions</Label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {additions.map((a) => (
+                      <div key={a.title} style={{ padding: "13px 15px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Lightbulb size={15} weight="fill" style={{ color: C.success }} />
+                            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{a.title}</span>
+                          </div>
+                          <Chip tone="mint">{a.impact}</Chip>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginTop: 6 }}>{a.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginTop: 24 }}>
+                <Label>Path to a complete product</Label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                  {pathToComplete.map((s, i) => (
+                    <div key={i} style={{ display: "flex", gap: 12, padding: "15px 16px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: 999, background: C.forest, color: C.mint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0, ...NUM }}>{i + 1}</div>
+                      <span style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55 }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── GO-TO-MARKET ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<Megaphone size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Distribution" title="Go-to-Market" desc="How the first users are reached, and the sequence to get from beta to scale." />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+                {gtmChannels.map((g) => (
+                  <div key={g.title} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: "18px 18px" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: C.card, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>{g.icon}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, marginBottom: 5 }}>{g.title}</div>
+                    <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{g.text}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                {gtmPhases.map((p, i, arr) => (
+                  <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: C.ink, background: C.tint, border: `1px solid ${C.borderSoft}`, padding: "8px 13px", borderRadius: 999 }}>
+                      <span style={{ width: 18, height: 18, borderRadius: 999, background: C.forest, color: C.mint, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800 }}>{i + 1}</span>{p}
+                    </span>
+                    {i < arr.length - 1 && <CaretRight size={14} style={{ color: C.label }} />}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── BUDGET & BUILD COST ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<Receipt size={18} weight="duotone" style={{ color: C.success }} />} kicker="Budget" title="Build Cost & Payments"
+                desc="What it costs the founder to ship this — and how those funds release to developers, milestone by milestone." />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+                {[
+                  { l: "Total Build Cost", v: draftCost.budget, ic: <Money size={18} weight="duotone" style={{ color: C.success }} /> },
+                  { l: "Timeline", v: draftCost.timeline, ic: <Clock size={18} weight="duotone" style={{ color: C.teal }} /> },
+                  { l: "Team", v: draftCost.team, ic: <UsersThree size={18} weight="duotone" style={{ color: C.teal }} /> },
+                  { l: "Infra / month", v: draftCost.hosting, ic: <CloudArrowUp size={18} weight="duotone" style={{ color: C.teal }} /> },
+                ].map((s) => (
+                  <div key={s.l} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: "18px 18px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Label>{s.l}</Label>{s.ic}
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, ...NUM }}>{s.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 22 }}>
+                {/* breakdown */}
+                <div>
+                  <Label>Cost breakdown</Label>
+                  <div style={{ display: "flex", height: 12, borderRadius: 999, overflow: "hidden", marginBottom: 14 }}>
+                    {breakdown.map((b) => (
+                      <div key={b.k} style={{ width: `${(b.v / budgetTotal) * 100}%`, background: b.tone }} />
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    {breakdown.map((b) => (
+                      <div key={b.k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.body }}>
+                          <span style={{ width: 9, height: 9, borderRadius: 3, background: b.tone }} />{b.k}
+                        </span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, ...NUM }}>{fmtMoney(b.v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* milestone schedule */}
+                <div>
+                  <Label>Milestone payment schedule</Label>
+                  <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
+                    {phases.map((ph, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 15px", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <span style={{ width: 20, height: 20, borderRadius: 999, background: C.forest, color: C.mint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0, ...NUM }}>{i + 1}</span>
+                          <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ph.name}</span>
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.success, ...NUM }}>{fmtMoney(devBudget * (ph.weeks / totalWeeks))}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 9, marginTop: 12, padding: "11px 14px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 11 }}>
+                    <Lock size={14} weight="duotone" style={{ color: C.teal, flexShrink: 0, marginTop: 1 }} />
+                    <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>Funds are held by Evolv and released to the developer on each approved milestone via Stripe Connect, net of the platform fee.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── TEAM & TALENT ── */}
+          <Reveal>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 22 }}>
+              <div style={cardStyle({ padding: "26px 28px" })}>
+                <SectionHead icon={<Briefcase size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Team" title="Roles Needed" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {roles.map((r) => (
+                    <div key={r.role} style={{ padding: "13px 15px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{r.role}</span>
+                        {r.lead ? <Chip tone="mint">Lead</Chip> : <Chip>×{r.count}</Chip>}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 4, fontFamily: MONO }}>{r.skills}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={cardStyle({ padding: "26px 28px" })}>
+                <SectionHead icon={<CodeBlock size={18} weight="duotone" style={{ color: C.success }} />} kicker="Matched" title="Matched Developers" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {devs.map((d, i) => {
+                    const avail = d.avail === "Available";
+                    return (
+                      <motion.div key={d.name} initial={reduce ? false : { opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.5, ease: EASE }}
+                        style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, border: `1px solid ${C.borderSoft}`, background: C.tint }}>
+                        <Avatar initials={d.initials} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{d.name}</div>
+                          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{d.role}</div>
+                        </div>
+                        <Chip tone={avail ? "mint" : "amber"}>{d.avail}</Chip>
+                        <span style={{ fontSize: 13, fontWeight: 800, padding: "5px 12px", borderRadius: 999, background: "#e8f5ef", color: "#1d6e47", ...NUM }}>{d.match}%</span>
+                        <button className="hover:bg-[#1a312c] hover:text-[#89d7b7] transition-colors" style={{ fontSize: 12.5, fontWeight: 700, padding: "8px 16px", borderRadius: 10, background: C.card, border: `1px solid ${C.forest}`, color: C.forest, cursor: "pointer" }}>Connect</button>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── RISKS & MITIGATIONS ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<ShieldCheck size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Risk" title="Risks & Mitigations" />
+              <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.5fr 1.8fr", padding: "11px 18px", background: C.tint, fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>
+                  <span>Risk</span><span>Severity</span><span>Mitigation</span>
+                </div>
+                {riskRows.map((r, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1.4fr 0.5fr 1.8fr", padding: "14px 18px", fontSize: 13, borderTop: `1px solid ${C.borderSoft}`, alignItems: "start", gap: 10 }}>
+                    <span style={{ color: C.ink, fontWeight: 600, lineHeight: 1.45 }}>{r.risk}</span>
+                    <span><Chip tone={sevTone(r.sev)}>{r.sev}</Chip></span>
+                    <span style={{ color: C.muted, lineHeight: 1.5 }}>{r.mit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── SUCCESS METRICS ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<Crosshair size={18} weight="duotone" style={{ color: C.success }} />} kicker="Measurement" title="Success Metrics" desc="The single number that defines success, and the KPIs that ladder up to it." />
+              <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 1fr", gap: 14 }}>
+                {metrics.map((m, i) => (
+                  <div key={m.label} style={{ background: i === 0 ? C.forest : C.tint, border: `1px solid ${i === 0 ? "transparent" : C.borderSoft}`, borderRadius: 14, padding: "18px 18px" }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: i === 0 ? C.mintSoft : C.label, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: MONO, marginBottom: 8 }}>{m.label}</div>
+                    <div style={{ fontSize: i === 0 ? 17 : 20, fontWeight: 800, color: i === 0 ? "#fff" : C.ink, lineHeight: 1.15, ...NUM }}>{m.value}</div>
+                    {m.sub && <div style={{ fontSize: 11, color: C.muted, marginTop: 5 }}>{m.sub}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── SIGNALS ── */}
+          <Reveal>
+            <SectionHead icon={<Pulse size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Traction" title="Signals & Activity" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 18 }}>
+              {analytics.map((a) => (
+                <motion.div key={a.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "20px", textAlign: "center" })}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, lineHeight: 1, ...NUM }}>{a.value}</div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 7, fontFamily: MONO }}>{a.label}</div>
+                  <div style={{ marginTop: 9, display: "flex", justifyContent: "center" }}><Trend value={a.trend} positive={a.up} /></div>
+                  <div style={{ fontSize: 10.5, color: C.label, marginTop: 7 }}>{a.cap}</div>
+                  <div style={{ marginTop: 12 }}><SegmentedBar value={0} total={8} lit={a.lit} height={14} /></div>
+                </motion.div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 18 }}>
+              {extended.map((e) => (
+                <motion.div key={e.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 20px", textAlign: "center" })}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>{e.icon}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, lineHeight: 1, ...NUM }}><CountNum value={e.value} suffix="%" /></div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 8, fontFamily: MONO }}>{e.label}</div>
+                  <div style={{ marginTop: 12 }}><MeterBar value={e.value} height={5} /></div>
+                </motion.div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+              <div style={cardStyle({ padding: "24px 26px" })}>
+                <Label>AI Recommendations</Label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {aiRecs.map((r, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <Chip tone={priTone(r.p)}>{r.p}</Chip>
+                      <span style={{ fontSize: 13, color: C.body, lineHeight: 1.5, paddingTop: 2 }}>{r.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={cardStyle({ padding: "24px 26px" })}>
+                <Label>Activity Timeline</Label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {activity.map((a, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 9, background: C.tint, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.teal, flexShrink: 0 }}>{a.icon}</div>
+                      <span style={{ flex: 1, fontSize: 13, color: C.ink, fontWeight: 500 }}>{a.text}</span>
+                      <span style={{ fontSize: 11, color: C.label, flexShrink: 0, fontFamily: MONO }}>{a.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── FOOTER ── */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 4px 4px", borderTop: `1px solid ${C.border}`, marginTop: 4 }}>
+            <span style={{ fontSize: 12, color: C.label, fontFamily: MONO }}>Evolv · {bp.name} · {stageLabel}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: C.label }}>
+              <Sparkle size={13} weight="fill" style={{ color: C.mint }} /> Generated venture blueprint
+            </span>
+          </div>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-        {sections.map((s) => (
-          <div key={s.agent} style={{ background: "#fff", borderRadius: 16, padding: "16px 18px", border: "1px solid #e4ece7" }}>
-            <div className="flex items-center gap-2 mb-1">
-              <span style={{ fontSize: 14 }}>{s.icon}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#1a2e26" }}>{s.agent} Agent</span>
+
+      {/* ── Edit mode bottom bar ── */}
+      <AnimatePresence>
+        {editing && (
+          <motion.div className="blueprint-no-print" initial={{ y: 90 }} animate={{ y: 0 }} exit={{ y: 90 }} transition={{ type: "spring", stiffness: 340, damping: 30 }}
+            style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 55, background: C.forest, padding: "15px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 -10px 34px rgba(11,34,27,0.3)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 9, color: C.mint, fontSize: 13, fontWeight: 700 }}><PencilSimple size={16} /> Editing blueprint</span>
+              <button onClick={() => setDraftFeatures((a) => [...a, "New feature"])} style={{ fontSize: 12, fontWeight: 600, color: C.mintSoft, background: "rgba(137,215,183,0.12)", border: "1px solid rgba(137,215,183,0.2)", borderRadius: 9, padding: "7px 13px", cursor: "pointer" }}>+ Feature</button>
             </div>
-            {s.content}
-          </div>
-        ))}
-      </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={cancelEdits} style={{ fontSize: 13, fontWeight: 600, padding: "10px 20px", borderRadius: 11, background: "transparent", border: "1px solid rgba(137,215,183,0.3)", color: C.mintSoft, cursor: "pointer" }}>Cancel</button>
+              <motion.button onClick={saveEdits} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, padding: "10px 22px", borderRadius: 11, background: C.mint, color: C.deep, border: "none", cursor: "pointer" }}>
+                <FloppyDisk size={15} weight="fill" /> Save changes
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Toast ── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div className="blueprint-no-print" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+            style={{ position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 8, background: C.forest, color: C.mint, fontSize: 13, fontWeight: 600, padding: "11px 20px", borderRadius: 12, boxShadow: "0 14px 40px rgba(11,34,27,0.42)" }}>
+            <CheckCircle size={16} weight="fill" /> {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ChatPanel bp={bp} />
     </motion.div>
   );
 }
@@ -838,6 +2064,12 @@ export function WorkspaceTab({
   useEffect(() => { if (triggerForge) { setForgeOpen(true); onClearForge?.(); } }, [triggerForge, onClearForge]);
   useEffect(() => { if (openBlueprintId) setViewingId(openBlueprintId); }, [openBlueprintId]);
 
+  /* Deep-link restore: open the blueprint named in ?blueprint= on first mount */
+  useEffect(() => {
+    const bpId = new URLSearchParams(window.location.search).get("blueprint");
+    if (bpId) setViewingId(bpId);
+  }, []);
+
   const update = (bps: Blueprint[]) => { setBlueprints(bps); onBlueprintsChange?.(bps); };
   const viewingBP = blueprints.find((b) => b.id === viewingId);
 
@@ -959,6 +2191,7 @@ export function WorkspaceTab({
                 key="detail"
                 bp={viewingBP}
                 onBack={() => { setViewingId(null); onClearOpen?.(); }}
+                onSave={(updated) => update(blueprints.map((b) => (b.id === updated.id ? updated : b)))}
               />
             ) : (
               <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" }}>
