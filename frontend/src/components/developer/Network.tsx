@@ -139,7 +139,7 @@ const activityFeed = [
     { id: 5, actor: 'Dev Patel', action: 'liked your portfolio project', time: '2d ago', avatar: 'D', color: '#5BC8A0' },
 ];
 
-const Network = ({ onNavigate }) => {
+const Network = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
     const [activeTab, setActiveTab] = useState('all');
     const [connected, setConnected] = useState(
         connections.reduce((acc, c) => ({ ...acc, [c.id]: c.connected }), {})
@@ -155,12 +155,25 @@ const Network = ({ onNavigate }) => {
         return true;
     });
 
+    const requireProfileBeforeAction = (afterComplete) => {
+        if (profileComplete || !onRequireProfile) return false;
+        onRequireProfile(afterComplete);
+        return true;
+    };
+
     const handleConnect = (id) => {
+        if (requireProfileBeforeAction(() => setConnected((prev) => ({ ...prev, [id]: !prev[id] })))) return;
         setConnected((prev) => ({ ...prev, [id]: !prev[id] }));
     };
 
     const handleAcceptRequest = (id) => {
+        if (requireProfileBeforeAction(() => setPendingRequests((prev) => prev.filter((r) => r.id !== id)))) return;
         setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+    };
+
+    const handleMessage = () => {
+        if (requireProfileBeforeAction(() => onNavigate('inbox'))) return;
+        onNavigate('inbox');
     };
 
     return (
@@ -258,7 +271,7 @@ const Network = ({ onNavigate }) => {
                                             <i className={`fas fa-${connected[conn.id] ? 'check' : 'user-plus'}`}></i>
                                             {connected[conn.id] ? 'Connected' : 'Connect'}
                                         </button>
-                                        <button className={"Network_msgBtn"} onClick={() => onNavigate('inbox')}>
+                                        <button className={"Network_msgBtn"} onClick={handleMessage}>
                                             <i className="fas fa-comment-alt"></i> Message
                                         </button>
                                         <button className={"Network_profileBtn"}>

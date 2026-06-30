@@ -40,7 +40,7 @@ export function SignInForm() {
     if (!emailRegex.test(email)) { setError("Please enter a valid email address."); return; }
 
     if (email.toLowerCase() === "sarah@evolv.dev" || email.toLowerCase() === "sarah.mitchell@evolv.dev") {
-      localStorage.setItem("evolv_user", JSON.stringify({ firstName: "Sarah", lastName: "Mitchell", email: email.toLowerCase() }));
+      localStorage.setItem("evolv_user", JSON.stringify({ firstName: "Sarah", lastName: "Mitchell", email: email.toLowerCase(), profileComplete: false, firstTime: false }));
       router.push("/developer-dashboard");
       return;
     }
@@ -73,7 +73,12 @@ export function SignInForm() {
         }));
         router.push("/founder-dashboard");
       } else {
-        localStorage.setItem("evolv_user", JSON.stringify({ firstName: user.firstName, lastName: user.lastName, email: user.email }));
+        localStorage.setItem("evolv_user", JSON.stringify({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          ...(user.profile ?? {}),
+        }));
         router.push("/developer-dashboard");
       }
     } catch {

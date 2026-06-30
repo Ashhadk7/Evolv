@@ -89,7 +89,7 @@ const threads = [
     },
 ];
 
-const Inbox = ({ onNavigate }) => {
+const Inbox = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
     const [selectedThread, setSelectedThread] = useState(threads[0]);
     const [filter, setFilter] = useState('all');
     const [replyText, setReplyText] = useState('');
@@ -129,6 +129,14 @@ const Inbox = ({ onNavigate }) => {
         setComposeData({ to: '', subject: '', body: '' });
     };
 
+    const handleComposeClick = () => {
+        if (!profileComplete && onRequireProfile) {
+            onRequireProfile(() => setShowCompose(true));
+            return;
+        }
+        setShowCompose(true);
+    };
+
     const toggleStar = (id) => {
         setLocalThreads((prev) => prev.map((t) => (t.id === id ? { ...t, starred: !t.starred } : t)));
         if (selectedThread && selectedThread.id === id) setSelectedThread((prev) => ({ ...prev, starred: !prev.starred }));
@@ -156,7 +164,7 @@ const Inbox = ({ onNavigate }) => {
                             </button>
                         ))}
                     </div>
-                    <button className={"Inbox_composeBtn"} onClick={() => setShowCompose(true)}>
+                    <button className={"Inbox_composeBtn"} onClick={handleComposeClick}>
                         <i className="fas fa-pen" /> Compose
                     </button>
                 </div>

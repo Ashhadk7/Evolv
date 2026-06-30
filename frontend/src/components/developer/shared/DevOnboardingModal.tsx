@@ -1,168 +1,533 @@
-// @ts-nocheck
-import { useState, useRef } from 'react';
+"use client";
 
-const TECH_STACKS = [
-    'React', 'TypeScript', 'JavaScript', 'Python', 'Node.js',
-    'FastAPI', 'Django', 'PostgreSQL', 'MongoDB', 'Docker',
-    'AWS', 'GCP', 'AI/ML', 'Solidity', 'GraphQL',
-    'Go', 'Rust', 'Vue.js', 'Next.js', 'Kubernetes',
+import { useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle,
+  GithubLogo,
+  GraduationCap,
+  LinkedinLogo,
+  MagnifyingGlass,
+  Plus,
+  Trash,
+  UploadSimple,
+  X,
+} from "@phosphor-icons/react";
+import {
+  EDUCATION_LEVELS,
+  createBlankEducation,
+  formatFounderEducations,
+  getDegreeOptions,
+  type FounderEducation,
+} from "@/components/founder/profileUtils";
+import {
+  getDeveloperEducations,
+  getMissingDeveloperProfileFields,
+  normalizeDeveloperProfileForSave,
+  type DeveloperProfile,
+} from "@/components/developer/profileUtils";
+
+const SKILLS = [
+  "React", "TypeScript", "JavaScript", "Next.js", "Node.js", "Python", "FastAPI", "Django",
+  "PostgreSQL", "MongoDB", "Docker", "Kubernetes", "AWS", "GCP", "Azure", "AI/ML",
+  "TensorFlow", "PyTorch", "GraphQL", "Solidity", "Web3", "Go", "Rust", "Vue.js",
+  "UI/UX", "Product Engineering", "Mobile", "React Native", "Flutter", "Cybersecurity",
 ];
-const WORK_TYPES = ['Remote', 'Hybrid', 'Onsite'];
-const EXPERIENCE_LEVELS = ['< 1 year', '1-2 years', '3-5 years', '5-8 years', '8+ years'];
+const EXPERIENCE_LEVELS = ["< 1 year", "1-2 years", "3-5 years", "5-8 years", "8+ years"];
+const FIELD_STYLE: CSSProperties = {
+  background: "#f5f7f5",
+  border: "1px solid #dde5e0",
+  color: "#1a2e26",
+};
 
-export const DevOnboardingModal = ({ onComplete, userName = '' }) => {
-    const [step, setStep] = useState(1);
-    const [photoPreview, setPhotoPreview] = useState(null);
-    const fileRef = useRef(null);
+interface Props {
+  initialProfile?: DeveloperProfile;
+  onComplete: (profile?: DeveloperProfile) => void;
+  onSkip?: () => void;
+  userName?: string;
+}
 
-    const [firstName, setFirstName] = useState(userName.split(' ')[0] || '');
-    const [lastName, setLastName]   = useState(userName.split(' ').slice(1).join(' ') || '');
-    const [jobTitle, setJobTitle]   = useState('');
-    const [location, setLocation]   = useState('');
-    const [experience, setExperience] = useState('');
-    const [bio, setBio]             = useState('');
+function FieldLabel({ children, required = false }: { children: ReactNode; required?: boolean }) {
+  return (
+    <label className="mb-1.5 block text-[11px] font-semibold" style={{ color: "#6b8e7e" }}>
+      {children}
+      {required && <span className="ml-1 align-super text-[10px] text-red-500">*</span>}
+    </label>
+  );
+}
 
-    const [selectedTech, setSelectedTech]   = useState([]);
-    const [availability, setAvailability]   = useState(true);
-    const [workType, setWorkType]           = useState('Remote');
+function getInitials(profile: DeveloperProfile) {
+  return `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || "D";
+}
 
-    const handlePhotoChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setPhotoPreview(reader.result);
-            reader.readAsDataURL(file);
-        }
-    };
+function SkillsPicker({
+  selected,
+  onToggle,
+}: {
+  selected: string[];
+  onToggle: (skill: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const queryText = query.trim().toLowerCase();
+  const suggestions = (queryText
+    ? SKILLS.filter((skill) => skill.toLowerCase().includes(queryText))
+    : SKILLS.slice(0, 14)
+  ).filter((skill) => !selected.includes(skill));
 
-    const toggleTech = (tech) => setSelectedTech(prev => prev.includes(tech) ? prev.filter(t => t !== tech) : [...prev, tech]);
-
-    const handleFinish = () => {
-        try {
-            const existing = JSON.parse(localStorage.getItem('evolv_user') || '{}');
-            const updated = { ...existing, firstName, lastName, jobTitle, location, experience, bio, techStack: selectedTech, availability, workType, photo: photoPreview, firstTime: false, profileComplete: true };
-            localStorage.setItem('evolv_user', JSON.stringify(updated));
-        } catch (_) {}
-        onComplete();
-    };
-
-    const handleSkip = () => {
-        try {
-            const existing = JSON.parse(localStorage.getItem('evolv_user') || '{}');
-            localStorage.setItem('evolv_user', JSON.stringify({ ...existing, firstTime: false, profileComplete: false }));
-        } catch (_) {}
-        onComplete();
-    };
-
-    return (
-        <div className={"DevOnboardingModal_overlay"}>
-            <div className={"DevOnboardingModal_modal"}>
-                <div className={"DevOnboardingModal_header"}>
-                    <div>
-                        <h2 className={"DevOnboardingModal_title"}>Set up your Developer profile</h2>
-                        <p className={"DevOnboardingModal_subtitle"}>Step {step} of 2 · Required</p>
-                    </div>
-                    <button className={"DevOnboardingModal_closeBtn"} onClick={handleSkip} title="Skip for now">✕</button>
-                </div>
-
-                <div className={"DevOnboardingModal_progressTrack"}>
-                    <div className={"DevOnboardingModal_progressFill"} style={{ width: step === 1 ? '50%' : '100%' }} />
-                </div>
-
-                {step === 1 && (
-                    <div className={"DevOnboardingModal_body"}>
-                        <div className={"DevOnboardingModal_photoRow"}>
-                            <div className={"DevOnboardingModal_photoCircle"} onClick={() => fileRef.current?.click()}>
-                                {photoPreview ? <img src={photoPreview} alt="preview" className={"DevOnboardingModal_photoImg"} /> : (
-                                    <><i className="fas fa-camera" style={{ fontSize: '1.2rem', color: '#5BC8A0', marginBottom: '0.3rem' }} /><span className={"DevOnboardingModal_photoLabel"}>Upload photo</span></>
-                                )}
-                            </div>
-                            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoChange} />
-                        </div>
-
-                        <div className={"DevOnboardingModal_formRow"}>
-                            <div className={"DevOnboardingModal_formGroup"}>
-                                <label className={"DevOnboardingModal_label"}>First Name <span className={"DevOnboardingModal_required"}>*</span></label>
-                                <input className={"DevOnboardingModal_input"} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Sara" />
-                            </div>
-                            <div className={"DevOnboardingModal_formGroup"}>
-                                <label className={"DevOnboardingModal_label"}>Last Name <span className={"DevOnboardingModal_required"}>*</span></label>
-                                <input className={"DevOnboardingModal_input"} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Ahmed" />
-                            </div>
-                        </div>
-
-                        <div className={"DevOnboardingModal_formGroupFull"}>
-                            <label className={"DevOnboardingModal_label"}>Job Title / Role <span className={"DevOnboardingModal_required"}>*</span></label>
-                            <input className={"DevOnboardingModal_input"} value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder="e.g. Full Stack Developer, AI Engineer, Backend Engineer" />
-                        </div>
-
-                        <div className={"DevOnboardingModal_formRow"}>
-                            <div className={"DevOnboardingModal_formGroup"}>
-                                <label className={"DevOnboardingModal_label"}>Location</label>
-                                <input className={"DevOnboardingModal_input"} value={location} onChange={e => setLocation(e.target.value)} placeholder="City, Country" />
-                            </div>
-                            <div className={"DevOnboardingModal_formGroup"}>
-                                <label className={"DevOnboardingModal_label"}>Years of Experience</label>
-                                <select className={"DevOnboardingModal_input"} value={experience} onChange={e => setExperience(e.target.value)}>
-                                    <option value="">Select...</option>
-                                    {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className={"DevOnboardingModal_formGroupFull"}>
-                            <label className={"DevOnboardingModal_label"}>Bio / Tagline</label>
-                            <textarea className={"DevOnboardingModal_textarea"} value={bio} onChange={e => setBio(e.target.value)} placeholder="e.g. Passionate AI engineer with 5 years building production-grade ML systems" rows={3} />
-                        </div>
-                    </div>
-                )}
-
-                {step === 2 && (
-                    <div className={"DevOnboardingModal_body"}>
-                        <div className={"DevOnboardingModal_formGroupFull"}>
-                            <label className={"DevOnboardingModal_label"}>Tech Stack <span className={"DevOnboardingModal_required"}>*</span><span className={"DevOnboardingModal_labelNote"}> — pick all that apply</span></label>
-                            <div className={"DevOnboardingModal_chipGrid"}>
-                                {TECH_STACKS.map(tech => (
-                                    <button key={tech} type="button" onClick={() => toggleTech(tech)} className={`${"DevOnboardingModal_chip"} ${selectedTech.includes(tech) ? "DevOnboardingModal_chipActive" : ''}`}>{tech}</button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className={"DevOnboardingModal_formGroupFull"}>
-                            <label className={"DevOnboardingModal_label"}>Preferred Work Type</label>
-                            <div className={"DevOnboardingModal_workTypeRow"}>
-                                {WORK_TYPES.map(w => (
-                                    <button key={w} type="button" onClick={() => setWorkType(w)} className={`${"DevOnboardingModal_workTypeBtn"} ${workType === w ? "DevOnboardingModal_workTypeActive" : ''}`}>
-                                        <i className={`fas fa-${w === 'Remote' ? 'laptop-house' : w === 'Hybrid' ? 'building' : 'office-building'}`} />{w}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className={"DevOnboardingModal_availabilityRow"}>
-                            <div>
-                                <p className={"DevOnboardingModal_availTitle"}>Open to Opportunities</p>
-                                <p className={"DevOnboardingModal_availSub"}>Let founders discover and reach out to you</p>
-                            </div>
-                            <div className={`${"DevOnboardingModal_toggle"} ${availability ? "DevOnboardingModal_toggleOn" : ''}`} onClick={() => setAvailability(a => !a)}>
-                                <div className={"DevOnboardingModal_toggleThumb"} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className={"DevOnboardingModal_footer"}>
-                    <button className={"DevOnboardingModal_skipBtn"} onClick={handleSkip}>Skip for now</button>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        {step === 2 && <button className={"DevOnboardingModal_backBtn"} onClick={() => setStep(1)}>← Back</button>}
-                        {step === 1 ? (
-                            <button className={"DevOnboardingModal_continueBtn"} onClick={() => setStep(2)} disabled={!firstName.trim() || !jobTitle.trim()}>Continue →</button>
-                        ) : (
-                            <button className={"DevOnboardingModal_finishBtn"} onClick={handleFinish} disabled={selectedTech.length === 0}>🚀 Let&apos;s Go</button>
-                        )}
-                    </div>
-                </div>
-            </div>
+  return (
+    <div>
+      <FieldLabel required>Core skills</FieldLabel>
+      {selected.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {selected.map((skill) => (
+            <span
+              key={skill}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+              style={{ background: "#1a312c", color: "#89d7b7", border: "1px solid rgba(137,215,183,0.22)" }}
+            >
+              {skill}
+              <button type="button" onClick={() => onToggle(skill)} aria-label={`Remove ${skill}`}>
+                <X size={10} weight="bold" />
+              </button>
+            </span>
+          ))}
         </div>
-    );
+      )}
+
+      <div className="mb-3 flex h-10 items-center gap-2.5 rounded-lg border bg-white px-3.5" style={{ borderColor: "#dce8e1" }}>
+        <MagnifyingGlass size={14} style={{ color: "#8aa99b" }} />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search skills"
+          className="min-w-0 flex-1 bg-transparent text-[13px] outline-none"
+          style={{ color: "#1a2e26" }}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {suggestions.slice(0, 14).map((skill) => (
+          <button
+            key={skill}
+            type="button"
+            onClick={() => onToggle(skill)}
+            className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold transition hover:bg-[#eef7f2]"
+            style={{ borderColor: "#dde5e0", color: "#428475" }}
+          >
+            + {skill}
+          </button>
+        ))}
+        {suggestions.length === 0 && (
+          <span className="text-[12px]" style={{ color: "#9bb0a7" }}>No skills matched.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EducationEditor({
+  educations,
+  onChange,
+}: {
+  educations: FounderEducation[];
+  onChange: (next: FounderEducation[]) => void;
+}) {
+  const rows = educations.length ? educations : [];
+
+  const update = (id: string, patch: Partial<FounderEducation>) => {
+    onChange(rows.map((education) => {
+      if (education.id !== id) return education;
+      const next = { ...education, ...patch };
+      if (patch.level !== undefined) {
+        next.degree = "";
+        next.customDegree = "";
+      }
+      if (patch.degree && patch.degree !== "Other") next.customDegree = "";
+      return next;
+    }));
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((education, index) => {
+        const degreeOptions = getDegreeOptions(education.level);
+        return (
+          <div key={education.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" }}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: "#1a2e26" }}>
+                <GraduationCap size={14} weight="bold" style={{ color: "#428475" }} />
+                Education {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(rows.filter((item) => item.id !== education.id))}
+                className="rounded-lg p-1.5 transition hover:bg-red-50"
+                aria-label="Remove education"
+                style={{ color: "#c0392b" }}
+              >
+                <Trash size={14} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <FieldLabel required>Education level</FieldLabel>
+                <select
+                  value={education.level}
+                  onChange={(event) => update(education.id, { level: event.target.value })}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25"
+                  style={FIELD_STYLE}
+                >
+                  <option value="">Select level</option>
+                  {EDUCATION_LEVELS.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <FieldLabel required>Degree / program</FieldLabel>
+                <select
+                  value={education.degree}
+                  onChange={(event) => update(education.id, { degree: event.target.value })}
+                  disabled={!education.level}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25 disabled:cursor-not-allowed disabled:text-[#1a2e26]/35"
+                  style={FIELD_STYLE}
+                >
+                  <option value="">{education.level ? "Select degree" : "Select level first"}</option>
+                  {degreeOptions.map((degree) => (
+                    <option key={degree} value={degree}>{degree}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className={`mt-3 grid gap-3 ${education.degree === "Other" ? "sm:grid-cols-2" : ""}`}>
+              {education.degree === "Other" && (
+                <input
+                  value={education.customDegree ?? ""}
+                  onChange={(event) => update(education.id, { customDegree: event.target.value })}
+                  placeholder="Write degree name"
+                  className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25"
+                  style={FIELD_STYLE}
+                />
+              )}
+              <input
+                value={education.school ?? ""}
+                onChange={(event) => update(education.id, { school: event.target.value })}
+                placeholder="School / university"
+                className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25"
+                style={FIELD_STYLE}
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange([...rows, createBlankEducation()])}
+        className="flex h-10 items-center justify-center gap-2 rounded-xl border bg-white text-[12px] font-bold transition hover:bg-[#f8faf8]"
+        style={{ borderColor: "#dbe7e0", color: "#428475" }}
+      >
+        <Plus size={14} weight="bold" />
+        Add education
+      </button>
+    </div>
+  );
+}
+
+function persistDeveloperProfile(profile: DeveloperProfile) {
+  const normalized = normalizeDeveloperProfileForSave(profile);
+  try {
+    const raw = localStorage.getItem("evolv_user");
+    const existing = raw ? JSON.parse(raw) : {};
+    localStorage.setItem("evolv_user", JSON.stringify({ ...existing, ...normalized }));
+  } catch { /* ignore */ }
+  return normalized;
+}
+
+export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userName = "" }: Props) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState(1);
+  const [error, setError] = useState("");
+  const [profile, setProfile] = useState<DeveloperProfile>(() => {
+    const nameParts = userName.split(" ").filter(Boolean);
+    return {
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      bio: "",
+      techStack: [],
+      github: "",
+      linkedin: "",
+      educations: [],
+      ...initialProfile,
+    };
+  });
+
+  const fullName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Developer";
+  const initials = getInitials(profile);
+  const educations = useMemo(() => getDeveloperEducations(profile), [profile]);
+  const skills = Array.isArray(profile.techStack) ? profile.techStack : [];
+  const baseInput = "w-full rounded-lg px-4 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/25";
+
+  const set = (key: keyof DeveloperProfile, value: string) =>
+    setProfile((current) => ({ ...current, [key]: value }));
+
+  const toggleSkill = (skill: string) =>
+    setProfile((current) => {
+      const currentSkills = Array.isArray(current.techStack) ? current.techStack : [];
+      return {
+        ...current,
+        techStack: currentSkills.includes(skill)
+          ? currentSkills.filter((item) => item !== skill)
+          : [...currentSkills, skill],
+      };
+    });
+
+  const updateEducations = (next: FounderEducation[]) => {
+    setProfile((current) => ({
+      ...current,
+      educations: next,
+      education: formatFounderEducations(next),
+    }));
+  };
+
+  const handlePhotoUpload = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProfile((current) => ({ ...current, avatarUrl: reader.result as string, photo: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSkip = () => {
+    try {
+      const raw = localStorage.getItem("evolv_user");
+      const existing = raw ? JSON.parse(raw) : {};
+      localStorage.setItem("evolv_user", JSON.stringify({ ...existing, firstTime: false, profileComplete: false }));
+    } catch { /* ignore */ }
+    if (onSkip) onSkip();
+    else onComplete();
+  };
+
+  const handleComplete = () => {
+    const normalized = normalizeDeveloperProfileForSave(profile);
+    const missing = getMissingDeveloperProfileFields(normalized);
+    if (missing.length) {
+      setError(`Please fill ${missing.join(", ")} before using applications, messages, or network actions.`);
+      return;
+    }
+
+    setError("");
+    const savedProfile = persistDeveloperProfile(normalized);
+    onComplete(savedProfile);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(15,28,24,0.62)" }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 18 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 18 }}
+        transition={{ duration: 0.22, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="w-full overflow-hidden bg-white"
+        style={{ maxWidth: 620, maxHeight: "90vh", border: "1px solid #dfe9e3", borderRadius: 16, display: "flex", flexDirection: "column" }}
+      >
+        <div className="px-7 pt-6 pb-5" style={{ borderBottom: "1px solid #eaf0eb" }}>
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <div className="mb-3 flex gap-1.5">
+                {[1, 2].map((item) => (
+                  <div
+                    key={item}
+                    className="h-1 rounded-full transition-all duration-300"
+                    style={{ width: step >= item ? 30 : 14, background: step >= item ? "#1a312c" : "#dde5e0" }}
+                  />
+                ))}
+              </div>
+              <h2 className="text-[1.15rem] font-bold" style={{ color: "#1a2e26" }}>
+                Complete developer profile
+              </h2>
+              <p className="mt-1 text-[12px]" style={{ color: "#7a9e8e" }}>
+                Step {step} of 2
+              </p>
+            </div>
+            <button type="button" onClick={handleSkip} className="rounded-lg p-1.5 transition hover:bg-[#f5f7f5]" aria-label="Close setup">
+              <X size={16} style={{ color: "#7a9e8e" }} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-7 py-5">
+          <AnimatePresence mode="wait">
+            {step === 1 ? (
+              <motion.div
+                key="identity"
+                initial={{ opacity: 0, x: 18 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -18 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-4"
+              >
+                <div className="flex justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full transition hover:opacity-90"
+                      style={{ background: "#f0f5f2", border: "2px dashed #89d7b7", color: "#1a312c" }}
+                      aria-label="Upload profile image"
+                    >
+                      {profile.avatarUrl || profile.photo ? (
+                        <img src={profile.avatarUrl || profile.photo} alt={`${fullName} profile`} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-[1.2rem] font-extrabold">{initials}</span>
+                      )}
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhotoUpload(event.target.files?.[0])} />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "#428475" }}>
+                      <UploadSimple size={13} weight="bold" />
+                      Upload photo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel>First name</FieldLabel>
+                    <input value={profile.firstName ?? ""} onChange={(event) => set("firstName", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Sara" />
+                  </div>
+                  <div>
+                    <FieldLabel>Last name</FieldLabel>
+                    <input value={profile.lastName ?? ""} onChange={(event) => set("lastName", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Ahmed" />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel required>Professional role</FieldLabel>
+                    <input value={profile.jobTitle ?? profile.role ?? ""} onChange={(event) => set("jobTitle", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Full Stack Developer" />
+                  </div>
+                  <label className="block">
+                    <FieldLabel required>Experience</FieldLabel>
+                    <select value={profile.experience ?? ""} onChange={(event) => set("experience", event.target.value)} className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25" style={FIELD_STYLE}>
+                      <option value="">Select experience</option>
+                      {EXPERIENCE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <FieldLabel>Professional summary</FieldLabel>
+                  <textarea
+                    value={profile.bio ?? ""}
+                    onChange={(event) => set("bio", event.target.value)}
+                    className={`${baseInput} resize-none`}
+                    style={{ ...FIELD_STYLE, minHeight: 92 }}
+                    placeholder="Summarize what you build, your strongest stack, and the startup environments you prefer."
+                  />
+                </div>
+
+                <SkillsPicker selected={skills} onToggle={toggleSkill} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="background"
+                initial={{ opacity: 0, x: 18 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -18 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-4"
+              >
+                <EducationEditor educations={educations} onChange={updateEducations} />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel required>GitHub</FieldLabel>
+                    <div className="relative">
+                      <GithubLogo size={15} weight="bold" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#428475" }} />
+                      <input value={profile.github ?? ""} onChange={(event) => set("github", event.target.value)} className={baseInput} style={{ ...FIELD_STYLE, paddingLeft: 42 }} placeholder="https://github.com/yourname" />
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel required>LinkedIn</FieldLabel>
+                    <div className="relative">
+                      <LinkedinLogo size={15} weight="bold" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#428475" }} />
+                      <input value={profile.linkedin ?? profile.linkedIn ?? ""} onChange={(event) => set("linkedin", event.target.value)} className={baseInput} style={{ ...FIELD_STYLE, paddingLeft: 42 }} placeholder="https://linkedin.com/in/yourname" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel>Portfolio link</FieldLabel>
+                  <input value={profile.portfolioLink ?? ""} onChange={(event) => set("portfolioLink", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="https://yourportfolio.com" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[12px] font-medium text-red-700"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="flex items-center justify-between px-7 py-4" style={{ borderTop: "1px solid #eaf0eb" }}>
+          <button type="button" onClick={handleSkip} className="text-[13px] font-semibold transition hover:underline" style={{ color: "#7a9e8e" }}>
+            Skip for now
+          </button>
+          <div className="flex items-center gap-2">
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setStep(1);
+                }}
+                className="flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-bold transition hover:bg-[#e8f0eb]"
+                style={{ background: "#f0f5f2", color: "#1a2e26" }}
+              >
+                <ArrowLeft size={14} weight="bold" />
+                Back
+              </button>
+            )}
+            <motion.button
+              type="button"
+              onClick={() => {
+                if (step === 1) {
+                  setError("");
+                  setStep(2);
+                  return;
+                }
+                handleComplete();
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 420, damping: 24 }}
+              className="flex h-10 items-center gap-2 rounded-xl px-5 text-[13px] font-bold"
+              style={{ background: "#1a312c", color: "#89d7b7" }}
+            >
+              {step === 1 ? "Next" : "Complete profile"}
+              {step === 1 ? <ArrowRight size={14} weight="bold" /> : <CheckCircle size={14} weight="bold" />}
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
 };
