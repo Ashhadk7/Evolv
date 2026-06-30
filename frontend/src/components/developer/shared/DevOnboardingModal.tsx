@@ -1,504 +1,533 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ClientIcon as Icon } from "./ClientIcon";
+import { useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle,
+  GithubLogo,
+  GraduationCap,
+  LinkedinLogo,
+  MagnifyingGlass,
+  Plus,
+  Trash,
+  UploadSimple,
+  X,
+} from "@phosphor-icons/react";
+import {
+  EDUCATION_LEVELS,
+  createBlankEducation,
+  formatFounderEducations,
+  getDegreeOptions,
+  type FounderEducation,
+} from "@/components/founder/profileUtils";
+import {
+  getDeveloperEducations,
+  getMissingDeveloperProfileFields,
+  normalizeDeveloperProfileForSave,
+  type DeveloperProfile,
+} from "@/components/developer/profileUtils";
 
-export interface DeveloperProfile {
-  firstName: string;
-  lastName: string;
-  jobTitle: string;
-  location: string;
-  experience: string;
-  bio: string;
-  techStack: string[];
-  workType: string;
-  openToOpportunities: boolean;
-  linkedin: string;
-  github: string;
-  dob: string;
-  gender: string;
-  avatarUrl?: string;
-  profileComplete?: boolean;
-}
-
-interface Props {
-  initialProfile?: Partial<DeveloperProfile>;
-  onComplete: (p: DeveloperProfile) => void;
-  onSkip?: () => void;
-  userName?: string;
-}
-
-const TECH_OPTIONS = [
-  "React", "TypeScript", "JavaScript", "Python", "Node.js",
-  "FastAPI", "Django", "PostgreSQL", "MongoDB", "Docker",
-  "AWS", "GCP", "AI/ML", "GraphQL", "Next.js",
-  "Go", "Rust", "Vue.js", "Solidity", "Kubernetes",
+const SKILLS = [
+  "React", "TypeScript", "JavaScript", "Next.js", "Node.js", "Python", "FastAPI", "Django",
+  "PostgreSQL", "MongoDB", "Docker", "Kubernetes", "AWS", "GCP", "Azure", "AI/ML",
+  "TensorFlow", "PyTorch", "GraphQL", "Solidity", "Web3", "Go", "Rust", "Vue.js",
+  "UI/UX", "Product Engineering", "Mobile", "React Native", "Flutter", "Cybersecurity",
 ];
-
-const EXPERIENCE_OPTIONS = [
-  "< 1 year", "1–2 years", "3–5 years", "5–8 years", "8+ years",
-];
-
-const INPUT_STYLE: React.CSSProperties = {
+const EXPERIENCE_LEVELS = ["< 1 year", "1-2 years", "3-5 years", "5-8 years", "8+ years"];
+const FIELD_STYLE: CSSProperties = {
   background: "#f5f7f5",
   border: "1px solid #dde5e0",
   color: "#1a2e26",
 };
 
-const DEFAULT_PROFILE: DeveloperProfile = {
-  firstName: "", lastName: "", jobTitle: "", location: "",
-  experience: "", bio: "", techStack: [], workType: "Remote",
-  openToOpportunities: true, linkedin: "", github: "",
-  dob: "", gender: "", avatarUrl: "", profileComplete: false,
-};
+interface Props {
+  initialProfile?: DeveloperProfile;
+  onComplete: (profile?: DeveloperProfile) => void;
+  onSkip?: () => void;
+  userName?: string;
+}
 
-export function DevOnboardingModal({ initialProfile = {}, onComplete, onSkip, userName }: Props) {
-  const [step, setStep]       = useState(1);
-  const [profile, setProfile] = useState<DeveloperProfile>(() => {
-    const p = { ...DEFAULT_PROFILE, ...initialProfile };
-    if (userName && !p.firstName) {
-      const parts = userName.split(" ");
-      p.firstName = parts[0] || "";
-      p.lastName = parts.slice(1).join(" ") || "";
-    }
-    return p;
-  });
-  const fileRef               = useRef<HTMLInputElement>(null);
+function FieldLabel({ children, required = false }: { children: ReactNode; required?: boolean }) {
+  return (
+    <label className="mb-1.5 block text-[11px] font-semibold" style={{ color: "#6b8e7e" }}>
+      {children}
+      {required && <span className="ml-1 align-super text-[10px] text-red-500">*</span>}
+    </label>
+  );
+}
 
-  const set = (key: keyof DeveloperProfile, val: string | boolean | string[]) =>
-    setProfile((p) => ({ ...p, [key]: val }));
+function getInitials(profile: DeveloperProfile) {
+  return `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || "D";
+}
 
-  const toggleTech = (t: string) =>
-    setProfile((p) => ({
-      ...p,
-      techStack: p.techStack.includes(t)
-        ? p.techStack.filter((x) => x !== t)
-        : [...p.techStack, t],
+function SkillsPicker({
+  selected,
+  onToggle,
+}: {
+  selected: string[];
+  onToggle: (skill: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const queryText = query.trim().toLowerCase();
+  const suggestions = (queryText
+    ? SKILLS.filter((skill) => skill.toLowerCase().includes(queryText))
+    : SKILLS.slice(0, 14)
+  ).filter((skill) => !selected.includes(skill));
+
+  return (
+    <div>
+      <FieldLabel required>Core skills</FieldLabel>
+      {selected.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {selected.map((skill) => (
+            <span
+              key={skill}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+              style={{ background: "#1a312c", color: "#89d7b7", border: "1px solid rgba(137,215,183,0.22)" }}
+            >
+              {skill}
+              <button type="button" onClick={() => onToggle(skill)} aria-label={`Remove ${skill}`}>
+                <X size={10} weight="bold" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="mb-3 flex h-10 items-center gap-2.5 rounded-lg border bg-white px-3.5" style={{ borderColor: "#dce8e1" }}>
+        <MagnifyingGlass size={14} style={{ color: "#8aa99b" }} />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search skills"
+          className="min-w-0 flex-1 bg-transparent text-[13px] outline-none"
+          style={{ color: "#1a2e26" }}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {suggestions.slice(0, 14).map((skill) => (
+          <button
+            key={skill}
+            type="button"
+            onClick={() => onToggle(skill)}
+            className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold transition hover:bg-[#eef7f2]"
+            style={{ borderColor: "#dde5e0", color: "#428475" }}
+          >
+            + {skill}
+          </button>
+        ))}
+        {suggestions.length === 0 && (
+          <span className="text-[12px]" style={{ color: "#9bb0a7" }}>No skills matched.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EducationEditor({
+  educations,
+  onChange,
+}: {
+  educations: FounderEducation[];
+  onChange: (next: FounderEducation[]) => void;
+}) {
+  const rows = educations.length ? educations : [];
+
+  const update = (id: string, patch: Partial<FounderEducation>) => {
+    onChange(rows.map((education) => {
+      if (education.id !== id) return education;
+      const next = { ...education, ...patch };
+      if (patch.level !== undefined) {
+        next.degree = "";
+        next.customDegree = "";
+      }
+      if (patch.degree && patch.degree !== "Other") next.customDegree = "";
+      return next;
     }));
+  };
 
-  const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((education, index) => {
+        const degreeOptions = getDegreeOptions(education.level);
+        return (
+          <div key={education.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" }}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: "#1a2e26" }}>
+                <GraduationCap size={14} weight="bold" style={{ color: "#428475" }} />
+                Education {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(rows.filter((item) => item.id !== education.id))}
+                className="rounded-lg p-1.5 transition hover:bg-red-50"
+                aria-label="Remove education"
+                style={{ color: "#c0392b" }}
+              >
+                <Trash size={14} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <FieldLabel required>Education level</FieldLabel>
+                <select
+                  value={education.level}
+                  onChange={(event) => update(education.id, { level: event.target.value })}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25"
+                  style={FIELD_STYLE}
+                >
+                  <option value="">Select level</option>
+                  {EDUCATION_LEVELS.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <FieldLabel required>Degree / program</FieldLabel>
+                <select
+                  value={education.degree}
+                  onChange={(event) => update(education.id, { degree: event.target.value })}
+                  disabled={!education.level}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25 disabled:cursor-not-allowed disabled:text-[#1a2e26]/35"
+                  style={FIELD_STYLE}
+                >
+                  <option value="">{education.level ? "Select degree" : "Select level first"}</option>
+                  {degreeOptions.map((degree) => (
+                    <option key={degree} value={degree}>{degree}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className={`mt-3 grid gap-3 ${education.degree === "Other" ? "sm:grid-cols-2" : ""}`}>
+              {education.degree === "Other" && (
+                <input
+                  value={education.customDegree ?? ""}
+                  onChange={(event) => update(education.id, { customDegree: event.target.value })}
+                  placeholder="Write degree name"
+                  className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25"
+                  style={FIELD_STYLE}
+                />
+              )}
+              <input
+                value={education.school ?? ""}
+                onChange={(event) => update(education.id, { school: event.target.value })}
+                placeholder="School / university"
+                className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25"
+                style={FIELD_STYLE}
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange([...rows, createBlankEducation()])}
+        className="flex h-10 items-center justify-center gap-2 rounded-xl border bg-white text-[12px] font-bold transition hover:bg-[#f8faf8]"
+        style={{ borderColor: "#dbe7e0", color: "#428475" }}
+      >
+        <Plus size={14} weight="bold" />
+        Add education
+      </button>
+    </div>
+  );
+}
+
+function persistDeveloperProfile(profile: DeveloperProfile) {
+  const normalized = normalizeDeveloperProfileForSave(profile);
+  try {
+    const raw = localStorage.getItem("evolv_user");
+    const existing = raw ? JSON.parse(raw) : {};
+    localStorage.setItem("evolv_user", JSON.stringify({ ...existing, ...normalized }));
+  } catch { /* ignore */ }
+  return normalized;
+}
+
+export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userName = "" }: Props) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState(1);
+  const [error, setError] = useState("");
+  const [profile, setProfile] = useState<DeveloperProfile>(() => {
+    const nameParts = userName.split(" ").filter(Boolean);
+    return {
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      bio: "",
+      techStack: [],
+      github: "",
+      linkedin: "",
+      educations: [],
+      ...initialProfile,
+    };
+  });
+
+  const fullName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Developer";
+  const initials = getInitials(profile);
+  const educations = useMemo(() => getDeveloperEducations(profile), [profile]);
+  const skills = Array.isArray(profile.techStack) ? profile.techStack : [];
+  const baseInput = "w-full rounded-lg px-4 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/25";
+
+  const set = (key: keyof DeveloperProfile, value: string) =>
+    setProfile((current) => ({ ...current, [key]: value }));
+
+  const toggleSkill = (skill: string) =>
+    setProfile((current) => {
+      const currentSkills = Array.isArray(current.techStack) ? current.techStack : [];
+      return {
+        ...current,
+        techStack: currentSkills.includes(skill)
+          ? currentSkills.filter((item) => item !== skill)
+          : [...currentSkills, skill],
+      };
+    });
+
+  const updateEducations = (next: FounderEducation[]) => {
+    setProfile((current) => ({
+      ...current,
+      educations: next,
+      education: formatFounderEducations(next),
+    }));
+  };
+
+  const handlePhotoUpload = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = (ev) => set("avatarUrl", ev.target?.result as string);
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProfile((current) => ({ ...current, avatarUrl: reader.result as string, photo: reader.result as string }));
+      }
+    };
     reader.readAsDataURL(file);
   };
 
-  const handleSkipClick = () => {
-    if (onSkip) {
-      onSkip();
-    } else {
-      // Default fallback logic: mark complete with defaults or close
-      onComplete({ ...profile, profileComplete: true });
-    }
+  const handleSkip = () => {
+    try {
+      const raw = localStorage.getItem("evolv_user");
+      const existing = raw ? JSON.parse(raw) : {};
+      localStorage.setItem("evolv_user", JSON.stringify({ ...existing, firstTime: false, profileComplete: false }));
+    } catch { /* ignore */ }
+    if (onSkip) onSkip();
+    else onComplete();
   };
 
-  const baseInput =
-    "w-full rounded-lg px-4 py-2.5 text-[13px] outline-none focus:ring-1 focus:ring-[#0f1c18]";
+  const handleComplete = () => {
+    const normalized = normalizeDeveloperProfileForSave(profile);
+    const missing = getMissingDeveloperProfileFields(normalized);
+    if (missing.length) {
+      setError(`Please fill ${missing.join(", ")} before using applications, messages, or network actions.`);
+      return;
+    }
+
+    setError("");
+    const savedProfile = persistDeveloperProfile(normalized);
+    onComplete(savedProfile);
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(15,28,24,0.65)" }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(15,28,24,0.62)" }}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 18 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: [0.21, 0.47, 0.32, 0.98] }}
-        className="bg-white rounded-2xl overflow-hidden font-sans"
-        style={{ width: 560, maxHeight: "90vh", border: "1px solid #e0e8e3", display: "flex", flexDirection: "column" }}
+        exit={{ opacity: 0, scale: 0.96, y: 18 }}
+        transition={{ duration: 0.22, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="w-full overflow-hidden bg-white"
+        style={{ maxWidth: 620, maxHeight: "90vh", border: "1px solid #dfe9e3", borderRadius: 16, display: "flex", flexDirection: "column" }}
       >
-        {/* Header */}
         <div className="px-7 pt-6 pb-5" style={{ borderBottom: "1px solid #eaf0eb" }}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-5">
             <div>
-              <div className="flex gap-1.5 mb-3">
-                {[1, 2].map((s) => (
+              <div className="mb-3 flex gap-1.5">
+                {[1, 2].map((item) => (
                   <div
-                    key={s}
+                    key={item}
                     className="h-1 rounded-full transition-all duration-300"
-                    style={{
-                      width: step >= s ? 28 : 14,
-                      background: step >= s ? "#0f1c18" : "#dde5e0",
-                    }}
+                    style={{ width: step >= item ? 30 : 14, background: step >= item ? "#1a312c" : "#dde5e0" }}
                   />
                 ))}
               </div>
-              <h2 className="text-[1.15rem] font-bold" style={{ color: "#1a2e26", margin: 0 }}>
-                {step === 1 ? "Set up your Developer profile" : "Skills & preferences"}
+              <h2 className="text-[1.15rem] font-bold" style={{ color: "#1a2e26" }}>
+                Complete developer profile
               </h2>
-              <p className="text-[12px] mt-0.5" style={{ color: "#7a9e8e", margin: 0 }}>
-                {step === 1
-                  ? "Step 1 of 2 · Required"
-                  : "Step 2 of 2 · Select your tech stack"}
+              <p className="mt-1 text-[12px]" style={{ color: "#7a9e8e" }}>
+                Step {step} of 2
               </p>
             </div>
-            <button
-              onClick={handleSkipClick}
-              className="rounded-lg p-1.5 transition-colors hover:bg-[#f5f7f5] border-none bg-transparent cursor-pointer"
-            >
-              <Icon icon="solar:close-square-bold-duotone" width={18} style={{ color: "#7a9e8e" }} />
+            <button type="button" onClick={handleSkip} className="rounded-lg p-1.5 transition hover:bg-[#f5f7f5]" aria-label="Close setup">
+              <X size={16} style={{ color: "#7a9e8e" }} />
             </button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-7 py-5 overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto px-7 py-5">
           <AnimatePresence mode="wait">
             {step === 1 ? (
               <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
+                key="identity"
+                initial={{ opacity: 0, x: 18 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, x: -18 }}
+                transition={{ duration: 0.18 }}
                 className="flex flex-col gap-4"
               >
-                {/* Avatar */}
                 <div className="flex justify-center">
                   <div className="flex flex-col items-center gap-2">
-                    <div
-                      onClick={() => fileRef.current?.click()}
-                      className="h-16 w-16 rounded-full flex items-center justify-center cursor-pointer transition-colors hover:bg-[#e8f0eb] overflow-hidden"
-                      style={{
-                        background: profile.avatarUrl ? "transparent" : "#f0f5f2",
-                        border: "2px dashed #89d7b7",
-                      }}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full transition hover:opacity-90"
+                      style={{ background: "#f0f5f2", border: "2px dashed #89d7b7", color: "#1a312c" }}
+                      aria-label="Upload profile image"
                     >
-                      {profile.avatarUrl ? (
-                        <img
-                          src={profile.avatarUrl}
-                          alt="Avatar"
-                          className="h-full w-full object-cover"
-                        />
+                      {profile.avatarUrl || profile.photo ? (
+                        <img src={profile.avatarUrl || profile.photo} alt={`${fullName} profile`} className="h-full w-full object-cover" />
                       ) : (
-                        <Icon icon="solar:camera-add-bold-duotone" width={22} style={{ color: "#89d7b7" }} />
+                        <span className="text-[1.2rem] font-extrabold">{initials}</span>
                       )}
-                    </div>
-                    <span className="text-[11px]" style={{ color: "#7a9e8e" }}>
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhotoUpload(event.target.files?.[0])} />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "#428475" }}>
+                      <UploadSimple size={13} weight="bold" />
                       Upload photo
-                    </span>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatar}
-                    />
+                    </button>
                   </div>
                 </div>
 
-                {/* Name */}
-                <div className="grid grid-cols-2 gap-3">
-                  {(["firstName", "lastName"] as const).map((key) => (
-                    <div key={key}>
-                      <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                        {key === "firstName" ? "First Name" : "Last Name"}{" "}
-                        <span style={{ color: "#e05c5c" }}>*</span>
-                      </label>
-                      <input
-                        className={baseInput}
-                        style={INPUT_STYLE}
-                        value={profile[key]}
-                        onChange={(e) => set(key, e.target.value)}
-                        placeholder={key === "firstName" ? "Sara" : "Ahmed"}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Job Title */}
-                <div>
-                  <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                    Role / Title <span style={{ color: "#e05c5c" }}>*</span>
-                  </label>
-                  <input
-                    className={baseInput}
-                    style={INPUT_STYLE}
-                    value={profile.jobTitle}
-                    onChange={(e) => set("jobTitle", e.target.value)}
-                    placeholder="e.g. Full Stack Developer, AI Engineer"
-                  />
-                </div>
-
-                {/* Location + Experience */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                      Location
-                    </label>
-                    <input
-                      className={baseInput}
-                      style={INPUT_STYLE}
-                      value={profile.location}
-                      onChange={(e) => set("location", e.target.value)}
-                      placeholder="City, Country"
-                    />
+                    <FieldLabel>First name</FieldLabel>
+                    <input value={profile.firstName ?? ""} onChange={(event) => set("firstName", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Sara" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                      Experience
-                    </label>
-                    <select
-                      className={baseInput}
-                      style={INPUT_STYLE}
-                      value={profile.experience}
-                      onChange={(e) => set("experience", e.target.value)}
-                    >
-                      <option value="">Select…</option>
-                      {EXPERIENCE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                    <FieldLabel>Last name</FieldLabel>
+                    <input value={profile.lastName ?? ""} onChange={(event) => set("lastName", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Ahmed" />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel required>Professional role</FieldLabel>
+                    <input value={profile.jobTitle ?? profile.role ?? ""} onChange={(event) => set("jobTitle", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Full Stack Developer" />
+                  </div>
+                  <label className="block">
+                    <FieldLabel required>Experience</FieldLabel>
+                    <select value={profile.experience ?? ""} onChange={(event) => set("experience", event.target.value)} className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25" style={FIELD_STYLE}>
+                      <option value="">Select experience</option>
+                      {EXPERIENCE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
                     </select>
-                  </div>
+                  </label>
                 </div>
 
-                {/* Bio */}
                 <div>
-                  <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                    Bio / Tagline
-                  </label>
+                  <FieldLabel>Professional summary</FieldLabel>
                   <textarea
-                    className="w-full rounded-lg px-4 py-2.5 text-[13px] outline-none resize-none focus:ring-1 focus:ring-[#0f1c18]"
-                    style={{ ...INPUT_STYLE, minHeight: 72 }}
-                    value={profile.bio}
-                    onChange={(e) => set("bio", e.target.value)}
-                    placeholder="e.g. Passionate AI engineer with 5 years building production-grade ML systems"
+                    value={profile.bio ?? ""}
+                    onChange={(event) => set("bio", event.target.value)}
+                    className={`${baseInput} resize-none`}
+                    style={{ ...FIELD_STYLE, minHeight: 92 }}
+                    placeholder="Summarize what you build, your strongest stack, and the startup environments you prefer."
                   />
                 </div>
+
+                <SkillsPicker selected={skills} onToggle={toggleSkill} />
               </motion.div>
             ) : (
               <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
+                key="background"
+                initial={{ opacity: 0, x: 18 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, x: -18 }}
+                transition={{ duration: 0.18 }}
                 className="flex flex-col gap-4"
               >
-                {/* Tech Stack */}
+                <EducationEditor educations={educations} onChange={updateEducations} />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel required>GitHub</FieldLabel>
+                    <div className="relative">
+                      <GithubLogo size={15} weight="bold" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#428475" }} />
+                      <input value={profile.github ?? ""} onChange={(event) => set("github", event.target.value)} className={baseInput} style={{ ...FIELD_STYLE, paddingLeft: 42 }} placeholder="https://github.com/yourname" />
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel required>LinkedIn</FieldLabel>
+                    <div className="relative">
+                      <LinkedinLogo size={15} weight="bold" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#428475" }} />
+                      <input value={profile.linkedin ?? profile.linkedIn ?? ""} onChange={(event) => set("linkedin", event.target.value)} className={baseInput} style={{ ...FIELD_STYLE, paddingLeft: 42 }} placeholder="https://linkedin.com/in/yourname" />
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="text-[11px] font-medium mb-2 block" style={{ color: "#6b8e7e" }}>
-                    Tech Stack <span style={{ color: "#e05c5c" }}>*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {TECH_OPTIONS.map((t) => {
-                      const sel = profile.techStack.includes(t);
-                      return (
-                        <button
-                          key={t}
-                          onClick={() => toggleTech(t)}
-                          className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all cursor-pointer"
-                          style={{
-                            background: sel ? "#1a312c" : "#f0f5f2",
-                            color: sel ? "#89d7b7" : "#428475",
-                            border: `1px solid ${sel ? "rgba(137,215,183,0.25)" : "#dde5e0"}`,
-                          }}
-                        >
-                          {t}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <FieldLabel>Portfolio link</FieldLabel>
+                  <input value={profile.portfolioLink ?? ""} onChange={(event) => set("portfolioLink", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="https://yourportfolio.com" />
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                {/* LinkedIn + GitHub */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                      LinkedIn
-                    </label>
-                    <input
-                      className={baseInput}
-                      style={INPUT_STYLE}
-                      value={profile.linkedin}
-                      onChange={(e) => set("linkedin", e.target.value)}
-                      placeholder="linkedin.com/in/yourname"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                      GitHub
-                    </label>
-                    <input
-                      className={baseInput}
-                      style={INPUT_STYLE}
-                      value={profile.github}
-                      onChange={(e) => set("github", e.target.value)}
-                      placeholder="github.com/username"
-                    />
-                  </div>
-                </div>
-
-                {/* DOB + Gender */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                      Date of Birth
-                    </label>
-                    <input
-                      type="date"
-                      className={baseInput}
-                      style={INPUT_STYLE}
-                      value={profile.dob}
-                      onChange={(e) => set("dob", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-medium mb-1 block" style={{ color: "#6b8e7e" }}>
-                      Gender
-                    </label>
-                    <select
-                      className={baseInput}
-                      style={INPUT_STYLE}
-                      value={profile.gender}
-                      onChange={(e) => set("gender", e.target.value)}
-                    >
-                      <option value="">Select…</option>
-                      <option>Male</option>
-                      <option>Female</option>
-                      <option>Non-binary</option>
-                      <option>Prefer not to say</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Work type */}
-                <div>
-                  <label className="text-[11px] font-medium mb-2 block" style={{ color: "#6b8e7e" }}>
-                    Preferred Work Type
-                  </label>
-                  <div className="flex gap-2">
-                    {(["Remote", "Hybrid", "Onsite"] as const).map((wt) => {
-                      const sel = profile.workType === wt;
-                      return (
-                        <button
-                          key={wt}
-                          onClick={() => set("workType", wt)}
-                          className="flex-1 py-2 rounded-lg text-[12px] font-medium transition-all cursor-pointer"
-                          style={{
-                            background: sel ? "#1a312c" : "#f0f5f2",
-                            color: sel ? "#89d7b7" : "#428475",
-                            border: `1px solid ${sel ? "rgba(137,215,183,0.25)" : "#dde5e0"}`,
-                          }}
-                        >
-                          {wt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Open to opportunities toggle */}
-                <div
-                  className="flex items-center justify-between rounded-xl p-3"
-                  style={{ background: "#f5f7f5", border: "1px solid #dde5e0" }}
-                >
-                  <div>
-                    <p className="text-[13px] font-medium" style={{ color: "#1a2e26", margin: 0 }}>
-                      Open to Opportunities
-                    </p>
-                    <p className="text-[11px]" style={{ color: "#7a9e8e", margin: 0 }}>
-                      Founders can see you are actively looking
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => set("openToOpportunities", !profile.openToOpportunities)}
-                    className="rounded-full transition-all duration-200 shrink-0"
-                    style={{
-                      width: 44,
-                      height: 24,
-                      background: profile.openToOpportunities ? "#1a312c" : "#d4dfd9",
-                      position: "relative",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <motion.span
-                      animate={{ x: profile.openToOpportunities ? 20 : 2 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 26 }}
-                      style={{
-                        position: "absolute",
-                        top: 2,
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        background: profile.openToOpportunities ? "#89d7b7" : "#ffffff",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
-                      }}
-                    />
-                  </button>
-                </div>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[12px] font-medium text-red-700"
+              >
+                {error}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
-        <div
-          className="px-7 py-4 flex items-center justify-between"
-          style={{ borderTop: "1px solid #eaf0eb" }}
-        >
-          <button
-            onClick={handleSkipClick}
-            className="text-[13px] transition-colors hover:underline border-none bg-transparent cursor-pointer"
-            style={{ color: "#7a9e8e" }}
-          >
+        <div className="flex items-center justify-between px-7 py-4" style={{ borderTop: "1px solid #eaf0eb" }}>
+          <button type="button" onClick={handleSkip} className="text-[13px] font-semibold transition hover:underline" style={{ color: "#7a9e8e" }}>
             Skip for now
           </button>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {step === 2 && (
               <button
-                onClick={() => setStep(1)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-[#e8f0eb] border-none cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setStep(1);
+                }}
+                className="flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-bold transition hover:bg-[#e8f0eb]"
                 style={{ background: "#f0f5f2", color: "#1a2e26" }}
               >
+                <ArrowLeft size={14} weight="bold" />
                 Back
               </button>
             )}
             <motion.button
+              type="button"
               onClick={() => {
                 if (step === 1) {
-                  if (!profile.firstName || !profile.lastName || !profile.jobTitle) {
-                    alert("Please fill in your first name, last name, and role.");
-                    return;
-                  }
+                  setError("");
                   setStep(2);
-                } else {
-                  if (profile.techStack.length === 0) {
-                    alert("Please select at least one technology.");
-                    return;
-                  }
-                  // Save to localStorage
-                  try {
-                    const existing = JSON.parse(localStorage.getItem("evolv_user") || "{}");
-                    const next = {
-                      ...existing,
-                      ...profile,
-                      profileComplete: true,
-                      firstTime: false,
-                    };
-                    localStorage.setItem("evolv_user", JSON.stringify(next));
-                    localStorage.setItem("evolv_developer_profile", JSON.stringify({ ...profile, profileComplete: true }));
-                  } catch { /* ignore */ }
-                  onComplete({ ...profile, profileComplete: true });
+                  return;
                 }
+                handleComplete();
               }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-semibold cursor-pointer border-none"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 420, damping: 24 }}
+              className="flex h-10 items-center gap-2 rounded-xl px-5 text-[13px] font-bold"
               style={{ background: "#1a312c", color: "#89d7b7" }}
             >
-              {step === 1 ? "Continue" : "Complete Setup"}
-              <Icon
-                icon={step === 1 ? "solar:arrow-right-bold" : "solar:check-circle-bold-duotone"}
-                width={14}
-                style={{ color: "#89d7b7" }}
-              />
+              {step === 1 ? "Next" : "Complete profile"}
+              {step === 1 ? <ArrowRight size={14} weight="bold" /> : <CheckCircle size={14} weight="bold" />}
             </motion.button>
           </div>
         </div>
       </motion.div>
     </div>
   );
-}
+};

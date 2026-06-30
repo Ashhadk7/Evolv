@@ -10,7 +10,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Evolv - Where ideas become funded startups",
+  title: "Evolv",
   description:
     "Evolv connects founders, developers, and investors through AI-generated blueprints.",
 };

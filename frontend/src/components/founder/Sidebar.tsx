@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Icon } from "@iconify/react";
+import { ClientIcon as Icon } from "./ui/ClientIcon";
 import {
   INITIAL_NOTIFS,
   SECTIONS,
@@ -27,13 +27,15 @@ const HOVER_BG    = "rgba(255,255,255,0.045)";
 const PILL_BG     = "rgba(255,255,255,0.04)";
 const PILL_BORDER = "rgba(137,215,183,0.09)";
 const MENU_BG     = "#1e3831";
+const CLEAR       = "rgba(0,0,0,0)";
 
 interface SidebarProps {
   active: FounderTab;
   onNavigate: (tab: FounderTab) => void;
-  profile: { firstName: string; lastName: string };
+  profile: { firstName: string; lastName: string; avatarUrl?: string };
   inboxCount?: number;
   networkCount?: number;
+  onOpenProfile?: () => void;
   onLogout?: () => void;
 }
 
@@ -43,6 +45,7 @@ export function Sidebar({
   profile,
   inboxCount   = 3,
   networkCount = 3,
+  onOpenProfile,
   onLogout,
 }: SidebarProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -80,9 +83,40 @@ export function Sidebar({
 
   const initials =
     `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || "F";
+  const displayName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Founder";
 
   const getBadge = (badge?: BadgeKey) =>
     badge === "network" ? networkCount : badge === "inbox" ? inboxCount : 0;
+
+  const openProfile = () => {
+    setProfileMenuOpen(false);
+    setNotifOpen(false);
+    if (onOpenProfile) {
+      onOpenProfile();
+    } else {
+      onNavigate("settings");
+    }
+  };
+
+  const renderAvatar = (size: number, fontSize: number) => (
+    <div
+      className="flex items-center justify-center overflow-hidden rounded-full shrink-0 font-bold"
+      style={{
+        width: size,
+        height: size,
+        fontSize,
+        background: `linear-gradient(135deg, #4cb896, ${ACCENT})`,
+        color: "#0f1c18",
+        boxShadow: `0 0 0 2px rgba(137,215,183,0.18)`,
+      }}
+    >
+      {profile.avatarUrl ? (
+        <img src={profile.avatarUrl} alt={`${displayName} profile`} className="h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -163,7 +197,7 @@ export function Sidebar({
                           : { x: 2, backgroundColor: HOVER_BG, color: "rgba(232,244,239,0.82)" }
                       }
                       animate={{
-                        backgroundColor: isActive ? ACTIVE_BG : "transparent",
+                        backgroundColor: isActive ? ACTIVE_BG : CLEAR,
                         color: isActive ? TEXT_ON : TEXT_OFF,
                       }}
                       transition={{ duration: 0.15, ease: "easeOut" }}
@@ -235,7 +269,7 @@ export function Sidebar({
             className="relative w-full flex items-center rounded-xl cursor-pointer"
             style={{ gap: 12, padding: "10px 12px", minHeight: 44 }}
             animate={{
-              backgroundColor: notifOpen ? ACTIVE_BG : "transparent",
+              backgroundColor: notifOpen ? ACTIVE_BG : CLEAR,
               color: notifOpen ? TEXT_ON : TEXT_OFF,
             }}
             whileHover={notifOpen ? {} : { x: 2, backgroundColor: HOVER_BG }}
@@ -300,34 +334,30 @@ export function Sidebar({
                 }}
               >
                 {/* User header */}
-                <div
+                <motion.button
+                  type="button"
+                  onClick={openProfile}
+                  className="w-full cursor-pointer"
                   style={{
                     padding: "13px 14px 11px",
                     borderBottom: "1px solid rgba(137,215,183,0.08)",
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
+                    textAlign: "left",
                   }}
+                  whileHover={{ backgroundColor: "rgba(137,215,183,0.08)" }}
+                  transition={{ duration: 0.12 }}
                 >
-                  <div
-                    className="flex items-center justify-center rounded-full shrink-0 font-bold"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      fontSize: 11,
-                      background: `linear-gradient(135deg, #4cb896, ${ACCENT})`,
-                      color: "#0f1c18",
-                    }}
-                  >
-                    {initials}
-                  </div>
+                  {renderAvatar(28, 11)}
                   <div className="min-w-0">
                     <p style={{ fontSize: 13, fontWeight: 600, color: TEXT_ON, lineHeight: 1.3 }}>
-                      {profile.firstName} {profile.lastName}
+                      {displayName}
                     </p>
                     <p style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.3 }}>Founder</p>
                   </div>
-                </div>
+                  <Icon icon="solar:alt-arrow-right-bold" width={14} style={{ color: ACCENT_DIM, marginLeft: "auto", flexShrink: 0 }} />
+                </motion.button>
 
                 {/* Log out */}
                 <motion.button
@@ -358,23 +388,11 @@ export function Sidebar({
             animate={{ borderColor: profileMenuOpen ? "rgba(137,215,183,0.18)" : PILL_BORDER }}
             transition={{ duration: 0.15 }}
           >
-            <div
-              className="flex items-center justify-center rounded-full shrink-0 font-bold"
-              style={{
-                width: 32,
-                height: 32,
-                fontSize: 12,
-                background: `linear-gradient(135deg, #4cb896, ${ACCENT})`,
-                color: "#0f1c18",
-                boxShadow: `0 0 0 2px rgba(137,215,183,0.18)`,
-              }}
-            >
-              {initials}
-            </div>
+            {renderAvatar(32, 12)}
 
             <div className="flex-1 min-w-0">
               <p className="font-semibold truncate" style={{ fontSize: 13, color: TEXT_ON, lineHeight: 1.3 }}>
-                {profile.firstName} {profile.lastName}
+                {displayName}
               </p>
               <p style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.3 }}>Founder</p>
             </div>

@@ -2,7 +2,7 @@ export { Sidebar }           from "./Sidebar";
 export type { DeveloperTab } from "./Sidebar";
 export { Topbar }            from "./Topbar";
 export { DevOnboardingModal }  from "./DevOnboardingModal";
-export type { DeveloperProfile } from "./DevOnboardingModal";
+export type { DeveloperProfile } from "../profileUtils";
 export { DevNotificationPanel }  from "./DevNotificationPanel";
 
 // Legacy shared UI components

@@ -6,10 +6,24 @@ import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDom
 // Build unique tech stacks from all opportunities
 const allTechStacks = [...new Set(opportunities.flatMap(o => o.techStack))].slice(0, 8);
 
-const Discover = ({ onNavigate }) => {
+interface DiscoverProps {
+    onNavigate: (page: any) => void;
+    profileComplete?: boolean;
+    onRequireProfile?: (afterComplete?: () => void) => void;
+}
+
+const Discover = ({ onNavigate, profileComplete = true, onRequireProfile }: DiscoverProps) => {
     const [selectedStartup, setSelectedStartup] = useState(null);
     const [filteredOpportunities, setFilteredOpportunities] = useState(opportunities);
     const [activeFilters, setActiveFilters] = useState({});
+
+    const handleApply = () => {
+        if (!profileComplete && onRequireProfile) {
+            onRequireProfile(() => onNavigate('applications'));
+            return;
+        }
+        onNavigate('applications');
+    };
 
     const handleFilterChange = (key, value) => {
         const newFilters = { ...activeFilters, [key]: value === activeFilters[key] ? null : value };
@@ -95,7 +109,7 @@ const Discover = ({ onNavigate }) => {
                                 <div className={"Discover_viabilityLabel"}>Viability</div>
                             </div>
                             <div className={"Discover_featuredActions"}>
-                                <button className={"Discover_applyBtn"} onClick={() => onNavigate('applications')}>
+                                <button className={"Discover_applyBtn"} onClick={handleApply}>
                                     <i className="fas fa-paper-plane"></i> Apply Now
                                 </button>
                                 <button className={"Discover_saveBtn"}><i className="fas fa-bookmark"></i></button>
@@ -216,7 +230,7 @@ const Discover = ({ onNavigate }) => {
                                         {opp.techStack.slice(0, 4).map((t, i) => <span key={i} className={"Discover_techTag"}>{t}</span>)}
                                     </div>
                                     <div className={"Discover_oppActions"}>
-                                        <button className={"Discover_applyBtnSm"} onClick={(e) => { e.stopPropagation(); onNavigate('applications'); }}>
+                                        <button className={"Discover_applyBtnSm"} onClick={(e) => { e.stopPropagation(); handleApply(); }}>
                                             <i className="fas fa-paper-plane"></i> Apply
                                         </button>
                                         <button className={"Discover_saveBtnSm"}><i className="fas fa-bookmark"></i> Save</button>
@@ -303,7 +317,7 @@ const Discover = ({ onNavigate }) => {
                                 </div>
 
                                 <div className={"Discover_bpActions"}>
-                                    <button className={"Discover_applyBtn"} onClick={() => onNavigate('applications')}>
+                                    <button className={"Discover_applyBtn"} onClick={handleApply}>
                                         <i className="fas fa-paper-plane"></i> Apply Now
                                     </button>
                                     <button className={"Discover_saveBtn"}><i className="fas fa-bookmark"></i> Save</button>

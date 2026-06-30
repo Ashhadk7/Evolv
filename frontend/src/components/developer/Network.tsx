@@ -60,6 +60,8 @@ interface NetworkProps {
   onNavigate?: (tab: DeveloperTab) => void;
   onMessage?: (contact: DeveloperNetworkMessageTarget) => void;
   onPendingCountChange?: (count: number) => void;
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
 }
 
 const STORAGE_KEY = "evolv_developer_network_state";
@@ -277,7 +279,7 @@ function ConnectionRequestModal({
   );
 }
 
-export default function Network({ onNavigate, onMessage, onPendingCountChange }: NetworkProps) {
+export default function Network({ onNavigate, onMessage, onPendingCountChange, profileComplete = true, onRequireProfile }: NetworkProps) {
   const [activeTab, setActiveTab] = useState<NetworkTabFilter>("all");
   const [networkState, setNetworkState] = useState<StoredNetworkState>(getInitialNetworkState);
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
@@ -322,7 +324,14 @@ export default function Network({ onNavigate, onMessage, onPendingCountChange }:
     { id: "founders" as const, label: "Founders", count: visiblePeople.filter((p) => p.type === "Founder").length },
   ];
 
+  const requireProfileBeforeAction = (afterComplete?: () => void) => {
+    if (profileComplete || !onRequireProfile) return false;
+    onRequireProfile(afterComplete);
+    return true;
+  };
+
   const handleAcceptRequest = (id: string) => {
+    if (requireProfileBeforeAction(() => handleAcceptRequest(id))) return;
     setNetworkState((prev) => ({
       ...prev,
       connected: { ...prev.connected, [id]: true },
@@ -388,6 +397,7 @@ export default function Network({ onNavigate, onMessage, onPendingCountChange }:
   };
 
   const handleConnectionButton = (person: FounderContactProfile) => {
+    if (requireProfileBeforeAction(() => handleConnectionButton(person))) return;
     if (connected[person.id]) {
       handleToggleConnection(person.id);
       return;
@@ -397,6 +407,7 @@ export default function Network({ onNavigate, onMessage, onPendingCountChange }:
   };
 
   const handleMessage = (person: FounderContactProfile) => {
+    if (requireProfileBeforeAction(() => handleMessage(person))) return;
     if (!connected[person.id]) {
       markOutgoingRequest(person);
       openInbox(person, requestNotes[person.id]);
