@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,7 +61,7 @@ const SEED: Blueprint[] = [
     interested: 2,
     wordCount: 240,
     updatedAt: "2 days ago",
-    aiRecommend: "Publish to attract Series A investors",
+    aiRecommend: "Publish to attract developer matches",
     market: { size: "$2.4B", cagr: "18.3%", barriers: "High regulatory", score: 84 },
     competitors: [{ name: "PathAI", type: "Direct" }, { name: "Paige", type: "Direct" }, { name: "Tempus", type: "Indirect" }],
     differentiator: "Affordable early detection for emerging markets",
@@ -113,7 +113,7 @@ const SEED: Blueprint[] = [
     interested: 0,
     wordCount: 185,
     updatedAt: "3 weeks ago",
-    aiRecommend: "Schedule investor meetings this week",
+    aiRecommend: "Schedule developer interviews this week",
     market: { size: "$850M", cagr: "31.2%", barriers: "Grid regulations", score: 65 },
     competitors: [{ name: "LO3 Energy", type: "Direct" }],
     differentiator: "Blockchain-verified carbon credits + instant settlement",
@@ -151,7 +151,7 @@ const SEED: Blueprint[] = [
 
 const INDUSTRIES   = ["MedTech","SaaS","FinTech","CleanTech","EdTech","AI","Web3","E-commerce","Deep Tech","B2B"];
 const STAGES       = ["All Stages","Published","Draft"];
-const SORT_OPTIONS = ["Viability","Recent","Investor Views","Market Potential"];
+const SORT_OPTIONS = ["Viability","Recent","Impressions","Market Potential"];
 const AGENTS = [
   { label: "Market Analysis Agent",   desc: "Analysing market size & growth…" },
   { label: "Competitor Scout Agent",  desc: "Mapping direct & indirect competitors…" },
@@ -164,15 +164,15 @@ const AGENTS = [
 /* Static sidebar data                                     */
 /* ─────────────────────────────────────────────────────── */
 const INSIGHTS = [
-  { text: "Investor demand for HealthTech increased 17% this month.", bold: "HealthTech" },
+  { text: "Developer match rates for HealthTech increased 17% this month.", bold: "HealthTech" },
   { text: "EdTech startups have the highest match rates with developers.", bold: "" },
-  { text: "Nexus Health is ready for fundraising — Series A metrics are strong.", bold: "Nexus Health" },
+  { text: "Nexus Health is ready for workspace deployment — MVP specifications are strong.", bold: "Nexus Health" },
   { text: "Aura Logistics needs more developer validation before pitching.", bold: "Aura Logistics" },
 ];
 
 const GUIDANCE = [
-  { name: "Nexus Health",         tip: "Your pitch deck is strong. Schedule 3 investor meetings this week." },
-  { name: "Aura Logistics",       tip: "Add more technical validation to increase investor confidence." },
+  { name: "Nexus Health",         tip: "Your blueprint is strong. Schedule 3 developer interviews this week." },
+  { name: "Aura Logistics",       tip: "Add more technical validation to increase developer match confidence." },
   { name: "Veritas Energy",       tip: "Your market timing is excellent. Consider a soft launch." },
   { name: "Educational AI Tutor", tip: "AI generation is 60% complete. Monitor progress." },
 ];
@@ -182,7 +182,7 @@ const ACTIVITY = [
   { text: "Idea draft saved — Food Delivery Marketplace", time: "Yesterday",   dot: "#428475" },
   { text: "Blueprint initiated — Aura Logistics",         time: "1 week ago",  dot: "#89d7b7" },
   { text: "New developer match — Sarah Mitchell",         time: "2 weeks ago", dot: "#7a9e8e" },
-  { text: "Investor viewed Veritas Energy",               time: "3 weeks ago", dot: "#b0c0b8" },
+  { text: "Developer matched with Veritas Energy",               time: "3 weeks ago", dot: "#b0c0b8" },
 ];
 
 /* ─────────────────────────────────────────────────────── */
@@ -221,7 +221,7 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
   const metrics = [
     { value: String(bp.viability),     label: "Viability"   },
     { value: `${bp.marketPotential}%`, label: "Market"      },
-    { value: String(bp.investorViews), label: "Inv. Views"  },
+    { value: String(bp.investorViews), label: "Impressions"  },
     { value: String(bp.devMatches),    label: "Dev Matches" },
   ];
 
@@ -852,7 +852,7 @@ export function WorkspaceTab({
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "Viability")        return b.viability - a.viability;
-    if (sort === "Investor Views")   return b.investorViews - a.investorViews;
+    if (sort === "Impressions")   return b.investorViews - a.investorViews;
     if (sort === "Market Potential") return b.marketPotential - a.marketPotential;
     return 0;
   });
@@ -867,7 +867,7 @@ export function WorkspaceTab({
     { value: blueprints.length, label: "Total Ideas"   },
     { value: pubCount,          label: "Published"     },
     { value: `${avgViability}%`,label: "Avg Viability" },
-    { value: totalInvViews,     label: "Inv. Views"    },
+    { value: totalInvViews,     label: "Impressions"    },
   ];
 
   return (

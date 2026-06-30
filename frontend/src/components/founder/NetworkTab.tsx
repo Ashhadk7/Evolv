@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -410,6 +410,7 @@ export function NetworkTab({ onMessage, onPendingCountChange, profileComplete = 
     onMessage(buildMessageTarget(person));
   };
 
+
   const handleSendRequestWithoutNote = () => {
     if (!requestModalPerson) return;
     markOutgoingRequest(requestModalPerson);
@@ -444,15 +445,15 @@ export function NetworkTab({ onMessage, onPendingCountChange, profileComplete = 
           connectionDisabled={selectedRequested}
         />
         <AnimatePresence>
-          {requestModalPerson && (
-            <ConnectionRequestModal
-              person={requestModalPerson}
-              onClose={() => setRequestModalPerson(null)}
-              onWithoutNote={handleSendRequestWithoutNote}
-              onWithNote={handleSendRequestWithNote}
-            />
-          )}
-        </AnimatePresence>
+      {requestModalPerson && (
+        <ConnectionRequestModal
+          person={requestModalPerson}
+          onClose={() => setRequestModalPerson(null)}
+          onWithoutNote={handleSendRequestWithoutNote}
+          onWithNote={handleSendRequestWithNote}
+        />
+      )}
+    </AnimatePresence>
       </>
     );
   }
@@ -758,3 +759,4 @@ export function NetworkTab({ onMessage, onPendingCountChange, profileComplete = 
     </>
   );
 }
+

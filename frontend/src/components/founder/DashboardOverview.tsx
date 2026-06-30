@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useId } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -45,25 +45,25 @@ interface Metric {
 }
 
 interface HealthBar { label: string; value: number; color: string }
-interface MomentumItem { label: string; value: string; delta: string; deltaUp: boolean; trend: number[]; color: string }
+interface RoadmapMilestone { phase: string; title: string; status: "completed" | "active" | "upcoming"; date?: string; color: string }
 interface PipelineRow { label: string; value: number; badge?: string; badgeColor?: string }
 type AIState = "profile_incomplete" | "high_viability" | "recruiting";
 
 /* ─────────────────────────────────────────────
    MOCK DATA
-───────────────────────────────────────────── */
+ ───────────────────────────────────────────── */
 const HEALTH_BARS: HealthBar[] = [
   { label: "Market Strength",        value: 82, color: "#428475" },
-  { label: "Investor Interest",      value: 64, color: "#89d7b7" },
+  { label: "Design Completeness",    value: 64, color: "#89d7b7" },
   { label: "Developer Availability", value: 71, color: "#7C5CBF" },
   { label: "Execution Readiness",    value: 58, color: "#C4973A" },
 ];
 
-const MOMENTUM: MomentumItem[] = [
-  { label: "Views",         value: "142",  delta: "+12%", deltaUp: true, trend: [76,88,96,100,108,118,126,134,142], color: "#428475" },
-  { label: "Saves",         value: "38",   delta: "+8%",  deltaUp: true, trend: [18,21,24,25,28,30,34,36,38],      color: "#7C5CBF" },
-  { label: "Interests",     value: "5",    delta: "+2",   deltaUp: true, trend: [1,1,2,2,3,3,3,4,5],              color: "#C4973A" },
-  { label: "Weekly Growth", value: "+21%", delta: "+5pp", deltaUp: true, trend: [8,10,12,13,15,16,18,19,21],      color: "#89d7b7" },
+const ROADMAP: RoadmapMilestone[] = [
+  { phase: "Phase 1", title: "Venture Ideation & Validation", status: "completed", date: "Completed", color: "#428475" },
+  { phase: "Phase 2", title: "AI Blueprint Refinement", status: "completed", date: "Completed", color: "#89d7b7" },
+  { phase: "Phase 3", title: "Developer Matching & Sourcing", status: "active", date: "In Progress", color: "#7C5CBF" },
+  { phase: "Phase 4", title: "MVP Development & Launch", status: "upcoming", date: "Upcoming", color: "#C4973A" },
 ];
 
 const PIPELINE: PipelineRow[] = [
@@ -76,8 +76,8 @@ const PIPELINE: PipelineRow[] = [
 const METRICS: Metric[] = [
   { id: "viability", label: "Avg Viability",      value: "76",  delta: "+4%", deltaUp: true, sub: "+2% this week",    trend: [58,62,65,68,70,69,73,74,76], accentColor: "#428475" },
   { id: "matches",   label: "Developer Matches",  value: "12",  delta: "+3",  deltaUp: true, sub: "3 pending",        trend: [4,5,6,7,8,9,10,11,12],      accentColor: "#89d7b7" },
-  { id: "views",     label: "Investor Views",      value: "142", delta: "+24", deltaUp: true, sub: "This week",        trend: [76,88,96,100,108,118,126,134,142], accentColor: "#7C5CBF" },
-  { id: "interest",  label: "Investor Interest",   value: "5",   delta: "+2",  deltaUp: true, sub: "Interest up 67%",  trend: [1,1,2,2,3,3,3,4,5],         accentColor: "#C4973A" },
+  { id: "refinements", label: "Total Impressions", value: "312", delta: "+12%", deltaUp: true, sub: "Total views",      trend: [12,18,22,25,30,34,38,40,42], accentColor: "#7C5CBF" },
+  { id: "milestones",  label: "Ongoing Projects",   value: "3",   delta: "Active", deltaUp: true, sub: "3 in motion",      trend: [2,3,4,4,5,6,7,7,8],         accentColor: "#C4973A" },
 ];
 
 /* ─────────────────────────────────────────────
@@ -391,19 +391,68 @@ function IdeaCard({ bp, onView, index }: { bp: Blueprint; onView: (id: string) =
 /* ─────────────────────────────────────────────
    PORTFOLIO HEALTH WIDGET
 ───────────────────────────────────────────── */
-function PortfolioHealthWidget() {
+function VentureHealthWidget({ blueprints }: { blueprints: Blueprint[] }) {
+  const [selectedId, setSelectedId] = useState("latest");
+
+  // Determine which blueprint is active
+  const activeBp = selectedId === "latest" 
+    ? blueprints[0] 
+    : blueprints.find(b => b.id === selectedId) || blueprints[0];
+
+  // Dynamically calculate health bars based on the active blueprint's viability
+  const baseViability = activeBp ? activeBp.viability : 70;
+  
+  const dynamicBars = [
+    { label: "Market Strength",        value: Math.min(95, Math.max(45, baseViability + 6)), color: "#428475" },
+    { label: "Design Completeness",    value: Math.min(95, Math.max(40, baseViability - 12)), color: "#89d7b7" },
+    { label: "Developer Availability", value: Math.min(95, Math.max(35, baseViability - 5)), color: "#7C5CBF" },
+    { label: "Execution Readiness",    value: Math.min(95, Math.max(30, baseViability - 18)), color: "#C4973A" },
+  ];
+
   return (
     <div style={{ background: "#ffffff", borderRadius: 16, padding: "18px 20px", border: "1px solid #eaeeed", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <ChartLine size={14} weight="bold" style={{ color: "#428475" }} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>Portfolio Health</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <ChartLine size={14} weight="bold" style={{ color: "#428475" }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>Venture Progress</span>
+        </div>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#4a6a5a",
+            background: "#f2f6f4",
+            border: "1px solid #eaeeed",
+            borderRadius: 8,
+            padding: "4px 24px 4px 10px",
+            cursor: "pointer",
+            outline: "none",
+            maxWidth: 160,
+            textOverflow: "ellipsis",
+            appearance: "none",
+            WebkitAppearance: "none",
+            backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='%234a6a5a' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 6px center",
+            backgroundSize: "14px",
+          }}
+        >
+          <option value="latest">Latest Venture</option>
+          {blueprints.map((bp) => (
+            <option key={bp.id} value={bp.id}>
+              {bp.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-        {HEALTH_BARS.map((h, i) => (
+        {dynamicBars.map((h, i) => (
           <div key={h.label}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, alignItems: "center" }}>
               <span style={{ fontSize: 11.5, color: "#4a6a5a" }}>{h.label}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#1a2e26" }}>{h.value}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#1a2e26" }}>{h.value}%</span>
             </div>
             <AnimatedBar value={h.value} color={h.color} delay={i * 0.1} />
           </div>
@@ -413,31 +462,85 @@ function PortfolioHealthWidget() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   INVESTOR MOMENTUM WIDGET
-───────────────────────────────────────────── */
-function InvestorMomentumWidget() {
+function VentureRoadmapWidget({ blueprints }: { blueprints: Blueprint[] }) {
+  const [selectedId, setSelectedId] = useState("latest");
+
+  // Determine which blueprint is active
+  const activeBp = selectedId === "latest" 
+    ? blueprints[0] 
+    : blueprints.find(b => b.id === selectedId) || blueprints[0];
+
+  const roadmap = getRoadmapForBlueprint(activeBp);
+
   return (
     <div style={{ background: "#ffffff", borderRadius: 16, padding: "18px 20px", border: "1px solid #eaeeed", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <CurrencyDollar size={14} weight="bold" style={{ color: "#C4973A" }} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>Investor Momentum</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <TrendUp size={14} weight="bold" style={{ color: "#7C5CBF" }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>Venture Roadmap</span>
+        </div>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#4a6a5a",
+            background: "#f2f6f4",
+            border: "1px solid #eaeeed",
+            borderRadius: 8,
+            padding: "4px 24px 4px 10px",
+            cursor: "pointer",
+            outline: "none",
+            maxWidth: 160,
+            textOverflow: "ellipsis",
+            appearance: "none",
+            WebkitAppearance: "none",
+            backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='%234a6a5a' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 6px center",
+            backgroundSize: "14px",
+          }}
+        >
+          <option value="latest">Latest Venture</option>
+          {blueprints.map((bp) => (
+            <option key={bp.id} value={bp.id}>
+              {bp.name}
+            </option>
+          ))}
+        </select>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {MOMENTUM.map((m) => (
-          <div key={m.label} style={{ background: "#f9fbf9", borderRadius: 12, padding: "11px 12px 9px", border: "1px solid #edf2ef" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 10.5, color: "#8aab9a", fontWeight: 500 }}>{m.label}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: m.deltaUp ? "#2e7d5c" : "#b03030", display: "flex", alignItems: "center", gap: 1 }}>
-                {m.deltaUp ? <ArrowUp size={8} weight="bold" /> : <ArrowDown size={8} weight="bold" />}
-                {m.delta}
-              </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {roadmap.map((item, i) => (
+          <div key={item.phase} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", top: 2 }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: "50%",
+                background: item.status === "completed" ? "#428475" : item.status === "active" ? "#7C5CBF" : "#eaeeed",
+                border: item.status === "active" ? "2px solid #ffffff" : "none",
+                boxShadow: item.status === "active" ? "0 0 0 2px #7C5CBF" : "none",
+                zIndex: 2,
+              }} />
+              {i < roadmap.length - 1 && (
+                <div style={{
+                  position: "absolute", top: 10, bottom: -20,
+                  width: 1.5, background: item.status === "completed" ? "#428475" : "#eaeeed",
+                  zIndex: 1,
+                }} />
+              )}
             </div>
-            <div style={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.03em", color: "#1a2e26", lineHeight: 1, marginBottom: 7 }}>
-              {m.value}
-            </div>
-            <div style={{ height: 22 }}>
-              <AreaSparkline data={m.trend} color={m.color} height={22} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#8aab9a", textTransform: "uppercase" }}>{item.phase}</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4,
+                  background: item.status === "completed" ? "#edf8f2" : item.status === "active" ? "#f3effa" : "#f5f5f4",
+                  color: item.status === "completed" ? "#2e7d5c" : item.status === "active" ? "#7C5CBF" : "#888"
+                }}>
+                  {item.date}
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "#1a2e26" }}>{item.title}</div>
             </div>
           </div>
         ))}
@@ -445,10 +548,6 @@ function InvestorMomentumWidget() {
     </div>
   );
 }
-
-/* ─────────────────────────────────────────────
-   DEV PIPELINE WIDGET
-───────────────────────────────────────────── */
 function DevPipelineWidget() {
   return (
     <div style={{ background: "#ffffff", borderRadius: 16, padding: "18px 20px", border: "1px solid #eaeeed", height: "100%" }}>
@@ -495,6 +594,41 @@ interface Props {
   blueprints: Blueprint[];
   onViewBlueprint: (id: string) => void;
   profileComplete?: boolean;
+}
+
+function getRoadmapForBlueprint(bp: Blueprint): RoadmapMilestone[] {
+  const industry = bp?.industry || "SaaS";
+  if (industry === "HealthTech" || industry === "MedTech") {
+    return [
+      { phase: "Phase 1", title: "Clinical Validation & HIPAA Setup", status: "completed", date: "Completed", color: "#428475" },
+      { phase: "Phase 2", title: "AI Model Diagnostics Training", status: "completed", date: "Completed", color: "#89d7b7" },
+      { phase: "Phase 3", title: "Developer Sourcing (HIPAA Stack)", status: "active", date: "In Progress", color: "#7C5CBF" },
+      { phase: "Phase 4", title: "Hospital Pilot & Clinical Launch", status: "upcoming", date: "Upcoming", color: "#C4973A" },
+    ];
+  }
+  if (industry === "CleanTech") {
+    return [
+      { phase: "Phase 1", title: "Micro-Grid Simulation Testing", status: "completed", date: "Completed", color: "#428475" },
+      { phase: "Phase 2", title: "Carbon Credit Smart Contracts", status: "completed", date: "Completed", color: "#89d7b7" },
+      { phase: "Phase 3", title: "Cooperative Partner Onboarding", status: "active", date: "In Progress", color: "#7C5CBF" },
+      { phase: "Phase 4", title: "Coop Grid Rollout & Launch", status: "upcoming", date: "Upcoming", color: "#C4973A" },
+    ];
+  }
+  if (industry === "EdTech") {
+    return [
+      { phase: "Phase 1", title: "Curriculum Mapping & Validation", status: "completed", date: "Completed", color: "#428475" },
+      { phase: "Phase 2", title: "Generative Math Engine Review", status: "completed", date: "Completed", color: "#89d7b7" },
+      { phase: "Phase 3", title: "Beta School Matching & Sourcing", status: "active", date: "In Progress", color: "#7C5CBF" },
+      { phase: "Phase 4", title: "Mobile App Store MVP Launch", status: "upcoming", date: "Upcoming", color: "#C4973A" },
+    ];
+  }
+  // Default / SaaS
+  return [
+    { phase: "Phase 1", title: "Venture Ideation & Validation", status: "completed", date: "Completed", color: "#428475" },
+    { phase: "Phase 2", title: "AI Blueprint Refinement", status: "completed", date: "Completed", color: "#89d7b7" },
+    { phase: "Phase 3", title: "Developer Matching & Sourcing", status: "active", date: "In Progress", color: "#7C5CBF" },
+    { phase: "Phase 4", title: "MVP Development & Launch", status: "upcoming", date: "Upcoming", color: "#C4973A" },
+  ];
 }
 
 export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, onViewBlueprint, profileComplete = true }: Props) {
@@ -545,7 +679,7 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
           <p style={{ fontSize: 13.5, color: "#7a9e8e", marginTop: 6, lineHeight: 1.55 }}>
             You have{" "}
             <strong style={{ color: "#1a2e26" }}>{blueprints.length} venture{blueprints.length !== 1 ? "s" : ""}</strong>{" "}
-            in motion, <strong style={{ color: "#1a2e26" }}>12 developer matches</strong>, and growing investor interest.
+            in motion, <strong style={{ color: "#1a2e26" }}>12 developer matches</strong>, and active building momentum.
           </p>
         </div>
 
@@ -619,8 +753,8 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
 
       {/* ── Bottom widgets ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, flexShrink: 0 }}>
-        <PortfolioHealthWidget />
-        <InvestorMomentumWidget />
+        <VentureHealthWidget blueprints={blueprints} />
+        <VentureRoadmapWidget blueprints={blueprints} />
         <DevPipelineWidget />
       </div>
 
