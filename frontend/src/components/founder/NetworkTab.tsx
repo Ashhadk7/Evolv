@@ -57,6 +57,8 @@ interface StoredNetworkState {
 interface NetworkTabProps {
   onMessage: (contact: FounderNetworkMessageTarget) => void;
   onPendingCountChange?: (count: number) => void;
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
 }
 
 const STORAGE_KEY = "evolv_founder_network_state";
@@ -274,7 +276,7 @@ function ConnectionRequestModal({
   );
 }
 
-export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps) {
+export function NetworkTab({ onMessage, onPendingCountChange, profileComplete = true, onRequireProfile }: NetworkTabProps) {
   const [activeTab, setActiveTab] = useState<NetworkTabFilter>("all");
   const [networkState, setNetworkState] = useState<StoredNetworkState>(getInitialNetworkState);
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
@@ -376,7 +378,20 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
     subject: connected[person.id] ? undefined : "Connection request",
   });
 
+  const requireProfileBeforeAction = (afterComplete?: () => void) => {
+    if (profileComplete || !onRequireProfile) return false;
+    onRequireProfile(afterComplete);
+    return true;
+  };
+
   const handleConnectionButton = (person: FounderContactProfile) => {
+    if (requireProfileBeforeAction(() => {
+      if (connected[person.id]) {
+        handleToggleConnection(person.id);
+        return;
+      }
+      if (!outgoingSet.has(person.id)) setRequestModalPerson(person);
+    })) return;
     if (connected[person.id]) {
       handleToggleConnection(person.id);
       return;
@@ -386,6 +401,7 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
   };
 
   const handleMessage = (person: FounderContactProfile) => {
+    if (requireProfileBeforeAction()) return;
     if (!connected[person.id]) {
       markOutgoingRequest(person);
       onMessage(buildMessageTarget(person, requestNotes[person.id]));
@@ -422,6 +438,8 @@ export function NetworkTab({ onMessage, onPendingCountChange }: NetworkTabProps)
           onIgnore={handleIgnoreRequest}
           onToggleConnection={() => handleConnectionButton(selectedPerson)}
           onMessage={handleMessage}
+          profileComplete={profileComplete}
+          onRequireProfile={onRequireProfile}
           connectionLabel={selectedRequested ? "Requested" : undefined}
           connectionDisabled={selectedRequested}
         />

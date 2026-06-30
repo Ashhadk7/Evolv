@@ -151,8 +151,7 @@ type AccountField =
   | "stateProvince"
   | "city"
   | "phone"
-  | "dob"
-  | "idNumber";
+  | "dob";
 type AccountValidationField = AccountField | "terms";
 type AccountErrors = Partial<Record<AccountValidationField, string>>;
 type StoredSignupUser = {
@@ -206,7 +205,6 @@ const ACCOUNT_FIELD_LABELS: Record<AccountValidationField, string> = {
   city: "City",
   phone: "Phone number",
   dob: "Date of birth",
-  idNumber: "National ID / CNIC",
   terms: "Terms and Privacy Policy agreement",
 };
 
@@ -223,7 +221,6 @@ const REQUIRED_ACCOUNT_FIELDS = new Set<AccountValidationField>([
   "city",
   "phone",
   "dob",
-  "idNumber",
   "terms",
 ]);
 
@@ -321,7 +318,6 @@ function getAccountErrors(account: Record<AccountField, string>, agreed: boolean
     if (Number.isNaN(dob.getTime())) errors.dob = "Enter a valid date of birth.";
     else if (dob > today) errors.dob = "Date of birth cannot be in the future.";
   }
-  if (!trimmed.idNumber) errors.idNumber = "National ID / CNIC is required.";
   if (!agreed) errors.terms = "Accept the Terms and Privacy Policy to continue.";
 
   return errors;
@@ -697,7 +693,7 @@ export function SignUpForm() {
     firstName: "", lastName: "", email: "", confirmEmail: "",
     password: "", confirmPassword: "",
     country: "", countryCode: "", stateProvince: "", city: "",
-    phone: "", dob: "", idNumber: "",
+    phone: "", dob: "",
   });
 
   const [founder, setFounder] = useState({
@@ -879,7 +875,6 @@ export function SignUpForm() {
       stateProvince: account.stateProvince,
       city: account.city,
       dob: account.dob,
-      idNumber: account.idNumber,
     };
     const base = { firstName: account.firstName, lastName: account.lastName, email: account.email, password: account.password, role, ...accountLocation };
     const founderDegreeName = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
@@ -1079,20 +1074,19 @@ export function SignUpForm() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextInput label="Date of birth" required type="date" value={account.dob} onChange={(v) => setAccountField("dob", v)} onBlur={() => markAccountTouched("dob")} error={accountErrorFor("dob")} />
-                  <TextInput label="National ID / CNIC" required value={account.idNumber} onChange={(v) => setAccountField("idNumber", v)} onBlur={() => markAccountTouched("idNumber")} error={accountErrorFor("idNumber")} placeholder="XXXXX-XXXXXXX-X" />
                 </div>
 
                 <div className="flex items-start gap-2.5 rounded-lg px-3.5 py-3" style={{ background: "rgba(15,28,24,0.035)", border: "1px solid rgba(15,28,24,0.07)" }}>
                   <Lock size={13} weight="fill" className="mt-0.5 shrink-0" style={{ color: BRAND_MID }} />
                   <p className="text-[11.5px] leading-[1.6]" style={{ color: "rgba(15,28,24,0.52)" }}>
-                    Phone, date of birth, and National ID are stored securely and never shown on your public profile.
+                    Phone and date of birth are stored securely and never shown on your public profile.
                   </p>
                 </div>
 
                 <label className="flex cursor-pointer items-start gap-3 text-[12px] leading-5" style={{ color: accountErrorFor("terms") ? "#b91c1c" : "rgba(15,28,24,0.58)" }}>
                   <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); markAccountTouched("terms"); }} className={`mt-0.5 h-4 w-4 rounded border-[#0f1c18]/20 accent-[#1a312c] ${accountErrorFor("terms") ? "ring-2 ring-red-300" : ""}`} />
                   <span>
-                    <span className="mr-1 align-super text-[10px] text-red-500">*</span>I agree to the <a href="#" className="font-bold text-[#428475]">Terms</a> and <a href="#" className="font-bold text-[#428475]">Privacy Policy</a>. I confirm my identity information is accurate and legally verifiable.
+                    <span className="mr-1 align-super text-[10px] text-red-500">*</span>I agree to the <a href="#" className="font-bold text-[#428475]">Terms</a> and <a href="#" className="font-bold text-[#428475]">Privacy Policy</a>. I confirm my account information is accurate.
                   </span>
                 </label>
                 {accountErrorFor("terms") && (

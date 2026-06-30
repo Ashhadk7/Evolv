@@ -622,11 +622,15 @@ export function InboxTab({
   onActiveContactChange,
   extraContacts = [],
   currentUser,
+  profileComplete = true,
+  onRequireProfile,
 }: {
   activeContactId?: string;
   onActiveContactChange?: (id: string) => void;
   extraContacts?: InboxLaunchContact[];
   currentUser?: CurrentFounder;
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
 }) {
   const [localActiveId, setLocalActiveId] = useState("sarah");
   const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
@@ -883,6 +887,14 @@ export function InboxTab({
     return null;
   };
 
+  const handleComposeClick = () => {
+    if (!profileComplete && onRequireProfile) {
+      onRequireProfile(() => setComposeOpen(true));
+      return;
+    }
+    setComposeOpen(true);
+  };
+
   if (viewingProfile) {
     return (
       <NetworkProfileDetailScreen
@@ -892,6 +904,8 @@ export function InboxTab({
         backLabel="Back to Chat"
         onBack={() => setViewingProfile(false)}
         onMessage={() => setViewingProfile(false)}
+        profileComplete={profileComplete}
+        onRequireProfile={onRequireProfile}
         messageLabel="Open Chat"
       />
     );
@@ -910,7 +924,7 @@ export function InboxTab({
         </div>
         <motion.button
           type="button"
-          onClick={() => setComposeOpen(true)}
+          onClick={handleComposeClick}
           whileHover={{ y: -2, boxShadow: "0 12px 24px rgba(15,28,24,0.16)" }}
           whileTap={{ scale: 0.98 }}
           className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"

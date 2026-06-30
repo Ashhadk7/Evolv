@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle, X } from "@phosphor-icons/react";
@@ -29,7 +29,7 @@ const SettingsTab   = dynamic(() => import("@/components/founder/SettingsTab").t
 const DEFAULT_PROFILE: FounderProfile = {
   firstName: "Asad", lastName: "", bio: "", domains: [], linkedin: "",
   dob: "", gender: "", phone: "", education: "", educationLevel: "", degreeName: "", degreeSelection: "", customDegreeName: "", educations: [], description: "",
-  headline: "", location: "", country: "", countryCode: "", stateProvince: "", city: "", primaryGoal: "", idNumber: "",
+  headline: "", location: "", country: "", countryCode: "", stateProvince: "", city: "", primaryGoal: "",
   email: "", avatarUrl: "", profileComplete: false,
 };
 
@@ -49,6 +49,7 @@ function mergeFounderProfiles(...profiles: Array<Partial<FounderProfile> | null 
     if (!profile) return;
 
     Object.entries(profile).forEach(([key, value]) => {
+      if (key === "idNumber") return;
       if (key === "domains") {
         if (Array.isArray(value) && value.length > 0) target.domains = value;
         return;
@@ -87,6 +88,7 @@ export default function FounderDashboard() {
   const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
   const [pendingProtectedTab, setPendingProtectedTab] = useState<FounderTab | null>(null);
   const [settingsEditSignal, setSettingsEditSignal] = useState(0);
+  const pendingProtectedActionRef = useRef<(() => void) | null>(null);
 
   const isProfileComplete = (p: FounderProfile) =>
     isFounderProfileComplete(p);
@@ -158,10 +160,15 @@ export default function FounderDashboard() {
   };
 
   const handleOnboardingComplete = (p: FounderProfile) => {
+    const pendingAction = pendingProtectedActionRef.current;
+    pendingProtectedActionRef.current = null;
     saveProfile(p);
     setShowOnboarding(false);
     setProfilePromptDismissed(true);
-    if (pendingProtectedTab) {
+    if (pendingAction) {
+      window.setTimeout(pendingAction, 0);
+      setPendingProtectedTab(null);
+    } else if (pendingProtectedTab) {
       setTab(pendingProtectedTab);
       setPendingProtectedTab(null);
     }
@@ -173,6 +180,7 @@ export default function FounderDashboard() {
   };
 
   const handleOnboardingSkip = () => {
+    pendingProtectedActionRef.current = null;
     setShowOnboarding(false);
     setProfilePromptDismissed(true);
     setPendingProtectedTab(null);
@@ -185,12 +193,19 @@ export default function FounderDashboard() {
 
   const profileComplete = isProfileComplete(profile);
 
-  const navigateFounder = (nextTab: FounderTab) => {
-    if (!profileComplete && (nextTab === "network" || nextTab === "inbox")) {
-      setPendingProtectedTab(nextTab);
-      setShowOnboarding(true);
+  const requireFounderProfile = (afterComplete?: () => void) => {
+    if (profileComplete) {
+      afterComplete?.();
       return;
     }
+    pendingProtectedActionRef.current = afterComplete ?? null;
+    setPendingProtectedTab(null);
+    setProfilePromptDismissed(true);
+    setShowOnboarding(true);
+  };
+
+  const navigateFounder = (nextTab: FounderTab) => {
+    pendingProtectedActionRef.current = null;
     setPendingProtectedTab(null);
     setTab(nextTab);
   };
@@ -266,6 +281,8 @@ export default function FounderDashboard() {
           <NetworkTab
             onMessage={handleOpenNetworkMessage}
             onPendingCountChange={setNetworkRequestCount}
+            profileComplete={profileComplete}
+            onRequireProfile={requireFounderProfile}
           />
         )}
         {tab === "inbox" && (
@@ -274,6 +291,8 @@ export default function FounderDashboard() {
             onActiveContactChange={setInboxActiveContactId}
             extraContacts={networkInboxContacts}
             currentUser={profile}
+            profileComplete={profileComplete}
+            onRequireProfile={requireFounderProfile}
           />
         )}
         {tab === "settings" && (
@@ -315,7 +334,7 @@ export default function FounderDashboard() {
                   </button>
                 </div>
                 <p className="mt-1 text-[12px] leading-5" style={{ color: "#6b8e7e" }}>
-                  Add {missingProfileFields.slice(0, 2).join(", ") || "your details"} to unlock Network and Inbox smoothly.
+                  Add {missingProfileFields.slice(0, 2).join(", ") || "your details"} before sending messages or connection requests.
                 </p>
                 <button
                   type="button"

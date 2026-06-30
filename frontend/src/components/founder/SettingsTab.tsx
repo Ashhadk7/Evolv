@@ -482,7 +482,7 @@ function ProfileSection({
   const fullName = getProfileName(local);
   const initials = getProfileInitials(local);
   const headline = local.headline?.trim() || local.bio?.trim() || "Founder building on Evolv";
-  const bioText = local.bio?.trim() || "Add a short bio so developers, investors, and collaborators understand what you are building.";
+  const bioText = local.bio?.trim() || "Add a short bio to introduce yourself to developers and collaborators.";
   const cityCountryParts: string[] = [];
   [local.city, local.country].forEach((item) => {
     const value = item?.trim();

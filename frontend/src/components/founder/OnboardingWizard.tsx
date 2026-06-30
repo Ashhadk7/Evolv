@@ -53,7 +53,6 @@ export interface FounderProfile {
   stateProvince?: string;
   city?: string;
   primaryGoal?: string;
-  idNumber?: string;
 }
 
 interface Props {
@@ -351,7 +350,7 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
     const normalized = normalizeFounderProfileForSave(profile) as FounderProfile;
     const missing = getMissingFounderProfileFields(normalized);
     if (missing.length) {
-      setError("Please fill founder headline, short bio, domains of interest, and education to unlock Network and Inbox.");
+      setError("Please fill founder headline, short bio, domains of interest, and education before sending messages or connection requests.");
       return;
     }
 
@@ -498,7 +497,7 @@ export function OnboardingWizard({ initialProfile, onComplete, onSkip }: Props) 
                 <EducationEditor educations={educations} onChange={updateEducations} />
 
                 <div>
-                  <FieldLabel>LinkedIn profile <span style={{ color: "#9bb0a7", fontWeight: 500 }}>(optional)</span></FieldLabel>
+                  <FieldLabel>LinkedIn <span style={{ color: "#9bb0a7", fontWeight: 500 }}>(optional)</span></FieldLabel>
                   <div className="relative">
                     <LinkedinLogo size={15} weight="bold" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#428475" }} />
                     <input
