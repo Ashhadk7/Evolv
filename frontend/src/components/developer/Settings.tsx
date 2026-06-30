@@ -1,8 +1,14 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
 
-import { Sidebar } from './shared/Sidebar';
-import { Topbar } from './shared/Topbar';
+import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
+import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
+import {
+    createBlankDeveloperProject,
+    getDeveloperEducations,
+    normalizeDeveloperProfileForSave,
+} from './profileUtils';
+import { EDUCATION_LEVELS, createBlankEducation, getDegreeOptions, formatFounderEducations } from '@/components/founder/profileUtils';
 const defaultProfile = {
     name: 'Sarah Mitchell',
     email: 'sarah.mitchell@evolv.dev',
@@ -14,7 +20,24 @@ const defaultProfile = {
     openToRemote: true,
     preferredBudget: '$180K – $250K',
     experienceYears: '5',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+    experience: '5-8 years',
+    education: '',
+    educationLevel: '',
+    degreeName: '',
+    degreeSelection: '',
+    customDegreeName: '',
+    educations: [],
+    github: '',
+    linkedin: '',
+    portfolioLink: '',
+    certifications: [],
+    projects: [],
+    rating: 4.8,
+    reviews: [
+        { id: 'review-1', reviewer: 'Asad Ahmed', rating: 5, date: 'Jun 2026', comment: 'Clear communication, thoughtful engineering decisions, and strong ownership from scope to delivery.' },
+        { id: 'review-2', reviewer: 'Priya Sharma', rating: 5, date: 'May 2026', comment: 'Great collaborator for early-stage product work. Shipped fast without losing sight of maintainability.' },
+    ],
 };
 
 const defaultNotifications = {
@@ -36,9 +59,14 @@ const Settings = ({ onNavigate }) => {
                     const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
                     return {
                         ...defaultProfile,
+                        ...user,
                         name: name || defaultProfile.name,
                         email: user.email || defaultProfile.email,
                         avatarUrl: user.avatarUrl || defaultProfile.avatarUrl,
+                        role: user.jobTitle || user.role || defaultProfile.role,
+                        techStack: Array.isArray(user.techStack) ? user.techStack : defaultProfile.techStack,
+                        educations: getDeveloperEducations(user),
+                        linkedin: user.linkedin || user.linkedIn || '',
                     };
                 }
             } catch (_) {}
@@ -47,7 +75,9 @@ const Settings = ({ onNavigate }) => {
     });
     const [notifications, setNotifications] = useState(defaultNotifications);
     const [activeTab, setActiveTab] = useState('profile');
+    const [editing, setEditing] = useState(true);
     const [newSkill, setNewSkill] = useState('');
+    const [newCertification, setNewCertification] = useState('');
     const [saved, setSaved] = useState(false);
     const [passwordData, setPasswordData] = useState({ current: '', newPass: '', confirm: '' });
     const [paySaved, setPaySaved] = useState(false);
@@ -64,15 +94,22 @@ const Settings = ({ onNavigate }) => {
             const parts = profile.name.trim().split(' ');
             const firstName = parts[0] || '';
             const lastName = parts.slice(1).join(' ') || '';
-            localStorage.setItem('evolv_user', JSON.stringify({
-                ...currentUser,
+            const normalized = normalizeDeveloperProfileForSave({
+                ...profile,
                 firstName,
                 lastName,
-                email: profile.email,
-                avatarUrl: profile.avatarUrl,
+                jobTitle: profile.role,
+                role: profile.role,
+                education: formatFounderEducations(profile.educations || []),
+            });
+            localStorage.setItem('evolv_user', JSON.stringify({
+                ...currentUser,
+                ...normalized,
             }));
+            setProfile((current) => ({ ...current, ...normalized, name: profile.name }));
         } catch (_) {}
         setSaved(true);
+        setEditing(false);
         setTimeout(() => setSaved(false), 2000);
     };
 
@@ -106,6 +143,58 @@ const Settings = ({ onNavigate }) => {
         setProfile((p) => ({ ...p, techStack: p.techStack.filter((s) => s !== skill) }));
     };
 
+    const updateEducation = (id, patch) => {
+        setProfile((p) => {
+            const rows = p.educations?.length ? p.educations : [{ id, level: '', degree: '', customDegree: '', school: '' }];
+            const educations = rows.map((education) => {
+                if (education.id !== id) return education;
+                const next = { ...education, ...patch };
+                if (patch.level !== undefined) {
+                    next.degree = '';
+                    next.customDegree = '';
+                }
+                if (patch.degree && patch.degree !== 'Other') next.customDegree = '';
+                return next;
+            });
+            return { ...p, educations, education: formatFounderEducations(educations) };
+        });
+    };
+
+    const addCertification = () => {
+        const trimmed = newCertification.trim();
+        if (!trimmed) return;
+        setProfile((p) => ({ ...p, certifications: [...(p.certifications || []), trimmed] }));
+        setNewCertification('');
+    };
+
+    const removeCertification = (certification) => {
+        setProfile((p) => ({ ...p, certifications: (p.certifications || []).filter((item) => item !== certification) }));
+    };
+
+    const updateProject = (id, patch) => {
+        setProfile((p) => ({
+            ...p,
+            projects: (p.projects || []).map((project) => project.id === id ? { ...project, ...patch } : project),
+        }));
+    };
+
+    const handleProjectImages = (id, files) => {
+        const imageFiles = Array.from(files || []).filter((file) => file.type?.startsWith('image/'));
+        if (!imageFiles.length) return;
+        Promise.all(imageFiles.map((file) => new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+            reader.readAsDataURL(file);
+        }))).then((images) => {
+            setProfile((p) => ({
+                ...p,
+                projects: (p.projects || []).map((project) =>
+                    project.id === id ? { ...project, images: [...(project.images || []), ...images.filter(Boolean)] } : project
+                ),
+            }));
+        });
+    };
+
     const tabs = [
         { id: 'profile', label: 'Profile', icon: 'user' },
         { id: 'payment', label: 'Payment', icon: 'credit-card' },
@@ -116,6 +205,7 @@ const Settings = ({ onNavigate }) => {
 
     return (
         <div className={"Settings_container"}>
+            <Sidebar currentPage="settings" onNavigate={onNavigate} />
             <main className={"Settings_mainWrapper"}>
                 <Topbar title="Settings" subtitle="Manage your profile, preferences, and account security." onNavigate={onNavigate} />
 
@@ -141,36 +231,24 @@ const Settings = ({ onNavigate }) => {
                         {activeTab === 'profile' && (
                             <div className={"Settings_card"}>
                                 <div className={"Settings_cardHeader"}>
-                                    <span><i className="fas fa-user" /> Profile Information</span>
+                                    <span><i className="fas fa-user" /> Developer Profile</span>
+                                    <button className={"Settings_addSkillBtn"} onClick={() => setEditing((value) => !value)}>
+                                        <i className="fas fa-pen" /> {editing ? 'Preview' : 'Edit Profile'}
+                                    </button>
                                 </div>
 
                                 <div className={"Settings_avatarSection"}>
                                     <div className={"Settings_avatarCircle"}>
-                                        {profile.avatarUrl ? (
-                                            <img src={profile.avatarUrl} alt="Avatar" />
-                                        ) : (
-                                            <div
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    fontSize: "1.2rem",
-                                                    fontWeight: "bold",
-                                                    background: "linear-gradient(135deg, #4cb896, #89d7b7)",
-                                                    color: "#0f1c18",
-                                                    borderRadius: "50%"
-                                                }}
-                                            >
-                                                {profile.name.split(' ').map(n => n[0]).join('').toUpperCase() || 'D'}
-                                            </div>
-                                        )}
+                                        <img src={profile.avatarUrl} alt={profile.name} />
                                     </div>
                                     <div>
                                         <div className={"Settings_avatarName"}>{profile.name}</div>
                                         <div className={"Settings_avatarRole"}>{profile.role}</div>
-                                        <button className={"Settings_changePhotoBtn"} onClick={() => photoInputRef.current?.click()}><i className="fas fa-camera" /> Change Photo</button>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                                            <span className={"Settings_skillTag"}><i className="fas fa-star" /> {profile.rating}/5 rating</span>
+                                            <span className={"Settings_skillTag"}>{(profile.reviews || []).length} reviews</span>
+                                        </div>
+                                        {editing && <button className={"Settings_changePhotoBtn"} onClick={() => photoInputRef.current?.click()}><i className="fas fa-camera" /> Change Photo</button>}
                                         <input
                                             ref={photoInputRef}
                                             type="file"
@@ -184,65 +262,147 @@ const Settings = ({ onNavigate }) => {
                                 <div className={"Settings_formGrid"}>
                                     <div className={"Settings_formGroup"}>
                                         <label>Full Name</label>
-                                        <input type="text" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+                                        <input disabled={!editing} type="text" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
                                     </div>
                                     <div className={"Settings_formGroup"}>
                                         <label>Email Address</label>
-                                        <input type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
+                                        <input disabled={!editing} type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
                                     </div>
                                     <div className={"Settings_formGroup"}>
-                                        <label>Professional Role</label>
-                                        <input type="text" value={profile.role} onChange={(e) => setProfile({ ...profile, role: e.target.value })} />
+                                        <label>Professional Role *</label>
+                                        <input disabled={!editing} type="text" value={profile.role} onChange={(e) => setProfile({ ...profile, role: e.target.value })} />
                                     </div>
                                     <div className={"Settings_formGroup"}>
-                                        <label>Location</label>
-                                        <input type="text" value={profile.location} onChange={(e) => setProfile({ ...profile, location: e.target.value })} />
+                                        <label>Experience *</label>
+                                        <select disabled={!editing} value={profile.experience || ''} onChange={(e) => setProfile({ ...profile, experience: e.target.value })}>
+                                            <option value="">Select experience</option>
+                                            {['< 1 year', '1-2 years', '3-5 years', '5-8 years', '8+ years'].map((item) => <option key={item}>{item}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className={"Settings_formGroup"}>
+                                        <label>GitHub *</label>
+                                        <input disabled={!editing} type="url" value={profile.github || ''} onChange={(e) => setProfile({ ...profile, github: e.target.value })} placeholder="https://github.com/yourname" />
+                                    </div>
+                                    <div className={"Settings_formGroup"}>
+                                        <label>LinkedIn *</label>
+                                        <input disabled={!editing} type="url" value={profile.linkedin || ''} onChange={(e) => setProfile({ ...profile, linkedin: e.target.value })} placeholder="https://linkedin.com/in/yourname" />
                                     </div>
                                     <div className={"Settings_formGroup" + ' ' + "Settings_formGroupFull"}>
-                                        <label>Bio</label>
-                                        <textarea rows={4} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} />
+                                        <label>Portfolio link</label>
+                                        <input disabled={!editing} type="url" value={profile.portfolioLink || ''} onChange={(e) => setProfile({ ...profile, portfolioLink: e.target.value })} placeholder="https://yourportfolio.com" />
+                                    </div>
+                                    <div className={"Settings_formGroup" + ' ' + "Settings_formGroupFull"}>
+                                        <label>Professional Summary</label>
+                                        <textarea disabled={!editing} rows={4} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} placeholder="Optional, but helps founders understand how you work." />
                                     </div>
                                 </div>
 
-                                <div className={"Settings_sectionDivider"}>Tech Stack</div>
+                                <div className={"Settings_sectionDivider"}>Core Skills *</div>
                                 <div className={"Settings_skillsWrap"}>
                                     {profile.techStack.map((s) => (
                                         <div key={s} className={"Settings_skillTag"}>
                                             {s}
-                                            <button className={"Settings_removeSkill"} onClick={() => removeSkill(s)}><i className="fas fa-times" /></button>
+                                            {editing && <button className={"Settings_removeSkill"} onClick={() => removeSkill(s)}><i className="fas fa-times" /></button>}
                                         </div>
                                     ))}
                                 </div>
-                                <div className={"Settings_addSkillRow"}>
+                                {editing && <div className={"Settings_addSkillRow"}>
                                     <input type="text" className={"Settings_skillInput"} placeholder="Add skill..." value={newSkill} onChange={(e) => setNewSkill(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addSkill(); }} />
                                     <button className={"Settings_addSkillBtn"} onClick={addSkill}><i className="fas fa-plus" /> Add</button>
+                                </div>}
+
+                                <div className={"Settings_sectionDivider"}>Education *</div>
+                                {(profile.educations?.length ? profile.educations : [{ id: 'settings_primary_education', level: profile.educationLevel || '', degree: profile.degreeSelection === 'Other' ? 'Other' : profile.degreeName || '', customDegree: profile.customDegreeName || '', school: '' }]).map((education, index) => (
+                                    <div key={education.id} className={"Settings_formGrid"} style={{ marginBottom: '1rem' }}>
+                                        <div className={"Settings_formGroup"}>
+                                            <label>Education {index + 1}</label>
+                                            <select disabled={!editing} value={education.level} onChange={(e) => updateEducation(education.id, { level: e.target.value })}>
+                                                <option value="">Select level</option>
+                                                {EDUCATION_LEVELS.map((level) => <option key={level}>{level}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className={"Settings_formGroup"}>
+                                            <label>Degree / program</label>
+                                            <select disabled={!editing || !education.level} value={education.degree} onChange={(e) => updateEducation(education.id, { degree: e.target.value })}>
+                                                <option value="">{education.level ? 'Select degree' : 'Select level first'}</option>
+                                                {getDegreeOptions(education.level).map((degree) => <option key={degree}>{degree}</option>)}
+                                            </select>
+                                        </div>
+                                        {education.degree === 'Other' && (
+                                            <div className={"Settings_formGroup"}>
+                                                <label>Other degree</label>
+                                                <input disabled={!editing} value={education.customDegree || ''} onChange={(e) => updateEducation(education.id, { customDegree: e.target.value })} />
+                                            </div>
+                                        )}
+                                        <div className={"Settings_formGroup"}>
+                                            <label>School / university</label>
+                                            <input disabled={!editing} value={education.school || ''} onChange={(e) => updateEducation(education.id, { school: e.target.value })} />
+                                        </div>
+                                    </div>
+                                ))}
+                                {editing && <button className={"Settings_addSkillBtn"} onClick={() => setProfile({ ...profile, educations: [...(profile.educations || []), createBlankEducation()] })}><i className="fas fa-plus" /> Add education</button>}
+
+                                <div className={"Settings_sectionDivider"}>Certifications</div>
+                                <div className={"Settings_skillsWrap"}>
+                                    {(profile.certifications || []).map((certification) => (
+                                        <div key={certification} className={"Settings_skillTag"}>
+                                            {certification}
+                                            {editing && <button className={"Settings_removeSkill"} onClick={() => removeCertification(certification)}><i className="fas fa-times" /></button>}
+                                        </div>
+                                    ))}
+                                </div>
+                                {editing && <div className={"Settings_addSkillRow"}>
+                                    <input type="text" className={"Settings_skillInput"} placeholder="Add certification..." value={newCertification} onChange={(e) => setNewCertification(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addCertification(); }} />
+                                    <button className={"Settings_addSkillBtn"} onClick={addCertification}><i className="fas fa-plus" /> Add</button>
+                                </div>}
+
+                                <div className={"Settings_sectionDivider"}>Projects</div>
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                    {(profile.projects || []).map((project) => (
+                                        <div key={project.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '1rem', background: 'rgba(255,255,255,0.03)' }}>
+                                            <div className={"Settings_formGrid"}>
+                                                <div className={"Settings_formGroup"}>
+                                                    <label>Project title</label>
+                                                    <input disabled={!editing} value={project.title} onChange={(e) => updateProject(project.id, { title: e.target.value })} />
+                                                </div>
+                                                <div className={"Settings_formGroup" + ' ' + "Settings_formGroupFull"}>
+                                                    <label>Description</label>
+                                                    <textarea disabled={!editing} rows={3} value={project.description} onChange={(e) => updateProject(project.id, { description: e.target.value })} />
+                                                </div>
+                                                {editing && <div className={"Settings_formGroup" + ' ' + "Settings_formGroupFull"}>
+                                                    <label>Project images</label>
+                                                    <input type="file" multiple accept="image/*" onChange={(e) => handleProjectImages(project.id, e.target.files)} />
+                                                </div>}
+                                            </div>
+                                            {project.images?.length > 0 && (
+                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                                                    {project.images.map((image, index) => <img key={index} src={image} alt={`${project.title || 'Project'} ${index + 1}`} style={{ width: 84, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }} />)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                {editing && <button className={"Settings_addSkillBtn"} style={{ marginTop: '1rem' }} onClick={() => setProfile({ ...profile, projects: [...(profile.projects || []), createBlankDeveloperProject()] })}><i className="fas fa-plus" /> Add project</button>}
+
+                                <div className={"Settings_sectionDivider"}>Reviews</div>
+                                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                    {(profile.reviews || []).map((review) => (
+                                        <div key={review.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '1rem', background: 'rgba(255,255,255,0.03)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                                <strong>{review.reviewer}</strong>
+                                                <span>{review.rating}/5</span>
+                                            </div>
+                                            <div style={{ color: '#7a9e8e', fontSize: 12, marginTop: 4 }}>{review.date}</div>
+                                            <p style={{ marginTop: 8, lineHeight: 1.6 }}>{review.comment}</p>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                <div className={"Settings_sectionDivider"}>Availability</div>
-                                <div className={"Settings_toggleRow"}>
-                                    <div>
-                                        <div className={"Settings_toggleLabel"}>Open to Opportunities</div>
-                                        <div className={"Settings_toggleSub"}>Let founders see you are actively looking</div>
-                                    </div>
-                                    <div className={"Settings_toggle" + (profile.availability ? ' ' + "Settings_toggleOn" : '')} onClick={() => setProfile({ ...profile, availability: !profile.availability })}>
-                                        <div className={"Settings_toggleKnob"} />
-                                    </div>
-                                </div>
-                                <div className={"Settings_toggleRow"}>
-                                    <div>
-                                        <div className={"Settings_toggleLabel"}>Open to Remote</div>
-                                        <div className={"Settings_toggleSub"}>Accept fully remote engagements</div>
-                                    </div>
-                                    <div className={"Settings_toggle" + (profile.openToRemote ? ' ' + "Settings_toggleOn" : '')} onClick={() => setProfile({ ...profile, openToRemote: !profile.openToRemote })}>
-                                        <div className={"Settings_toggleKnob"} />
-                                    </div>
-                                </div>
-
-                                <div className={"Settings_cardFooter"}>
+                                {editing && <div className={"Settings_cardFooter"}>
                                     <button className={"Settings_saveBtn" + (saved ? ' ' + "Settings_saveBtnSaved" : '')} onClick={handleSave}>
                                         {saved ? <><i className="fas fa-check" /> Saved!</> : <><i className="fas fa-save" /> Save Changes</>}
                                     </button>
-                                </div>
+                                </div>}
                             </div>
                         )}
 

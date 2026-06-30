@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
 import { Logo } from "./Logo";
 import { InputField } from "./InputField";
 
@@ -40,7 +40,7 @@ export function SignInForm() {
     if (!emailRegex.test(email)) { setError("Please enter a valid email address."); return; }
 
     if (email.toLowerCase() === "sarah@evolv.dev" || email.toLowerCase() === "sarah.mitchell@evolv.dev") {
-      localStorage.setItem("evolv_user", JSON.stringify({ firstName: "Sarah", lastName: "Mitchell", email: email.toLowerCase() }));
+      localStorage.setItem("evolv_user", JSON.stringify({ firstName: "Sarah", lastName: "Mitchell", email: email.toLowerCase(), profileComplete: false, firstTime: false }));
       router.push("/developer-dashboard");
       return;
     }
@@ -73,7 +73,12 @@ export function SignInForm() {
         }));
         router.push("/founder-dashboard");
       } else {
-        localStorage.setItem("evolv_user", JSON.stringify({ firstName: user.firstName, lastName: user.lastName, email: user.email }));
+        localStorage.setItem("evolv_user", JSON.stringify({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          ...(user.profile ?? {}),
+        }));
         router.push("/developer-dashboard");
       }
     } catch {
@@ -87,6 +92,15 @@ export function SignInForm() {
       style={{ background: "#f5f6f4" }}
     >
       <div className="flex flex-1 flex-col justify-center px-8 py-12 sm:px-12 xl:px-16">
+        <Link
+          href="/"
+          className="mb-6 inline-flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-bold transition hover:bg-black/5"
+          style={{ color: "rgba(15,28,24,0.6)" }}
+        >
+          <ArrowLeft size={14} weight="bold" />
+          Back home
+        </Link>
+
         <div className="mb-8 lg:hidden">
           <Logo />
         </div>

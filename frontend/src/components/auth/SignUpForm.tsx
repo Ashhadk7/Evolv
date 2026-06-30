@@ -151,8 +151,7 @@ type AccountField =
   | "stateProvince"
   | "city"
   | "phone"
-  | "dob"
-  | "idNumber";
+  | "dob";
 type AccountValidationField = AccountField | "terms";
 type AccountErrors = Partial<Record<AccountValidationField, string>>;
 type StoredSignupUser = {
@@ -206,7 +205,6 @@ const ACCOUNT_FIELD_LABELS: Record<AccountValidationField, string> = {
   city: "City",
   phone: "Phone number",
   dob: "Date of birth",
-  idNumber: "National ID / CNIC",
   terms: "Terms and Privacy Policy agreement",
 };
 
@@ -223,7 +221,6 @@ const REQUIRED_ACCOUNT_FIELDS = new Set<AccountValidationField>([
   "city",
   "phone",
   "dob",
-  "idNumber",
   "terms",
 ]);
 
@@ -321,7 +318,6 @@ function getAccountErrors(account: Record<AccountField, string>, agreed: boolean
     if (Number.isNaN(dob.getTime())) errors.dob = "Enter a valid date of birth.";
     else if (dob > today) errors.dob = "Date of birth cannot be in the future.";
   }
-  if (!trimmed.idNumber) errors.idNumber = "National ID / CNIC is required.";
   if (!agreed) errors.terms = "Accept the Terms and Privacy Policy to continue.";
 
   return errors;
@@ -475,6 +471,7 @@ function StaticSelect({
   options,
   placeholder,
   disabled = false,
+  required = false,
 }: {
   label: string;
   value: string;
@@ -482,10 +479,11 @@ function StaticSelect({
   options: string[];
   placeholder: string;
   disabled?: boolean;
+  required?: boolean;
 }) {
   return (
     <label className="block">
-      <RequiredLabel label={label} />
+      <RequiredLabel label={label} required={required} />
       <span className="relative block">
         <select
           value={value}
@@ -643,7 +641,7 @@ function SearchableSkills({
 
   return (
     <div>
-      <span className="mb-2 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Core skills</span>
+      <RequiredLabel label="Core skills" required />
       <div className="mb-3 flex gap-2">
         <input
           value={query}
@@ -697,7 +695,7 @@ export function SignUpForm() {
     firstName: "", lastName: "", email: "", confirmEmail: "",
     password: "", confirmPassword: "",
     country: "", countryCode: "", stateProvince: "", city: "",
-    phone: "", dob: "", idNumber: "",
+    phone: "", dob: "",
   });
 
   const [founder, setFounder] = useState({
@@ -708,7 +706,7 @@ export function SignUpForm() {
   const [developer, setDeveloper] = useState({
     jobTitle: "", experience: "", skills: [] as string[],
     educationLevel: "", degreeName: "", customDegreeName: "",
-    bio: "", github: "", linkedIn: "",
+    bio: "", github: "", linkedIn: "", portfolioLink: "",
   });
 
   const profileCompleteness = useMemo(() => {
@@ -720,9 +718,9 @@ export function SignUpForm() {
     }
     if (role === "developer") {
       const degreeValue = developer.degreeName === "Other" ? developer.customDegreeName : developer.degreeName;
-      const filled = [developer.jobTitle, developer.experience, developer.educationLevel, degreeValue, developer.bio, developer.github, developer.linkedIn].filter(Boolean).length
+      const filled = [developer.jobTitle, developer.experience, developer.educationLevel, degreeValue, developer.github, developer.linkedIn].filter(Boolean).length
         + (developer.skills.length ? 1 : 0);
-      return Math.round((filled / 8) * 100);
+      return Math.round((filled / 7) * 100);
     }
     return 0;
   }, [developer, founder, role]);
@@ -879,7 +877,6 @@ export function SignUpForm() {
       stateProvince: account.stateProvince,
       city: account.city,
       dob: account.dob,
-      idNumber: account.idNumber,
     };
     const base = { firstName: account.firstName, lastName: account.lastName, email: account.email, password: account.password, role, ...accountLocation };
     const founderDegreeName = founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
@@ -891,7 +888,7 @@ export function SignUpForm() {
     const developerEducation = [developer.educationLevel, developerDegreeName].filter(Boolean).join(" - ");
     const profile = role === "founder"
       ? { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, headline: founder.headline, bio: founder.bio, domains: founder.domains, primaryGoal: founder.primaryGoal, education: founderEducation, educationLevel: founder.educationLevel, degreeName: founderDegreeName, degreeSelection: founder.degreeName, customDegreeName: founder.customDegreeName, educations: founderEducations, location: account.city, linkedin: founder.linkedin, profileComplete }
-      : { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, jobTitle: developer.jobTitle, role: developer.jobTitle, location: account.city, experience: developer.experience, education: developerEducation, educationLevel: developer.educationLevel, degreeName: developerDegreeName, degreeSelection: developer.degreeName, customDegreeName: developer.customDegreeName, bio: developer.bio, techStack: developer.skills, github: developer.github, linkedin: developer.linkedIn, availability: true, profileComplete, firstTime: !profileComplete };
+      : { firstName: account.firstName, lastName: account.lastName, email: account.email, ...accountLocation, jobTitle: developer.jobTitle, role: developer.jobTitle, location: account.city, experience: developer.experience, education: developerEducation, educationLevel: developer.educationLevel, degreeName: developerDegreeName, degreeSelection: developer.degreeName, customDegreeName: developer.customDegreeName, bio: developer.bio, techStack: developer.skills, github: developer.github, linkedin: developer.linkedIn, linkedIn: developer.linkedIn, portfolioLink: developer.portfolioLink, availability: true, profileComplete, firstTime: !profileComplete };
 
     const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredSignupUser[];
     const filtered = users.filter((user) => user.email?.toLowerCase() !== account.email.toLowerCase());
@@ -915,7 +912,8 @@ export function SignUpForm() {
       try { persistAccount(!skip && complete); } catch { setError("Something went wrong while creating your account."); }
       return;
     }
-    const complete = Boolean(developer.jobTitle || developer.experience || developer.educationLevel || developer.degreeName || developer.bio || developer.github || developer.linkedIn || developer.skills.length);
+    const developerDegreeName = developer.degreeName === "Other" ? developer.customDegreeName : developer.degreeName;
+    const complete = Boolean(developer.jobTitle && developer.experience && developer.educationLevel && developerDegreeName && developer.skills.length && developer.github && developer.linkedIn);
     try { persistAccount(!skip && complete); } catch { setError("Something went wrong while creating your account."); }
   };
 
@@ -1079,20 +1077,19 @@ export function SignUpForm() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextInput label="Date of birth" required type="date" value={account.dob} onChange={(v) => setAccountField("dob", v)} onBlur={() => markAccountTouched("dob")} error={accountErrorFor("dob")} />
-                  <TextInput label="National ID / CNIC" required value={account.idNumber} onChange={(v) => setAccountField("idNumber", v)} onBlur={() => markAccountTouched("idNumber")} error={accountErrorFor("idNumber")} placeholder="XXXXX-XXXXXXX-X" />
                 </div>
 
                 <div className="flex items-start gap-2.5 rounded-lg px-3.5 py-3" style={{ background: "rgba(15,28,24,0.035)", border: "1px solid rgba(15,28,24,0.07)" }}>
                   <Lock size={13} weight="fill" className="mt-0.5 shrink-0" style={{ color: BRAND_MID }} />
                   <p className="text-[11.5px] leading-[1.6]" style={{ color: "rgba(15,28,24,0.52)" }}>
-                    Phone, date of birth, and National ID are stored securely and never shown on your public profile.
+                    Phone and date of birth are stored securely and never shown on your public profile.
                   </p>
                 </div>
 
                 <label className="flex cursor-pointer items-start gap-3 text-[12px] leading-5" style={{ color: accountErrorFor("terms") ? "#b91c1c" : "rgba(15,28,24,0.58)" }}>
                   <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); markAccountTouched("terms"); }} className={`mt-0.5 h-4 w-4 rounded border-[#0f1c18]/20 accent-[#1a312c] ${accountErrorFor("terms") ? "ring-2 ring-red-300" : ""}`} />
                   <span>
-                    <span className="mr-1 align-super text-[10px] text-red-500">*</span>I agree to the <a href="#" className="font-bold text-[#428475]">Terms</a> and <a href="#" className="font-bold text-[#428475]">Privacy Policy</a>. I confirm my identity information is accurate and legally verifiable.
+                    <span className="mr-1 align-super text-[10px] text-red-500">*</span>I agree to the <a href="#" className="font-bold text-[#428475]">Terms</a> and <a href="#" className="font-bold text-[#428475]">Privacy Policy</a>. I confirm my account information is accurate.
                   </span>
                 </label>
                 {accountErrorFor("terms") && (
@@ -1188,9 +1185,9 @@ export function SignUpForm() {
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <TextInput label="Professional role" value={developer.jobTitle} onChange={(v) => setDevField("jobTitle", v)} placeholder="Full Stack Developer" />
+                  <TextInput label="Professional role" required value={developer.jobTitle} onChange={(v) => setDevField("jobTitle", v)} placeholder="Full Stack Developer" />
                   <label className="block">
-                    <span className="mb-1.5 block text-[12px] font-semibold" style={{ color: "rgba(15,28,24,0.68)" }}>Experience</span>
+                    <RequiredLabel label="Experience" required />
                     <select value={developer.experience} onChange={(e) => setDevField("experience", e.target.value)} className="h-11 w-full rounded-lg border bg-white px-4 text-[14px] outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20" style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}>
                       <option value="">Select experience</option>
                       {["< 1 year", "1-2 years", "3-5 years", "5-8 years", "8+ years"].map((x) => <option key={x}>{x}</option>)}
@@ -1208,6 +1205,7 @@ export function SignUpForm() {
                     }}
                     placeholder="Select education level"
                     options={EDUCATION_LEVELS}
+                    required
                   />
                   <StaticSelect
                     label="Degree / program"
@@ -1219,6 +1217,7 @@ export function SignUpForm() {
                     placeholder={developer.educationLevel ? "Select degree" : "Select education first"}
                     options={developerDegreeOptions}
                     disabled={!developer.educationLevel}
+                    required
                   />
                 </div>
                 {developer.degreeName === "Other" && (
@@ -1229,8 +1228,11 @@ export function SignUpForm() {
                 <SearchableSkills skills={SKILLS} selected={developer.skills} onToggle={toggleSkill} />
                 <TextArea label="Professional summary" value={developer.bio} onChange={(v) => setDevField("bio", v)} placeholder="Summarize the products you build, your strongest stack, and the startup environments you prefer." />
                 <div className="grid gap-4 sm:grid-cols-2 h-25">
-                  <TextInput label="GitHub" value={developer.github} onChange={(v) => setDevField("github", v)} placeholder="https://github.com/…" />
-                  <TextInput label="LinkedIn" value={developer.linkedIn} onChange={(v) => setDevField("linkedIn", v)} placeholder="https://linkedin.com/in/…" />
+                  <TextInput label="GitHub" required value={developer.github} onChange={(v) => setDevField("github", v)} placeholder="https://github.com/yourname" />
+                  <TextInput label="LinkedIn" required value={developer.linkedIn} onChange={(v) => setDevField("linkedIn", v)} placeholder="https://linkedin.com/in/yourname" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextInput label="Portfolio link" value={developer.portfolioLink} onChange={(v) => setDevField("portfolioLink", v)} placeholder="https://yourportfolio.com" />
                 </div>
               </motion.div>
             )}
