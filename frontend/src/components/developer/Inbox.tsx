@@ -1,7 +1,25 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
 import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
+
+export interface DeveloperInboxLaunchContact {
+    id: string;
+    name: string;
+    role?: string;
+    company?: string;
+    avatar?: string;
+    avatarColor?: string;
+}
+
+type InboxProps = {
+    onNavigate?: (page: string) => void;
+    activeContactId?: string;
+    onActiveContactChange?: (contactId: string) => void;
+    extraContacts?: DeveloperInboxLaunchContact[];
+    profileComplete?: boolean;
+    onRequireProfile?: (afterComplete?: () => void) => void;
+};
 
 const inboxStats = [
     { id: 1, label: 'Total Messages', value: '24', trend: '+5', trendUp: true },
@@ -89,7 +107,29 @@ const threads = [
     },
 ];
 
-const Inbox = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
+const buildContactThread = (contact: DeveloperInboxLaunchContact) => ({
+    id: `network-${contact.id}`,
+    contactId: contact.id,
+    from: contact.name,
+    role: [contact.role, contact.company].filter(Boolean).join(' · ') || 'Network contact',
+    avatar: contact.avatar || (contact.name?.[0] || '?').toUpperCase(),
+    avatarColor: contact.avatarColor || '#5BC8A0',
+    subject: `Conversation with ${contact.name}`,
+    preview: 'Start a conversation from your network.',
+    time: 'Now',
+    unread: false,
+    starred: false,
+    messages: [],
+});
+
+const Inbox = ({
+    onNavigate,
+    activeContactId,
+    onActiveContactChange,
+    extraContacts = [],
+    profileComplete = true,
+    onRequireProfile
+}: InboxProps) => {
     const [selectedThread, setSelectedThread] = useState(threads[0]);
     const [filter, setFilter] = useState('all');
     const [replyText, setReplyText] = useState('');
@@ -104,8 +144,33 @@ const Inbox = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
         return true;
     });
 
+    useEffect(() => {
+        if (!extraContacts.length) return;
+
+        const contactThreads = extraContacts.map(buildContactThread);
+        setLocalThreads((prev) => {
+            const existingIds = new Set(prev.map((thread) => String(thread.contactId ?? thread.id)));
+            const additions = contactThreads.filter((thread) => !existingIds.has(String(thread.contactId ?? thread.id)));
+            return additions.length ? [...additions, ...prev] : prev;
+        });
+    }, [extraContacts]);
+
+    useEffect(() => {
+        if (!activeContactId) return;
+
+        const found = localThreads.find((thread) => (
+            String(thread.contactId ?? thread.id) === String(activeContactId) ||
+            String(thread.id) === `network-${activeContactId}`
+        ));
+
+        if (found && selectedThread?.id !== found.id) {
+            setSelectedThread(found);
+        }
+    }, [activeContactId, localThreads, selectedThread?.id]);
+
     const handleSelectThread = (thread) => {
         setSelectedThread(thread);
+        onActiveContactChange?.(String(thread.contactId ?? thread.id));
         setLocalThreads((prev) => prev.map((t) => (t.id === thread.id ? { ...t, unread: false } : t)));
         setReplyText('');
     };

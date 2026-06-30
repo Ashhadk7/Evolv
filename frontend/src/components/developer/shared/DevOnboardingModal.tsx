@@ -10,7 +10,6 @@ import {
   GithubLogo,
   GraduationCap,
   LinkedinLogo,
-  MagnifyingGlass,
   Plus,
   Trash,
   UploadSimple,
@@ -27,16 +26,14 @@ import {
   getDeveloperEducations,
   getMissingDeveloperProfileFields,
   normalizeDeveloperProfileForSave,
+  createBlankDeveloperSkill,
+  getDeveloperSkillEntries,
   type DeveloperProfile,
+  type DeveloperSkillEntry,
 } from "@/components/developer/profileUtils";
 
-const SKILLS = [
-  "React", "TypeScript", "JavaScript", "Next.js", "Node.js", "Python", "FastAPI", "Django",
-  "PostgreSQL", "MongoDB", "Docker", "Kubernetes", "AWS", "GCP", "Azure", "AI/ML",
-  "TensorFlow", "PyTorch", "GraphQL", "Solidity", "Web3", "Go", "Rust", "Vue.js",
-  "UI/UX", "Product Engineering", "Mobile", "React Native", "Flutter", "Cybersecurity",
-];
-const EXPERIENCE_LEVELS = ["< 1 year", "1-2 years", "3-5 years", "5-8 years", "8+ years"];
+const SKILL_KINDS = ["Skill", "Tech stack", "Framework", "Tool"];
+const SKILL_EXPERIENCE = ["Learning", "< 1 year", "1-2 years", "3-5 years", "5+ years"];
 const FIELD_STYLE: CSSProperties = {
   background: "#f5f7f5",
   border: "1px solid #dde5e0",
@@ -63,67 +60,44 @@ function getInitials(profile: DeveloperProfile) {
   return `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || "D";
 }
 
-function SkillsPicker({
-  selected,
-  onToggle,
+function SkillFlowEditor({
+  entries,
+  onChange,
 }: {
-  selected: string[];
-  onToggle: (skill: string) => void;
+  entries: DeveloperSkillEntry[];
+  onChange: (next: DeveloperSkillEntry[]) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const queryText = query.trim().toLowerCase();
-  const suggestions = (queryText
-    ? SKILLS.filter((skill) => skill.toLowerCase().includes(queryText))
-    : SKILLS.slice(0, 14)
-  ).filter((skill) => !selected.includes(skill));
+  const rows = entries.length ? entries : [];
+  const update = (id: string, patch: Partial<DeveloperSkillEntry>) =>
+    onChange(rows.map((entry) => entry.id === id ? { ...entry, ...patch } : entry));
 
   return (
-    <div>
-      <FieldLabel required>Core skills</FieldLabel>
-      {selected.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {selected.map((skill) => (
-            <span
-              key={skill}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-              style={{ background: "#1a312c", color: "#89d7b7", border: "1px solid rgba(137,215,183,0.22)" }}
-            >
-              {skill}
-              <button type="button" onClick={() => onToggle(skill)} aria-label={`Remove ${skill}`}>
-                <X size={10} weight="bold" />
-              </button>
-            </span>
-          ))}
+    <div className="flex flex-col gap-3">
+      <FieldLabel required>Skills, tech stack, and frameworks</FieldLabel>
+      {rows.map((entry, index) => (
+        <div key={entry.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" }}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="text-[12px] font-bold" style={{ color: "#1a2e26" }}>Profile skill {index + 1}</span>
+            <button type="button" onClick={() => onChange(rows.filter((item) => item.id !== entry.id))} className="rounded-lg p-1.5 transition hover:bg-red-50" style={{ color: "#c0392b" }} aria-label="Remove skill">
+              <Trash size={14} />
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[0.9fr_1.2fr_0.9fr]">
+            <select value={entry.kind} onChange={(event) => update(entry.id, { kind: event.target.value })} className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25" style={FIELD_STYLE}>
+              {SKILL_KINDS.map((kind) => <option key={kind}>{kind}</option>)}
+            </select>
+            <input value={entry.name} onChange={(event) => update(entry.id, { name: event.target.value })} placeholder="React, Figma, Laravel..." className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25" style={FIELD_STYLE} />
+            <select value={entry.experience} onChange={(event) => update(entry.id, { experience: event.target.value })} className="h-10 rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25" style={FIELD_STYLE}>
+              <option value="">Experience</option>
+              {SKILL_EXPERIENCE.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </div>
         </div>
-      )}
-
-      <div className="mb-3 flex h-10 items-center gap-2.5 rounded-lg border bg-white px-3.5" style={{ borderColor: "#dce8e1" }}>
-        <MagnifyingGlass size={14} style={{ color: "#8aa99b" }} />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search skills"
-          className="min-w-0 flex-1 bg-transparent text-[13px] outline-none"
-          style={{ color: "#1a2e26" }}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {suggestions.slice(0, 14).map((skill) => (
-          <button
-            key={skill}
-            type="button"
-            onClick={() => onToggle(skill)}
-            className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold transition hover:bg-[#eef7f2]"
-            style={{ borderColor: "#dde5e0", color: "#428475" }}
-          >
-            + {skill}
-          </button>
-        ))}
-        {suggestions.length === 0 && (
-          <span className="text-[12px]" style={{ color: "#9bb0a7" }}>No skills matched.</span>
-        )}
-      </div>
+      ))}
+      <button type="button" onClick={() => onChange([...rows, createBlankDeveloperSkill()])} className="flex h-10 items-center justify-center gap-2 rounded-xl border bg-white text-[12px] font-bold transition hover:bg-[#f8faf8]" style={{ borderColor: "#dbe7e0", color: "#428475" }}>
+        <Plus size={14} weight="bold" />
+        Add skill / stack / framework
+      </button>
     </div>
   );
 }
@@ -260,6 +234,7 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
       firstName: nameParts[0] || "",
       lastName: nameParts.slice(1).join(" ") || "",
       bio: "",
+      skillEntries: [],
       techStack: [],
       github: "",
       linkedin: "",
@@ -271,22 +246,14 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
   const fullName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Developer";
   const initials = getInitials(profile);
   const educations = useMemo(() => getDeveloperEducations(profile), [profile]);
-  const skills = Array.isArray(profile.techStack) ? profile.techStack : [];
+  const skillEntries = useMemo(() => getDeveloperSkillEntries(profile), [profile]);
   const baseInput = "w-full rounded-lg px-4 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/25";
 
   const set = (key: keyof DeveloperProfile, value: string) =>
     setProfile((current) => ({ ...current, [key]: value }));
 
-  const toggleSkill = (skill: string) =>
-    setProfile((current) => {
-      const currentSkills = Array.isArray(current.techStack) ? current.techStack : [];
-      return {
-        ...current,
-        techStack: currentSkills.includes(skill)
-          ? currentSkills.filter((item) => item !== skill)
-          : [...currentSkills, skill],
-      };
-    });
+  const updateSkillEntries = (next: DeveloperSkillEntry[]) =>
+    setProfile((current) => ({ ...current, skillEntries: next, techStack: next.map((entry) => entry.name).filter(Boolean) }));
 
   const updateEducations = (next: FounderEducation[]) => {
     setProfile((current) => ({
@@ -344,7 +311,7 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
           <div className="flex items-start justify-between gap-5">
             <div>
               <div className="mb-3 flex gap-1.5">
-                {[1, 2].map((item) => (
+                {[1, 2, 3].map((item) => (
                   <div
                     key={item}
                     className="h-1 rounded-full transition-all duration-300"
@@ -356,7 +323,7 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
                 Complete developer profile
               </h2>
               <p className="mt-1 text-[12px]" style={{ color: "#7a9e8e" }}>
-                Step {step} of 2
+                Step {step} of 3
               </p>
             </div>
             <button type="button" onClick={handleSkip} className="rounded-lg p-1.5 transition hover:bg-[#f5f7f5]" aria-label="Close setup">
@@ -410,18 +377,9 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <FieldLabel required>Professional role</FieldLabel>
-                    <input value={profile.jobTitle ?? profile.role ?? ""} onChange={(event) => set("jobTitle", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Full Stack Developer" />
-                  </div>
-                  <label className="block">
-                    <FieldLabel required>Experience</FieldLabel>
-                    <select value={profile.experience ?? ""} onChange={(event) => set("experience", event.target.value)} className="h-10 w-full rounded-lg px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#89d7b7]/25" style={FIELD_STYLE}>
-                      <option value="">Select experience</option>
-                      {EXPERIENCE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
-                    </select>
-                  </label>
+                <div>
+                  <FieldLabel required>Professional role</FieldLabel>
+                  <input value={profile.jobTitle ?? profile.role ?? ""} onChange={(event) => set("jobTitle", event.target.value)} className={baseInput} style={FIELD_STYLE} placeholder="Full Stack Developer" />
                 </div>
 
                 <div>
@@ -434,8 +392,18 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
                     placeholder="Summarize what you build, your strongest stack, and the startup environments you prefer."
                   />
                 </div>
-
-                <SkillsPicker selected={skills} onToggle={toggleSkill} />
+              </motion.div>
+            ) : step === 2 ? (
+              <motion.div
+                key="skills"
+                initial={{ opacity: 0, x: 18 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -18 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-4"
+              >
+                <SkillFlowEditor entries={skillEntries} onChange={updateSkillEntries} />
+                <EducationEditor educations={educations} onChange={updateEducations} />
               </motion.div>
             ) : (
               <motion.div
@@ -446,8 +414,6 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
                 transition={{ duration: 0.18 }}
                 className="flex flex-col gap-4"
               >
-                <EducationEditor educations={educations} onChange={updateEducations} />
-
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <FieldLabel required>GitHub</FieldLabel>
@@ -492,12 +458,12 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
             Skip for now
           </button>
           <div className="flex items-center gap-2">
-            {step === 2 && (
+            {step > 1 && (
               <button
                 type="button"
                 onClick={() => {
                   setError("");
-                  setStep(1);
+                  setStep((current) => current - 1);
                 }}
                 className="flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-bold transition hover:bg-[#e8f0eb]"
                 style={{ background: "#f0f5f2", color: "#1a2e26" }}
@@ -509,9 +475,9 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
             <motion.button
               type="button"
               onClick={() => {
-                if (step === 1) {
+                if (step < 3) {
                   setError("");
-                  setStep(2);
+                  setStep((current) => current + 1);
                   return;
                 }
                 handleComplete();
@@ -522,8 +488,8 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
               className="flex h-10 items-center gap-2 rounded-xl px-5 text-[13px] font-bold"
               style={{ background: "#1a312c", color: "#89d7b7" }}
             >
-              {step === 1 ? "Next" : "Complete profile"}
-              {step === 1 ? <ArrowRight size={14} weight="bold" /> : <CheckCircle size={14} weight="bold" />}
+              {step < 3 ? "Next" : "Complete profile"}
+              {step < 3 ? <ArrowRight size={14} weight="bold" /> : <CheckCircle size={14} weight="bold" />}
             </motion.button>
           </div>
         </div>

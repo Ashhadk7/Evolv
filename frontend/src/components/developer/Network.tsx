@@ -3,6 +3,15 @@ import React, { useState } from 'react';
 
 import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
 import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
+
+export type DeveloperNetworkMessageTarget = {
+    id: string;
+    name: string;
+    role?: string;
+    company?: string;
+    avatar?: string;
+    avatarColor?: string;
+};
 const networkStats = [
     { id: 1, label: 'Total Connections', value: '142', trend: '+8', trendUp: true },
     { id: 2, label: 'Founder Connections', value: '38', trend: '+3', trendUp: true },
@@ -139,7 +148,7 @@ const activityFeed = [
     { id: 5, actor: 'Dev Patel', action: 'liked your portfolio project', time: '2d ago', avatar: 'D', color: '#5BC8A0' },
 ];
 
-const Network = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
+const Network = ({ onNavigate, onMessage, profileComplete = true, onRequireProfile }) => {
     const [activeTab, setActiveTab] = useState('all');
     const [connected, setConnected] = useState(
         connections.reduce((acc, c) => ({ ...acc, [c.id]: c.connected }), {})
@@ -171,9 +180,25 @@ const Network = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
         setPendingRequests((prev) => prev.filter((r) => r.id !== id));
     };
 
-    const handleMessage = () => {
-        if (requireProfileBeforeAction(() => onNavigate('inbox'))) return;
-        onNavigate('inbox');
+    const handleMessage = (connection) => {
+        const openMessage = () => {
+            if (onMessage) {
+                onMessage({
+                    id: String(connection.id),
+                    name: connection.name,
+                    role: connection.role,
+                    company: connection.company,
+                    avatar: connection.avatar,
+                    avatarColor: connection.avatarColor,
+                });
+                return;
+            }
+
+            onNavigate('inbox');
+        };
+
+        if (requireProfileBeforeAction(openMessage)) return;
+        openMessage();
     };
 
     return (
@@ -271,7 +296,7 @@ const Network = ({ onNavigate, profileComplete = true, onRequireProfile }) => {
                                             <i className={`fas fa-${connected[conn.id] ? 'check' : 'user-plus'}`}></i>
                                             {connected[conn.id] ? 'Connected' : 'Connect'}
                                         </button>
-                                        <button className={"Network_msgBtn"} onClick={handleMessage}>
+                                        <button className={"Network_msgBtn"} onClick={() => handleMessage(conn)}>
                                             <i className="fas fa-comment-alt"></i> Message
                                         </button>
                                         <button className={"Network_profileBtn"}>
