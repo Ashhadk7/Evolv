@@ -970,7 +970,10 @@ export default function Inbox({
         </div>
         <motion.button
           type="button"
-          onClick={() => setComposeOpen(true)}
+          onClick={() => {
+            if (requireProfileBeforeAction(() => setComposeOpen(true))) return;
+            setComposeOpen(true);
+          }}
           whileHover={{ y: -2, boxShadow: "0 12px 24px rgba(15,28,24,0.16)" }}
           whileTap={{ scale: 0.98 }}
           className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
