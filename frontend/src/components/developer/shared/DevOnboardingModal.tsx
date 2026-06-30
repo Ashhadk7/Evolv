@@ -75,7 +75,7 @@ function SkillFlowEditor({
     <div className="flex flex-col gap-3">
       <FieldLabel required>Skills, tech stack, and frameworks</FieldLabel>
       {rows.map((entry, index) => (
-        <div key={entry.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" }}>
+        <div key={entry.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" , padding:15}}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="text-[12px] font-bold" style={{ color: "#1a2e26" }}>Profile skill {index + 1}</span>
             <button type="button" onClick={() => onChange(rows.filter((item) => item.id !== entry.id))} className="rounded-lg p-1.5 transition hover:bg-red-50" style={{ color: "#c0392b" }} aria-label="Remove skill">
@@ -129,7 +129,7 @@ function EducationEditor({
       {rows.map((education, index) => {
         const degreeOptions = getDegreeOptions(education.level);
         return (
-          <div key={education.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" }}>
+          <div key={education.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: "#dde5e0" , padding:15}}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: "#1a2e26" }}>
                 <GraduationCap size={14} weight="bold" style={{ color: "#428475" }} />
