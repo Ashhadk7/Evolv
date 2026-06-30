@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Icon } from "@iconify/react";
+import { ClientIcon as Icon } from "./ClientIcon";
 import {
   INITIAL_DEV_NOTIFS,
   DEV_SECTIONS,
@@ -70,13 +70,15 @@ export function Sidebar({
       if (raw) {
         const user = JSON.parse(raw);
         if (user.firstName || user.lastName) {
-          setLocalProfile({
-            firstName: user.firstName || "",
-            lastName: user.lastName || ""
+          queueMicrotask(() => {
+            setLocalProfile({
+              firstName: user.firstName || "",
+              lastName: user.lastName || ""
+            });
           });
         }
       }
-    } catch (_) {}
+    } catch {}
 
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -110,7 +112,7 @@ export function Sidebar({
       try {
         localStorage.removeItem("evolv_developer_profile");
         localStorage.removeItem("evolv_user");
-      } catch (_) {}
+      } catch {}
       window.location.href = "/sign-in";
     }
   };

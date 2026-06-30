@@ -2,7 +2,7 @@
 
 import { forwardRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Icon } from "@iconify/react";
+import { ClientIcon as Icon } from "./ClientIcon";
 import {
   NOTIF_COLORS,
   NOTIF_ICONS,
@@ -133,7 +133,7 @@ export const DevNotificationPanel = forwardRef<HTMLDivElement, DevNotificationPa
                       border: "none",
                       cursor: "pointer",
                     }}
-                    whileHover={{ background: "#e4ebe6" } as any}
+                    whileHover={{ background: "#e4ebe6" }}
                     whileTap={{ scale: 0.93 }}
                     transition={{ duration: 0.12 }}
                   >
@@ -281,7 +281,7 @@ export const DevNotificationPanel = forwardRef<HTMLDivElement, DevNotificationPa
                           whileHover={{
                             x: 3,
                             backgroundColor: notif.read ? "#f0f5f2" : "rgba(137,215,183,0.1)",
-                          } as any}
+                          }}
                           transition={{ delay: i * 0.04, duration: 0.18 }}
                         >
                           {/* Type icon circle */}
