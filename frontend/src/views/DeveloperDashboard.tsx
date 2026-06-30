@@ -114,14 +114,8 @@ export default function DeveloperDashboard() {
         setShowOnboarding(true);
     };
 
-    const protectedPages = ['applications', 'discover', 'network', 'inbox'];
     const handleNavigate = (page: DeveloperTab) => {
         pendingProtectedActionRef.current = null;
-        if (!profileComplete && protectedPages.includes(page)) {
-            setShowOnboarding(true);
-            setCurrentPage('settings');
-            return;
-        }
         setCurrentPage(page);
     };
 
