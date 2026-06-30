@@ -5,14 +5,12 @@ import { useEffect, useState } from "react";
 interface TopbarProps {
   title?: string;
   subtitle?: string;
-  profile?: { firstName: string; lastName: string; avatarUrl?: string };
+  profile?: { firstName?: string; lastName?: string; avatarUrl?: string };
   onNavigate?: (tab: string) => void;
-  onNotifClick?: () => void; // Support legacy prop
-  animateTitle?: boolean;
+  onNotifClick?: () => void;
 }
 
 const ACCENT = "#89d7b7";
-
 
 export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNotifClick }: TopbarProps) {
   const [localProfile, setLocalProfile] = useState({
