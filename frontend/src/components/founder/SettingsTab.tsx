@@ -1,808 +1,1464 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ElementType } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Bell,
+  UploadSimple,
+  Check,
+  MagnifyingGlass,
+  X,
+  PencilSimple,
+  MapPin,
+  Briefcase,
+  EnvelopeSimple,
+  Phone,
+  GraduationCap,
+  LinkedinLogo,
+  CalendarBlank,
+  GlobeHemisphereWest,
+  Sparkle,
+  CheckCircle,
+  LinkSimple,
+  Plus,
+  Trash,
+  CreditCard,
+  LockKey,
+  SlidersHorizontal,
+  WarningCircle,
+  ShieldCheck,
+  CurrencyDollar,
+} from "@phosphor-icons/react";
 import type { FounderProfile } from "./OnboardingWizard";
+import {
+  EDUCATION_LEVELS,
+  createBlankEducation,
+  formatFounderEducation,
+  formatFounderEducations,
+  getDegreeOptions,
+  getFounderEducationSummary,
+  getFounderEducations,
+  isFounderProfileComplete,
+  normalizeFounderProfileForSave,
+  type FounderEducation,
+} from "./profileUtils";
 
-export type SettingsSection = "profile" | "notifications" | "security" | "preferences";
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const INK        = "#1a312c";
+const DARK       = "#1a312c";   // sidebar BG — used for selected chips
+const MINT       = "#89d7b7";
+const MID        = "#428475";
+const TEXT_BODY  = "#1a2e26";
+const TEXT_MUTED = "#7a9e8e";
+const TEXT_DIM   = "#b0c0b8";
+const BORDER     = "#e0e9e3";
+const FIELD_BG   = "#f5f7f5";
+const CLEAR      = "rgba(0,0,0,0)";
+
+// ── Domain data (matches signup ALL_DOMAINS) ─────────────────────────────────
+const SUGGESTED_DOMAINS = ["AI", "SaaS", "FinTech", "MedTech", "CleanTech", "EdTech", "Web3", "E-commerce"];
+const ALL_DOMAINS = [
+  "AI", "SaaS", "FinTech", "MedTech", "CleanTech", "EdTech", "Web3", "E-commerce",
+  "HealthTech", "AgriTech", "LegalTech", "PropTech", "InsurTech", "RetailTech",
+  "CyberSecurity", "IoT", "Blockchain", "Gaming", "Social Media", "DeepTech",
+  "SpaceTech", "FoodTech", "TravelTech", "HRTech", "MarketingTech", "B2B",
+];
+
+// ── Toggle switch ──────────────────────────────────────────────────────────────
+function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="relative shrink-0 rounded-full transition-colors duration-200"
+      style={{ width: 36, height: 20, background: on ? DARK : "#dde5e0" }}
+      aria-pressed={on}
+    >
+      <motion.span
+        className="absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-white shadow-sm"
+        animate={{ x: on ? 16 : 0 }}
+        transition={{ type: "spring", stiffness: 500, damping: 34 }}
+      />
+    </button>
+  );
+}
+
+// ── Field ──────────────────────────────────────────────────────────────────────
+function Field({
+  label, type = "text", value, onChange, placeholder, optional,
+}: {
+  label: string; type?: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; optional?: boolean;
+}) {
+  const base = "w-full rounded-lg px-4 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30 focus:border-[#428475]";
+  const style = { background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY };
+
+  return (
+    <div>
+      <label className="flex items-center gap-1 text-[11px] font-semibold mb-1.5" style={{ color: TEXT_MUTED }}>
+        {label}
+        {optional && <span className="text-[10px] font-normal" style={{ color: TEXT_DIM }}>(optional)</span>}
+      </label>
+      {type === "textarea" ? (
+        <textarea
+          className={base} style={{ ...style, minHeight: 76, resize: "none" }}
+          value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        />
+      ) : type === "select" ? (
+        <select
+          className={base} style={style}
+          value={value} onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">Select…</option>
+          <option>Male</option>
+          <option>Female</option>
+          <option>Non-binary</option>
+          <option>Prefer not to say</option>
+        </select>
+      ) : (
+        <input
+          type={type} className={base} style={style}
+          value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── DomainSearch (matches signup page — consistent UX) ────────────────────────
+function DomainSearch({ selected, onToggle }: { selected: string[]; onToggle: (d: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+
+  const suggestions = query.trim()
+    ? ALL_DOMAINS.filter((d) => d.toLowerCase().includes(query.toLowerCase()) && !selected.includes(d))
+    : SUGGESTED_DOMAINS.filter((d) => !selected.includes(d));
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold mb-2" style={{ color: TEXT_MUTED }}>
+        Domains / Interests
+      </p>
+
+      {/* Selected chips */}
+      <AnimatePresence initial={false}>
+        {selected.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 flex flex-wrap gap-2"
+          >
+            {selected.map((d) => (
+              <motion.span
+                key={d}
+                layout
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+                style={{ background: DARK, color: MINT, border: `1px solid rgba(137,215,183,0.2)` }}
+              >
+                {d}
+                <button
+                  type="button"
+                  onClick={() => onToggle(d)}
+                  className="flex items-center justify-center rounded-full transition hover:opacity-60"
+                  aria-label={`Remove ${d}`}
+                >
+                  <X size={10} weight="bold" />
+                </button>
+              </motion.span>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Search input */}
+      <div
+        className="mb-3 flex h-10 items-center gap-2.5 rounded-lg border bg-white px-3.5 transition-all"
+        style={{
+          borderColor: focused ? MID : BORDER,
+          boxShadow: focused ? "0 0 0 3px rgba(137,215,183,0.18)" : "none",
+        }}
+      >
+        <MagnifyingGlass size={14} weight="regular" className="shrink-0" style={{ color: TEXT_DIM }} />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Search all domains…"
+          className="flex-1 bg-transparent text-[13px] outline-none"
+          style={{ color: TEXT_BODY }}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="shrink-0 rounded-full p-0.5 transition hover:bg-black/5"
+          >
+            <X size={11} weight="bold" style={{ color: TEXT_DIM }} />
+          </button>
+        )}
+      </div>
+
+      {/* Suggestions */}
+      {suggestions.length > 0 ? (
+        <div>
+          {!query && (
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: TEXT_DIM }}>
+              Suggested
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((d) => (
+              <motion.button
+                key={d}
+                type="button"
+                onClick={() => onToggle(d)}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className="rounded-full border bg-white px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors"
+                style={{ borderColor: BORDER, color: TEXT_MUTED }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = MID;
+                  e.currentTarget.style.color = MID;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = BORDER;
+                  e.currentTarget.style.color = TEXT_MUTED;
+                }}
+              >
+                + {d}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      ) : query && suggestions.length === 0 ? (
+        <p className="text-[12px]" style={{ color: TEXT_DIM }}>No domains matched &ldquo;{query}&rdquo;</p>
+      ) : null}
+    </div>
+  );
+}
+
+// ── ProfileSection ────────────────────────────────────────────────────────────
+function EducationEditor({
+  educations,
+  onChange,
+}: {
+  educations: FounderEducation[];
+  onChange: (next: FounderEducation[]) => void;
+}) {
+  const update = (id: string, patch: Partial<FounderEducation>) => {
+    onChange(educations.map((education) => {
+      if (education.id !== id) return education;
+      const next = { ...education, ...patch };
+      if (patch.level !== undefined) {
+        next.degree = "";
+        next.customDegree = "";
+      }
+      if (patch.degree && patch.degree !== "Other") next.customDegree = "";
+      return next;
+    }));
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {educations.map((education, index) => {
+        const degreeOptions = getDegreeOptions(education.level);
+        return (
+          <div key={education.id} className="rounded-xl border bg-white p-4" style={{ borderColor: BORDER }}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[12px] font-bold" style={{ color: TEXT_BODY }}>
+                <GraduationCap size={14} weight="bold" style={{ color: MID }} />
+                Education {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(educations.filter((item) => item.id !== education.id))}
+                className="rounded-lg p-1.5 transition hover:bg-red-50"
+                aria-label="Remove education"
+                style={{ color: "#c0392b" }}
+              >
+                <Trash size={14} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Education level</span>
+                <select
+                  value={education.level}
+                  onChange={(event) => update(education.id, { level: event.target.value })}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+                  style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+                >
+                  <option value="">Select level</option>
+                  {EDUCATION_LEVELS.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Degree / program</span>
+                <select
+                  value={education.degree}
+                  onChange={(event) => update(education.id, { degree: event.target.value })}
+                  disabled={!education.level}
+                  className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30 disabled:cursor-not-allowed disabled:text-[#1a2e26]/35"
+                  style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+                >
+                  <option value="">{education.level ? "Select degree" : "Select level first"}</option>
+                  {degreeOptions.map((degree) => (
+                    <option key={degree} value={degree}>{degree}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className={`mt-3 grid gap-3 ${education.degree === "Other" ? "sm:grid-cols-2" : ""}`}>
+              {education.degree === "Other" && (
+                <input
+                  value={education.customDegree ?? ""}
+                  onChange={(event) => update(education.id, { customDegree: event.target.value })}
+                  placeholder="Write degree name"
+                  className="h-10 rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+                  style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+                />
+              )}
+              <input
+                value={education.school ?? ""}
+                onChange={(event) => update(education.id, { school: event.target.value })}
+                placeholder="School / university"
+                className="h-10 rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+                style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange([...educations, createBlankEducation()])}
+        className="flex h-10 items-center justify-center gap-2 rounded-xl border bg-white text-[12px] font-bold transition hover:bg-[#f8faf8]"
+        style={{ borderColor: BORDER, color: MID }}
+      >
+        <Plus size={14} weight="bold" />
+        Add education
+      </button>
+    </div>
+  );
+}
+
+function getProfileName(profile: FounderProfile) {
+  return `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Founder Profile";
+}
+
+function getProfileInitials(profile: FounderProfile) {
+  return `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || "F";
+}
+
+function normalizeUrl(value: string) {
+  if (!value.trim()) return "";
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function ProfileDetailRow({
+  Icon,
+  label,
+  value,
+  href,
+}: {
+  Icon: ElementType;
+  label: string;
+  value: string;
+  href?: string;
+}) {
+  if (!value) return null;
+
+  const content = (
+    <>
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+        style={{ background: "#edf5f1", color: MID }}
+      >
+        <Icon size={15} weight="bold" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-bold uppercase tracking-widest" style={{ color: TEXT_DIM }}>
+          {label}
+        </span>
+        <span className="block truncate text-[12px] font-semibold" style={{ color: TEXT_BODY }}>
+          {value}
+        </span>
+      </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <motion.a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        whileHover={{ x: 2, backgroundColor: "#f8fbf9" }}
+        className="flex items-center gap-3 px-3.5 py-2.5 transition-colors"
+        style={{ borderRadius: 8 }}
+      >
+        {content}
+      </motion.a>
+    );
+  }
+
+  return (
+    <motion.div
+      whileHover={{ x: 2, backgroundColor: "#f8fbf9" }}
+      className="flex items-center gap-3 px-3.5 py-2.5 transition-colors"
+      style={{ borderRadius: 8 }}
+    >
+      {content}
+    </motion.div>
+  );
+}
+
+function ProfileAvatar({
+  avatarUrl,
+  fullName,
+  initials,
+  size = 112,
+}: {
+  avatarUrl?: string;
+  fullName: string;
+  initials: string;
+  size?: number;
+}) {
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full font-extrabold"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size > 80 ? 34 : 14,
+        background: `linear-gradient(135deg, #4cb896, ${MINT})`,
+        color: INK,
+        border: "4px solid #ffffff",
+        boxShadow: "0 12px 34px rgba(15,28,24,0.16)",
+      }}
+    >
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={`${fullName} profile`} className="h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
+    </div>
+  );
+}
+
+function ProfileSection({
+  profile,
+  onSave,
+  startEditingSignal = 0,
+}: {
+  profile: FounderProfile;
+  onSave: (p: FounderProfile) => void;
+  startEditingSignal?: number;
+}) {
+  const [local, setLocal] = useState<FounderProfile>(profile);
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const safeDomains = Array.isArray(local.domains) ? local.domains : [];
+  const safeEducations = getFounderEducations(local);
+  const educationItems = safeEducations.map(formatFounderEducation).filter(Boolean);
+  const educationSummary = getFounderEducationSummary(local);
+  const fullName = getProfileName(local);
+  const initials = getProfileInitials(local);
+  const headline = local.headline?.trim() || local.bio?.trim() || "Founder building on Evolv";
+  const bioText = local.bio?.trim() || "Add a short bio so developers, investors, and collaborators understand what you are building.";
+  const cityCountryParts: string[] = [];
+  [local.city, local.country].forEach((item) => {
+    const value = item?.trim();
+    if (value && !cityCountryParts.some((part) => part.toLowerCase() === value.toLowerCase())) {
+      cityCountryParts.push(value);
+    }
+  });
+  const cityCountry = cityCountryParts.join(", ");
+  const locationText = cityCountry || local.location?.trim() || local.country?.trim() || "Evolv Network";
+  const founderFocus = safeDomains[0] ? `${safeDomains[0]} founder` : local.primaryGoal?.trim() || "Startup founder";
+  const normalizedLinkedin = normalizeUrl(local.linkedin);
+  const completionItems = [
+    local.firstName,
+    local.lastName,
+    local.headline,
+    local.bio,
+    safeDomains.length ? "domains" : "",
+    educationSummary,
+    local.linkedin,
+  ];
+  const completion = Math.round((completionItems.filter(Boolean).length / completionItems.length) * 100);
+
+  const set = (key: keyof FounderProfile, val: string) => setLocal((p) => ({ ...p, [key]: val }));
+
+  useEffect(() => {
+    if (editing) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setLocal(profile);
+    });
+    return () => { active = false; };
+  }, [editing, profile]);
+
+  useEffect(() => {
+    if (startEditingSignal <= 0) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setLocal(profile);
+      setEditing(true);
+    });
+    return () => { active = false; };
+  }, [profile, startEditingSignal]);
+
+  const toggleDomain = (d: string) =>
+    setLocal((p) => {
+      const domains = Array.isArray(p.domains) ? p.domains : [];
+      return {
+        ...p,
+        domains: domains.includes(d) ? domains.filter((x) => x !== d) : [...domains, d],
+      };
+    });
+
+  const handleSave = () => {
+    onSave(normalizeFounderProfileForSave({ ...local, domains: safeDomains, educations: safeEducations }) as FounderProfile);
+    setEditing(false);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  const handleEducationsChange = (next: FounderEducation[]) => {
+    setLocal((current) => ({
+      ...current,
+      educations: next,
+      education: formatFounderEducations(next),
+    }));
+  };
+
+  const handleCancel = () => {
+    setLocal(profile);
+    setEditing(false);
+  };
+
+  const handlePhotoUpload = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setLocal((p) => ({ ...p, avatarUrl: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="relative flex flex-col gap-5 pb-10">
+      <AnimatePresence>
+        {saved && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            className="absolute right-0 top-0 z-20 flex items-center gap-2 px-3 py-2 text-[12px] font-bold"
+            style={{
+              background: "#e8f5ef",
+              color: "#2e7d5c",
+              border: "1px solid #cde8da",
+              borderRadius: 8,
+              boxShadow: "0 10px 26px rgba(15,28,24,0.10)",
+            }}
+          >
+            <Check size={14} weight="bold" />
+            Saved changes
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait" initial={false}>
+        {!editing ? (
+          <motion.div
+            key="profile-preview"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="flex flex-col gap-6 pb-2"
+          >
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{ boxShadow: "0 20px 48px rgba(15,28,24,0.10)" }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="overflow-hidden bg-white"
+              style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}
+            >
+              <div
+                className="relative h-36"
+                style={{
+                  background: `linear-gradient(135deg, ${INK} 0%, ${MID} 58%, ${MINT} 140%)`,
+                }}
+              >
+                <div
+                  className="absolute inset-0 opacity-30"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px)",
+                    backgroundSize: "28px 28px",
+                  }}
+                />
+                <div className="absolute bottom-5 left-8 flex max-w-[calc(100%-4rem)] items-center gap-2 rounded-full bg-white/12 px-5 py-2.5 backdrop-blur">
+                  <Sparkle size={13} weight="fill" style={{ color: MINT }} />
+                  <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "#e8f4ef" }}>
+                    Public Founder Profile
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative px-9 pb-10">
+                <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="pl-6" style={{marginTop:"1rem", marginBottom:"1rem"}}><ProfileAvatar avatarUrl={local.avatarUrl} fullName={fullName} initials={initials} /></div>
+
+                  <div className="flex flex-wrap gap-2 sm:pb-2">
+                    {normalizedLinkedin && (
+                      <motion.a
+                        href={normalizedLinkedin}
+                        target="_blank"
+                        rel="noreferrer"
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex items-center gap-2 rounded-lg border bg-white px-3.5 py-2 text-[12px] font-bold"
+                        style={{ borderColor: BORDER, color: MID, paddingLeft: '1rem', paddingRight: '1rem' }}
+                      >
+                        <LinkedinLogo size={15} weight="bold" />
+                        LinkedIn
+                      </motion.a>
+                    )}
+                    <motion.button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      whileHover={{ y: -2, boxShadow: "0 8px 18px rgba(26,49,44,0.18)" }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold"
+                      style={{ background: INK, color: MINT, marginRight: '1rem' }}
+                    >
+                      <PencilSimple size={15} weight="bold" />
+                      Edit Profile
+                    </motion.button>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="pl-6 text-[1.55rem] font-extrabold leading-tight" style={{ color: TEXT_BODY }}>
+                      {fullName}
+                    </h3>
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest"
+                      style={{ background: "#edf5f1", color: MID }}
+                    >
+                      <CheckCircle size={12} weight="fill" />
+                      Founder
+                    </span>
+                  </div>
+                  <p className="pl-6 mt-2 text-[12px] font-bold uppercase tracking-widest" style={{ color: TEXT_MUTED }}>
+                    Professional Role
+                  </p>
+                  <p className="pl-6 mt-1 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
+                    Founder
+                  </p>
+                  <p className="pl-6 mt-2 max-w-2xl text-[14px] font-semibold leading-6" style={{ color: "#334d42" }}>
+                    {headline}
+                  </p>
+                  <div className="mb-4 mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 py-1.5 text-[12px]" style={{ color: TEXT_MUTED }}>
+                    <span className="pl-6 flex items-center gap-1.5 leading-5">
+                      <Briefcase size={13} weight="bold" />
+                      {founderFocus}
+                    </span>
+                    <span className="flex items-center gap-1.5 leading-5">
+                      <MapPin size={13} weight="bold" />
+                      {locationText}
+                    </span>
+                    {local.email && (
+                      <span className="flex items-center gap-1.5 leading-5">
+                        <EnvelopeSimple size={13} weight="bold" />
+                        {local.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mb-6 pl-6 mt-8 grid gap-2 sm:grid-cols-3">
+                  {[
+                    { label: "Profile strength", value: `${completion}%`, detail: "Public readiness" },
+                    { label: "Focus areas", value: `${safeDomains.length}`, detail: safeDomains.slice(0, 2).join(" / ") || "Add domains" },
+                    { label: "Visibility", value: isFounderProfileComplete(local) ? "Live" : "Draft", detail: "Founder network" },
+                  ].map((item, index) => (
+                    <motion.div
+                      key={item.label}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ y: -2, borderColor: "#c5ddd0" }}
+                      className="bg-[#f8faf8] px-5 py-5"
+                      style={{ border: "1.5px solid #d8e7df",marginRight: "1.5rem",borderRadius: 8, boxShadow: "0 8px 20px rgba(15,28,24,0.04)" }}
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: TEXT_DIM }}>
+                        {item.label}
+                      </p>
+                      <p className="mt-2 text-[20px] font-extrabold leading-none" style={{ color: TEXT_BODY }}>
+                        {item.value}
+                      </p>
+                      <p className="mt-2 truncate text-[11px]" style={{ color: TEXT_MUTED }}>
+                        {item.detail}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
+
+            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.85fr] ">
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06 }}
+                className="bg-white p-7"
+                style={{ border: "1.5px solid #d4e4db", borderRadius: 8 , marginBottom: 30}}
+              >
+                <div className="mb-2 flex items-center justify-between gap-5">
+                  <div>
+                    <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Bio</h4>
+                    <p className="text-[11px]" style={{ color: TEXT_MUTED }}>The short intro people see on your profile.</p>
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full"
+                    style={{ background: "#edf5f1", color: MID }}
+                    aria-label="Edit bio section"
+                  >
+                    <PencilSimple size={14} weight="bold" />
+                  </motion.button>
+                </div>
+                <p className="text-[13px] leading-7" style={{ color: "#334d42" }}>
+                  {bioText}
+                </p>
+
+                <div className="my-7" style={{ height: 1, marginBottom:"1rem", background: "#dfe9e3" }} />
+
+                <div>
+                  <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Interested Domains</h4>
+                  <div className="mt-4 flex flex-wrap gap-2.5 pb-1">
+                    {safeDomains.length > 0 ? (
+                      safeDomains.map((domain) => (
+                        <motion.span
+                          key={domain}
+                          whileHover={{ y: -2, backgroundColor: "#e8f5ef" }}
+                          className="rounded-full px-3 py-1.5 text-[12px] font-bold"
+                          style={{ background: "#f0f5f2", color: MID, border: "1px solid #dce9e2", marginTop:"0.5rem" }}
+                        >
+                          {domain}
+                        </motion.span>
+                      ))
+                    ) : (
+                      <span className="block py-2 text-[12px]" style={{ color: TEXT_DIM }}>Add domains to show your focus areas.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="my-7" style={{ height: 1, background: "#dfe9e3" ,marginBottom:"1rem", marginTop: "0.5rem"}} />
+
+                <div>
+                  <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY , marginBottom:"1rem"}}>Education</h4>
+                  <div className="mt-5 flex gap-4">
+                    <span
+                      className="mt-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: "#edf5f1", color: MID }}
+                    >
+                      <GraduationCap size={17} weight="bold" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {educationItems.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {educationItems.map((education) => (
+                            <div
+                              key={education}
+                              className="rounded-lg px-3.5 py-2.5"
+                              style={{ background: "#f8faf8", border: "1px solid #dfe9e3" }}
+                            >
+                              <p className="text-[13px] p-3 font-bold leading-5" style={{ color: TEXT_BODY }}>
+                                {education}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>
+                            Add education
+                          </p>
+                          <p className="mt-1 text-[12px] leading-5" style={{ color: TEXT_MUTED }}>
+                            Your education helps others understand your credibility.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+
+              <motion.aside
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex flex-col gap-5"
+              >
+                <section className="bg-white p-6" style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}>
+                  <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Contact</h4>
+                  <div className="flex flex-col gap-2">
+                    <ProfileDetailRow Icon={EnvelopeSimple} label="Email" value={local.email} href={local.email ? `mailto:${local.email}` : undefined} />
+                    <ProfileDetailRow Icon={Phone} label="Phone" value={local.phone} href={local.phone ? `tel:${local.phone}` : undefined} />
+                    <ProfileDetailRow Icon={LinkedinLogo} label="LinkedIn" value={local.linkedin} href={normalizedLinkedin || undefined} />
+                    {!local.email && !local.phone && !local.linkedin && (
+                      <p className="px-3.5 py-2.5 text-[12px]" style={{ color: TEXT_DIM }}>Add contact links in edit mode.</p>
+                    )}
+                  </div>
+                </section>
+
+                <section className="bg-white p-6" style={{ border: "1.5px solid #d4e4db", borderRadius: 8 , marginBottom: 30}}>
+                  <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Profile Details</h4>
+                  <div className="flex flex-col gap-2">
+                    <ProfileDetailRow Icon={GlobeHemisphereWest} label="Network" value="Founder on Evolv" />
+                    <ProfileDetailRow Icon={Briefcase} label="Role" value="Founder" />
+                    <ProfileDetailRow Icon={LinkSimple} label="Top domain" value={safeDomains[0] || "Add a domain"} />
+                  </div>
+                </section>
+              </motion.aside>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="profile-edit"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="flex flex-col gap-4 pb-10"
+          >
+            <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <ProfileAvatar avatarUrl={local.avatarUrl} fullName={fullName} initials={initials} size={74} />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full"
+                      style={{ background: INK, border: "3px solid #fff", color: MINT }}
+                      title="Upload photo"
+                    >
+                      <UploadSimple size={13} weight="bold" />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: TEXT_DIM }}>
+                      Profile Editor
+                    </p>
+                    <h3 className="mt-1 text-[1.05rem] font-extrabold" style={{ color: TEXT_BODY }}>
+                      {fullName}
+                    </h3>
+                    <p className="text-[12px]" style={{ color: TEXT_MUTED }}>
+                      Edit each section, then save to refresh the public view.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="rounded-lg border bg-white px-3.5 py-2 p-6 text-[12px] font-bold transition hover:bg-[#f8faf8]"
+                  style={{ borderColor: BORDER, color: TEXT_MUTED }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+                <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Public Identity</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="First Name" value={local.firstName} onChange={(v) => set("firstName", v)} placeholder="Sara" />
+                  <Field label="Last Name" value={local.lastName} onChange={(v) => set("lastName", v)} placeholder="Ahmed" />
+                </div>
+                <div className="mt-4" style={{marginTop:10}}>
+                  <Field label="Founder Headline" value={local.headline ?? ""} onChange={(v) => set("headline", v)} placeholder="Building the future of healthcare" />
+                </div>
+                <div className="mt-4" style={{marginTop:10}}>
+                  <Field label="Short Bio" value={local.bio} onChange={(v) => set("bio", v)} placeholder="Tell collaborators what you are building and why it matters." />
+                </div>
+                <div className="mt-4" style={{marginTop:10}}>
+                  <Field label="Email" type="email" value={local.email} onChange={(v) => set("email", v)} placeholder="you@example.com" />
+                </div>
+              </section>
+
+              <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+                <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Domains</h4>
+                <DomainSearch selected={safeDomains} onToggle={toggleDomain} />
+              </section>
+
+              <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+                <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Links & Background</h4>
+                <div className="flex flex-col gap-4">
+                  <Field label="LinkedIn Profile" value={local.linkedin} onChange={(v) => set("linkedin", v)} placeholder="https://linkedin.com/in/yourname" optional />
+                  <Field label="Phone Number" value={local.phone} onChange={(v) => set("phone", v)} placeholder="+92 300 0000000" />
+                  <EducationEditor educations={safeEducations} onChange={handleEducationsChange} />
+                </div>
+              </section>
+
+              <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+                <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Private Details</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Date of Birth" type="date" value={local.dob} onChange={(v) => set("dob", v)} />
+                  <Field label="Gender" type="select" value={local.gender} onChange={(v) => set("gender", v)} optional />
+                </div>
+                <div className="mt-4 flex items-start gap-3 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee", marginTop: 10}}>
+                  <CalendarBlank size={15} weight="bold" style={{ color: MID, marginTop: 1 }} />
+                  <p className="text-[11px] leading-5" style={{ color: TEXT_MUTED }}>
+                    Birthday and gender help account context, but they are not shown on the public profile preview.
+                  </p>
+                </div>
+              </section>
+            </div>
+
+            <motion.button
+              type="button"
+              onClick={handleSave}
+              whileHover={{ y: -2, boxShadow: "0 10px 26px rgba(26,49,44,0.22)" }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 24 }}
+              className="mb-2 flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
+              style={{ background: INK, color: MINT, marginBottom: 35 }}
+            >
+              <Check size={15} weight="bold" />
+              Save Changes
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── NotificationsSection ───────────────────────────────────────────────────────
+function NotificationsSection() {
+  const [notifs, setNotifs] = useState({
+    developerMatch: true, investorView: true, blueprintComment: false,
+    weeklyDigest: true, billingAlerts: true, interestRequest: true,
+    messageReceived: true, productUpdates: false,
+  });
+
+  const toggle = (key: keyof typeof notifs) => setNotifs((n) => ({ ...n, [key]: !n[key] }));
+
+  const groups = [
+    {
+      title: "Matches & Connections",
+      items: [
+        { key: "developerMatch" as const,  label: "New developer match",       desc: "Get notified when a developer matches your blueprint" },
+        { key: "interestRequest" as const, label: "Interest request",          desc: "When a developer sends an interest request" },
+        { key: "investorView" as const,    label: "Investor viewed blueprint", desc: "When an investor views your public blueprint" },
+      ],
+    },
+    {
+      title: "Messages & Activity",
+      items: [
+        { key: "messageReceived" as const,  label: "New message",         desc: "When someone sends you a message in Inbox" },
+        { key: "blueprintComment" as const, label: "Blueprint comments",  desc: "Comments and feedback on your blueprints" },
+      ],
+    },
+    {
+      title: "Account & Billing",
+      items: [
+        { key: "billingAlerts" as const,  label: "Billing alerts",   desc: "Payment due, invoice ready, subscription changes" },
+        { key: "weeklyDigest" as const,   label: "Weekly digest",    desc: "Weekly summary of your portfolio activity" },
+        { key: "productUpdates" as const, label: "Product updates",  desc: "New features and improvements on Evolv" },
+      ],
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-5">
+      {groups.map((group) => (
+        <div key={group.title}>
+          <p className="text-[10.5px] font-bold uppercase tracking-widest mb-3" style={{ color: TEXT_DIM }}>
+            {group.title}
+          </p>
+          <div className="rounded-xl overflow-hidden bg-white" style={{ border: `1px solid ${BORDER}` }}>
+            {group.items.map(({ key, label, desc }, i) => (
+              <div
+                key={key}
+                className="flex items-center gap-3 px-4 py-3.5"
+                style={{ borderBottom: i < group.items.length - 1 ? `1px solid #eaf0eb` : "none" }}
+              >
+                <div className="flex-1">
+                  <p className="text-[13px] font-medium" style={{ color: TEXT_BODY }}>{label}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: TEXT_MUTED }}>{desc}</p>
+                </div>
+                <Toggle on={notifs[key]} onChange={() => toggle(key)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* Main export                                                 */
+/* ────────────────────────────────────────────────────────── */
+
+function PaymentSection({ profile }: { profile: FounderProfile }) {
+  const [saved, setSaved] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [billing, setBilling] = useState({
+    plan: "Founder Launch",
+    billingEmail: profile.email || "",
+    currency: "USD",
+    budgetRange: "$50K - $100K",
+    companyName: "My Startup",
+  });
+
+  const save = () => {
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <CreditCard size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Payment & Billing</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Company / Startup Name" value={billing.companyName} onChange={(value) => setBilling((current) => ({ ...current, companyName: value }))} placeholder="Your startup" />
+          <Field label="Billing Email" type="email" value={billing.billingEmail} onChange={(value) => setBilling((current) => ({ ...current, billingEmail: value }))} placeholder="billing@example.com" />
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Workspace plan</span>
+            <select
+              value={billing.plan}
+              onChange={(event) => setBilling((current) => ({ ...current, plan: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Founder Launch</option>
+              <option>Founder Growth</option>
+              <option>Investor Ready</option>
+              <option>Enterprise Founder Team</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Preferred currency</span>
+            <select
+              value={billing.currency}
+              onChange={(event) => setBilling((current) => ({ ...current, currency: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+              <option>PKR</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <CurrencyDollar size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Founder Funding Preferences</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Expected build budget</span>
+            <select
+              value={billing.budgetRange}
+              onChange={(event) => setBilling((current) => ({ ...current, budgetRange: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Under $25K</option>
+              <option>$25K - $50K</option>
+              <option>$50K - $100K</option>
+              <option>$100K - $250K</option>
+              <option>$250K+</option>
+            </select>
+          </label>
+          <div>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Payment method</span>
+            <div className="flex flex-wrap gap-2 ">
+              {["card", "bank", "stripe"].map((method) => {
+                const active = paymentMethod === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className="rounded-lg border px-3.5 py-2 text-[12px] font-bold capitalize transition w-15"
+                    style={{ borderColor: active ? MID : BORDER, background: active ? "#e8f5ef" : "#fff", color: active ? MID : TEXT_MUTED }}
+                  >
+                    {method === "card" ? "Card" : method}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold ="
+          style={{ background: INK, color: MINT, margin:15 }}
+        >
+          <Check size={15} weight="bold"/>
+          {saved ? "Saved" : "Save Payment Info"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function SecuritySection() {
+  const [saved, setSaved] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [loginAlerts, setLoginAlerts] = useState(true);
+  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
+
+  const save = () => {
+    setSaved(true);
+    setPasswords({ current: "", next: "", confirm: "" });
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <LockKey size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Security</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Field label="Current Password" type="password" value={passwords.current} onChange={(value) => setPasswords((current) => ({ ...current, current: value }))} placeholder="Enter current password" />
+          </div>
+          <Field label="New Password" type="password" value={passwords.next} onChange={(value) => setPasswords((current) => ({ ...current, next: value }))} placeholder="Enter new password" />
+          <Field label="Confirm New Password" type="password" value={passwords.confirm} onChange={(value) => setPasswords((current) => ({ ...current, confirm: value }))} placeholder="Confirm new password" />
+        </div>
+        <div className="mt-4 flex items-start gap-3 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+          <ShieldCheck size={15} weight="bold" style={{ color: MID, marginTop: 1 }} />
+          <p className="text-[11px] leading-5" style={{ color: TEXT_MUTED }}>
+            Protect your founder workspace, saved blueprints, investor activity, and team conversations.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+          style={{ background: INK, color: MINT }}
+        >
+          <Check size={15} weight="bold" />
+          {saved ? "Password Updated" : "Update Password"}
+        </button>
+      </section>
+
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Account Protection</h4>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+            <div>
+              <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>Two-factor authentication</p>
+              <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>Require an authenticator code before opening your founder workspace.</p>
+            </div>
+            <Toggle on={twoFactor} onChange={() => setTwoFactor((value) => !value)} />
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+            <div>
+              <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>Login alerts</p>
+              <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>Notify you when a new device accesses your account.</p>
+            </div>
+            <Toggle on={loginAlerts} onChange={() => setLoginAlerts((value) => !value)} />
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type FounderPrefs = {
+  blueprintVisibility: string;
+  founderStage: string;
+  matchPriority: string;
+  developerRequests: boolean;
+  investorIntros: boolean;
+  weeklyDigest: boolean;
+};
+
+function PreferencesSection() {
+  const [saved, setSaved] = useState(false);
+  const [prefs, setPrefs] = useState<FounderPrefs>({
+    blueprintVisibility: "Private by default",
+    founderStage: "Idea / MVP",
+    matchPriority: "Technical cofounder",
+    developerRequests: true,
+    investorIntros: true,
+    weeklyDigest: true,
+  });
+
+  const save = () => {
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center gap-2">
+          <SlidersHorizontal size={16} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Founder Preferences</h4>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Blueprint visibility</span>
+            <select
+              value={prefs.blueprintVisibility}
+              onChange={(event) => setPrefs((current) => ({ ...current, blueprintVisibility: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Private by default</option>
+              <option>Ask before publishing</option>
+              <option>Public after approval</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Startup stage</span>
+            <select
+              value={prefs.founderStage}
+              onChange={(event) => setPrefs((current) => ({ ...current, founderStage: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Idea / MVP</option>
+              <option>Prototype</option>
+              <option>Pre-seed</option>
+              <option>Seed</option>
+              <option>Scaling</option>
+            </select>
+          </label>
+          <label className="sm:col-span-2">
+            <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>Match priority</span>
+            <select
+              value={prefs.matchPriority}
+              onChange={(event) => setPrefs((current) => ({ ...current, matchPriority: event.target.value }))}
+              className="h-10 w-full rounded-lg px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30"
+              style={{ background: FIELD_BG, border: `1px solid ${BORDER}`, color: TEXT_BODY }}
+            >
+              <option>Technical cofounder</option>
+              <option>MVP developer team</option>
+              <option>Investor introductions</option>
+              <option>Advisor network</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Discovery Controls</h4>
+        <div className="flex flex-col gap-3">
+          {[
+            { key: "developerRequests" as const, label: "Developer interest requests", sub: "Allow matched developers to request a conversation." },
+            { key: "investorIntros" as const, label: "Investor introduction suggestions", sub: "Let Evolv surface relevant investor intros for public blueprints." },
+            { key: "weeklyDigest" as const, label: "Weekly founder digest", sub: "Receive weekly progress, match, and blueprint summaries." },
+          ].map(({ key, label, sub }) => (
+            <div key={key} className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
+              <div>
+                <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>{label}</p>
+                <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>{sub}</p>
+              </div>
+              <Toggle on={prefs[key]} onChange={() => setPrefs((current) => ({ ...current, [key]: !current[key] }))} />
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+          style={{ background: INK, color: MINT }}
+        >
+          <Check size={15} weight="bold" />
+          {saved ? "Saved" : "Save Preferences"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+export type SettingsSection = "profile" | "payment" | "notifications" | "security";
 
 interface Props {
   profile: FounderProfile;
   onProfileSave: (p: FounderProfile) => void;
   section?: SettingsSection;
   onSectionChange?: (section: SettingsSection) => void;
+  editSignal?: number;
 }
 
-const DOMAINS_LIST = [
-  "AI","SaaS","MedTech","FinTech","CleanTech","Web3","EdTech","E-commerce","Deep Tech","B2B",
-];
+export function SettingsTab({ profile, onProfileSave, section, onSectionChange, editSignal = 0 }: Props) {
+  const [localSection, setLocalSection] = useState<SettingsSection>("profile");
+  const activeSection = section ?? localSection;
+  const setSection = onSectionChange ?? setLocalSection;
 
-function calcStrength(p: FounderProfile): number {
-  const checks = [
-    !!p.firstName?.trim(), !!p.lastName?.trim(),
-    !!(p.bio?.trim() || p.headline?.trim()),
-    !!p.email?.trim(), !!p.phone?.trim(),
-    !!p.linkedin?.trim(), !!p.location?.trim(),
-    !!p.education?.trim(), !!p.description?.trim(),
-    (p.domains?.length ?? 0) > 0, !!p.avatarUrl,
-  ];
-  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
-}
-
-export function SettingsTab({ profile: initialProfile, onProfileSave, section, onSectionChange }: Props) {
-  const [profile, setProfile]   = useState<FounderProfile>(initialProfile);
-  const [activeTab, setActiveTab] = useState<SettingsSection>(section ?? "profile");
-  const [editMode, setEditMode]   = useState(false);
-  const [draft, setDraft]         = useState<FounderProfile>(initialProfile);
-  const [newDomain, setNewDomain] = useState("");
-  const [saved, setSaved]         = useState(false);
-  const [passwordData, setPasswordData] = useState({ current: "", newPass: "", confirm: "" });
-  const [pwSaved, setPwSaved]   = useState(false);
-  const [otpMode, setOtpMode]   = useState<false | "sent">(false);
-  const [otp, setOtp]           = useState("");
-  const [notifications, setNotifications] = useState({
-    developerMatch: true, investorView: true, blueprintComment: false,
-    weeklyDigest: true, billingAlerts: true, interestRequest: true,
-    messageReceived: true, productUpdates: false,
-  });
-
-  const photoInputRef     = useRef<HTMLInputElement>(null);
-  const editPhotoInputRef = useRef<HTMLInputElement>(null);
-
-  const openEdit = () => {
-    setDraft({ ...profile });
-    setEditMode(true);
-  };
-
-  const handleSave = () => {
-    const updated = { ...draft };
-    setProfile(updated);
-    onProfileSave(updated);
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      setEditMode(false);
-    }, 1200);
-  };
-
-  const handlePhotoUpload = (file: File | undefined, target: "profile" | "draft") => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== "string") return;
-      const url = reader.result;
-      if (target === "draft") {
-        setDraft((p) => ({ ...p, avatarUrl: url }));
-      } else {
-        const updated = { ...profile, avatarUrl: url };
-        setProfile(updated);
-        onProfileSave(updated);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handlePwSave = () => {
-    if (!passwordData.newPass || passwordData.newPass !== passwordData.confirm) return;
-    if (!otpMode && !passwordData.current) return;
-    if (otpMode === "sent" && !otp) return;
-    setPwSaved(true);
-    setTimeout(() => {
-      setPwSaved(false);
-      setPasswordData({ current: "", newPass: "", confirm: "" });
-      setOtpMode(false);
-      setOtp("");
-    }, 2000);
-  };
-
-  const toggleDomain = (d: string) => {
-    const domains = draft.domains || [];
-    setDraft((p) => ({
-      ...p,
-      domains: domains.includes(d) ? domains.filter((x) => x !== d) : [...domains, d],
-    }));
-  };
-
-  const addCustomDomain = () => {
-    const d = newDomain.trim();
-    if (d && !(draft.domains || []).includes(d)) {
-      setDraft((p) => ({ ...p, domains: [...(p.domains || []), d] }));
-    }
-    setNewDomain("");
-  };
-
-  const removeDomain = (d: string) => {
-    setDraft((p) => ({ ...p, domains: (p.domains || []).filter((x) => x !== d) }));
-  };
-
-  const tabs: { id: SettingsSection; label: string; icon: string }[] = [
-    { id: "profile",       label: "Profile",       icon: "user"      },
-    { id: "notifications", label: "Notifications", icon: "bell"      },
-    { id: "security",      label: "Security",      icon: "lock"      },
-    { id: "preferences",   label: "Preferences",   icon: "sliders-h" },
+  const NAV: { id: SettingsSection; label: string; Icon: ElementType }[] = [
+    { id: "profile",       label: "Profile",       Icon: User },
+    { id: "payment",       label: "Payment",       Icon: CreditCard },
+    { id: "notifications", label: "Notifications", Icon: Bell },
+    { id: "security",      label: "Security",      Icon: LockKey },
   ];
 
-  const fullName  = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Your Name";
-  const initials  = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.toUpperCase() || "F";
-  const strength  = calcStrength(profile);
-  const topDomain = profile.domains?.[0] || "—";
-  const focusLabel = profile.domains?.slice(0, 2).join(" / ") || "—";
+  const handleDeleteAccount = () => {
+    const confirmed = window.confirm("Delete this founder account from this browser? This removes saved founder profile and blueprint data.");
+    if (!confirmed) return;
+    try {
+      localStorage.removeItem("evolv_founder_profile");
+      localStorage.removeItem("evolv_founder_blueprints");
+    } catch { /* ignore */ }
+    window.location.href = "/sign-in";
+  };
 
   return (
-    <div className="Settings_container">
-      <main className="Settings_mainWrapper">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-          <div>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1B1B1B" }}>Settings</h1>
-            <p style={{ color: "#888", fontSize: "0.8rem", marginTop: "0.2rem" }}>
-              Manage your profile, preferences, and account security.
-            </p>
-          </div>
-        </div>
+    <div className="h-full flex overflow-hidden" style={{ background: "#f5f6f4" }}>
 
-        <div className="Settings_settingsLayout">
-          {/* ── Left nav ── */}
-          <div className="Settings_tabsCol">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`Settings_tabBtn ${activeTab === tab.id ? "Settings_tabBtnActive" : ""}`}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setEditMode(false);
-                  onSectionChange?.(tab.id);
-                }}
+      {/* ── Left settings nav ── */}
+      <div
+        className="flex flex-col shrink-0 py-6 px-4"
+        style={{ width: 196, background: "#fff", borderRight: `1px solid ${BORDER}` }}
+      >
+        <p className="text-[13px] font-bold mb-5" style={{ color: TEXT_BODY }}>Settings</p>
+
+        <div className="flex-1 flex flex-col gap-0.5">
+          {NAV.map(({ id, label, Icon }) => {
+            const active = activeSection === id;
+            return (
+              <motion.button
+                key={id}
+                onClick={() => setSection(id)}
+                whileHover={active ? {} : { backgroundColor: "#f5f7f5", color: INK }}
+                animate={{ backgroundColor: active ? "#f0f5f2" : CLEAR, color: active ? INK : TEXT_MUTED }}
+                transition={{ duration: 0.13 }}
+                className="relative flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer"
               >
-                <i className={`fas fa-${tab.icon}`} />
-                {tab.label}
-              </button>
-            ))}
-            <div className="Settings_dangerZone">
-              <div className="Settings_dangerTitle">
-                <i className="fas fa-exclamation-triangle" /> Danger Zone
-              </div>
-              <button className="Settings_dangerBtn">Delete Account</button>
-            </div>
-          </div>
-
-          {/* ── Content col ── */}
-          <div className="Settings_contentCol">
-
-            {/* ══════════════════ PROFILE — VIEW MODE ══════════════════ */}
-            {activeTab === "profile" && !editMode && (
-              <div>
-                {/* Section title */}
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#1a2e26", margin: 0 }}>Profile</h2>
-                  <p style={{ fontSize: "0.78rem", color: "#7a9e8e", marginTop: 4 }}>
-                    Update your personal details and public profile.
-                  </p>
-                </div>
-
-                {/* Main profile card */}
-                <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e4ece7", overflow: "hidden", marginBottom: "1.25rem", boxShadow: "0 2px 12px rgba(26,49,44,0.05)" }}>
-
-                  {/* Gradient banner */}
-                  <div style={{
-                    height: 130,
-                    background: "linear-gradient(135deg, #1a312c 0%, #234a3c 55%, #428475 100%)",
-                    position: "relative", overflow: "hidden",
-                  }}>
-                    <div style={{
-                      position: "absolute", inset: 0,
-                      backgroundImage: "radial-gradient(rgba(137,215,183,0.18) 1.5px, transparent 1.5px)",
-                      backgroundSize: "22px 22px",
-                    }} />
-                    <button
-                      style={{
-                        position: "absolute", bottom: 16, left: 20,
-                        display: "flex", alignItems: "center", gap: 6,
-                        background: "rgba(255,255,255,0.1)", border: "1px solid rgba(137,215,183,0.35)",
-                        borderRadius: 999, padding: "5px 14px",
-                        fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.07em",
-                        textTransform: "uppercase", color: "rgba(255,255,255,0.88)",
-                        cursor: "pointer", backdropFilter: "blur(4px)", fontFamily: "inherit",
-                      }}
-                    >
-                      <i className="fas fa-external-link-alt" style={{ fontSize: "0.52rem" }} />
-                      Public Founder Profile
-                    </button>
-                  </div>
-
-                  {/* Profile info */}
-                  <div style={{ padding: "0 24px 26px", position: "relative" }}>
-
-                    {/* Avatar overlapping banner */}
-                    <div
-                      onClick={() => photoInputRef.current?.click()}
-                      style={{
-                        width: 80, height: 80, borderRadius: "50%", overflow: "hidden",
-                        border: "4px solid #fff",
-                        background: "linear-gradient(135deg, #4cb896, #89d7b7)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "1.5rem", fontWeight: 800, color: "#0f1c18",
-                        marginTop: -40, boxShadow: "0 4px 16px rgba(26,49,44,0.18)",
-                        cursor: "pointer", flexShrink: 0,
-                      }}
-                    >
-                      {profile.avatarUrl
-                        ? <img src={profile.avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : initials}
-                    </div>
-                    <input
-                      ref={photoInputRef}
-                      type="file" accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => handlePhotoUpload(e.target.files?.[0], "profile")}
-                    />
-
-                    {/* Edit Profile button */}
-                    <button
-                      onClick={openEdit}
-                      style={{
-                        position: "absolute", top: 16, right: 0,
-                        display: "flex", alignItems: "center", gap: 7,
-                        padding: "9px 20px", borderRadius: 10,
-                        background: "#1a312c", color: "#89d7b7",
-                        border: "none", fontSize: "0.78rem", fontWeight: 700,
-                        cursor: "pointer", fontFamily: "inherit",
-                        boxShadow: "0 2px 8px rgba(26,49,44,0.2)",
-                      }}
-                    >
-                      <i className="fas fa-pencil-alt" style={{ fontSize: "0.62rem" }} />
-                      Edit Profile
-                    </button>
-
-                    {/* Name + badge */}
-                    <div style={{ marginTop: 14, marginBottom: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <h3 style={{ fontSize: "1.35rem", fontWeight: 800, color: "#1a2e26", margin: 0, letterSpacing: "-0.02em" }}>
-                        {fullName}
-                      </h3>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.07em",
-                        padding: "4px 10px", borderRadius: 999,
-                        background: "#dcf0e6", color: "#1d6e47", textTransform: "uppercase",
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#2e7d5c", display: "inline-block" }} />
-                        Founder
-                      </span>
-                    </div>
-
-                    {/* Bio */}
-                    {(profile.bio || profile.headline) && (
-                      <p style={{ fontSize: "0.85rem", color: "#4a6a5a", margin: "0 0 12px", lineHeight: 1.5 }}>
-                        {profile.bio || profile.headline}
-                      </p>
-                    )}
-
-                    {/* Info row */}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", marginBottom: 22 }}>
-                      {(profile.headline || profile.bio) && (
-                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "#7a9e8e" }}>
-                          <i className="fas fa-briefcase" style={{ fontSize: "0.62rem", color: "#89d7b7" }} />
-                          {profile.headline || "Founder"}
-                        </span>
-                      )}
-                      {profile.location && (
-                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "#7a9e8e" }}>
-                          <i className="fas fa-map-marker-alt" style={{ fontSize: "0.62rem", color: "#89d7b7" }} />
-                          {profile.location}
-                        </span>
-                      )}
-                      {profile.email && (
-                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "#7a9e8e" }}>
-                          <i className="fas fa-envelope" style={{ fontSize: "0.62rem", color: "#89d7b7" }} />
-                          {profile.email}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 3 stat cards */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                      {[
-                        { label: "PROFILE STRENGTH", value: `${strength}%`,                       sub: "Public readiness"   },
-                        { label: "FOCUS AREAS",      value: String(profile.domains?.length || 0), sub: focusLabel           },
-                        { label: "VISIBILITY",       value: (profile.domains?.length ?? 0) > 0 ? "Live" : "Draft", sub: "Founder network" },
-                      ].map((s) => (
-                        <div key={s.label} style={{
-                          background: "#f5f8f6", borderRadius: 12,
-                          border: "1px solid #e4ece7", padding: "14px 16px",
-                        }}>
-                          <div style={{ fontSize: "0.58rem", fontWeight: 700, color: "#7a9e8e", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
-                            {s.label}
-                          </div>
-                          <div style={{ fontSize: "1.5rem", fontWeight: 900, color: "#1a2e26", lineHeight: 1, letterSpacing: "-0.02em", marginBottom: 4 }}>
-                            {s.value}
-                          </div>
-                          <div style={{ fontSize: "0.72rem", color: "#7a9e8e" }}>{s.sub}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom two-column */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 0.65fr", gap: "1.25rem" }}>
-
-                  {/* Left: About / Focus / Education */}
-                  <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e4ece7", overflow: "hidden", boxShadow: "0 1px 6px rgba(26,49,44,0.04)" }}>
-
-                    {/* About header */}
-                    <div style={{ padding: "18px 20px 14px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div>
-                          <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1a2e26", margin: "0 0 3px" }}>About</h4>
-                          <p style={{ fontSize: "0.72rem", color: "#7a9e8e", margin: 0 }}>The story people see on your profile.</p>
-                        </div>
-                        <button
-                          onClick={openEdit}
-                          style={{ width: 30, height: 30, borderRadius: 8, background: "#f0f5f2", border: "1px solid #e4ece7", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginLeft: 12 }}
-                        >
-                          <i className="fas fa-pencil-alt" style={{ fontSize: "0.62rem", color: "#428475" }} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{ height: 1, background: "#eef2ef" }} />
-
-                    {/* Description */}
-                    <div style={{ padding: "14px 20px 18px" }}>
-                      <p style={{ fontSize: "0.82rem", color: "#5a7a6a", lineHeight: 1.65, margin: 0 }}>
-                        {profile.description
-                          ? profile.description
-                          : <span style={{ color: "#9ab4a4", fontStyle: "italic" }}>No description added yet.</span>}
-                      </p>
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{ height: 1, background: "#eef2ef" }} />
-
-                    {/* Founder Focus */}
-                    <div style={{ padding: "18px 20px" }}>
-                      <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1a2e26", margin: "0 0 12px" }}>Founder Focus</h4>
-                      {(profile.domains?.length ?? 0) > 0 ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {profile.domains.map((d) => (
-                            <span key={d} style={{
-                              padding: "5px 13px", borderRadius: 999,
-                              fontSize: "0.75rem", fontWeight: 600,
-                              background: "#eaf5f0", color: "#0d5c35", border: "1px solid #c0dfd0",
-                            }}>{d}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ fontSize: "0.78rem", color: "#9ab4a4", fontStyle: "italic", margin: 0 }}>No domains selected.</p>
-                      )}
-                    </div>
-
-                    {profile.education && (
-                      <>
-                        {/* Divider */}
-                        <div style={{ height: 1, background: "#eef2ef" }} />
-                        {/* Education */}
-                        <div style={{ padding: "18px 20px" }}>
-                          <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1a2e26", margin: "0 0 14px" }}>Education</h4>
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                            <div style={{ width: 38, height: 38, borderRadius: 10, background: "#eaf5f0", border: "1px solid #c0dfd0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <i className="fas fa-graduation-cap" style={{ color: "#2e7d5c", fontSize: "0.82rem" }} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a2e26", marginBottom: 3 }}>{profile.education}</div>
-                              <div style={{ fontSize: "0.72rem", color: "#7a9e8e" }}>Background shown to developers, and collaborators.</div>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Right: Contact + Profile Details */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e4ece7", padding: "18px 20px", boxShadow: "0 1px 6px rgba(26,49,44,0.04)" }}>
-                      <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1a2e26", margin: "0 0 14px" }}>Contact</h4>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {[
-                          { icon: "fas fa-envelope",  label: "EMAIL",    value: profile.email    },
-                          { icon: "fas fa-phone",     label: "PHONE",    value: profile.phone    },
-                          { icon: "fab fa-linkedin",  label: "LINKEDIN", value: profile.linkedin },
-                        ].filter((r) => r.value).map((r) => (
-                          <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#e8f5ef", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <i className={r.icon} style={{ color: "#2e7d5c", fontSize: "0.7rem" }} />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: "0.58rem", fontWeight: 700, color: "#9ab4a4", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>{r.label}</div>
-                              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1a2e26", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.value}</div>
-                            </div>
-                          </div>
-                        ))}
-                        {!profile.email && !profile.phone && !profile.linkedin && (
-                          <p style={{ fontSize: "0.78rem", color: "#9ab4a4", fontStyle: "italic", margin: 0 }}>No contact info yet.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e4ece7", padding: "18px 20px", boxShadow: "0 1px 6px rgba(26,49,44,0.04)" }}>
-                      <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1a2e26", margin: "0 0 14px" }}>Profile Details</h4>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {[
-                          { icon: "fas fa-globe",    label: "NETWORK",    value: "Founder on Evolv" },
-                          { icon: "fas fa-briefcase",label: "ROLE",       value: "Founder"          },
-                          { icon: "fas fa-link",     label: "TOP DOMAIN", value: topDomain          },
-                        ].map((r) => (
-                          <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#f5f8f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <i className={r.icon} style={{ color: "#7a9e8e", fontSize: "0.7rem" }} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: "0.58rem", fontWeight: 700, color: "#9ab4a4", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>{r.label}</div>
-                              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1a2e26" }}>{r.value}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ══════════════════ PROFILE — EDIT MODE ══════════════════ */}
-            {activeTab === "profile" && editMode && (
-              <div className="Settings_card">
-                <div className="Settings_cardHeader" style={{ position: "sticky", top: 0, zIndex: 10, background: "#fff", borderBottom: "1px solid #f0ede8" }}>
-                  <span><i className="fas fa-user" /> Edit Profile</span>
-                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-                    <button
-                      onClick={() => setEditMode(false)}
-                      style={{ background: "none", border: "1px solid #e4ece7", borderRadius: "0.4rem", cursor: "pointer", fontSize: "0.72rem", color: "#7a9e8e", fontFamily: "inherit", fontWeight: 600, display: "flex", alignItems: "center", gap: 4, padding: "0.35rem 0.75rem" }}
-                    >
-                      <i className="fas fa-times" /> Cancel
-                    </button>
-                    <button
-                      className={`Settings_saveBtn ${saved ? "Settings_saveBtnSaved" : ""}`}
-                      onClick={handleSave}
-                      disabled={saved}
-                      style={{ padding: "0.35rem 1rem" }}
-                    >
-                      {saved
-                        ? <><i className="fas fa-check" /> Saved! Viewing profile…</>
-                        : <><i className="fas fa-save" /> Save &amp; View Profile</>}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Avatar */}
-                <div className="Settings_avatarSection">
-                  <div
-                    className="Settings_avatarCircle"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => editPhotoInputRef.current?.click()}
-                  >
-                    {draft.avatarUrl ? (
-                      <img src={draft.avatarUrl} alt="Avatar" />
-                    ) : (
-                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: "bold", background: "linear-gradient(135deg, #4cb896, #89d7b7)", color: "#0f1c18" }}>
-                        {`${draft.firstName?.[0] || ""}${draft.lastName?.[0] || ""}`.toUpperCase() || "F"}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="Settings_avatarName">{`${draft.firstName || ""} ${draft.lastName || ""}`.trim() || "Your Name"}</div>
-                    <div className="Settings_avatarRole">{draft.headline || "Founder"}</div>
-                    <button className="Settings_changePhotoBtn" onClick={() => editPhotoInputRef.current?.click()}>
-                      <i className="fas fa-camera" /> Change Photo
-                    </button>
-                    <input
-                      ref={editPhotoInputRef}
-                      type="file" accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => handlePhotoUpload(e.target.files?.[0], "draft")}
-                    />
-                  </div>
-                </div>
-
-                {/* Basic info */}
-                <div className="Settings_sectionDivider">Basic Information</div>
-                <div className="Settings_formGrid">
-                  <div className="Settings_formGroup">
-                    <label>First Name</label>
-                    <input type="text" value={draft.firstName} onChange={(e) => setDraft({ ...draft, firstName: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>Last Name</label>
-                    <input type="text" value={draft.lastName} onChange={(e) => setDraft({ ...draft, lastName: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>Bio Line</label>
-                    <input type="text" value={draft.bio} placeholder="Building the future of…" onChange={(e) => setDraft({ ...draft, bio: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>Headline / Role</label>
-                    <input type="text" value={draft.headline || ""} placeholder="e.g. AI Founder" onChange={(e) => setDraft({ ...draft, headline: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup Settings_formGroupFull">
-                    <label>About / Description</label>
-                    <textarea rows={4} value={draft.description} placeholder="Tell developers and investors about your journey…" onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-                  </div>
-                </div>
-
-                {/* Contact */}
-                <div className="Settings_sectionDivider">Contact &amp; Social</div>
-                <div className="Settings_formGrid">
-                  <div className="Settings_formGroup">
-                    <label>Email Address</label>
-                    <input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>Phone Number</label>
-                    <input type="text" value={draft.phone} placeholder="+92 300 0000000" onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>LinkedIn</label>
-                    <input type="text" value={draft.linkedin} placeholder="https://linkedin.com/in/…" onChange={(e) => setDraft({ ...draft, linkedin: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>Location</label>
-                    <input type="text" value={draft.location || ""} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />
-                  </div>
-                </div>
-
-                {/* Personal */}
-                <div className="Settings_sectionDivider">Personal Details</div>
-                <div className="Settings_formGrid">
-                  <div className="Settings_formGroup">
-                    <label>Date of Birth</label>
-                    <input type="date" value={draft.dob} onChange={(e) => setDraft({ ...draft, dob: e.target.value })} />
-                  </div>
-                  <div className="Settings_formGroup">
-                    <label>Gender</label>
-                    <select value={draft.gender} onChange={(e) => setDraft({ ...draft, gender: e.target.value })}>
-                      <option value="">Select…</option>
-                      <option>Male</option>
-                      <option>Female</option>
-                      <option>Non-binary</option>
-                      <option>Prefer not to say</option>
-                    </select>
-                  </div>
-                  <div className="Settings_formGroup Settings_formGroupFull">
-                    <label>Education</label>
-                    <input type="text" value={draft.education} placeholder="BSc Computer Science, LUMS" onChange={(e) => setDraft({ ...draft, education: e.target.value })} />
-                  </div>
-                </div>
-
-                {/* Domains */}
-                <div className="Settings_sectionDivider">Founder Focus / Domains</div>
-                <div style={{ padding: "0 1.2rem 1.2rem" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                    {DOMAINS_LIST.map((d) => {
-                      const sel = (draft.domains || []).includes(d);
-                      return (
-                        <button
-                          key={d}
-                          onClick={() => toggleDomain(d)}
-                          style={{
-                            padding: "5px 14px", borderRadius: 999,
-                            fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-                            background: sel ? "#1a312c" : "#eef4f1",
-                            color: sel ? "#89d7b7" : "#428475",
-                            border: `1px solid ${sel ? "rgba(137,215,183,0.3)" : "#d8e8e0"}`,
-                            fontFamily: "inherit", transition: "all 0.15s",
-                          }}
-                        >{d}</button>
-                      );
-                    })}
-                  </div>
-                  {/* Custom domains not in DOMAINS_LIST */}
-                  {(draft.domains || []).filter((d) => !DOMAINS_LIST.includes(d)).length > 0 && (
-                    <div className="Settings_skillsWrap" style={{ paddingLeft: 0 }}>
-                      {(draft.domains || []).filter((d) => !DOMAINS_LIST.includes(d)).map((d) => (
-                        <div key={d} className="Settings_skillTag">
-                          {d}
-                          <button className="Settings_removeSkill" onClick={() => removeDomain(d)}><i className="fas fa-times" /></button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="Settings_addSkillRow" style={{ paddingLeft: 0, paddingRight: 0 }}>
-                    <input
-                      type="text"
-                      className="Settings_skillInput"
-                      placeholder="Add custom domain…"
-                      value={newDomain}
-                      onChange={(e) => setNewDomain(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") addCustomDomain(); }}
-                    />
-                    <button className="Settings_addSkillBtn" onClick={addCustomDomain}>
-                      <i className="fas fa-plus" /> Add
-                    </button>
-                  </div>
-                </div>
-
-                <div className="Settings_cardFooter">
-                  <button
-                    onClick={() => setEditMode(false)}
-                    style={{ marginRight: 8, padding: "0.45rem 1rem", background: "#f0f5f2", color: "#428475", border: "1px solid #d8e8e0", borderRadius: "0.4rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className={`Settings_saveBtn ${saved ? "Settings_saveBtnSaved" : ""}`}
-                    onClick={handleSave}
-                    disabled={saved}
-                  >
-                    {saved
-                      ? <><i className="fas fa-check" /> Saved! Viewing profile…</>
-                      : <><i className="fas fa-save" /> Save &amp; View Profile</>}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ══════════════════ NOTIFICATIONS ══════════════════ */}
-            {activeTab === "notifications" && (
-              <div className="Settings_card">
-                <div className="Settings_cardHeader"><span><i className="fas fa-bell" /> Notification Preferences</span></div>
-                <div className="Settings_notifList">
-                  {Object.entries({
-                    developerMatch:  { label: "New Developer Match",        sub: "Get notified when a developer matches your blueprint" },
-                    interestRequest: { label: "Interest Request",           sub: "When a developer sends an interest request" },
-                    investorView:    { label: "Investor Viewed Blueprint",  sub: "When an investor views your public blueprint" },
-                    messageReceived: { label: "New Message Received",       sub: "When someone sends you a message in Inbox" },
-                    blueprintComment:{ label: "Blueprint Comments",         sub: "Comments and feedback on your blueprints" },
-                    billingAlerts:   { label: "Billing Alerts",             sub: "Payment due, invoice ready, subscription changes" },
-                    weeklyDigest:    { label: "Weekly Digest",              sub: "Weekly summary of your portfolio activity" },
-                    productUpdates:  { label: "Product Updates",            sub: "New features and improvements on Evolv" },
-                  }).map(([key, { label, sub }]) => (
-                    <div key={key} className="Settings_notifItem">
-                      <div>
-                        <div className="Settings_notifLabel">{label}</div>
-                        <div className="Settings_notifSub">{sub}</div>
-                      </div>
-                      <div
-                        className={`Settings_toggle ${notifications[key as keyof typeof notifications] ? "Settings_toggleOn" : ""}`}
-                        onClick={() => setNotifications({ ...notifications, [key]: !notifications[key as keyof typeof notifications] })}
-                      >
-                        <div className="Settings_toggleKnob" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="Settings_cardFooter">
-                  <button className={`Settings_saveBtn ${saved ? "Settings_saveBtnSaved" : ""}`} onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}>
-                    {saved ? <><i className="fas fa-check" /> Saved!</> : <><i className="fas fa-save" /> Save Preferences</>}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ══════════════════ SECURITY ══════════════════ */}
-            {activeTab === "security" && (
-              <div className="Settings_card">
-                <div className="Settings_cardHeader"><span><i className="fas fa-lock" /> Security Settings</span></div>
-                <div className="Settings_formGrid">
-                  <div className="Settings_formGroup Settings_formGroupFull">
-                    <label>Registered Email Address</label>
-                    <input type="email" value={profile.email || ""} disabled style={{ cursor: "not-allowed", backgroundColor: "#eef2f0", color: "#888" }} />
-                  </div>
-                </div>
-                <div className="Settings_sectionDivider" style={{ marginTop: 0 }}>Password Update</div>
-                {!otpMode ? (
-                  <div className="Settings_formGrid">
-                    <div className="Settings_formGroup Settings_formGroupFull" style={{ position: "relative" }}>
-                      <label>Current Password</label>
-                      <input type="password" placeholder="Enter current password" value={passwordData.current} onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })} />
-                      <button
-                        type="button"
-                        onClick={() => setOtpMode("sent")}
-                        style={{ position: "absolute", right: 0, top: "-4px", background: "none", border: "none", color: "#888", fontSize: "0.68rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                    <div className="Settings_formGroup">
-                      <label>New Password</label>
-                      <input type="password" placeholder="Enter new password" value={passwordData.newPass} onChange={(e) => setPasswordData({ ...passwordData, newPass: e.target.value })} />
-                    </div>
-                    <div className="Settings_formGroup">
-                      <label>Confirm New Password</label>
-                      <input type="password" placeholder="Confirm new password" value={passwordData.confirm} onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="Settings_formGrid">
-                    <div className="Settings_formGroup Settings_formGroupFull">
-                      <div style={{ background: "#f8faf8", border: "1px solid #E6E0D7", padding: "1rem", borderRadius: "0.4rem", display: "flex", gap: "1rem" }}>
-                        <i className="fas fa-shield-alt" style={{ color: "#5BC8A0", fontSize: "1.2rem", marginTop: "0.2rem" }} />
-                        <div style={{ flex: 1 }}>
-                          <h5 style={{ margin: 0, fontSize: "0.82rem", color: "#1B1B1B" }}>Verification Code Sent</h5>
-                          <p style={{ fontSize: "0.75rem", color: "#888", margin: "0.3rem 0 0.8rem" }}>
-                            We've sent a one-time passcode to <strong>{profile.email}</strong>. Enter it below to authorize your password change.
-                          </p>
-                          <div className="Settings_formGroup">
-                            <label>6-Digit OTP</label>
-                            <input type="text" placeholder="Enter code" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setOtpMode(false)}
-                            style={{ background: "none", border: "none", color: "#888", fontSize: "0.7rem", fontWeight: 600, textDecoration: "underline", cursor: "pointer", marginTop: "0.8rem", padding: 0 }}
-                          >
-                            I remembered my password
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="Settings_formGroup">
-                      <label>New Password</label>
-                      <input type="password" placeholder="Enter new password" value={passwordData.newPass} onChange={(e) => setPasswordData({ ...passwordData, newPass: e.target.value })} />
-                    </div>
-                    <div className="Settings_formGroup">
-                      <label>Confirm New Password</label>
-                      <input type="password" placeholder="Confirm new password" value={passwordData.confirm} onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })} />
-                    </div>
-                  </div>
+                {active && (
+                  <motion.span
+                    layoutId="settings-indicator"
+                    className="absolute left-0 rounded-r-full"
+                    style={{ width: 3, height: "55%", background: DARK, top: "22.5%" }}
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
                 )}
-                <div className="Settings_securityInfo">
-                  <i className="fas fa-shield-alt" style={{ color: "#5BC8A0" }} />
-                  <span>Use at least 8 characters, including uppercase, lowercase, numbers, and symbols.</span>
-                </div>
-                <div className="Settings_sectionDivider">Two-Factor Authentication</div>
-                <div className="Settings_twoFARow">
-                  <div className="Settings_twoFALeft">
-                    <div className="Settings_twoFALabel"><i className="fas fa-mobile-alt" style={{ color: "#5BC8A0" }} /> Authenticator App</div>
-                    <div className="Settings_twoFASub">Use Google Authenticator or Authy to generate one-time codes</div>
-                  </div>
-                  <button className="Settings_enableBtn"><i className="fas fa-plus" /> Enable</button>
-                </div>
-                <div className="Settings_cardFooter">
-                  <button className={`Settings_saveBtn ${pwSaved ? "Settings_saveBtnSaved" : ""}`} onClick={handlePwSave}>
-                    {pwSaved ? <><i className="fas fa-check" /> Password Updated!</> : <><i className="fas fa-save" /> Update Password</>}
-                  </button>
-                </div>
-              </div>
-            )}
+                <Icon size={14} weight={active ? "fill" : "regular"} />
+                <span className="text-[13px] font-medium">{label}</span>
+              </motion.button>
+            );
+          })}
+        </div>
 
-            {/* ══════════════════ PREFERENCES ══════════════════ */}
-            {activeTab === "preferences" && (
-              <div className="Settings_card">
-                <div className="Settings_cardHeader"><span><i className="fas fa-sliders-h" /> Preferences</span></div>
-                <div className="Settings_formGrid">
-                  <div className="Settings_formGroup">
-                    <label>Primary Goal</label>
-                    <select value={profile.primaryGoal || ""} onChange={(e) => setProfile({ ...profile, primaryGoal: e.target.value })}>
-                      <option>Find Developers</option>
-                      <option>Find Investors</option>
-                      <option>Network</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="Settings_sectionDivider">Visibility Preferences</div>
-                <div className="Settings_prefNote"><i className="fas fa-robot" /> These settings control how your profile is shown in the founder network.</div>
-                {[
-                  { key: "publicProfile", label: "Public Profile",    sub: "Allow others to discover your profile in the Evolv network" },
-                  { key: "showContact",   label: "Show Contact Info", sub: "Display your email and phone number to connections" },
-                ].map(({ key, label, sub }) => (
-                  <div key={key} className="Settings_toggleRow">
-                    <div>
-                      <div className="Settings_toggleLabel">{label}</div>
-                      <div className="Settings_toggleSub">{sub}</div>
-                    </div>
-                    <div className="Settings_toggle Settings_toggleOn"><div className="Settings_toggleKnob" /></div>
-                  </div>
-                ))}
-                <div className="Settings_cardFooter">
-                  <button className={`Settings_saveBtn ${saved ? "Settings_saveBtnSaved" : ""}`} onClick={() => { onProfileSave(profile); setSaved(true); setTimeout(() => setSaved(false), 2000); }}>
-                    {saved ? <><i className="fas fa-check" /> Saved!</> : <><i className="fas fa-save" /> Save Preferences</>}
-                  </button>
-                </div>
-              </div>
-            )}
+        <div className="mt-auto pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <div className="mb-3 rounded-xl px-3 py-3" style={{ background: "#fff7f6", border: "1px solid #f4d5d2" }}>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest" style={{ color: "#b03030" }}>
+              <WarningCircle size={13} weight="fill" />
+              Danger Zone
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-bold transition hover:bg-red-50"
+              style={{ color: "#c0392b" }}
+            >
+              <Trash size={13} weight="bold" />
+              Delete Account
+            </button>
           </div>
         </div>
-      </main>
+      </div>
+
+      {/* ── Right content ── */}
+      <div className="relative flex-1 overflow-y-auto px-8 py-7">
+        <div style={{ maxWidth: activeSection === "profile" ? 920 : 560 }}>
+          <h2 className="font-bold mb-1" style={{ fontSize: "1.15rem", color: TEXT_BODY }}>
+            {activeSection === "profile"
+              ? "Profile"
+              : activeSection === "payment"
+              ? "Payment"
+              : activeSection === "security"
+              ? "Security"
+              : "Notifications"}
+          </h2>
+          <p className="text-[12px] mb-6" style={{ color: TEXT_MUTED }}>
+            {activeSection === "profile"
+              ? "Update your personal details and public profile."
+              : activeSection === "payment"
+              ? "Manage founder billing, plans, and funding preferences."
+              : activeSection === "security"
+              ? "Protect your founder account and workspace access."
+              : "Control which notifications you receive."}
+          </p>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              {activeSection === "profile" ? (
+                <ProfileSection profile={profile} onSave={onProfileSave} startEditingSignal={editSignal} />
+              ) : activeSection === "payment" ? (
+                <PaymentSection profile={profile} />
+              ) : activeSection === "security" ? (
+                <SecuritySection />
+              ) : (
+                <NotificationsSection />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }
