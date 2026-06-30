@@ -37,9 +37,9 @@ const pages: Partial<Record<DeveloperTab, React.ComponentType<DeveloperPageProps
 
 const DEFAULT_PROFILE: DeveloperProfile = {
     firstName: '', lastName: '', email: '', avatarUrl: '', jobTitle: '', role: '',
-    experience: '', bio: '', techStack: [], education: '', educationLevel: '',
+    bio: '', tags: [], skillEntries: [], techStack: [], education: '', educationLevel: '',
     degreeName: '', degreeSelection: '', customDegreeName: '', educations: [],
-    github: '', linkedin: '', portfolioLink: '', certifications: [], projects: [],
+    github: '', linkedin: '', portfolioLink: '', certifications: [],
     profileComplete: false, firstTime: false,
 };
 
@@ -61,24 +61,19 @@ export default function DeveloperDashboard() {
                 if (raw) {
                     const user = JSON.parse(raw);
                     setProfile(normalizeDeveloperProfileForSave({ ...DEFAULT_PROFILE, ...user }));
-                    if (user.firstTime === true) {
-                        const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
-                        setUserName(name);
-                        setShowOnboarding(true);
-                    }
+                    setUserName([user.firstName, user.lastName].filter(Boolean).join(' '));
                 } else {
-                    const defaultUser = { ...DEFAULT_PROFILE, firstTime: true, profileComplete: false, firstName: "Sarah", lastName: "Mitchell" };
+                    const defaultUser = { ...DEFAULT_PROFILE, firstTime: false, profileComplete: false };
                     localStorage.setItem('evolv_user', JSON.stringify(defaultUser));
                     setProfile(defaultUser);
-                    setUserName("Sarah Mitchell");
-                    setShowOnboarding(true);
+                    setUserName("");
                 }
             } catch {}
         }, 0);
         return () => window.clearTimeout(loadTimer);
     }, []);
 
-    const handleOnboardingComplete = (updatedProfile?: any) => {
+    const handleOnboardingComplete = (updatedProfile?: DeveloperProfile) => {
         const nextProfile = normalizeDeveloperProfileForSave(updatedProfile ?? profile);
         try {
             const raw = localStorage.getItem('evolv_user');
@@ -195,7 +190,7 @@ export default function DeveloperDashboard() {
                                     type="button"
                                     onClick={handleOpenProfile}
                                     className="mt-3 flex h-9 items-center gap-2 rounded-lg px-3.5 text-[12px] font-bold"
-                                    style={{ background: '#1a312c', color: '#89d7b7', border: 'none', cursor: 'pointer' }}
+                                    style={{ background: '#1a312c', color: '#89d7b7', border: 'none', cursor: 'pointer' , paddingLeft: 10, paddingRight: 10}}
                                 >
                                     Complete profile
                                     <ArrowRight size={13} weight="bold" />
@@ -208,7 +203,7 @@ export default function DeveloperDashboard() {
 
             {showOnboarding && (
                 <DevOnboardingModal
-                    initialProfile={profile as any}
+                    initialProfile={profile}
                     onComplete={handleOnboardingComplete}
                     onSkip={handleOnboardingSkip}
                     userName={userName}

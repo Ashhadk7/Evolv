@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface TopbarProps {
   title?: string;
@@ -15,20 +15,27 @@ const ACCENT = "#89d7b7";
 
 
 export function Topbar({ title, subtitle, profile: propProfile, onNavigate, onNotifClick }: TopbarProps) {
-  const [localProfile] = useState(() => {
+  const [localProfile, setLocalProfile] = useState({
+    firstName: "Sarah",
+    lastName: "Mitchell",
+    avatarUrl: "",
+  });
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem("evolv_user");
       if (raw) {
         const user = JSON.parse(raw);
-        return {
-          firstName: user.firstName || "Sarah",
-          lastName: user.lastName || "Mitchell",
-          avatarUrl: user.avatarUrl || ""
-        };
+        queueMicrotask(() => {
+          setLocalProfile({
+            firstName: user.firstName || "Sarah",
+            lastName: user.lastName || "Mitchell",
+            avatarUrl: user.avatarUrl || user.photo || "",
+          });
+        });
       }
     } catch {}
-    return { firstName: "Sarah", lastName: "Mitchell", avatarUrl: "" };
-  });
+  }, []);
 
   const activeProfile = propProfile || localProfile;
   const fullText = title || `Welcome back, ${activeProfile.firstName || "Developer"}`;

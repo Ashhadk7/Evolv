@@ -6,11 +6,17 @@ import {
 
 export type DeveloperEducation = FounderEducation;
 
-export interface DeveloperProject {
+export interface DeveloperSkillEntry {
   id: string;
-  title: string;
-  description: string;
-  images: string[];
+  kind: string;
+  name: string;
+  experience: string;
+}
+
+export interface DeveloperCertification {
+  id: string;
+  name: string;
+  image?: string;
 }
 
 export interface DeveloperProfile {
@@ -23,6 +29,8 @@ export interface DeveloperProfile {
   role?: string;
   experience?: string;
   bio?: string;
+  tags?: string[];
+  skillEntries?: DeveloperSkillEntry[];
   techStack?: string[];
   skills?: string[];
   education?: string;
@@ -35,14 +43,17 @@ export interface DeveloperProfile {
   linkedin?: string;
   linkedIn?: string;
   portfolioLink?: string;
-  certifications?: string[];
-  projects?: DeveloperProject[];
+  certifications?: Array<string | DeveloperCertification>;
   profileComplete?: boolean;
   firstTime?: boolean;
 }
 
-export function createBlankDeveloperProject(): DeveloperProject {
-  return { id: `project_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, title: "", description: "", images: [] };
+export function createBlankDeveloperSkill(): DeveloperSkillEntry {
+  return { id: `skill_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, kind: "Tech stack", name: "", experience: "" };
+}
+
+export function createBlankDeveloperCertification(): DeveloperCertification {
+  return { id: `cert_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: "", image: "" };
 }
 
 export function getDeveloperEducations(profile: DeveloperProfile) {
@@ -71,11 +82,46 @@ export function getDeveloperEducationSummary(profile: DeveloperProfile) {
 }
 
 export function getDeveloperSkills(profile: DeveloperProfile) {
+  const entries = getDeveloperSkillEntries(profile);
+  if (entries.length) return entries.map((entry) => entry.name).filter(Boolean);
+
   return Array.isArray(profile.techStack)
     ? profile.techStack
     : Array.isArray(profile.skills)
       ? profile.skills
       : [];
+}
+
+export function getDeveloperSkillEntries(profile: DeveloperProfile) {
+  const structured = Array.isArray(profile.skillEntries) ? profile.skillEntries : [];
+  if (structured.length) return structured;
+
+  const fallbackSkills = Array.isArray(profile.techStack)
+    ? profile.techStack
+    : Array.isArray(profile.skills)
+      ? profile.skills
+      : [];
+
+  return fallbackSkills.map((skill, index) => ({
+    id: `legacy_skill_${index}_${skill}`,
+    kind: "Skill",
+    name: skill,
+    experience: "",
+  }));
+}
+
+export function getDeveloperCertifications(profile: DeveloperProfile): DeveloperCertification[] {
+  const certifications = Array.isArray(profile.certifications) ? profile.certifications : [];
+  return certifications.map((certification, index) => {
+    if (typeof certification === "string") {
+      return { id: `legacy_cert_${index}_${certification}`, name: certification, image: "" };
+    }
+    return {
+      id: certification.id || `cert_${index}`,
+      name: certification.name || "",
+      image: certification.image || "",
+    };
+  });
 }
 
 export function getDeveloperRole(profile: DeveloperProfile) {
@@ -90,9 +136,8 @@ export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
   const missing: string[] = [];
 
   if (!getDeveloperRole(profile)) missing.push("professional role");
-  if (!profile.experience?.trim()) missing.push("experience");
   if (!getDeveloperEducationSummary(profile)) missing.push("education");
-  if (!getDeveloperSkills(profile).length) missing.push("core skills");
+  if (!getDeveloperSkillEntries(profile).some((entry) => entry.name?.trim())) missing.push("skills and tech stack");
   if (!profile.github?.trim()) missing.push("GitHub");
   if (!getDeveloperLinkedIn(profile)) missing.push("LinkedIn");
 
@@ -110,11 +155,12 @@ export function formatDeveloperEducation(education: DeveloperEducation) {
 export function normalizeDeveloperProfileForSave<T extends DeveloperProfile>(profile: T): T {
   const educations = getDeveloperEducations(profile);
   const education = formatFounderEducations(educations) || profile.education?.trim() || "";
-  const techStack = getDeveloperSkills(profile);
+  const skillEntries = getDeveloperSkillEntries(profile).filter((entry) => entry.name?.trim());
+  const techStack = skillEntries.length ? skillEntries.map((entry) => entry.name.trim()) : getDeveloperSkills(profile);
   const jobTitle = getDeveloperRole(profile);
   const linkedin = getDeveloperLinkedIn(profile);
-  const certifications = Array.isArray(profile.certifications) ? profile.certifications : [];
-  const projects = Array.isArray(profile.projects) ? profile.projects : [];
+  const tags = Array.isArray(profile.tags) ? profile.tags : [];
+  const certifications = getDeveloperCertifications(profile).filter((certification) => certification.name?.trim());
 
   return {
     ...profile,
@@ -122,15 +168,16 @@ export function normalizeDeveloperProfileForSave<T extends DeveloperProfile>(pro
     role: jobTitle,
     techStack,
     skills: techStack,
+    skillEntries,
+    tags,
     linkedin,
     linkedIn: linkedin,
     educations,
     education,
     certifications,
-    projects,
     avatarUrl: profile.avatarUrl || profile.photo || "",
     photo: profile.photo || profile.avatarUrl || "",
     firstTime: false,
-    profileComplete: isDeveloperProfileComplete({ ...profile, jobTitle, role: jobTitle, techStack, linkedin, educations, education }),
+    profileComplete: isDeveloperProfileComplete({ ...profile, jobTitle, role: jobTitle, techStack, skillEntries, linkedin, educations, education }),
   };
 }
