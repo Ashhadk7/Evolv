@@ -655,10 +655,14 @@ export default function Inbox({
   activeContactId,
   onActiveContactChange,
   extraContacts = [],
+  profileComplete = true,
+  onRequireProfile,
 }: {
   activeContactId?: string;
   onActiveContactChange?: (id: string) => void;
   extraContacts?: DeveloperInboxLaunchContact[];
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
 }) {
   const [localActiveId, setLocalActiveId] = useState("asad");
   const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
@@ -803,6 +807,12 @@ export default function Inbox({
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  const requireProfileBeforeAction = (afterComplete?: () => void) => {
+    if (profileComplete || !onRequireProfile) return false;
+    onRequireProfile(afterComplete);
+    return true;
+  };
+
   useEffect(() => {
     const list = messageListRef.current;
     if (!list) return;
@@ -817,6 +827,7 @@ export default function Inbox({
   const sendMsg = () => {
     if (messageLocked) return;
     if (!draft.trim()) return;
+    if (requireProfileBeforeAction(() => sendMsg())) return;
     const now = new Date();
     const body = draft.trim();
     const msg: Message = {
@@ -838,6 +849,7 @@ export default function Inbox({
   };
 
   const acceptRequest = (id: string) => {
+    if (requireProfileBeforeAction(() => acceptRequest(id))) return;
     setContacts((prev) => {
       const acceptedContact = { ...contact, requestStatus: "accepted" as const, unread: 0, lastTime: "Now" };
       return prev.some((item) => item.id === id)
@@ -848,6 +860,7 @@ export default function Inbox({
   };
 
   const rejectRequest = (id: string) => {
+    if (requireProfileBeforeAction(() => rejectRequest(id))) return;
     setContacts((prev) =>
       prev.map((item) =>
         item.id === id
