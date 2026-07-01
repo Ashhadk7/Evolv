@@ -5,15 +5,19 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Plus, X, Eye, PencilSimple, ArrowLeft, ArrowRight,
   CheckCircle, Sparkle, MagnifyingGlass, CaretDown, CaretRight,
-  Lightbulb, Clock, LinkSimple, DownloadSimple, RocketLaunch,
-  Robot, FloppyDisk, PaperPlaneTilt,
+  Lightbulb, Clock, LinkSimple, DownloadSimple, Broadcast,
+  Gauge, FloppyDisk, PaperPlaneTilt, ChatCircleDots, Calculator,
   CodeBlock, Browser, Stack, Cpu, Database, CloudArrowUp, Plugs, Cube,
   Target, Crosshair, Compass, ChartLineUp, Strategy, ShieldCheck,
-  Warning, SealCheck, ListChecks,
-  Coins, Money, Receipt, Lock, Briefcase, Users, UsersThree,
+  Warning, SealCheck, ListChecks, XCircle, Buildings,
+  Coins, Money, Receipt, Lock, Briefcase, UsersThree, User, Wallet,
   Flag, Megaphone, Storefront, Notebook, FileText, GitBranch,
-  Pulse, Gauge, Trophy, TrendUp, TrendDown,
+  Pulse, Trophy, TrendUp, TrendDown, ChartBar,
 } from "@phosphor-icons/react";
+import {
+  buildBlueprintContent, buildArchitecture, gradeFor, fmtMoney,
+  type BlueprintContent, type TechStackModel, type StackLayerKey, type StackCat, type Phase,
+} from "./blueprintContent";
 
 /* ─────────────────────────────────────────────────────── */
 /* Types                                                    */
@@ -41,7 +45,7 @@ export interface Blueprint {
   competitors: { name: string; type: string }[];
   differentiator: string;
   features: string[];
-  techStack: { frontend: string; backend: string; ai: string; db: string };
+  techStack: { frontend: string; backend: string; ai: string; db: string; vectorDb?: string; aiProvider?: string; hosting?: string };
   cost: { timeline: string; team: string; hosting: string; budget: string };
 }
 
@@ -464,7 +468,7 @@ function Reveal({ children, delay = 0, y = 18, style }: { children: ReactNode; d
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-70px" }}
       transition={{ duration: 0.6, ease: EASE, delay }}
-      style={style}
+      style={{ breakInside: "avoid", ...style }}
     >
       {children}
     </motion.div>
@@ -651,7 +655,7 @@ function ChatPanel({ bp }: { bp: Blueprint }) {
         <AnimatePresence mode="wait" initial={false}>
           {open
             ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} style={{ display: "flex" }}><X size={20} weight="bold" style={{ color: C.mint }} /></motion.span>
-            : <motion.span key="s" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} style={{ display: "flex" }}><Sparkle size={22} weight="fill" style={{ color: C.mint }} /></motion.span>}
+            : <motion.span key="s" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} style={{ display: "flex" }}><ChatCircleDots size={22} weight="fill" style={{ color: C.mint }} /></motion.span>}
         </AnimatePresence>
       </motion.button>
 
@@ -674,7 +678,7 @@ function ChatPanel({ bp }: { bp: Blueprint }) {
           >
             <div style={{ background: C.forest, padding: "15px 18px", display: "flex", alignItems: "center", gap: 11 }}>
               <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(137,215,183,0.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Sparkle size={15} weight="fill" style={{ color: C.mint }} />
+                <ChatCircleDots size={15} weight="fill" style={{ color: C.mint }} />
               </div>
               <div style={{ lineHeight: 1.25 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Blueprint Assistant</div>
@@ -725,53 +729,9 @@ function ChatPanel({ bp }: { bp: Blueprint }) {
 }
 
 /* ═══════════════════════════════════════════════════════ */
-/* Content derivation — turns a Blueprint into doc-grade data */
+/* Presentational stack detail (icons live here — the data    */
+/* model itself lives in blueprintContent.ts)                 */
 /* ═══════════════════════════════════════════════════════ */
-type Phase = { name: string; layer: string; weeks: number; deliverables: string[]; status: "In Progress" | "Planned" };
-function buildPhases(bp: Blueprint): Phase[] {
-  return [
-    { name: "Foundation & UI", layer: bp.techStack.frontend, weeks: 3, deliverables: ["Design system & component library", "Responsive app shell", "Auth & onboarding screens"], status: "In Progress" },
-    { name: "Core Backend & API", layer: bp.techStack.backend, weeks: 4, deliverables: ["Data model & migrations", "REST API + auth middleware", "Core business logic"], status: "Planned" },
-    { name: "Intelligence Layer", layer: bp.techStack.ai, weeks: 3, deliverables: ["Model integration", "Inference pipeline & caching", "Results & insights API"], status: "Planned" },
-    { name: "Payments & Integrations", layer: "Stripe Connect", weeks: 2, deliverables: ["Milestone escrow flow", "Connected accounts & payouts", "Email & notifications"], status: "Planned" },
-    { name: "Hardening & Launch", layer: "QA · CI/CD", weeks: 2, deliverables: ["E2E + load testing", "Observability & alerts", "Production deploy pipeline"], status: "Planned" },
-  ];
-}
-
-function parseBudget(s: string): number {
-  const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kKmM])?/);
-  if (!m) return 80000;
-  let n = parseFloat(m[1]);
-  const u = (m[2] || "").toLowerCase();
-  if (u === "k") n *= 1000; else if (u === "m") n *= 1000000;
-  return n;
-}
-function fmtMoney(n: number): string {
-  if (n >= 1000000) return "$" + (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "M";
-  if (n >= 1000) return "$" + Math.round(n / 1000) + "K";
-  return "$" + Math.round(n);
-}
-function gradeFor(v: number): string {
-  if (v >= 88) return "A+"; if (v >= 82) return "A"; if (v >= 76) return "A−";
-  if (v >= 70) return "B+"; if (v >= 64) return "B"; return "B−";
-}
-
-type Persona = { name: string; role: string; goals: string; pains: string; initials: string };
-function derivePersonas(bp: Blueprint): Persona[] {
-  const ind = bp.industry.toLowerCase();
-  if (ind.includes("health")) return [
-    { initials: "DR", name: "Dr. Lena Okafor", role: "Oncologist · primary user", goals: "Faster, more confident diagnoses with fewer false positives.", pains: "Manual review is slow; existing tools don't explain their reasoning." },
-    { initials: "OM", name: "Marcus Bell", role: "Clinic Operations Lead · buyer", goals: "Higher throughput and clear ROI on new tooling.", pains: "Hard to justify cost; integration with EHR is painful." },
-    { initials: "IT", name: "Priya Nair", role: "Health-system IT · gatekeeper", goals: "Secure, compliant, easy-to-deploy software.", pains: "Data privacy, audit trails, and vendor risk." },
-  ];
-  return [
-    { initials: "P1", name: "The Power User", role: `Daily ${bp.industry} operator`, goals: `Get the core ${bp.industry} job done faster, with less friction.`, pains: "Current tools are clunky, generic, and slow to deliver value." },
-    { initials: "DM", name: "The Decision Maker", role: "Team lead / buyer", goals: "Clear ROI, easy rollout, measurable impact.", pains: "Hard to evaluate; switching costs feel high." },
-    { initials: "AD", name: "The Admin", role: "Ops / IT owner", goals: "Reliable, secure, low-maintenance software.", pains: "Security, permissions, and integration overhead." },
-  ];
-}
-
-type StackCat = { icon: ReactNode; name: string; primary: string; rows: { k: string; v: string }[] };
 function deriveStack(bp: Blueprint): StackCat[] {
   const fe = bp.techStack.frontend;
   const be = bp.techStack.backend;
@@ -841,6 +801,78 @@ function deriveStack(bp: Blueprint): StackCat[] {
   ];
 }
 
+/* Architecture diagram — SVG boxes+arrows fed by structured    */
+/* node/edge data. No diagram library, no image-gen model: the  */
+/* labels come straight from the (editable) tech stack, so the  */
+/* diagram can never show a box that doesn't match the stack.   */
+const DIAGRAM_LAYOUT: Record<string, { x: number; y: number }> = {
+  client: { x: 0, y: 0 }, api: { x: 220, y: 0 }, ai: { x: 440, y: 0 },
+  vector: { x: 440, y: 96 }, db: { x: 220, y: 96 }, payments: { x: 0, y: 96 },
+  hosting: { x: 110, y: 192 },
+};
+function ArchitectureDiagram({ nodes, edges }: { nodes: { id: string; label: string }[]; edges: { from: string; to: string }[] }) {
+  const boxW = 196, boxH = 46, W = 656, H = 250;
+  const pos = (id: string) => DIAGRAM_LAYOUT[id] || { x: 0, y: 0 };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxWidth: W, display: "block" }}>
+      {edges.map((e, i) => {
+        const a = pos(e.from), b = pos(e.to);
+        const x1 = a.x + boxW / 2, y1 = a.y + boxH / 2, x2 = b.x + boxW / 2, y2 = b.y + boxH / 2;
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={C.borderSoft} strokeWidth={2} />;
+      })}
+      {nodes.map((n) => {
+        const p = pos(n.id);
+        return (
+          <g key={n.id}>
+            <rect x={p.x} y={p.y} width={boxW} height={boxH} rx={10} fill={C.card} stroke={C.border} strokeWidth={1.5} />
+            <text x={p.x + boxW / 2} y={p.y + boxH / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill={C.ink}>{n.label}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* Editable tech-stack layer pill — curated options + "Custom…". */
+/* Read-only chip when not in edit mode, matching the existing   */
+/* pill style used across the hero/architecture rows.            */
+function TechStackPill({ label, layer, editing, onChange }: {
+  label: string; layer: { chosen: string; options: string[] }; editing: boolean; onChange: (v: string) => void;
+}) {
+  const [custom, setCustom] = useState(false);
+  const pillBase: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: C.ink, background: C.tint, border: `1px solid ${C.borderSoft}`, padding: "8px 12px", borderRadius: 10 };
+  if (!editing) {
+    return (
+      <span style={pillBase}>
+        <span style={{ color: C.label, fontFamily: MONO, fontSize: 10, textTransform: "uppercase" }}>{label}</span>{layer.chosen}
+      </span>
+    );
+  }
+  return (
+    <span style={{ ...pillBase, background: C.card, border: `1px solid ${C.forest}`, flexDirection: "column", alignItems: "stretch", gap: 5, padding: "7px 10px" }}>
+      <span style={{ color: C.label, fontFamily: MONO, fontSize: 10, textTransform: "uppercase" }}>{label}</span>
+      <select
+        value={custom ? "__custom" : layer.chosen}
+        onChange={(e) => { if (e.target.value === "__custom") { setCustom(true); return; } setCustom(false); onChange(e.target.value); }}
+        style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, border: `1px solid ${C.border}`, borderRadius: 7, padding: "4px 6px", outline: "none", background: C.card, fontFamily: "inherit" }}
+      >
+        {!layer.options.includes(layer.chosen) && <option value={layer.chosen}>{layer.chosen}</option>}
+        {layer.options.map((o) => <option key={o} value={o}>{o}</option>)}
+        <option value="__custom">Custom…</option>
+      </select>
+      {custom && (
+        <input
+          autoFocus
+          placeholder="Type your own choice"
+          onBlur={(e) => { if (e.target.value.trim()) onChange(e.target.value.trim()); }}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          style={{ fontSize: 12, border: `1px solid ${C.border}`, borderRadius: 7, padding: "5px 7px", outline: "none", fontFamily: "inherit", color: C.ink }}
+        />
+      )}
+    </span>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════ */
 /* Blueprint Detail view                                   */
 /* ═══════════════════════════════════════════════════════ */
@@ -848,11 +880,17 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
   const reduce = useReducedMotion();
   const [editing, setEditing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [phases, setPhases] = useState<Phase[]>(() => buildPhases(bp));
+  const [content] = useState<BlueprintContent>(() => buildBlueprintContent(bp));
+  const [phases, setPhases] = useState<Phase[]>(() => content.phases);
   const [editPhase, setEditPhase] = useState<number | null>(null);
+  const [hirePanelPhase, setHirePanelPhase] = useState<number | null>(null);
+  const [phaseHires, setPhaseHires] = useState<Record<number, string>>({});
   const [draftDesc, setDraftDesc] = useState(bp.ideaDesc);
   const [draftFeatures, setDraftFeatures] = useState<string[]>(bp.features);
   const [draftCost, setDraftCost] = useState(bp.cost);
+  const [draftTechStack, setDraftTechStack] = useState<TechStackModel>(() => content.techStack);
+  const updateTechStackLayer = (key: StackLayerKey, value: string) =>
+    setDraftTechStack((prev) => ({ ...prev, [key]: { ...prev[key], chosen: value } }));
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [progress, setProgress] = useState(0);
 
@@ -905,32 +943,30 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     showToast("Link copied to clipboard");
   };
   const togglePublish = () => { onSave?.({ ...bp, status: published ? "DRAFT" : "PUBLISHED", isPublic: !published }); showToast(published ? "Blueprint unpublished" : "Blueprint published"); };
-  const saveEdits = () => { onSave?.({ ...bp, ideaDesc: draftDesc, features: draftFeatures, cost: draftCost }); setEditing(false); showToast("Changes saved"); };
-  const cancelEdits = () => { setDraftDesc(bp.ideaDesc); setDraftFeatures(bp.features); setDraftCost(bp.cost); setEditing(false); };
+  const saveEdits = () => {
+    onSave?.({
+      ...bp, ideaDesc: draftDesc, features: draftFeatures, cost: draftCost,
+      techStack: {
+        frontend: draftTechStack.frontend.chosen, backend: draftTechStack.backend.chosen,
+        ai: bp.techStack.ai, db: draftTechStack.database.chosen,
+        vectorDb: draftTechStack.vectorDb.chosen, aiProvider: draftTechStack.aiProvider.chosen, hosting: draftTechStack.hosting.chosen,
+      },
+    });
+    setEditing(false); showToast("Changes saved");
+  };
+  const cancelEdits = () => { setDraftDesc(bp.ideaDesc); setDraftFeatures(bp.features); setDraftCost(bp.cost); setDraftTechStack(content.techStack); setEditing(false); };
 
-  /* ── derived metrics ── */
-  const grade = gradeFor(bp.viability);
-  const topPct = Math.max(3, Math.round((100 - bp.viability) * 0.55));
-  const pmf = Math.min(99, Math.round((bp.marketPotential + bp.viability) / 2));
-  const demandPct = bp.developerDemand === "High" ? 88 : bp.developerDemand === "Medium" ? 72 : 58;
-  const execReadiness = Math.round(bp.viability * 0.88);
-  const complexity = Math.round(100 - bp.viability * 0.4);
-  const growth = Math.round(bp.marketPotential * 0.96);
-  const stageLabel = bp.viability >= 82 ? "Launch Ready" : bp.viability >= 72 ? "Build Ready" : bp.viability >= 62 ? "Validation Stage" : "Concept Stage";
-
-  const heroPills = [
-    { label: "Product-Market Fit", value: `${pmf}%` },
-    { label: "Developer Demand", value: `${demandPct}%` },
-    { label: "Market Strength", value: `${bp.market.score}%` },
-    { label: "Execution Readiness", value: `${execReadiness}%` },
+  /* ── derived metrics — one viability score, sourced from content model ── */
+  const { score: viabilityScore, grade, reasoning: viabilityReasoning, subScores } = content.viability;
+  const topPct = Math.max(3, Math.round((100 - viabilityScore) * 0.55));
+  const stageLabel = viabilityScore >= 82 ? "Launch Ready" : viabilityScore >= 72 ? "Build Ready" : viabilityScore >= 62 ? "Validation Stage" : "Concept Stage";
+  const subScoreRow = [
+    { label: "Market", value: subScores.market },
+    { label: "Execution", value: subScores.execution },
+    { label: "Timing", value: subScores.timing },
+    { label: "Team Fit", value: subScores.teamFit },
   ];
-
-  const kpis = [
-    { label: "Market Potential", value: bp.marketPotential, trend: "+12%", up: true },
-    { label: "Product-Market Fit", value: pmf, trend: "+9%", up: true },
-    { label: "Technical Complexity", value: complexity, trend: "−3%", up: false },
-    { label: "Growth Potential", value: growth, trend: "+15%", up: true },
-  ];
+  const architecture = buildArchitecture(draftTechStack);
 
   const strengths = ["Clear, sizeable market demand", "Strong developer interest & matchability", "Defensible differentiation vs. incumbents"];
   const risks = ["Competitive, well-funded incumbents", bp.market.barriers];
@@ -945,7 +981,7 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     { icon: <Coins size={16} weight="duotone" style={{ color: C.success }} />, label: "Revenue Model", text: `B2B SaaS subscription with usage-based tiers. Founders fund development directly and pay contributing developers per approved milestone through Evolv's escrow.` },
   ];
 
-  const personas = derivePersonas(bp);
+  const personas = content.personas;
 
   const featureItems: { name: string; note?: string; priority: string }[] = (editing ? draftFeatures : bp.features).map((f, i) => ({
     name: f,
@@ -958,19 +994,13 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     { name: "Admin & analytics dashboard", note: "PostHog", priority: "Nice-to-have" },
   ];
 
-  const stack = deriveStack(bp);
+  const stack = deriveStack({ ...bp, techStack: { ...bp.techStack, frontend: draftTechStack.frontend.chosen, backend: draftTechStack.backend.chosen, db: draftTechStack.database.chosen } });
 
-  const budgetTotal = parseBudget(draftCost.budget);
-  const devBudget = budgetTotal * 0.7;
-  const totalWeeks = phases.reduce((s, p) => s + p.weeks, 0) || 1;
-  const breakdown = [
-    { k: "Development (developer payouts)", v: devBudget, tone: C.mint },
-    { k: "Infrastructure & hosting", v: budgetTotal * 0.1, tone: C.teal },
-    { k: "Tools & services", v: budgetTotal * 0.08, tone: C.mintSoft },
-    { k: "Contingency", v: budgetTotal * 0.12, tone: "#cfe3d8" },
-  ];
+  const cost = content.costModel;
+  const fin = content.financials;
+  const totalWeeks = cost.buildWeeks;
 
-  const competitorRows = bp.competitors.length ? bp.competitors : [{ name: "Established incumbent", type: "Direct" }, { name: "Adjacent tool", type: "Indirect" }];
+  const competitorRows = content.competitors;
 
   const gaps = [
     { title: "Priced for large players only", text: `Incumbents target enterprise budgets, leaving smaller ${bp.industry} teams unserved.` },
@@ -1005,37 +1035,28 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     { role: "Product Designer", count: 1, skills: "UX · design systems (part-time)", lead: false },
   ];
   const devs = [
-    { initials: "JD", name: "John Doe", role: "Full Stack · React · Python · 5 yrs", avail: "Available", match: 94 },
-    { initials: "SM", name: "Sarah Mitchell", role: "ML Engineer · TensorFlow · AWS · 3 yrs", avail: "Available", match: 88 },
-    { initials: "AK", name: "Alex Kim", role: "DevOps · Kubernetes · GCP · 4 yrs", avail: "Interested", match: 76 },
+    { initials: "JD", name: "John Doe", role: "Full Stack · React · Python · 5 yrs", avail: "Available", match: 94, skills: ["Frontend", "Backend", "Full Stack", "React", "Next.js"] },
+    { initials: "SM", name: "Sarah Mitchell", role: "ML Engineer · TensorFlow · AWS · 3 yrs", avail: "Available", match: 88, skills: ["AI/ML", "TensorFlow", "Backend"] },
+    { initials: "AK", name: "Alex Kim", role: "DevOps · Kubernetes · GCP · 4 yrs", avail: "Interested", match: 76, skills: ["DevOps", "QA", "Stripe Connect"] },
   ];
+  const devsForPhase = (skillset: string[]) => {
+    const matched = devs.filter((d) => skillset.some((s) => d.skills.some((sk) => sk.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(sk.toLowerCase()))));
+    return matched.length ? matched : devs;
+  };
 
+  const SEV_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
   const riskRows = [
     { risk: "Well-funded incumbents move into the niche", sev: "Medium", mit: "Win on focus, speed, and price for under-served teams; build integration moat early." },
     { risk: bp.market.barriers, sev: "High", mit: "Engage requirements early, design for compliance, and ship audit-ready from day one." },
     { risk: "Model accuracy below user trust threshold", sev: "Medium", mit: "Ship explainability, keep a human-in-the-loop, and improve on real usage data." },
     { risk: "Slow developer ramp delays milestones", sev: "Low", mit: "Scope independently-shippable milestones; pay on approval to keep momentum." },
-  ];
+  ].sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
 
-  const metrics = [
-    { label: "North-star metric", value: bp.industry.toLowerCase().includes("health") ? "Confident diagnoses / week" : "Weekly active value events", big: true },
-    { label: "Activation rate", value: "≥ 45%", sub: "first-value within session 1" },
-    { label: "Week-4 retention", value: "≥ 35%", sub: "of activated users" },
-    { label: "Time-to-value", value: "< 10 min", sub: "to first real result" },
-    { label: "Net revenue retention", value: "≥ 115%", sub: "by month 12" },
-  ];
-
+  /* Real platform counts only — no re-derived percentages here */
   const analytics = [
     { label: "Blueprint Views", value: String(bp.views), trend: "+24%", up: true, cap: "vs last month", lit: 6 },
     { label: "Developer Applications", value: String(bp.devMatches + 7), trend: "+3", up: true, cap: "vs 9 last month", lit: 5 },
-    { label: "Market Interest", value: `${bp.marketPotential - 4}%`, trend: "+8%", up: true, cap: "vs 79% last month", lit: 7 },
     { label: "Profile Saves", value: String(bp.interested + 4), trend: "+2", up: true, cap: "vs 2 last month", lit: 4 },
-  ];
-  const extended = [
-    { icon: <Gauge size={26} weight="duotone" style={{ color: C.mint }} />, label: "Build Feasibility", value: 84 },
-    { icon: <Clock size={26} weight="duotone" style={{ color: C.mint }} />, label: "Market Timing", value: 76 },
-    { icon: <Trophy size={26} weight="duotone" style={{ color: C.mint }} />, label: "Competition Advantage", value: 91 },
-    { icon: <UsersThree size={26} weight="duotone" style={{ color: C.mint }} />, label: "Developer Availability", value: 78 },
   ];
 
   const aiRecs = [
@@ -1045,19 +1066,26 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     { p: "Medium", text: "Line up 3–5 design partners before the public launch milestone." },
     { p: "Low", text: "Draft a usage-based starter tier to widen the top of funnel." },
   ];
-  const activity = [
-    { icon: <Eye size={14} weight="duotone" />, text: "Blueprint viewed by a matched developer", time: "2h ago" },
-    { icon: <GitBranch size={14} weight="duotone" />, text: "Developer matched — Sarah Mitchell (88%)", time: "4h ago" },
-    { icon: <PencilSimple size={14} weight="duotone" />, text: "Blueprint updated — scope refined", time: "1d ago" },
-    { icon: <FileText size={14} weight="duotone" />, text: "Milestone plan generated", time: "2d ago" },
-    { icon: <Sparkle size={14} weight="duotone" />, text: "AI analysis completed", time: "3d ago" },
-  ];
-
-  const sevTone = (s: string) => (s === "High" ? "red" : s === "Medium" ? "amber" : "neutral") as "red" | "amber" | "neutral";
-  const priTone = (p: string) => (p === "Must-have" || p === "High" ? "red" : p === "Should-have" || p === "Medium" ? "amber" : "mint") as "red" | "amber" | "mint";
+  /* Severity = danger scale: High risk is red, low risk is safe (mint). */
+  const sevTone = (s: string) => (s === "High" ? "red" : s === "Medium" ? "amber" : "mint") as "red" | "amber" | "mint";
+  /* Priority/importance = ordinal ramp: strong (mint) → medium (amber) → low (neutral). Never red — red means danger, not "important". */
+  const priTone = (p: string) => (p === "Must-have" || p === "High" ? "mint" : p === "Should-have" || p === "Medium" ? "amber" : "neutral") as "mint" | "amber" | "neutral";
+  const personaSegment = (segment: string): { icon: ReactNode; tone: "mint" | "amber" | "neutral" } => {
+    if (segment === "Primary user") return { icon: <User size={18} weight="duotone" style={{ color: C.teal }} />, tone: "mint" };
+    if (segment === "Economic buyer") return { icon: <Wallet size={18} weight="duotone" style={{ color: C.amber }} />, tone: "amber" };
+    return { icon: <ShieldCheck size={18} weight="duotone" style={{ color: C.muted }} />, tone: "neutral" };
+  };
 
   const iconBtn: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 11, background: C.card, border: `1px solid ${C.border}`, cursor: "pointer" };
   const colGap = { display: "flex", flexDirection: "column", gap: 22 } as CSSProperties;
+
+  const tocSections = [
+    "Venture Assessment", "Executive Summary", "Signals & Activity", "The Idea", "Target Users & Personas",
+    "Product Scope", "Recommended Tech Stack & Architecture", "Development Roadmap",
+    "Market Analysis", "Competitor Research", "Similar Startups", "Gap Analysis & Recommendations",
+    "Go-to-Market", "Project Cost & Financials", "Roles & Matched Developers",
+    "Risks & Mitigations",
+  ];
 
   return (
     <motion.div key="detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1074,7 +1102,7 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
           <Chip tone="mint" icon={<span style={{ width: 5, height: 5, borderRadius: 999, background: bp.isPublic ? "#1d6e47" : "#9ab4a4", display: "inline-block" }} />}>{bp.isPublic ? "Public" : "Private"}</Chip>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <motion.button onClick={togglePublish} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 11, background: C.forest, color: C.mint, border: "none", cursor: "pointer", boxShadow: "0 2px 10px rgba(17,34,27,0.18)" }}>
-              <RocketLaunch size={15} weight="fill" /> {published ? "Unpublish" : "Publish"}
+              <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}
             </motion.button>
             <motion.button onClick={copyLink} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={iconBtn} title="Copy link"><LinkSimple size={16} style={{ color: C.teal }} /></motion.button>
             <motion.button onClick={() => window.print()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={iconBtn} title="Export PDF"><DownloadSimple size={16} style={{ color: C.teal }} /></motion.button>
@@ -1087,6 +1115,31 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
       {/* ── Scroll body ── */}
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto blueprint-scroll">
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "24px 2px 8px", ...colGap }}>
+
+          {/* ── PRINT-ONLY COVER + TABLE OF CONTENTS ── */}
+          <div className="blueprint-print-only">
+            <div style={{ minHeight: "70vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 4px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.teal, textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 18 }}>Venture Blueprint</div>
+              <h1 style={{ fontSize: 44, fontWeight: 800, color: C.ink, letterSpacing: "-0.03em", marginBottom: 14 }}>{bp.name}</h1>
+              <p style={{ fontSize: 15, color: C.body, lineHeight: 1.7, maxWidth: 560, marginBottom: 28 }}>{bp.ideaDesc}</p>
+              <div style={{ display: "flex", gap: 28 }}>
+                <div><div style={{ fontSize: 11, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em" }}>Grade</div><div style={{ fontSize: 22, fontWeight: 800, color: C.ink }}>{grade}</div></div>
+                <div><div style={{ fontSize: 11, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em" }}>Viability</div><div style={{ fontSize: 22, fontWeight: 800, color: C.ink }}>{viabilityScore} / 100</div></div>
+                <div><div style={{ fontSize: 11, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em" }}>Industry</div><div style={{ fontSize: 22, fontWeight: 800, color: C.ink }}>{bp.industry}</div></div>
+                <div><div style={{ fontSize: 11, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em" }}>Prepared</div><div style={{ fontSize: 22, fontWeight: 800, color: C.ink }}>{bp.updatedAt}</div></div>
+              </div>
+            </div>
+            <div style={{ padding: "20px 4px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 16 }}>Contents</div>
+              <div style={{ columns: 2, columnGap: 32 }}>
+                {tocSections.map((t, i) => (
+                  <div key={t} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.borderSoft}`, breakInside: "avoid" }}>
+                    <span style={{ fontSize: 13, color: C.ink }}>{i + 1}. {t}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           {/* ── HERO ── */}
           <Reveal y={14}>
@@ -1114,20 +1167,21 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                   </div>
                 </div>
                 {/* right */}
-                <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 18, minWidth: 300 }}>
+                <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 16, minWidth: 320, maxWidth: 340 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                    <ViabilityGauge score={bp.viability} />
+                    <ViabilityGauge score={viabilityScore} />
                     <div>
                       <div style={{ fontSize: 40, fontWeight: 800, color: C.ink, lineHeight: 1, letterSpacing: "-0.03em" }}>{grade}</div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.teal, marginTop: 4 }}>Venture Grade</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Top {topPct}% of blueprints</div>
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {heroPills.map((p) => (
-                      <div key={p.label} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12, padding: "11px 14px" }}>
-                        <div style={{ fontSize: 19, fontWeight: 800, color: C.ink, ...NUM }}>{p.value}</div>
-                        <div style={{ fontSize: 9.5, color: C.label, textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 3, fontFamily: MONO }}>{p.label}</div>
+                  <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{viabilityReasoning}</p>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", paddingTop: 12, borderTop: `1px solid ${C.borderSoft}` }}>
+                    {subScoreRow.map((s) => (
+                      <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, ...NUM }}>{s.value}</span>
+                        <span style={{ fontSize: 9, color: C.label, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: MONO }}>{s.label}</span>
                       </div>
                     ))}
                   </div>
@@ -1139,7 +1193,7 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
           {/* ── AI VENTURE ASSESSMENT ── */}
           <Reveal>
             <div style={cardStyle({ borderLeft: `3px solid ${C.mint}`, padding: "28px 30px" })}>
-              <SectionHead icon={<Robot size={18} weight="duotone" style={{ color: C.success }} />} kicker="AI Analysis" title="Venture Assessment" />
+              <SectionHead icon={<Gauge size={18} weight="duotone" style={{ color: C.success }} />} kicker="AI Analysis" title="Venture Assessment" />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.1fr", gap: 30 }}>
                 <div>
                   <Label>Strengths</Label>
@@ -1188,15 +1242,15 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                 </p>
               </div>
               <div style={cardStyle({ padding: "26px 28px" })}>
-                <Label>At a glance</Label>
+                <Label>Build snapshot</Label>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   {[
-                    ["Industry", bp.industry],
-                    ["Stage", stageLabel],
-                    ["Timeline", draftCost.timeline],
-                    ["Team", draftCost.team],
-                    ["Build cost", draftCost.budget],
-                    ["Viability", `${bp.viability} / 100`],
+                    ["Total build cost", fmtMoney(cost.total)],
+                    ["Build time", cost.timelineLabel],
+                    ["Milestones", `${phases.length} phases`],
+                    ["Roles needed", `${roles.length}`],
+                    ["MVP features", `${content.mvpPlan.mustHave.length + content.mvpPlan.shouldHave.length} core`],
+                    ["First milestone", fmtMoney(phases[0].cost)],
                   ].map(([k, v], i) => (
                     <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
                       <span style={{ fontSize: 12.5, color: C.muted }}>{k}</span>
@@ -1208,19 +1262,30 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
             </div>
           </Reveal>
 
-          {/* ── KPI CARDS ── */}
+          {/* ── SIGNALS & ACTIVITY ── */}
           <Reveal>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
-              {kpis.map((k) => (
-                <motion.div key={k.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "20px 20px 22px" })}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Label>{k.label}</Label>
-                    <Trend value={k.trend.replace("−", "")} positive={k.up} />
-                  </div>
-                  <div style={{ fontSize: 34, fontWeight: 800, color: C.ink, lineHeight: 1, marginTop: 2, ...NUM }}><CountNum value={k.value} suffix="%" /></div>
-                  <div style={{ marginTop: 16 }}><SegmentedBar value={k.value} /></div>
+            <SectionHead icon={<Pulse size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Traction" title="Signals & Activity" desc="How this blueprint is performing on the platform, and what to act on next." />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 18 }}>
+              {analytics.map((a) => (
+                <motion.div key={a.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "20px", textAlign: "center" })}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, lineHeight: 1, ...NUM }}>{a.value}</div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 7, fontFamily: MONO }}>{a.label}</div>
+                  <div style={{ marginTop: 9, display: "flex", justifyContent: "center" }}><Trend value={a.trend} positive={a.up} /></div>
+                  <div style={{ fontSize: 10.5, color: C.label, marginTop: 7 }}>{a.cap}</div>
+                  <div style={{ marginTop: 12 }}><SegmentedBar value={0} total={8} lit={a.lit} height={14} /></div>
                 </motion.div>
               ))}
+            </div>
+            <div style={cardStyle({ padding: "24px 26px" })}>
+              <Label>Recommended next steps</Label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 28px" }}>
+                {aiRecs.map((r, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <Chip tone={priTone(r.p)}>{r.p}</Chip>
+                    <span style={{ fontSize: 13, color: C.body, lineHeight: 1.5, paddingTop: 2 }}>{r.text}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </Reveal>
 
@@ -1242,69 +1307,95 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
 
           {/* ── PERSONAS ── */}
           <Reveal>
-            <SectionHead icon={<Users size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Audience" title="Target Users & Personas" desc="Who this is built for — and what they're really trying to get done." />
+            <SectionHead icon={<UsersThree size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Audience" title="Target Users & Personas" desc="The audience segments this idea is built for — who they are, what they need, and what's holding them back today." />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
-              {personas.map((p) => (
-                <motion.div key={p.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 24px" })}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                    <Avatar initials={p.initials} size={42} />
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{p.name}</div>
-                      <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>{p.role}</div>
+              {personas.map((p) => {
+                const seg = personaSegment(p.segment);
+                return (
+                  <motion.div key={p.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "24px 24px" })}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 11, background: C.tint, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center" }}>{seg.icon}</div>
+                      <Chip tone={seg.tone}>{p.segment}</Chip>
                     </div>
-                  </div>
-                  <div style={{ marginBottom: 10 }}>
-                    <Label>Goals</Label>
-                    <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{p.goals}</p>
-                  </div>
-                  <div>
-                    <Label>Pain points</Label>
-                    <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{p.pains}</p>
-                  </div>
-                </motion.div>
-              ))}
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.ink, letterSpacing: "-0.01em" }}>{p.name}</div>
+                    <p style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 16 }}>{p.about}</p>
+                    <div style={{ marginBottom: 12 }}>
+                      <Label>What they need</Label>
+                      <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{p.goals}</p>
+                    </div>
+                    <div>
+                      <Label>What&apos;s stopping them today</Label>
+                      <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{p.pains}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </Reveal>
 
           {/* ── PRODUCT SCOPE ── */}
           <Reveal>
             <div style={cardStyle({ padding: "28px 30px" })}>
-              <SectionHead icon={<ListChecks size={18} weight="duotone" style={{ color: C.success }} />} kicker="Scope" title="Product Scope" desc="The feature set, prioritised so the team builds the right thing first." />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {[...featureItems, ...platformFeatures].map((f, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderRadius: 12, background: C.tint, border: `1px solid ${C.borderSoft}` }}>
-                    <CheckCircle size={16} weight="fill" style={{ color: C.mint, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{f.name}</div>
-                      {f.note ? <div style={{ fontSize: 11, color: C.muted, marginTop: 1, fontFamily: MONO }}>{f.note}</div> : null}
+              <SectionHead icon={<ListChecks size={18} weight="duotone" style={{ color: C.success }} />} kicker="Scope" title="Product Scope" desc="The feature set, grouped by priority so the team builds the right thing first." />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                {["Must-have", "Should-have", "Nice-to-have"].map((tier) => {
+                  const items = [...featureItems, ...platformFeatures].filter((f) => f.priority === tier);
+                  return (
+                    <div key={tier}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                        <Chip tone={priTone(tier)}>{tier}</Chip>
+                        <span style={{ fontSize: 11, color: C.label, fontFamily: MONO, ...NUM }}>{items.length}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {items.map((f, i) => (
+                          <div key={i} style={{ padding: "12px 14px", borderRadius: 12, background: C.tint, border: `1px solid ${C.borderSoft}` }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                              <CheckCircle size={15} weight="fill" style={{ color: C.mint, flexShrink: 0 }} />
+                              <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{f.name}</span>
+                            </div>
+                            {f.note ? <div style={{ fontSize: 10.5, color: C.muted, marginTop: 3, marginLeft: 24, fontFamily: MONO }}>{f.note}</div> : null}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <Chip tone={priTone(f.priority)}>{f.priority}</Chip>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: 20 }}>
+                <Label>Out of scope for v1</Label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {content.mvpPlan.outOfScope.map((o, i) => (
+                    <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                      <XCircle size={15} weight="fill" style={{ color: C.label, flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{o}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </Reveal>
 
           {/* ── RECOMMENDED TECH STACK ── */}
           <Reveal>
-            <SectionHead icon={<Cube size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Engineering" title="Recommended Tech Stack" desc="A complete, opinionated stack — frameworks and libraries for every layer of the build." />
-            {/* architecture flow */}
+            <SectionHead icon={<Cube size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Engineering" title="Recommended Tech Stack & Architecture" desc="A complete, opinionated stack — editable where you know better than the AI, plus the system diagram it produces." />
+            {/* editable core choices */}
             <div style={cardStyle({ padding: "20px 24px", marginBottom: 18 })}>
-              <Label>Architecture at a glance</Label>
-              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
-                {[
-                  { ic: <Browser size={15} weight="duotone" />, t: `Client · ${bp.techStack.frontend.split(",")[0]}` },
-                  { ic: <Stack size={15} weight="duotone" />, t: `API · ${bp.techStack.backend.split(",")[0]}` },
-                  { ic: <Cpu size={15} weight="duotone" />, t: `AI · ${bp.techStack.ai.split(",")[0]}` },
-                  { ic: <Database size={15} weight="duotone" />, t: `Data · ${bp.techStack.db.split(",")[0]}` },
-                ].map((n, i, arr) => (
-                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: C.ink, background: C.tint, border: `1px solid ${C.borderSoft}`, padding: "8px 13px", borderRadius: 10 }}>
-                      <span style={{ color: C.teal, display: "flex" }}>{n.ic}</span>{n.t}
-                    </span>
-                    {i < arr.length - 1 && <CaretRight size={14} style={{ color: C.label }} />}
-                  </span>
-                ))}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Label>Core choices{editing ? " — click a layer to change it" : ""}</Label>
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+                <TechStackPill label="Frontend" layer={draftTechStack.frontend} editing={editing} onChange={(v) => updateTechStackLayer("frontend", v)} />
+                <TechStackPill label="Backend" layer={draftTechStack.backend} editing={editing} onChange={(v) => updateTechStackLayer("backend", v)} />
+                <TechStackPill label="Database" layer={draftTechStack.database} editing={editing} onChange={(v) => updateTechStackLayer("database", v)} />
+                <TechStackPill label="Vector DB" layer={draftTechStack.vectorDb} editing={editing} onChange={(v) => updateTechStackLayer("vectorDb", v)} />
+                <TechStackPill label="AI Provider" layer={draftTechStack.aiProvider} editing={editing} onChange={(v) => updateTechStackLayer("aiProvider", v)} />
+                <TechStackPill label="Hosting" layer={draftTechStack.hosting} editing={editing} onChange={(v) => updateTechStackLayer("hosting", v)} />
+              </div>
+            </div>
+            <div style={cardStyle({ padding: "20px 24px", marginBottom: 18 })}>
+              <Label>System architecture</Label>
+              <div style={{ marginTop: 8, display: "flex", justifyContent: "center" }}>
+                <ArchitectureDiagram nodes={architecture.nodes} edges={architecture.edges} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
@@ -1342,7 +1433,7 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {phases.map((ph, i) => {
                     const inProg = ph.status === "In Progress";
-                    const pay = devBudget * (ph.weeks / totalWeeks);
+                    const pay = ph.cost;
                     const isEdit = editPhase === i;
                     return (
                       <div key={i} style={{ display: "flex", gap: 16 }}>
@@ -1375,6 +1466,47 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                               </span>
                             ))}
                           </div>
+                          <div style={{ marginTop: 10 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>Acceptance criteria</span>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 5 }}>
+                              {ph.acceptanceCriteria.map((a, ai) => (
+                                <span key={ai} style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>· {a}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.borderSoft}` }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {ph.skillset.map((s) => <Chip key={s}>{s}</Chip>)}
+                            </div>
+                            {phaseHires[i] ? (
+                              <Chip tone="mint" icon={<CheckCircle size={11} weight="fill" />}>{phaseHires[i]} hired for this phase</Chip>
+                            ) : (
+                              <button onClick={() => setHirePanelPhase(hirePanelPhase === i ? null : i)} style={{ fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>
+                                Hire for this phase
+                              </button>
+                            )}
+                          </div>
+                          <AnimatePresence>
+                            {hirePanelPhase === i && !phaseHires[i] && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                                  {devsForPhase(ph.skillset).map((d) => (
+                                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 11, border: `1px solid ${C.borderSoft}`, background: C.card }}>
+                                      <Avatar initials={d.initials} size={34} />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{d.name}</div>
+                                        <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{d.role}</div>
+                                      </div>
+                                      <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "#e8f5ef", color: "#1d6e47", ...NUM }}>{d.match}%</span>
+                                      <button onClick={() => { setPhaseHires((p) => ({ ...p, [i]: d.name })); setHirePanelPhase(null); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>
+                                        Hire
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     );
@@ -1387,37 +1519,102 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
           {/* ── MARKET ANALYSIS ── */}
           <Reveal>
             <div style={cardStyle({ padding: "28px 30px" })}>
-              <SectionHead icon={<ChartLineUp size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Market" title="Market Analysis" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                {[{ l: "Market Size", v: bp.market.size }, { l: "Growth (CAGR)", v: bp.market.cagr }, { l: "Entry Barriers", v: bp.market.barriers }].map((m) => (
-                  <div key={m.l} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: "16px 18px" }}>
-                    <Label>{m.l}</Label>
-                    <div style={{ fontSize: 19, fontWeight: 800, color: C.ink, ...NUM }}>{m.v}</div>
+              <SectionHead icon={<ChartLineUp size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Market" title="Market Analysis"
+                desc="Total category size, the reachable wedge, and what an early team could plausibly capture."
+                right={<Chip tone={content.marketAnalysis.demandLevel === "High" ? "mint" : content.marketAnalysis.demandLevel === "Medium" ? "amber" : "neutral"}>{content.marketAnalysis.demandLevel} market pull</Chip>} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+                {[
+                  { l: "Total market", v: content.marketAnalysis.totalMarket, sub: "Broad category demand" },
+                  { l: "Reachable wedge", v: content.marketAnalysis.reachableMarket, sub: "First focused segment" },
+                  { l: "3-year capture", v: content.marketAnalysis.realisticCapture, sub: "Directional early upside" },
+                ].map((m, i) => (
+                  <div key={m.l} style={{ background: i === 1 ? C.forest : C.tint, border: `1px solid ${i === 1 ? "transparent" : C.borderSoft}`, borderRadius: 14, padding: "16px 18px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: i === 1 ? C.mintSoft : C.label, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 7, fontFamily: MONO }}>{m.l}</div>
+                    <div style={{ fontSize: 21, fontWeight: 800, color: i === 1 ? "#fff" : C.ink, ...NUM }}>{m.v}</div>
+                    <div style={{ fontSize: 11.5, color: i === 1 ? C.mintSoft : C.muted, lineHeight: 1.45, marginTop: 5 }}>{m.sub}</div>
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: 22 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>Market Score</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: C.ink, ...NUM }}>{bp.market.score} / 100</span>
-                </div>
-                <MeterBar value={bp.market.score} />
+                <Label>Opportunity logic</Label>
+                <p style={{ fontSize: 13.5, color: C.body, lineHeight: 1.65, margin: 0 }}>{content.marketAnalysis.insight}</p>
               </div>
-              <div style={{ marginTop: 24 }}>
-                <Label>Competitive landscape</Label>
-                <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", padding: "11px 18px", background: C.tint, fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>
-                    <span>Competitor</span><span>Positioning</span><span>Opportunity Gap</span>
-                  </div>
-                  {competitorRows.map((c, i) => (
-                    <div key={c.name + i} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", padding: "13px 18px", fontSize: 13, color: C.ink, borderTop: `1px solid ${C.borderSoft}`, alignItems: "center" }}>
-                      <span style={{ fontWeight: 600 }}>{c.name}</span>
-                      <span style={{ color: C.muted }}>{c.type}</span>
-                      <span><Chip tone={c.type === "Direct" ? "amber" : "mint"}>{c.type === "Direct" ? "Medium" : "High"}</Chip></span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginTop: 18 }}>
+                {[
+                  { label: "Growth", icon: <TrendUp size={15} weight="duotone" style={{ color: C.success }} />, text: content.marketAnalysis.growth },
+                  { label: "Why now", icon: <Clock size={15} weight="duotone" style={{ color: C.teal }} />, text: content.marketAnalysis.whyNow },
+                ].map((item) => (
+                  <div key={item.label} style={{ display: "flex", gap: 10, background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12, padding: "13px 15px" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: C.card, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{item.icon}</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: MONO, marginBottom: 4 }}>{item.label}</div>
+                      <div style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55 }}>{item.text}</div>
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18, marginTop: 18 }}>
+                <div>
+                  <Label>Demand signals</Label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {content.marketAnalysis.demandSignals.map((s, i) => (
+                      <div key={i} style={{ display: "flex", gap: 9 }}>
+                        <SealCheck size={14} weight="fill" style={{ color: C.success, flexShrink: 0, marginTop: 2 }} />
+                        <span style={{ fontSize: 12.5, color: C.body, lineHeight: 1.5 }}>{s}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label>Headwinds</Label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {content.marketAnalysis.headwinds.map((r, i) => (
+                      <div key={i} style={{ display: "flex", gap: 9 }}>
+                        <Warning size={14} weight="fill" style={{ color: C.amber, flexShrink: 0, marginTop: 2 }} />
+                        <span style={{ fontSize: 12.5, color: C.body, lineHeight: 1.5 }}>{r}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
+            </div>
+          </Reveal>
+
+          {/* ── COMPETITOR RESEARCH ── */}
+          <Reveal>
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <SectionHead icon={<Trophy size={18} weight="duotone" style={{ color: C.amber }} />} kicker="Competition" title="Competitor Research" desc="Who else is solving this, what they charge, and where they fall short." />
+              <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.3fr 1.3fr 1.3fr", padding: "11px 18px", background: C.tint, fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>
+                  <span>Competitor</span><span>Pricing</span><span>Strengths</span><span>Weaknesses</span><span>Gap we exploit</span>
+                </div>
+                {competitorRows.map((c, i) => (
+                  <div key={c.name + i} style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.3fr 1.3fr 1.3fr", padding: "14px 18px", fontSize: 12.5, color: C.ink, borderTop: `1px solid ${C.borderSoft}`, alignItems: "start", gap: 10 }}>
+                    <span style={{ fontWeight: 700 }}>{c.name}</span>
+                    <span style={{ color: C.muted }}>{c.pricing}</span>
+                    <span style={{ color: C.muted, lineHeight: 1.5 }}>{c.strengths.join("; ")}</span>
+                    <span style={{ color: C.muted, lineHeight: 1.5 }}>{c.weaknesses.join("; ")}</span>
+                    <span style={{ color: C.body, lineHeight: 1.5 }}>{c.gap}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* ── SIMILAR STARTUPS ── */}
+          <Reveal>
+            <SectionHead icon={<Buildings size={18} weight="duotone" style={{ color: C.success }} />} kicker="Proof" title="Similar Startups" desc="Comparable companies that prove the category — and the outcomes they've reached." />
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${content.similarStartups.length}, 1fr)`, gap: 18 }}>
+              {content.similarStartups.map((s) => (
+                <motion.div key={s.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 24px" })}>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink }}>{s.name}</div>
+                  <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, marginTop: 8 }}>{s.oneLiner}</p>
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, padding: "10px 12px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 10 }}>
+                    <Trophy size={14} weight="fill" style={{ color: C.success, flexShrink: 0, marginTop: 1 }} />
+                    <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{s.outcome}</span>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </Reveal>
 
@@ -1498,66 +1695,118 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
             </div>
           </Reveal>
 
-          {/* ── BUDGET & BUILD COST ── */}
+          {/* ── PROJECT COST & FINANCIALS ── */}
           <Reveal>
-            <div style={cardStyle({ padding: "28px 30px" })}>
-              <SectionHead icon={<Receipt size={18} weight="duotone" style={{ color: C.success }} />} kicker="Budget" title="Build Cost & Payments"
-                desc="What it costs the founder to ship this — and how those funds release to developers, milestone by milestone." />
+            <SectionHead icon={<Receipt size={18} weight="duotone" style={{ color: C.success }} />} kicker="The Money" title="Project Cost & Financials"
+              desc="What it costs to build — estimated from real market developer rates for each phase's skills — how developers are paid per milestone, and when the product earns that investment back." />
+
+            {/* COST TO BUILD */}
+            <div style={cardStyle({ padding: "28px 30px", marginBottom: 18 })}>
+              <div style={{ display: "flex", gap: 9, marginBottom: 18, padding: "11px 14px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 11 }}>
+                <Calculator size={14} weight="duotone" style={{ color: C.teal, flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
+                  Estimated bottom-up: each phase&apos;s required skill is matched to current market contractor rates and multiplied by its duration. This is a data-driven estimate, not a fixed budget.
+                </span>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
                 {[
-                  { l: "Total Build Cost", v: draftCost.budget, ic: <Money size={18} weight="duotone" style={{ color: C.success }} /> },
-                  { l: "Timeline", v: draftCost.timeline, ic: <Clock size={18} weight="duotone" style={{ color: C.teal }} /> },
-                  { l: "Team", v: draftCost.team, ic: <UsersThree size={18} weight="duotone" style={{ color: C.teal }} /> },
-                  { l: "Infra / month", v: draftCost.hosting, ic: <CloudArrowUp size={18} weight="duotone" style={{ color: C.teal }} /> },
+                  { l: "Total Build Cost", v: fmtMoney(cost.total), ic: <Money size={18} weight="duotone" style={{ color: C.success }} /> },
+                  { l: "Build Time", v: cost.timelineLabel, ic: <Clock size={18} weight="duotone" style={{ color: C.teal }} /> },
+                  { l: "Run Cost / month", v: cost.monthlyRunCost, ic: <CloudArrowUp size={18} weight="duotone" style={{ color: C.teal }} /> },
+                  { l: "Break-even", v: fin.breakEvenMonth ? `Month ${fin.breakEvenMonth}` : "24+ months", ic: <ChartBar size={18} weight="duotone" style={{ color: C.success }} /> },
                 ].map((s) => (
                   <div key={s.l} style={{ background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: "18px 18px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <Label>{s.l}</Label>{s.ic}
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, ...NUM }}>{s.v}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, ...NUM }}>{s.v}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 22 }}>
-                {/* breakdown */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.35fr", gap: 22 }}>
+                {/* composition */}
                 <div>
-                  <Label>Cost breakdown</Label>
+                  <Label>Where the money goes</Label>
                   <div style={{ display: "flex", height: 12, borderRadius: 999, overflow: "hidden", marginBottom: 14 }}>
-                    {breakdown.map((b) => (
-                      <div key={b.k} style={{ width: `${(b.v / budgetTotal) * 100}%`, background: b.tone }} />
+                    {cost.composition.map((b) => (
+                      <div key={b.label} style={{ width: `${(b.value / cost.total) * 100}%`, background: b.tone }} />
                     ))}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    {breakdown.map((b) => (
-                      <div key={b.k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    {cost.composition.map((b) => (
+                      <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.body }}>
-                          <span style={{ width: 9, height: 9, borderRadius: 3, background: b.tone }} />{b.k}
+                          <span style={{ width: 9, height: 9, borderRadius: 3, background: b.tone }} />{b.label}
                         </span>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, ...NUM }}>{fmtMoney(b.v)}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, ...NUM }}>{fmtMoney(b.value)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                {/* milestone schedule */}
+                {/* milestone schedule with per-phase rate math */}
                 <div>
-                  <Label>Milestone payment schedule</Label>
+                  <Label>Milestone payments to developers</Label>
                   <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
                     {phases.map((ph, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 15px", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 15px", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                           <span style={{ width: 20, height: 20, borderRadius: 999, background: C.forest, color: C.mint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0, ...NUM }}>{i + 1}</span>
-                          <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ph.name}</span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: "block", fontSize: 12.5, color: C.ink, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ph.name}</span>
+                            <span style={{ display: "block", fontSize: 10.5, color: C.label, fontFamily: MONO }}>{ph.primarySkill} · {ph.weeks}w × {fmtMoney(ph.weeklyRate)}/wk</span>
+                          </span>
                         </span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: C.success, ...NUM }}>{fmtMoney(devBudget * (ph.weeks / totalWeeks))}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.success, ...NUM }}>{fmtMoney(ph.cost)}</span>
                       </div>
                     ))}
                   </div>
                   <div style={{ display: "flex", gap: 9, marginTop: 12, padding: "11px 14px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 11 }}>
                     <Lock size={14} weight="duotone" style={{ color: C.teal, flexShrink: 0, marginTop: 1 }} />
-                    <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>Funds are held by Evolv and released to the developer on each approved milestone via Stripe Connect, net of the platform fee.</span>
+                    <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>Each milestone is funded into Evolv escrow and released to the developer on your approval, net of Evolv&apos;s {Math.round(cost.platformFeePct * 100)}% platform fee — via Stripe Connect.</span>
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* REVENUE & BREAK-EVEN */}
+            <div style={cardStyle({ padding: "28px 30px" })}>
+              <Label>Revenue &amp; break-even</Label>
+              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.65, marginBottom: 18 }}>
+                Modelled as a B2B SaaS subscription at <strong style={{ color: C.ink }}>${fin.pricePerUser}/user per month</strong>, starting near {fin.startingUsers} paying users and growing ~{fin.monthlyGrowthPct}% each month. <strong style={{ color: C.ink }}>MRR</strong> is monthly recurring revenue; <strong style={{ color: C.ink }}>ARR</strong> is that figure annualised.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
+                {[
+                  { l: "MRR by month 12", v: fmtMoney(fin.eoyMrr), sub: `${fin.year1[11].users} paying users` },
+                  { l: "ARR by month 12", v: fmtMoney(fin.eoyArr), sub: "annual run-rate" },
+                  { l: "Break-even", v: fin.breakEvenMonth ? `Month ${fin.breakEvenMonth}` : "24+ months", sub: `cumulative revenue clears ${fmtMoney(cost.total)}` },
+                ].map((s, i) => (
+                  <div key={s.l} style={{ background: i === 2 ? C.forest : C.tint, border: `1px solid ${i === 2 ? "transparent" : C.borderSoft}`, borderRadius: 14, padding: "18px 18px" }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: i === 2 ? C.mintSoft : C.label, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: MONO, marginBottom: 8 }}>{s.l}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: i === 2 ? "#fff" : C.ink, ...NUM }}>{s.v}</div>
+                    <div style={{ fontSize: 11, color: i === 2 ? C.mintSoft : C.muted, marginTop: 4 }}>{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+              <Label>Year-1 monthly recurring revenue</Label>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 130, marginTop: 6 }}>
+                {fin.year1.map((y) => {
+                  const isBreakEven = fin.breakEvenMonth === y.month;
+                  return (
+                    <div key={y.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: isBreakEven ? C.success : C.muted, ...NUM }}>{fmtMoney(y.mrr)}</span>
+                      <motion.div initial={reduce ? false : { height: 0 }} whileInView={{ height: `${Math.max(4, (y.mrr / fin.eoyMrr) * 90)}px` }} viewport={{ once: true }} transition={{ duration: 0.8, ease: EASE, delay: y.month * 0.03 }}
+                        style={{ width: "100%", borderRadius: "6px 6px 0 0", background: isBreakEven ? C.forest : "linear-gradient(180deg, #89d7b7, #cfe3d8)" }} />
+                      <span style={{ fontSize: 9.5, color: C.label, fontFamily: MONO }}>M{y.month}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {fin.breakEvenMonth && fin.breakEvenMonth <= 12 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 14 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: C.forest, display: "inline-block" }} />
+                  <span style={{ fontSize: 11.5, color: C.muted }}>Break-even month — cumulative revenue overtakes the {fmtMoney(cost.total)} build cost.</span>
+                </div>
+              )}
             </div>
           </Reveal>
 
@@ -1621,78 +1870,11 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
             </div>
           </Reveal>
 
-          {/* ── SUCCESS METRICS ── */}
-          <Reveal>
-            <div style={cardStyle({ padding: "28px 30px" })}>
-              <SectionHead icon={<Crosshair size={18} weight="duotone" style={{ color: C.success }} />} kicker="Measurement" title="Success Metrics" desc="The single number that defines success, and the KPIs that ladder up to it." />
-              <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 1fr", gap: 14 }}>
-                {metrics.map((m, i) => (
-                  <div key={m.label} style={{ background: i === 0 ? C.forest : C.tint, border: `1px solid ${i === 0 ? "transparent" : C.borderSoft}`, borderRadius: 14, padding: "18px 18px" }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 700, color: i === 0 ? C.mintSoft : C.label, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: MONO, marginBottom: 8 }}>{m.label}</div>
-                    <div style={{ fontSize: i === 0 ? 17 : 20, fontWeight: 800, color: i === 0 ? "#fff" : C.ink, lineHeight: 1.15, ...NUM }}>{m.value}</div>
-                    {m.sub && <div style={{ fontSize: 11, color: C.muted, marginTop: 5 }}>{m.sub}</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-
-          {/* ── SIGNALS ── */}
-          <Reveal>
-            <SectionHead icon={<Pulse size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Traction" title="Signals & Activity" />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 18 }}>
-              {analytics.map((a) => (
-                <motion.div key={a.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "20px", textAlign: "center" })}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, lineHeight: 1, ...NUM }}>{a.value}</div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 7, fontFamily: MONO }}>{a.label}</div>
-                  <div style={{ marginTop: 9, display: "flex", justifyContent: "center" }}><Trend value={a.trend} positive={a.up} /></div>
-                  <div style={{ fontSize: 10.5, color: C.label, marginTop: 7 }}>{a.cap}</div>
-                  <div style={{ marginTop: 12 }}><SegmentedBar value={0} total={8} lit={a.lit} height={14} /></div>
-                </motion.div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 18 }}>
-              {extended.map((e) => (
-                <motion.div key={e.label} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 20px", textAlign: "center" })}>
-                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>{e.icon}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, lineHeight: 1, ...NUM }}><CountNum value={e.value} suffix="%" /></div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 8, fontFamily: MONO }}>{e.label}</div>
-                  <div style={{ marginTop: 12 }}><MeterBar value={e.value} height={5} /></div>
-                </motion.div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-              <div style={cardStyle({ padding: "24px 26px" })}>
-                <Label>AI Recommendations</Label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {aiRecs.map((r, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                      <Chip tone={priTone(r.p)}>{r.p}</Chip>
-                      <span style={{ fontSize: 13, color: C.body, lineHeight: 1.5, paddingTop: 2 }}>{r.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={cardStyle({ padding: "24px 26px" })}>
-                <Label>Activity Timeline</Label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {activity.map((a, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 30, height: 30, borderRadius: 9, background: C.tint, border: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.teal, flexShrink: 0 }}>{a.icon}</div>
-                      <span style={{ flex: 1, fontSize: 13, color: C.ink, fontWeight: 500 }}>{a.text}</span>
-                      <span style={{ fontSize: 11, color: C.label, flexShrink: 0, fontFamily: MONO }}>{a.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Reveal>
-
           {/* ── FOOTER ── */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 4px 4px", borderTop: `1px solid ${C.border}`, marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: C.label, fontFamily: MONO }}>Evolv · {bp.name} · {stageLabel}</span>
+            <span style={{ fontSize: 12, color: C.label, fontFamily: MONO }}>{bp.name} · Venture Blueprint · Rev. {bp.updatedAt}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: C.label }}>
-              <Sparkle size={13} weight="fill" style={{ color: C.mint }} /> Generated venture blueprint
+              <Lock size={12} weight="duotone" style={{ color: C.teal }} /> Confidential — shared with matched developers only
             </span>
           </div>
         </div>

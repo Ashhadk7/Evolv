@@ -53,6 +53,7 @@ body {
 .blueprint-scroll::-webkit-scrollbar-thumb:hover { background: #b6cfc3; }
 
 /* ── Blueprint detail: clean PDF / print export ── */
+.blueprint-print-only { display: none; }
 @media print {
   body { background: #ffffff !important; }
   .blueprint-no-print { display: none !important; }
@@ -65,6 +66,11 @@ body {
     print-color-adjust: exact !important;
   }
   .blueprint-page-break { break-inside: avoid; page-break-inside: avoid; }
+  .blueprint-print-only {
+    display: block !important;
+    page-break-after: always;
+    break-after: page;
+  }
 }
 
 /* ── Footer ── */
