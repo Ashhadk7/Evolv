@@ -7,7 +7,7 @@ const projectsData = [
     {
         id: 1,
         name: 'Nexus Health',
-        logo: '🏥',
+        logo: 'NH',
         role: 'AI Engineer',
         industry: 'HealthTech',
         stage: 'Development',
@@ -42,7 +42,7 @@ const projectsData = [
     {
         id: 2,
         name: 'Aura Logistics',
-        logo: '🚚',
+        logo: 'AL',
         role: 'Full Stack Developer',
         industry: 'Logistics',
         stage: 'Development',
@@ -97,7 +97,6 @@ const Projects = ({ onNavigate }) => {
 
     return (
         <div className={"Projects_container"}>
-            <Sidebar currentPage="projects" onNavigate={onNavigate} />
             <main className={"Projects_mainWrapper"}>
                 <Topbar
                     title="My Projects"

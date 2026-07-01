@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, type ElementType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1156,8 +1156,6 @@ function PaymentSection({ profile }: { profile: FounderProfile }) {
 
 function SecuritySection() {
   const [saved, setSaved] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [loginAlerts, setLoginAlerts] = useState(true);
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
 
   const save = () => {
@@ -1167,59 +1165,76 @@ function SecuritySection() {
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-        <div className="mb-4 flex items-center gap-2">
-          <LockKey size={16} weight="bold" style={{ color: MID }} />
-          <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Security</h4>
+    <div className="flex flex-col gap-6">
+      <section className="bg-white p-6 sm:p-8 max-w-2xl" style={{ border: "1.5px solid #d4e4db", borderRadius: 12, boxShadow: "0 4px 20px rgba(26,49,44,0.04)" }}>
+        <div className="mb-6 flex items-center gap-2">
+          <LockKey size={18} weight="bold" style={{ color: MID }} />
+          <h4 className="text-[14px] font-extrabold" style={{ color: TEXT_BODY }}>Security Settings</h4>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        
+        <div className="grid gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Current Password" type="password" value={passwords.current} onChange={(value) => setPasswords((current) => ({ ...current, current: value }))} placeholder="Enter current password" />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-bold" style={{ color: TEXT_MUTED }}>
+                  Current Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => alert("Password reset link sent to your email.")}
+                  className="text-[11px] font-bold transition-colors hover:text-[#2e7d5c] cursor-pointer"
+                  style={{ color: "#428475", background: "none", border: "none", padding: 0 }}
+                >
+                  Forgot Password?
+                </button>
+              </div>
+              <input
+                type="password"
+                value={passwords.current}
+                onChange={(e) => setPasswords((current) => ({ ...current, current: e.target.value }))}
+                placeholder="Enter current password"
+                className="w-full rounded-lg px-4 py-2.5 text-[13px] outline-none transition focus:ring-2 focus:ring-[#89d7b7]/30 focus:border-[#428475]"
+                style={{ background: "#f8faf8", border: "1px solid #d4e4db", color: "#1a2e26" }}
+              />
+            </div>
           </div>
-          <Field label="New Password" type="password" value={passwords.next} onChange={(value) => setPasswords((current) => ({ ...current, next: value }))} placeholder="Enter new password" />
-          <Field label="Confirm New Password" type="password" value={passwords.confirm} onChange={(value) => setPasswords((current) => ({ ...current, confirm: value }))} placeholder="Confirm new password" />
+          
+          <Field 
+            label="New Password" 
+            type="password" 
+            value={passwords.next} 
+            onChange={(value) => setPasswords((current) => ({ ...current, next: value }))} 
+            placeholder="Enter new password" 
+          />
+          
+          <Field 
+            label="Confirm New Password" 
+            type="password" 
+            value={passwords.confirm} 
+            onChange={(value) => setPasswords((current) => ({ ...current, confirm: value }))} 
+            placeholder="Confirm new password" 
+          />
         </div>
-        <div className="mt-4 flex items-start gap-3 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
-          <ShieldCheck size={15} weight="bold" style={{ color: MID, marginTop: 1 }} />
-          <p className="text-[11px] leading-5" style={{ color: TEXT_MUTED }}>
-            Protect your founder workspace, saved blueprints, investor activity, and team conversations.
+        
+        <div className="flex items-start gap-3 rounded-lg px-4 py-3.5" style={{ background: "#f8faf8", border: "1px solid #edf1ee", marginTop: 24 }}>
+          <ShieldCheck size={16} weight="bold" style={{ color: MID, marginTop: 1 }} />
+          <p className="text-[11.5px] leading-5" style={{ color: TEXT_MUTED }}>
+            Protect your founder workspace, saved blueprints, activity logs, and team conversations.
           </p>
         </div>
+        
         <button
           type="button"
           onClick={save}
-          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
-          style={{ background: INK, color: MINT }}
+          className="flex h-10 items-center justify-center gap-2 rounded-lg px-6 text-[13px] font-extrabold transition-all hover:opacity-90 active:scale-95 cursor-pointer" style={{ background: INK, color: MINT, marginTop: 24 }}
         >
           <Check size={15} weight="bold" />
           {saved ? "Password Updated" : "Update Password"}
         </button>
       </section>
-
-      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-        <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Account Protection</h4>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
-            <div>
-              <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>Two-factor authentication</p>
-              <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>Require an authenticator code before opening your founder workspace.</p>
-            </div>
-            <Toggle on={twoFactor} onChange={() => setTwoFactor((value) => !value)} />
-          </div>
-          <div className="flex items-center justify-between gap-4 rounded-lg px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #edf1ee" }}>
-            <div>
-              <p className="text-[13px] font-bold" style={{ color: TEXT_BODY }}>Login alerts</p>
-              <p className="mt-1 text-[11px]" style={{ color: TEXT_MUTED }}>Notify you when a new device accesses your account.</p>
-            </div>
-            <Toggle on={loginAlerts} onChange={() => setLoginAlerts((value) => !value)} />
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
-
 type FounderPrefs = {
   blueprintVisibility: string;
   founderStage: string;
@@ -1364,12 +1379,12 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
   return (
     <div className="h-full flex overflow-hidden" style={{ background: "#f5f6f4" }}>
 
-      {/* ── Left settings nav ── */}
+      {/* ─ Left settings nav ─ */}
       <div
-        className="flex flex-col shrink-0 py-6 px-4"
-        style={{ width: 196, background: "#fff", borderRight: `1px solid ${BORDER}` }}
+        className="flex flex-col shrink-0"
+        style={{ width: 220, background: "#fff", borderRight: `1px solid ${BORDER}`, paddingTop: 28, paddingBottom: 24, paddingLeft: 24, paddingRight: 24 }}
       >
-        <p className="text-[13px] font-bold mb-5" style={{ color: TEXT_BODY }}>Settings</p>
+        <p className="text-[18px] font-black tracking-tight mb-6" style={{ color: TEXT_BODY, letterSpacing: "-0.02em" }}>Settings</p>
 
         <div className="flex-1 flex flex-col gap-0.5">
           {NAV.map(({ id, label, Icon }) => {
@@ -1417,10 +1432,13 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
         </div>
       </div>
 
-      {/* ── Right content ── */}
-      <div className="relative flex-1 overflow-y-auto px-8 py-7">
+      {/* ─ Right content ─ */}
+      <div 
+        className="relative flex-1 overflow-y-auto"
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 28, paddingBottom: 32 }}
+      >
         <div style={{ maxWidth: activeSection === "profile" ? 920 : 560 }}>
-          <h2 className="font-bold mb-1" style={{ fontSize: "1.15rem", color: TEXT_BODY }}>
+          <h2 className="font-extrabold mb-2" style={{ fontSize: "1.65rem", fontWeight: 900, letterSpacing: "-0.04em", color: TEXT_BODY }}>
             {activeSection === "profile"
               ? "Profile"
               : activeSection === "payment"
@@ -1429,7 +1447,7 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
               ? "Security"
               : "Notifications"}
           </h2>
-          <p className="text-[12px] mb-6" style={{ color: TEXT_MUTED }}>
+          <p className="text-[12px] mb-8" style={{ color: TEXT_MUTED }}>
             {activeSection === "profile"
               ? "Update your personal details and public profile."
               : activeSection === "payment"

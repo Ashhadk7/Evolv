@@ -1,10 +1,13 @@
 // @ts-nocheck
 export const ProjectCard = ({ data }) => {
     const { name, icon, iconClass, role, progress, progressColor, teamMembers, extraMembers, stage, deadline, hoursLogged } = data;
+    const logo = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'S';
     return (
         <div className={"ProjectCard_projItem"}>
             <div className={"ProjectCard_top"}>
-                <div className={`${"ProjectCard_icon"} ${iconClass ? "ProjectCard_" + iconClass : ""}`}><i className={`fas fa-${icon}`}></i></div>
+                <div className={`${"ProjectCard_icon"} ${iconClass ? "ProjectCard_" + iconClass : ""}`} style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>
+                    {logo}
+                </div>
                 <div className={"ProjectCard_info"}>
                     <div className={"ProjectCard_name"}>{name}</div>
                     <div className={"ProjectCard_role"}>{role}</div>

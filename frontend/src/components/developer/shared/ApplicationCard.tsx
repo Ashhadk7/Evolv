@@ -1,6 +1,7 @@
 // @ts-nocheck
 export const ApplicationCard = ({ data }) => {
     const { name, icon, iconClass, role, date, status } = data;
+    const logo = name.split(' ').map(n => n[0]).join('').toUpperCase() || 'S';
 
     const getStatusClass = (status) => {
         const map = { Interview: 'interview', Pending: 'pending', Accepted: 'accepted', Declined: 'declined' };
@@ -9,8 +10,8 @@ export const ApplicationCard = ({ data }) => {
 
     return (
         <div className={"ApplicationCard_appItem"}>
-            <div className={`${"ApplicationCard_icon"} ${iconClass ? "ApplicationCard_" + iconClass : ""}`}>
-                <i className={`fas fa-${icon}`}></i>
+            <div className={`${"ApplicationCard_icon"} ${iconClass ? "ApplicationCard_" + iconClass : ""}`} style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>
+                {logo}
             </div>
             <div className={"ApplicationCard_info"}>
                 <div className={"ApplicationCard_name"}>{name}</div>

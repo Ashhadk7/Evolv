@@ -116,6 +116,11 @@ export default function FounderDashboard() {
         if (storedBlueprints) setBlueprints(JSON.parse(storedBlueprints));
       } catch { /* ignore */ }
       const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      const validTabs: FounderTab[] = ["dashboard", "workspace", "analysis", "network", "inbox", "settings"];
+      if (tabParam && (validTabs as string[]).includes(tabParam)) {
+        setTab(tabParam as FounderTab);
+      }
       if (params.get("setup") === "true") {
         params.delete("setup");
         const url = new URL(window.location.href);

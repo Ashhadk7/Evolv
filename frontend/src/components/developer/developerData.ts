@@ -1,12 +1,142 @@
-// @ts-nocheck
+// ── Sidebar / navigation types ────────────────────────────────────────────────
+export type DeveloperTab =
+  | "dashboard"
+  | "discover"
+  | "applications"
+  | "projects"
+  | "network"
+  | "inbox"
+  | "settings";
+
+export type BadgeKey = "network" | "inbox";
+
+export interface NavItem {
+  id: DeveloperTab;
+  label: string;
+  icon: string;
+  badge?: BadgeKey;
+}
+
+// ── Notification types and data ───────────────────────────────────────────────
+export type NotifType = "match" | "message" | "application" | "network" | "system";
+
+export interface DevNotif {
+  id: string;
+  type: NotifType;
+  title: string;
+  body: string;
+  time: string;
+  read: boolean;
+  tab: DeveloperTab;
+  actionLabel: string;
+}
+
+export const NOTIF_ICONS: Record<NotifType, string> = {
+  match:       "solar:user-check-rounded-bold-duotone",
+  message:     "solar:chat-round-dots-bold-duotone",
+  application: "solar:document-text-bold-duotone",
+  network:     "solar:handshake-bold-duotone",
+  system:      "solar:bolt-circle-bold-duotone",
+};
+
+export const NOTIF_COLORS: Record<NotifType, string> = {
+  match:       "#89d7b7",
+  message:     "#7db8f7",
+  application: "#f0a96e",
+  network:     "#c4a8f5",
+  system:      "#89d7b7",
+};
+
+export const INITIAL_DEV_NOTIFS: DevNotif[] = [
+  {
+    id: "dn1",
+    type: "match",
+    title: "New startup match",
+    body: "Nexus Health (94%) matches your AI & Python skillset",
+    time: "3m ago",
+    read: false,
+    tab: "discover",
+    actionLabel: "View in Discover",
+  },
+  {
+    id: "dn2",
+    type: "message",
+    title: "Message from Asad Ahmed",
+    body: "Hi, we'd love to discuss your application for the AI Engineer role",
+    time: "18m ago",
+    read: false,
+    tab: "inbox",
+    actionLabel: "Open in Inbox",
+  },
+  {
+    id: "dn3",
+    type: "application",
+    title: "Application update",
+    body: "FinFlow AI has moved your application to the Interview stage",
+    time: "2h ago",
+    read: true,
+    tab: "applications",
+    actionLabel: "View Applications",
+  },
+  {
+    id: "dn4",
+    type: "network",
+    title: "Connection request",
+    body: "Priya Sharma from Aura Logistics wants to connect with you",
+    time: "5h ago",
+    read: true,
+    tab: "network",
+    actionLabel: "View in Network",
+  },
+  {
+    id: "dn5",
+    type: "system",
+    title: "Profile strength update",
+    body: "Adding your GitHub will increase your match rate by 12%",
+    time: "1d ago",
+    read: true,
+    tab: "settings",
+    actionLabel: "Update Profile",
+  },
+];
+
+// ── Nav sections ──────────────────────────────────────────────────────────────
+export const DEV_SECTIONS: { group: string; items: NavItem[] }[] = [
+  {
+    group: "",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: "solar:widget-5-bold-duotone" },
+    ],
+  },
+  {
+    group: "Discover",
+    items: [
+      { id: "discover",     label: "Discover",     icon: "solar:compass-bold-duotone" },
+      { id: "applications", label: "Applications", icon: "solar:document-add-bold-duotone" },
+    ],
+  },
+  {
+    group: "Work",
+    items: [
+      { id: "projects", label: "Projects", icon: "solar:rocket-bold-duotone" },
+      { id: "network",  label: "Network",  icon: "solar:users-group-two-rounded-bold-duotone", badge: "network" },
+    ],
+  },
+  {
+    group: "Connect",
+    items: [
+      { id: "inbox", label: "Inbox", icon: "solar:inbox-in-bold-duotone", badge: "inbox" },
+    ],
+  },
+  {
+    group: "Account",
+    items: [
+      { id: "settings", label: "Settings", icon: "solar:settings-minimalistic-bold-duotone" },
+    ],
+  },
+];
+
 export const statsData = [
-    {
-        id: 1,
-        label: 'Match Rate',
-        value: '88%',
-        trend: '+6%',
-        trendUp: true,
-    },
     {
         id: 2,
         label: 'Active Projects',
@@ -44,6 +174,7 @@ export const featuredMatch = {
         'Proven project experience with similar scale startups',
         'Your availability aligns with their timeline',
     ],
+    logo: 'NH',
 };
 
 export const recentMatches = [
@@ -58,6 +189,7 @@ export const recentMatches = [
         stage: 'Seed Stage',
         budget: '$250K',
         teamSize: '8 team',
+        logo: 'NH',
     },
     {
         id: 3,
@@ -71,6 +203,7 @@ export const recentMatches = [
         budget: '$850K',
         teamSize: '12 team',
         iconClass: 'logistics',
+        logo: 'AL',
     },
     {
         id: 4,
@@ -84,6 +217,7 @@ export const recentMatches = [
         budget: '$180K',
         teamSize: '6 team',
         iconClass: 'energy',
+        logo: 'VE',
     },
 ];
 
@@ -99,20 +233,20 @@ export const applications = [
     },
     {
         id: 2,
-        name: 'Aura Logistics',
-        icon: 'truck',
-        iconClass: 'logistics',
-        role: 'Full Stack Developer',
-        date: 'Applied 3 days ago',
+        name: 'FinFlow AI',
+        icon: 'dollar-sign',
+        iconClass: 'finflow',
+        role: 'Backend Developer',
+        date: 'Applied 1 week ago',
         status: 'Pending',
     },
     {
         id: 3,
-        name: 'FinFlow AI',
-        icon: 'dollar-sign',
-        iconClass: 'finflow',
-        role: 'Backend Engineer',
-        date: 'Applied 1 week ago',
+        name: 'Aura Logistics',
+        icon: 'truck',
+        iconClass: 'logistics',
+        role: 'Full Stack Dev',
+        date: 'Applied 2 weeks ago',
         status: 'Accepted',
     },
     {
@@ -120,8 +254,8 @@ export const applications = [
         name: 'Veritas Energy',
         icon: 'bolt',
         iconClass: 'energy',
-        role: 'Blockchain Developer',
-        date: 'Applied 2 weeks ago',
+        role: 'Smart Contract Eng',
+        date: 'Applied 3 weeks ago',
         status: 'Declined',
     },
 ];
@@ -130,23 +264,23 @@ export const projects = [
     {
         id: 1,
         name: 'Nexus Health',
+        role: 'AI Engineer',
         icon: 'heartbeat',
         iconClass: 'health',
-        role: 'AI Engineer',
-        progress: 78,
+        progress: 75,
         progressColor: 'green',
         teamMembers: ['A', 'B', 'C'],
-        extraMembers: 2,
-        stage: 'Development',
-        deadline: '2 weeks',
-        hoursLogged: '24 hrs',
+        extraMembers: 5,
+        stage: 'Testing',
+        deadline: '4 days',
+        hoursLogged: '124 hrs',
     },
     {
         id: 2,
         name: 'Aura Logistics',
+        role: 'Lead Developer',
         icon: 'truck',
         iconClass: 'logistics',
-        role: 'Full Stack Developer',
         progress: 42,
         progressColor: 'orange',
         teamMembers: ['D', 'E', 'F'],
@@ -205,7 +339,7 @@ export const opportunities = [
         techStack: ['Python', 'FastAPI', 'AI/ML', 'React', 'Docker'],
         matchExplanation: 'Your FastAPI, Python and AI experience strongly align with this startup.',
         metrics: { viability: 92, fundingReadiness: 85, growthPotential: 90 },
-        logo: '🏥',
+        logo: 'NH',
     },
     {
         id: 6,
@@ -221,7 +355,7 @@ export const opportunities = [
         techStack: ['Node.js', 'React', 'AWS', 'Docker'],
         matchExplanation: 'Your Node.js, React and AWS skills are a perfect fit for their tech stack.',
         metrics: { viability: 85, fundingReadiness: 75, growthPotential: 88 },
-        logo: '🚚',
+        logo: 'AL',
     },
     {
         id: 7,
@@ -237,7 +371,7 @@ export const opportunities = [
         techStack: ['Python', 'Solidity', 'Blockchain', 'React'],
         matchExplanation: 'Your Python and Blockchain expertise matches their technical requirements.',
         metrics: { viability: 78, fundingReadiness: 70, growthPotential: 82 },
-        logo: '⚡',
+        logo: 'VE',
     },
     {
         id: 8,
@@ -253,7 +387,7 @@ export const opportunities = [
         techStack: ['Python', 'PyTorch', 'GraphQL', 'AWS'],
         matchExplanation: 'Your Python, PyTorch and GraphQL skills are highly relevant.',
         metrics: { viability: 88, fundingReadiness: 82, growthPotential: 92 },
-        logo: '💰',
+        logo: 'FF',
     },
     {
         id: 9,
@@ -269,7 +403,7 @@ export const opportunities = [
         techStack: ['React', 'Node.js', 'Three.js', 'PostgreSQL'],
         matchExplanation: 'Your React and Node.js experience aligns with their educational platform needs.',
         metrics: { viability: 72, fundingReadiness: 65, growthPotential: 78 },
-        logo: '🌱',
+        logo: 'AT',
     },
     {
         id: 10,
@@ -285,7 +419,7 @@ export const opportunities = [
         techStack: ['Python', 'FastAPI', 'React', 'PostgreSQL'],
         matchExplanation: 'Your FastAPI and Python expertise is exactly what they need.',
         metrics: { viability: 82, fundingReadiness: 78, growthPotential: 85 },
-        logo: '💊',
+        logo: 'MC',
     },
 ];
 
@@ -297,7 +431,7 @@ export const founders = [
         role: 'AI Engineer',
         matchScore: 94,
         message: 'We are looking for an AI engineer to join our team. Your profile is exactly what we need.',
-        logo: '🏥',
+        logo: 'NH',
     },
     {
         id: 2,
@@ -306,7 +440,7 @@ export const founders = [
         role: 'ML Engineer',
         matchScore: 82,
         message: 'We need a machine learning engineer to help build our financial models.',
-        logo: '💰',
+        logo: 'FF',
     },
 ];
 
@@ -333,3 +467,5 @@ export const filterOptions = {
     matchScores: ['60%+', '70%+', '80%+', '90%+'],
     workTypes: ['Remote', 'Hybrid', 'Onsite'],
 };
+
+export const dashboardData = {};
