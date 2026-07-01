@@ -18,6 +18,12 @@ import {
   buildBlueprintContent, buildArchitecture, gradeFor, fmtMoney,
   type BlueprintContent, type TechStackModel, type StackLayerKey, type StackCat, type Phase,
 } from "./blueprintContent";
+import {
+  FOUNDER_NETWORK_PROFILES,
+  NetworkProfileDetailScreen,
+  type FounderContactProfile,
+} from "./NetworkProfileDetail";
+import type { FounderNetworkMessageTarget } from "./NetworkTab";
 
 /* ─────────────────────────────────────────────────────── */
 /* Types                                                    */
@@ -876,10 +882,32 @@ function TechStackPill({ label, layer, editing, onChange }: {
 /* ═══════════════════════════════════════════════════════ */
 /* Blueprint Detail view                                   */
 /* ═══════════════════════════════════════════════════════ */
-function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => void; onSave?: (updated: Blueprint) => void }) {
+function BlueprintDetail({
+  bp,
+  onBack,
+  onSave,
+  onMessage,
+  profileComplete = true,
+  onRequireProfile,
+}: {
+  bp: Blueprint;
+  onBack: () => void;
+  onSave?: (updated: Blueprint) => void;
+  onMessage?: (contact: FounderNetworkMessageTarget) => void;
+  profileComplete?: boolean;
+  onRequireProfile?: (afterComplete?: () => void) => void;
+}) {
   const reduce = useReducedMotion();
   const [editing, setEditing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [selectedDeveloper, setSelectedDeveloper] = useState<FounderContactProfile | null>(null);
+  const [activeRoleFilter, setActiveRoleFilter] = useState("all");
+  const [developerConnections, setDeveloperConnections] = useState<Record<string, boolean>>(() =>
+    FOUNDER_NETWORK_PROFILES.reduce<Record<string, boolean>>((acc, profile) => {
+      if (profile.type === "Developer") acc[profile.id] = profile.connected;
+      return acc;
+    }, {})
+  );
   const [content] = useState<BlueprintContent>(() => buildBlueprintContent(bp));
   const [phases, setPhases] = useState<Phase[]>(() => content.phases);
   const [editPhase, setEditPhase] = useState<number | null>(null);
@@ -892,6 +920,7 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
   const updateTechStackLayer = (key: StackLayerKey, value: string) =>
     setDraftTechStack((prev) => ({ ...prev, [key]: { ...prev[key], chosen: value } }));
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const restoreBlueprintScrollRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
 
   const published = bp.status === "PUBLISHED";
@@ -917,12 +946,52 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     const max = el.scrollHeight - el.clientHeight;
     setProgress(max > 0 ? Math.min(1, el.scrollTop / max) : 0);
   };
+  useEffect(() => {
+    if (selectedDeveloper || restoreBlueprintScrollRef.current === null) return;
+    const top = restoreBlueprintScrollRef.current;
+    restoreBlueprintScrollRef.current = null;
+    const raf = requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTop = top;
+      onScroll();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedDeveloper]);
 
   const handleBack = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete("blueprint");
     window.history.pushState({}, "", url.toString());
     onBack();
+  };
+  const requireProfileBeforeAction = (afterComplete?: () => void) => {
+    if (profileComplete || !onRequireProfile) return false;
+    onRequireProfile(afterComplete);
+    return true;
+  };
+  const handleToggleDeveloperConnection = (id: string) => {
+    if (requireProfileBeforeAction(() => handleToggleDeveloperConnection(id))) return;
+    setDeveloperConnections((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+  const handleDeveloperMessage = (profile: FounderContactProfile) => {
+    if (requireProfileBeforeAction()) return;
+    onMessage?.({
+      id: profile.id,
+      name: profile.name,
+      role: `${profile.role} - ${profile.company}`,
+      match: profile.match,
+      initials: profile.initials,
+      online: profile.online,
+      personType: profile.type,
+      requestStatus: developerConnections[profile.id] ? undefined : "pending",
+      requestDirection: developerConnections[profile.id] ? undefined : "outgoing",
+      subject: developerConnections[profile.id] ? undefined : "Blueprint match",
+    });
+  };
+  const handleViewMatchedDeveloper = (profile: FounderContactProfile) => {
+    restoreBlueprintScrollRef.current = scrollRef.current?.scrollTop ?? null;
+    setSelectedDeveloper(profile);
   };
   const showToast = (m: string) => { setToast(m); window.setTimeout(() => setToast(null), 2000); };
   const copyLink = () => {
@@ -1034,23 +1103,26 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     { role: "Backend Engineer", count: 1, skills: `${bp.techStack.backend} · ${bp.techStack.db}`, lead: false },
     { role: "Product Designer", count: 1, skills: "UX · design systems (part-time)", lead: false },
   ];
-  const devs = [
-    { initials: "JD", name: "John Doe", role: "Full Stack · React · Python · 5 yrs", avail: "Available", match: 94, skills: ["Frontend", "Backend", "Full Stack", "React", "Next.js"] },
-    { initials: "SM", name: "Sarah Mitchell", role: "ML Engineer · TensorFlow · AWS · 3 yrs", avail: "Available", match: 88, skills: ["AI/ML", "TensorFlow", "Backend"] },
-    { initials: "AK", name: "Alex Kim", role: "DevOps · Kubernetes · GCP · 4 yrs", avail: "Interested", match: 76, skills: ["DevOps", "QA", "Stripe Connect"] },
-  ];
+  const developerProfiles = FOUNDER_NETWORK_PROFILES.filter((profile) => profile.type === "Developer");
+  const developerRoleText = (developer: FounderContactProfile) =>
+    `${developer.role} · ${developer.skills.slice(0, 2).join(" · ")} · ${developer.experience}`;
+  const isDeveloperAvailable = (developer: FounderContactProfile) =>
+    /open|available/i.test(developer.availability);
   const devsForPhase = (skillset: string[]) => {
-    const matched = devs.filter((d) => skillset.some((s) => d.skills.some((sk) => sk.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(sk.toLowerCase()))));
-    return matched.length ? matched : devs;
+    const matched = developerProfiles.filter((d) => skillset.some((s) => d.skills.some((sk) => sk.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(sk.toLowerCase()))));
+    return matched.length ? matched : developerProfiles;
   };
   const devsForRole = (role: { role: string; skills: string }) => {
     const terms = `${role.role} ${role.skills}`.toLowerCase().split(/[^a-z0-9+.#]+/).filter(Boolean);
-    const matched = devs.filter((d) => terms.some((term) =>
+    const matched = developerProfiles.filter((d) => terms.some((term) =>
       d.role.toLowerCase().includes(term) ||
       d.skills.some((sk) => sk.toLowerCase().includes(term) || term.includes(sk.toLowerCase()))
     ));
-    return (matched.length ? matched : devs).slice(0, 2);
+    return (matched.length ? matched : developerProfiles).slice(0, 3);
   };
+  const visibleMatchedRoles = activeRoleFilter === "all"
+    ? roles
+    : roles.filter((role) => role.role === activeRoleFilter);
 
   const SEV_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
   const riskRows = [
@@ -1094,6 +1166,23 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     "Go-to-Market", "Project Cost & Financials",
     "Risks & Mitigations",
   ];
+
+  if (selectedDeveloper) {
+    return (
+      <NetworkProfileDetailScreen
+        key={selectedDeveloper.id}
+        profile={selectedDeveloper}
+        connected={Boolean(developerConnections[selectedDeveloper.id])}
+        backLabel="Back to Blueprint"
+        onBack={() => setSelectedDeveloper(null)}
+        onToggleConnection={handleToggleDeveloperConnection}
+        onMessage={handleDeveloperMessage}
+        profileComplete={profileComplete}
+        onRequireProfile={onRequireProfile}
+        messageLabel="Message"
+      />
+    );
+  }
 
   return (
     <motion.div key="detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -1430,8 +1519,8 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
 
           {/* ── TEAM & TALENT ── */}
           <Reveal>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 22 }}>
-              <div style={cardStyle({ padding: "26px 28px" })}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 22, alignItems: "start" }}>
+              <div style={cardStyle({ padding: "26px 28px", alignSelf: "start" })}>
                 <SectionHead icon={<Briefcase size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Team" title="Roles Needed" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {roles.map((r) => (
@@ -1445,10 +1534,39 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                   ))}
                 </div>
               </div>
-              <div style={cardStyle({ padding: "26px 28px" })}>
-                <SectionHead icon={<CodeBlock size={18} weight="duotone" style={{ color: C.success }} />} kicker="AI Suggested" title="Matched Developers" />
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {roles.map((r) => (
+              <div style={cardStyle({ padding: "26px 28px", alignSelf: "start" })}>
+                <SectionHead
+                  icon={<CodeBlock size={18} weight="duotone" style={{ color: C.success }} />}
+                  kicker="AI Suggested"
+                  title="Matched Developers"
+                  right={<Chip tone="mint">{developerProfiles.length} profiles</Chip>}
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                  {[{ role: "all", label: "All roles" }, ...roles.map((role) => ({ role: role.role, label: role.role }))].map((item) => {
+                    const active = activeRoleFilter === item.role;
+                    return (
+                      <button
+                        key={item.role}
+                        type="button"
+                        onClick={() => setActiveRoleFilter(item.role)}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: active ? C.mint : C.teal,
+                          background: active ? C.forest : C.tint,
+                          border: `1px solid ${active ? C.forest : C.borderSoft}`,
+                          borderRadius: 999,
+                          padding: "6px 11px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="blueprint-scroll" style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 430, overflowY: "auto", paddingRight: 6 }}>
+                  {visibleMatchedRoles.map((r) => (
                     <div key={r.role} style={{ padding: "13px 15px", borderRadius: 12, background: C.tint, border: `1px solid ${C.borderSoft}` }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{r.role}</div>
@@ -1456,17 +1574,28 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {devsForRole(r).map((d) => {
-                          const avail = d.avail === "Available";
+                          const avail = isDeveloperAvailable(d);
+                          const connected = developerConnections[d.id];
                           return (
-                            <div key={`${r.role}-${d.name}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, background: C.card, border: `1px solid ${C.borderSoft}` }}>
+                            <motion.button
+                              key={`${r.role}-${d.id}`}
+                              type="button"
+                              whileHover={{ y: -2, borderColor: "#c5ddd0", boxShadow: "0 8px 22px rgba(15,28,24,0.06)" }}
+                              onClick={() => handleViewMatchedDeveloper(d)}
+                              style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 10, background: C.card, border: `1px solid ${C.borderSoft}`, cursor: "pointer" }}
+                            >
                               <Avatar initials={d.initials} size={32} />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{d.name}</div>
-                                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.role}</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+                                  {d.online && <span style={{ width: 7, height: 7, borderRadius: 999, background: C.success, flexShrink: 0 }} />}
+                                </div>
+                                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{developerRoleText(d)}</div>
                               </div>
-                              <Chip tone={avail ? "mint" : "amber"}>{d.avail}</Chip>
+                              <Chip tone={avail ? "mint" : "amber"}>{avail ? "Available" : d.availability}</Chip>
+                              {connected && <Chip tone="neutral">Connected</Chip>}
                               <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "#e8f5ef", color: "#1d6e47", ...NUM }}>{d.match}%</span>
-                            </div>
+                            </motion.button>
                           );
                         })}
                       </div>
@@ -2240,6 +2369,8 @@ interface Props {
   onClearForge?: () => void;
   profileComplete?: boolean;
   onCompleteProfile?: () => void;
+  onMessage?: (contact: FounderNetworkMessageTarget) => void;
+  onRequireProfile?: (afterComplete?: () => void) => void;
 }
 
 export function WorkspaceTab({
@@ -2251,6 +2382,8 @@ export function WorkspaceTab({
   onClearForge,
   profileComplete = true,
   onCompleteProfile,
+  onMessage,
+  onRequireProfile,
 }: Props) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
@@ -2390,6 +2523,9 @@ export function WorkspaceTab({
                 bp={viewingBP}
                 onBack={() => { setViewingId(null); onClearOpen?.(); }}
                 onSave={(updated) => update(blueprints.map((b) => (b.id === updated.id ? updated : b)))}
+                onMessage={onMessage}
+                profileComplete={profileComplete}
+                onRequireProfile={onRequireProfile}
               />
             ) : (
               <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" }}>

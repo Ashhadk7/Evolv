@@ -279,6 +279,8 @@ export default function FounderDashboard() {
             onClearForge={() => setTriggerForge(false)}
             profileComplete={profileComplete}
             onCompleteProfile={handleOpenProfile}
+            onMessage={handleOpenNetworkMessage}
+            onRequireProfile={requireFounderProfile}
           />
         )}
         {tab === "analysis" && <AnalysisTab />}

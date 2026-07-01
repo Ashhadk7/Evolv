@@ -295,11 +295,11 @@ const teamMembers = [
   {
     name: "M. Ashhad Khan",
     university: "NED UET",
-    degree: "BS Information Technology",
+    degree: "BS Computer Science",
     photo: "/Ashhad_pic.png",
     cacheKey: "ashhad-20260701-crop",
-    imagePosition: "50% 42%",
-    imageScale: 1.22,
+    imagePosition: "57% 15%",
+    imageScale: 1.05,
   },
   {
     name: "Laiba Kanwal",
