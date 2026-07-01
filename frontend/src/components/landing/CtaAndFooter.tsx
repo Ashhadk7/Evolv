@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Plus } from "@phosphor-icons/react";
 import { FadeIn } from "@/components/ui/FadeIn";
@@ -166,6 +167,8 @@ function FAQAccordionItem({
           style={{
             color: isOpen ? "#0c1a14" : "rgba(12,26,20,0.7)",
             transition: "color 0.2s",
+            fontSize: 18,
+            padding: 10
           }}
         >
           {item.question}
@@ -226,7 +229,7 @@ export function FAQ() {
     <section
       id="faq"
       className="relative overflow-hidden px-4 py-28 sm:px-6 md:px-12 lg:py-36"
-      style={{ background: "#f8f6f1" }}
+      style={{ background: "#f8f6f1"}}
     >
       {/* Top hairline */}
       <div
@@ -284,7 +287,7 @@ export function FAQ() {
               <br />
               questions?
               <br />
-              <span style={{ color: "#428475" }}>We've got answers.</span>
+              <span style={{ color: "#428475" }}>We&apos;ve got answers.</span>
             </h2>
 
             {/* Description */}
@@ -292,7 +295,7 @@ export function FAQ() {
               className="mb-8 text-[14px] leading-relaxed"
               style={{ color: "rgba(12,26,20,0.52)", maxWidth: "230px" }}
             >
-              Didn't find your answer?
+              Didn&apos;t find your answer?
             </p>
 
             {/* Divider */}
@@ -355,19 +358,35 @@ function FooterColumn({ title, links }: FooterColumnProps) {
       <ul className="flex flex-col gap-3">
         {links.map((link: NavLink) => (
           <li key={link.label}>
-            <a
-              href={link.href}
-              className="text-[13.5px] leading-snug transition-colors duration-200"
-              style={{ color: "rgba(255,244,225,0.45)" }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "rgba(255,244,225,0.45)")
-              }
-            >
-              {link.label}
-            </a>
+            {link.href.startsWith("/") ? (
+              <Link
+                href={link.href}
+                className="text-[13.5px] leading-snug transition-colors duration-200"
+                style={{ color: "rgba(255,244,225,0.45)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "rgba(255,244,225,0.45)")
+                }
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                href={link.href}
+                className="text-[13.5px] leading-snug transition-colors duration-200"
+                style={{ color: "rgba(255,244,225,0.45)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "rgba(255,244,225,0.9)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "rgba(255,244,225,0.45)")
+                }
+              >
+                {link.label}
+              </a>
+            )}
           </li>
         ))}
       </ul>
@@ -387,8 +406,8 @@ const PRODUCT_LINKS: NavLink[] = [
 ];
 
 const COMPANY_LINKS: NavLink[] = [
-  { label: "About",    href: "#"                     },
-  { label: "Our Team", href: "#"                     },
+  { label: "About",    href: "/about"                },
+  { label: "Our Team", href: "/our-team"             },
   { label: "Contact",  href: "mailto:hello@evolv.so" },
   { label: "Careers",  href: "#"                     },
   { label: "Blog",     href: "#"                     },
@@ -409,10 +428,10 @@ export function Footer() {
   return (
     <footer
       className="relative"
-      style={{ background: "#1a312c" }}
+      style={{ background: "#1a312c"}}
     >
       {/* Top hairline */}
-      <div style={{ height: "1px", background: "rgba(137,215,183,0.1)" }} />
+      <div style={{ height: "1px", background: "rgba(137,215,183,0.1)" ,  marginBottom: 50}} />
 
       {/* ── Main grid ── */}
       <div className="mx-auto max-w-6xl px-6 pt-16 pb-12 md:px-12">
@@ -421,7 +440,7 @@ export function Footer() {
           {/* ── Col 1: Brand ── */}
           <div className="flex flex-col gap-5">
             {/* Logo */}
-            <a href="#" aria-label="Evolv home" className="flex items-center gap-2">
+            <Link href="/" aria-label="Evolv home" className="flex items-center gap-2">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path
                   d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5"
@@ -438,7 +457,7 @@ export function Footer() {
               >
                 Evolv
               </span>
-            </a>
+            </Link>
 
             {/* Description */}
             <p
