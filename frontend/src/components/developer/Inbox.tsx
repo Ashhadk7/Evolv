@@ -848,6 +848,33 @@ export default function Inbox({
     setDraft("");
   };
 
+  const sendMeetInvite = () => {
+    if (messageLocked) return;
+    if (requireProfileBeforeAction(() => sendMeetInvite())) return;
+    const chars = "abcdefghijklmnopqrstuvwxyz";
+    const segment = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const meetCode = `${segment(3)}-${segment(4)}-${segment(3)}`;
+    const meetLink = `https://meet.google.com/${meetCode}`;
+    const body = `Let's connect over video call. Join here: ${meetLink}`;
+    
+    const now = new Date();
+    const msg: Message = {
+      id: Date.now().toString(),
+      from: "me",
+      text: body,
+      time: formatTime(now),
+      date: formatDate(now),
+    };
+
+    setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
+    setContacts((prev) => {
+      const nextContact = { ...contact, lastMsg: body, lastTime: "Now", unread: 0 };
+      return prev.some((item) => item.id === contact.id)
+        ? prev.map((item) => (item.id === contact.id ? nextContact : item))
+        : [nextContact, ...prev];
+    });
+  };
+
   const acceptRequest = (id: string) => {
     if (requireProfileBeforeAction(() => acceptRequest(id))) return;
     setContacts((prev) => {
@@ -1169,25 +1196,6 @@ export default function Inbox({
               </button>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCall({ mode: "voice" })}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all hover:bg-[#e8ede9]"
-                  style={{ color: INK, border: "1px solid #e8ede9" }}
-                >
-                  <Phone size={14} /> Voice
-                </button>
-                <motion.button
-                  type="button"
-                  onClick={() => setCall({ mode: "video" })}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.96 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-semibold"
-                  style={{ background: DARK, color: MINT }}
-                >
-                  <VideoCamera size={14} /> Video
-                </motion.button>
                 <button type="button" className="rounded-lg p-1.5 transition-all hover:bg-[#e8ede9]">
                   <DotsThree size={16} style={{ color: MUTED }} />
                 </button>
@@ -1296,6 +1304,20 @@ export default function Inbox({
                 className="h-11 flex-1 rounded-xl px-4 text-[13px] outline-none"
                 style={{ background: messageLocked ? "#eef3ef" : "#f5f7f5", border: "1px solid #e8ede9", color: TEXT }}
               />
+              <motion.button
+                type="button"
+                onClick={sendMeetInvite}
+                disabled={messageLocked}
+                title="Send Google Meet Invitation"
+                whileHover={!messageLocked ? { scale: 1.05 } : {}}
+                whileTap={!messageLocked ? { scale: 0.95 } : {}}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                className="flex h-10 px-3 items-center justify-center rounded-xl gap-1.5 text-[12.5px] font-bold border border-[#d4e4db] hover:bg-[#f5f7f5] transition-colors cursor-pointer"
+                style={{ color: "#1a2e26" }}
+              >
+                <VideoCamera size={14} weight="bold" /> Meet
+              </motion.button>
+
               <motion.button
                 type="button"
                 onClick={sendMsg}
