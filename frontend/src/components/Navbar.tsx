@@ -12,10 +12,10 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 
 const NAV_LINKS = [
-  { label: "Home",         href: "#home"         },
-  { label: "How it works", href: "#how-it-works"  },
-  { label: "About",        href: "#about"         },
-  { label: "Our Team",     href: "#our-team"      },
+  { label: "Home",         href: "/"              },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "About",        href: "/about"         },
+  { label: "Our Team",     href: "/our-team"      },
 ];
 
 function EvolvMark() {
@@ -95,17 +95,17 @@ export function Navbar() {
           }}
         >
           {/* Logo */}
-          <a href="#" className="flex items-center gap-2.5" aria-label="Evolv home">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="Evolv home">
             <EvolvMark />
             <span className="text-[17px] font-semibold tracking-tight text-cream">
               Ev<span className="text-mint">olv</span>
             </span>
-          </a>
+          </Link>
 
           {/* Desktop nav links */}
           <div className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((link) => (
-              <a
+              <Link
                 key={link.label}
                 href={link.href}
                 className="relative rounded-full px-4 py-2 text-sm text-cream/50 transition-colors duration-150 hover:text-cream/90"
@@ -140,7 +140,7 @@ export function Navbar() {
                   </motion.span>
                 )}
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -189,14 +189,14 @@ export function Navbar() {
             className="mx-4 mt-1 flex flex-col rounded-xl border border-mint/10 bg-[#0d1e1a]/96 px-4 py-4 backdrop-blur-2xl md:hidden"
           >
             {NAV_LINKS.map((link) => (
-              <a
+              <Link
                 key={link.label}
                 href={link.href}
                 className="rounded-lg px-3 py-2.5 text-sm text-cream/58 transition-colors hover:bg-mint/5 hover:text-cream/88"
                 onClick={() => setMenuOpen(false)}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-mint/8 pt-3">
               <Link

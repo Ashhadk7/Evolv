@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ElementType, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import {
   ArrowLeft,
   Briefcase,
   Buildings,
+  Certificate,
   ChatCircle,
   CheckCircle,
   Code,
+  EnvelopeSimple,
+  GithubLogo,
+  GlobeHemisphereWest,
+  GraduationCap,
   Handshake,
+  LinkedinLogo,
+  LinkSimple,
   MapPin,
   Star,
+  Tag,
   UserPlus,
   Users,
 } from "@phosphor-icons/react";
@@ -24,9 +33,20 @@ import {
   buildProfileFromContact,
   getFounderNetworkProfile,
 } from "./founderData";
+import {
+  formatFounderEducation,
+  getFounderEducations,
+} from "./profileUtils";
 import { TypeBadge } from "./ui/TypeBadge";
 import { SkillPill } from "./ui/SkillPill";
 import { RatingStars, clampRating } from "./ui/RatingStars";
+import {
+  formatDeveloperEducation,
+  getDeveloperCertifications,
+  getDeveloperEducations,
+  getDeveloperLinkedIn,
+  getDeveloperSkillEntries,
+} from "../developer/profileUtils";
 
 // Re-export everything consumers expect from this module
 export type { FounderContactProfile, NetworkReview, NetworkType };
@@ -92,6 +112,288 @@ function DetailTile({ label, value }: { label: string; value: string }) {
   );
 }
 
+function EmptyProfileValue({ children }: { children: string }) {
+  return (
+    <div className="rounded-xl px-3 py-3 text-[12px]" style={{ background: "#f8faf8", color: "#7a9e8e", border: "1px dashed #d7e5dd" }}>
+      {children}
+    </div>
+  );
+}
+
+function DeveloperInfoSection({
+  Icon,
+  title,
+  description,
+  children,
+}: {
+  Icon: ElementType;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-xl p-4"
+      style={{ border: "1px solid #e8ede9" , marginTop: 20}}
+    >
+      <div className="flex items-start gap-2.5 mb-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: "#f0f5f2", color: "#428475" }}>
+          <Icon size={16} weight="bold" />
+        </span>
+        <div>
+          <div className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
+            {title}
+          </div>
+          <p className="mt-0.5 text-[11px] leading-5" style={{ color: "#8ca99d" }}>
+            {description}
+          </p>
+        </div>
+      </div>
+      {children}
+    </motion.section>
+  );
+}
+
+function formatProfileLink(value: string) {
+  return value.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+}
+
+function getEmailUrl(value: string) {
+  return value ? `mailto:${value}` : "";
+}
+
+function getExternalUrl(value: string) {
+  if (!value) return "";
+  return value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`;
+}
+
+function getProfileLinkedIn(profile: FounderContactProfile) {
+  return profile.linkedin?.trim() || profile.linkedIn?.trim() || "";
+}
+
+function getPublicProfileDomains(profile: FounderContactProfile) {
+  const domains = Array.isArray(profile.domains)
+    ? profile.domains.map((domain) => domain.trim()).filter(Boolean)
+    : [];
+
+  return domains.length ? domains : profile.skills;
+}
+
+function DeveloperPublicProfileSections({ profile }: { profile: FounderContactProfile }) {
+  const tags = Array.isArray(profile.tags) ? profile.tags : [];
+  const skillEntries = getDeveloperSkillEntries(profile).filter((entry) =>
+    [entry.name, entry.kind, entry.experience].some((value) => value?.trim())
+  );
+  const educations = getDeveloperEducations(profile).filter((education) => formatDeveloperEducation(education));
+  const certifications = getDeveloperCertifications(profile).filter((certification) =>
+    certification.name?.trim() || certification.image?.trim()
+  );
+  const publicLinks = [
+    { id: "email", label: "Email", value: profile.email?.trim() ?? "", href: getEmailUrl(profile.email?.trim() ?? ""), external: false, Icon: EnvelopeSimple },
+    { id: "github", label: "GitHub", value: profile.github?.trim() ?? "", href: getExternalUrl(profile.github?.trim() ?? ""), external: true, Icon: GithubLogo },
+    { id: "linkedin", label: "LinkedIn", value: getDeveloperLinkedIn(profile), href: getExternalUrl(getDeveloperLinkedIn(profile)), external: true, Icon: LinkedinLogo },
+    { id: "portfolio", label: "Portfolio", value: profile.portfolioLink?.trim() ?? "", href: getExternalUrl(profile.portfolioLink?.trim() ?? ""), external: true, Icon: LinkSimple },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <DeveloperInfoSection
+        Icon={Tag}
+        title="Profile tags"
+        description="Public labels from the developer profile."
+      >
+        {tags.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => <SkillPill key={tag} label={tag} />)}
+          </div>
+        ) : (
+          <EmptyProfileValue>No profile tags added yet.</EmptyProfileValue>
+        )}
+      </DeveloperInfoSection>
+
+      <DeveloperInfoSection
+        Icon={GlobeHemisphereWest}
+        title="Public links"
+        description="Founder-facing links from the developer settings profile."
+      >
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {publicLinks.map(({ id, label, value, href, external, Icon }) => (
+            <div key={id} className="rounded-xl px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
+              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
+                <Icon size={12} weight="bold" />
+                {label}
+              </div>
+              {value ? (
+                <a
+                  href={href}
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noreferrer" : undefined}
+                  className="block truncate text-[12px] font-bold underline decoration-[#c5ddd0] underline-offset-4"
+                  style={{ color: "#1a2e26" }}
+                >
+                  {id === "email" ? value : formatProfileLink(value)}
+                </a>
+              ) : (
+                <div className="text-[12px]" style={{ color: "#9aaea5" }}>Not added yet</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </DeveloperInfoSection>
+
+      <DeveloperInfoSection
+        Icon={Code}
+        title="Skills, tech stack & frameworks"
+        description="Each public skill can include its type and experience level."
+      >
+        {skillEntries.length ? (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {skillEntries.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
+                <div className="min-w-0">
+                  <div className="truncate text-[12px] font-bold" style={{ color: "#1a2e26" }}>{entry.name || "Untitled skill"}</div>
+                  <div className="text-[10px]" style={{ color: "#7a9e8e" }}>{entry.kind || "Skill"}</div>
+                </div>
+                <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold" style={{ background: "#e8f5ef", color: "#2e7d5c", border: "1px solid #c5ddd0" }}>
+                  {entry.experience || "Experience not added"}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyProfileValue>No skills added yet.</EmptyProfileValue>
+        )}
+      </DeveloperInfoSection>
+
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <DeveloperInfoSection
+          Icon={GraduationCap}
+          title="Education"
+          description="Degrees and academic background."
+        >
+          {educations.length ? (
+            <div className="space-y-2">
+              {educations.map((education) => (
+                <div key={education.id} className="rounded-xl px-3 py-2.5" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
+                  <div className="text-[12px] font-bold" style={{ color: "#1a2e26" }}>{formatDeveloperEducation(education)}</div>
+                  {education.school && <div className="mt-0.5 text-[10px]" style={{ color: "#7a9e8e" }}>{education.school}</div>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyProfileValue>No education added yet.</EmptyProfileValue>
+          )}
+        </DeveloperInfoSection>
+
+        <DeveloperInfoSection
+          Icon={Certificate}
+          title="Certifications"
+          description="Optional credentials and certificate proof."
+        >
+          {certifications.length ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+              {certifications.map((certification) => (
+                <div key={certification.id} className="overflow-hidden rounded-xl" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
+                  {certification.image ? (
+                    <div className="relative h-24 w-full">
+                      <Image
+                        src={certification.image}
+                        alt={certification.name || "Certification"}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 1280px) 50vw, 160px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-24 items-center justify-center" style={{ background: "#eef6f2", color: "#428475" }}>
+                      <Certificate size={24} weight="bold" />
+                    </div>
+                  )}
+                  <div className="px-3 py-2 text-[12px] font-bold" style={{ color: "#1a2e26" }}>
+                    {certification.name || "Untitled certification"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+          <EmptyProfileValue>No certifications added yet.</EmptyProfileValue>
+        )}
+      </DeveloperInfoSection>
+      </section>
+    </div>
+  );
+}
+
+function FounderPublicProfileSections({ profile }: { profile: FounderContactProfile }) {
+  const email = profile.email?.trim() ?? "";
+  const linkedin = getProfileLinkedIn(profile);
+  const educations = getFounderEducations(profile).filter((education) => formatFounderEducation(education));
+  const educationFallback = profile.education?.trim() ?? "";
+  const publicLinks = [
+    { id: "email", label: "Email", value: email, href: getEmailUrl(email), external: false, Icon: EnvelopeSimple },
+    { id: "linkedin", label: "LinkedIn", value: linkedin, href: getExternalUrl(linkedin), external: true, Icon: LinkedinLogo },
+  ];
+
+  return (
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <DeveloperInfoSection
+        Icon={GlobeHemisphereWest}
+        title="Public contact"
+        description="Email and founder profile link."
+      >
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {publicLinks.map(({ id, label, value, href, external, Icon }) => (
+            <div key={id} className="rounded-xl px-3 py-3" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
+              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
+                <Icon size={12} weight="bold" />
+                {label}
+              </div>
+              {value ? (
+                <a
+                  href={href}
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noreferrer" : undefined}
+                  className="block truncate text-[12px] font-bold underline decoration-[#c5ddd0] underline-offset-4"
+                  style={{ color: "#1a2e26" }}
+                >
+                  {id === "email" ? value : formatProfileLink(value)}
+                </a>
+              ) : (
+                <div className="text-[12px]" style={{ color: "#9aaea5" }}>Not added yet</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </DeveloperInfoSection>
+
+      <DeveloperInfoSection
+        Icon={GraduationCap}
+        title="Education"
+        description="Education added in the founder profile."
+      >
+        {educations.length ? (
+          <div className="space-y-2">
+            {educations.map((education) => (
+              <div key={education.id} className="rounded-xl px-3 py-2.5" style={{ background: "#f8faf8", border: "1px solid #e8ede9" }}>
+                <div className="text-[12px] font-bold" style={{ color: "#1a2e26" }}>{formatFounderEducation(education)}</div>
+              </div>
+            ))}
+          </div>
+        ) : educationFallback ? (
+          <div className="rounded-xl px-3 py-2.5 text-[12px] font-bold" style={{ background: "#f8faf8", color: "#1a2e26", border: "1px solid #e8ede9" }}>
+            {educationFallback}
+          </div>
+        ) : (
+          <EmptyProfileValue>No education added yet.</EmptyProfileValue>
+        )}
+      </DeveloperInfoSection>
+    </section>
+  );
+}
+
 export function NetworkProfileDetailScreen({
   profile,
   connected = profile.connected,
@@ -126,6 +428,7 @@ export function NetworkProfileDetailScreen({
   const canManagePending     = pending && onAccept && onIgnore;
   const canToggleConnection  = !pending && onToggleConnection;
   const isDeveloper          = profile.type === "Developer";
+  const publicDomains        = getPublicProfileDomains(profile);
   const [customReviews, setCustomReviews] = useState<NetworkReview[]>(() => loadStoredReviews(profile.id));
   const [reviewRating, setReviewRating]   = useState(3);
   const [reviewText, setReviewText]       = useState("");
@@ -291,10 +594,10 @@ export function NetworkProfileDetailScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.04 }}
               className="bg-white rounded-xl p-4"
-              style={{ border: "1px solid #e8ede9" }}
+              style={{ border: "1px solid #e8ede9", marginTop: 20, marginBottom: 20 }}
             >
               <div className="flex items-center gap-2 mb-2">
-                <Code size={14} weight="bold" style={{ color: "#428475" }} />
+                <Code size={14} weight="bold" style={{ color: "#428475"}} />
                 <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
                   Professional summary
                 </span>
@@ -307,7 +610,7 @@ export function NetworkProfileDetailScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
               className="bg-white rounded-xl p-4"
-              style={{ border: "1px solid #e8ede9" }}
+              style={{ border: "1px solid #e8ede9", marginTop: 20, marginBottom: 20  }}
             >
               <div className="flex items-center gap-2 mb-2">
                 {profile.type === "Founder" ? (
@@ -325,13 +628,18 @@ export function NetworkProfileDetailScreen({
             </motion.div>
           </section>
 
+          {!isDeveloper && <FounderPublicProfileSections profile={profile} />}
+
           {isDeveloper && (
+            <>
+              <DeveloperPublicProfileSections profile={profile} />
+
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12 }}
               className="bg-white rounded-xl p-4"
-              style={{ border: "1px solid #e8ede9" }}
+              style={{ border: "1px solid #e8ede9", marginTop: 20}}
             >
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
@@ -386,6 +694,7 @@ export function NetworkProfileDetailScreen({
                 ))}
               </div>
             </motion.section>
+            </>
           )}
         </div>
 
@@ -423,11 +732,11 @@ export function NetworkProfileDetailScreen({
             <div className="flex items-center gap-2 mb-3">
               <Star size={14} weight="fill" style={{ color: "#C4973A" }} />
               <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "#7a9e8e" }}>
-                Skills and domains
+                {isDeveloper ? "Skills and domains" : "Domains / interests"}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {profile.skills.map((skill) => <SkillPill key={skill} label={skill} />)}
+              {publicDomains.map((skill) => <SkillPill key={skill} label={skill} />)}
             </div>
           </motion.div>
         </div>
