@@ -1043,6 +1043,14 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
     const matched = devs.filter((d) => skillset.some((s) => d.skills.some((sk) => sk.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(sk.toLowerCase()))));
     return matched.length ? matched : devs;
   };
+  const devsForRole = (role: { role: string; skills: string }) => {
+    const terms = `${role.role} ${role.skills}`.toLowerCase().split(/[^a-z0-9+.#]+/).filter(Boolean);
+    const matched = devs.filter((d) => terms.some((term) =>
+      d.role.toLowerCase().includes(term) ||
+      d.skills.some((sk) => sk.toLowerCase().includes(term) || term.includes(sk.toLowerCase()))
+    ));
+    return (matched.length ? matched : devs).slice(0, 2);
+  };
 
   const SEV_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
   const riskRows = [
@@ -1081,9 +1089,9 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
 
   const tocSections = [
     "Venture Assessment", "Executive Summary", "Signals & Activity", "The Idea", "Target Users & Personas",
-    "Product Scope", "Recommended Tech Stack & Architecture", "Development Roadmap",
-    "Market Analysis", "Competitor Research", "Similar Startups", "Gap Analysis & Recommendations",
-    "Go-to-Market", "Project Cost & Financials", "Roles & Matched Developers",
+    "Product Scope", "Recommended Tech Stack & Architecture", "Roles & Matched Developers", "Development Roadmap",
+    "Market Analysis", "Competitive Landscape", "Gap Analysis & Recommendations",
+    "Go-to-Market", "Project Cost & Financials",
     "Risks & Mitigations",
   ];
 
@@ -1250,7 +1258,6 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                     ["Milestones", `${phases.length} phases`],
                     ["Roles needed", `${roles.length}`],
                     ["MVP features", `${content.mvpPlan.mustHave.length + content.mvpPlan.shouldHave.length} core`],
-                    ["First milestone", fmtMoney(phases[0].cost)],
                   ].map(([k, v], i) => (
                     <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderTop: i === 0 ? "none" : `1px solid ${C.borderSoft}` }}>
                       <span style={{ fontSize: 12.5, color: C.muted }}>{k}</span>
@@ -1421,6 +1428,55 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
             </div>
           </Reveal>
 
+          {/* ── TEAM & TALENT ── */}
+          <Reveal>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 22 }}>
+              <div style={cardStyle({ padding: "26px 28px" })}>
+                <SectionHead icon={<Briefcase size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Team" title="Roles Needed" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {roles.map((r) => (
+                    <div key={r.role} style={{ padding: "13px 15px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{r.role}</span>
+                        {r.lead ? <Chip tone="mint">Lead</Chip> : <Chip>x{r.count}</Chip>}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 4, fontFamily: MONO }}>{r.skills}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={cardStyle({ padding: "26px 28px" })}>
+                <SectionHead icon={<CodeBlock size={18} weight="duotone" style={{ color: C.success }} />} kicker="AI Suggested" title="Matched Developers" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {roles.map((r) => (
+                    <div key={r.role} style={{ padding: "13px 15px", borderRadius: 12, background: C.tint, border: `1px solid ${C.borderSoft}` }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{r.role}</div>
+                        <Chip tone={r.lead ? "mint" : "neutral"}>{r.lead ? "Priority hire" : "Suggested"}</Chip>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {devsForRole(r).map((d) => {
+                          const avail = d.avail === "Available";
+                          return (
+                            <div key={`${r.role}-${d.name}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, background: C.card, border: `1px solid ${C.borderSoft}` }}>
+                              <Avatar initials={d.initials} size={32} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{d.name}</div>
+                                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.role}</div>
+                              </div>
+                              <Chip tone={avail ? "mint" : "amber"}>{d.avail}</Chip>
+                              <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "#e8f5ef", color: "#1d6e47", ...NUM }}>{d.match}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
           {/* ── ROADMAP ── */}
           <Reveal>
             <div style={cardStyle({ padding: "28px 30px" })}>
@@ -1580,16 +1636,16 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
             </div>
           </Reveal>
 
-          {/* ── COMPETITOR RESEARCH ── */}
+          {/* ── COMPETITIVE LANDSCAPE ── */}
           <Reveal>
             <div style={cardStyle({ padding: "28px 30px" })}>
-              <SectionHead icon={<Trophy size={18} weight="duotone" style={{ color: C.amber }} />} kicker="Competition" title="Competitor Research" desc="Who else is solving this, what they charge, and where they fall short." />
+              <SectionHead icon={<Trophy size={18} weight="duotone" style={{ color: C.amber }} />} kicker="Competition" title="Competitive Landscape" desc="Direct competitors show what buyers already pay for; comparable startups show the broader category proof and likely outcomes." />
               <div style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.3fr 1.3fr 1.3fr", padding: "11px 18px", background: C.tint, fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>
-                  <span>Competitor</span><span>Pricing</span><span>Strengths</span><span>Weaknesses</span><span>Gap we exploit</span>
+                <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.35fr 1.35fr 1.35fr", padding: "11px 18px", background: C.tint, fontSize: 10, fontWeight: 700, color: C.label, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: MONO }}>
+                  <span>Player</span><span>Pricing</span><span>Why they win</span><span>Where they fall short</span><span>Opening for {bp.name}</span>
                 </div>
                 {competitorRows.map((c, i) => (
-                  <div key={c.name + i} style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.3fr 1.3fr 1.3fr", padding: "14px 18px", fontSize: 12.5, color: C.ink, borderTop: `1px solid ${C.borderSoft}`, alignItems: "start", gap: 10 }}>
+                  <div key={c.name + i} style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.35fr 1.35fr 1.35fr", padding: "14px 18px", fontSize: 12.5, color: C.ink, borderTop: `1px solid ${C.borderSoft}`, alignItems: "start", gap: 10 }}>
                     <span style={{ fontWeight: 700 }}>{c.name}</span>
                     <span style={{ color: C.muted }}>{c.pricing}</span>
                     <span style={{ color: C.muted, lineHeight: 1.5 }}>{c.strengths.join("; ")}</span>
@@ -1598,23 +1654,24 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                   </div>
                 ))}
               </div>
-            </div>
-          </Reveal>
-
-          {/* ── SIMILAR STARTUPS ── */}
-          <Reveal>
-            <SectionHead icon={<Buildings size={18} weight="duotone" style={{ color: C.success }} />} kicker="Proof" title="Similar Startups" desc="Comparable companies that prove the category — and the outcomes they've reached." />
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${content.similarStartups.length}, 1fr)`, gap: 18 }}>
-              {content.similarStartups.map((s) => (
-                <motion.div key={s.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={cardStyle({ padding: "22px 24px" })}>
-                  <div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink }}>{s.name}</div>
-                  <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, marginTop: 8 }}>{s.oneLiner}</p>
-                  <div style={{ display: "flex", gap: 8, marginTop: 12, padding: "10px 12px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 10 }}>
-                    <Trophy size={14} weight="fill" style={{ color: C.success, flexShrink: 0, marginTop: 1 }} />
-                    <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{s.outcome}</span>
-                  </div>
-                </motion.div>
-              ))}
+              <div style={{ marginTop: 20 }}>
+                <Label>Category proof</Label>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${content.similarStartups.length}, 1fr)`, gap: 14 }}>
+                  {content.similarStartups.map((s) => (
+                    <motion.div key={s.name} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 24 }} style={{ padding: "16px 18px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+                        <Buildings size={15} weight="duotone" style={{ color: C.success, flexShrink: 0 }} />
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>{s.name}</div>
+                      </div>
+                      <p style={{ fontSize: 12.2, color: C.body, lineHeight: 1.55, margin: 0 }}>{s.oneLiner}</p>
+                      <div style={{ display: "flex", gap: 8, marginTop: 11, padding: "9px 10px", background: C.card, border: `1px solid ${C.borderSoft}`, borderRadius: 9 }}>
+                        <Trophy size={13} weight="fill" style={{ color: C.success, flexShrink: 0, marginTop: 1 }} />
+                        <span style={{ fontSize: 11.7, color: C.muted, lineHeight: 1.45 }}>{s.outcome}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             </div>
           </Reveal>
 
@@ -1807,47 +1864,6 @@ function BlueprintDetail({ bp, onBack, onSave }: { bp: Blueprint; onBack: () => 
                   <span style={{ fontSize: 11.5, color: C.muted }}>Break-even month — cumulative revenue overtakes the {fmtMoney(cost.total)} build cost.</span>
                 </div>
               )}
-            </div>
-          </Reveal>
-
-          {/* ── TEAM & TALENT ── */}
-          <Reveal>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 22 }}>
-              <div style={cardStyle({ padding: "26px 28px" })}>
-                <SectionHead icon={<Briefcase size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Team" title="Roles Needed" />
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {roles.map((r) => (
-                    <div key={r.role} style={{ padding: "13px 15px", background: C.tint, border: `1px solid ${C.borderSoft}`, borderRadius: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{r.role}</span>
-                        {r.lead ? <Chip tone="mint">Lead</Chip> : <Chip>×{r.count}</Chip>}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.muted, marginTop: 4, fontFamily: MONO }}>{r.skills}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={cardStyle({ padding: "26px 28px" })}>
-                <SectionHead icon={<CodeBlock size={18} weight="duotone" style={{ color: C.success }} />} kicker="Matched" title="Matched Developers" />
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {devs.map((d, i) => {
-                    const avail = d.avail === "Available";
-                    return (
-                      <motion.div key={d.name} initial={reduce ? false : { opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.5, ease: EASE }}
-                        style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, border: `1px solid ${C.borderSoft}`, background: C.tint }}>
-                        <Avatar initials={d.initials} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{d.name}</div>
-                          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{d.role}</div>
-                        </div>
-                        <Chip tone={avail ? "mint" : "amber"}>{d.avail}</Chip>
-                        <span style={{ fontSize: 13, fontWeight: 800, padding: "5px 12px", borderRadius: 999, background: "#e8f5ef", color: "#1d6e47", ...NUM }}>{d.match}%</span>
-                        <button className="hover:bg-[#1a312c] hover:text-[#89d7b7] transition-colors" style={{ fontSize: 12.5, fontWeight: 700, padding: "8px 16px", borderRadius: 10, background: C.card, border: `1px solid ${C.forest}`, color: C.forest, cursor: "pointer" }}>Connect</button>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </Reveal>
 
