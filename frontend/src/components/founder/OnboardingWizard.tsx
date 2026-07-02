@@ -53,6 +53,7 @@ export interface FounderProfile {
   stateProvince?: string;
   city?: string;
   primaryGoal?: string;
+  stripeConnected?: boolean;
 }
 
 interface Props {

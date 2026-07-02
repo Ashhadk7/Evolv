@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle, X } from "@phosphor-icons/react";
@@ -21,7 +22,7 @@ import { DEFAULT_BLUEPRINTS, type Blueprint } from "@/components/founder/Workspa
 
 // Lazy-load non-default tabs
 const WorkspaceTab  = dynamic(() => import("@/components/founder/WorkspaceTab").then(m => ({ default: m.WorkspaceTab })));
-const AnalysisTab   = dynamic(() => import("@/components/founder/AnalysisTab").then(m => ({ default: m.AnalysisTab })));
+const ProjectsTab   = dynamic(() => import("@/components/founder/ProjectsTab").then(m => ({ default: m.ProjectsTab })));
 const InboxTab      = dynamic(() => import("@/components/founder/InboxTab").then(m => ({ default: m.InboxTab })));
 const NetworkTab    = dynamic(() => import("@/components/founder/NetworkTab").then(m => ({ default: m.NetworkTab })));
 const SettingsTab   = dynamic(() => import("@/components/founder/SettingsTab").then(m => ({ default: m.SettingsTab })));
@@ -30,7 +31,7 @@ const DEFAULT_PROFILE: FounderProfile = {
   firstName: "Asad", lastName: "", bio: "", domains: [], linkedin: "",
   dob: "", gender: "", phone: "", education: "", educationLevel: "", degreeName: "", degreeSelection: "", customDegreeName: "", educations: [], description: "",
   headline: "", location: "", country: "", countryCode: "", stateProvince: "", city: "", primaryGoal: "",
-  email: "", avatarUrl: "", profileComplete: false,
+  email: "", avatarUrl: "", profileComplete: false, stripeConnected: false,
 };
 
 const STORAGE_KEY_PROFILE    = "evolv_founder_profile";
@@ -74,11 +75,23 @@ function mergeFounderProfiles(...profiles: Array<Partial<FounderProfile> | null 
   return normalizeFounderProfileForSave(merged) as FounderProfile;
 }
 
-export default function FounderDashboard() {
-  const [tab, setTab] = useState<FounderTab>("dashboard");
+function FounderDashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const validTabs: FounderTab[] = ["dashboard", "workspace", "projects", "network", "inbox", "settings"];
+  const tab = (tabParam && validTabs.includes(tabParam as FounderTab)) ? (tabParam as FounderTab) : "dashboard";
+
+  const setTab = (nextTab: FounderTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", nextTab);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [profile, setProfile] = useState<FounderProfile>(DEFAULT_PROFILE);
   const [blueprints, setBlueprints] = useState<Blueprint[]>(DEFAULT_BLUEPRINTS);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [openBlueprintId, setOpenBlueprintId] = useState<string | null>(null);
   const [triggerForge, setTriggerForge] = useState(false);
   const [networkRequestCount, setNetworkRequestCount] = useState(3);
@@ -115,12 +128,9 @@ export default function FounderDashboard() {
         const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
         if (storedBlueprints) setBlueprints(JSON.parse(storedBlueprints));
       } catch { /* ignore */ }
+      setDataLoaded(true);
+      
       const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get("tab");
-      const validTabs: FounderTab[] = ["dashboard", "workspace", "analysis", "network", "inbox", "settings"];
-      if (tabParam && (validTabs as string[]).includes(tabParam)) {
-        setTab(tabParam as FounderTab);
-      }
       if (params.get("setup") === "true") {
         params.delete("setup");
         const url = new URL(window.location.href);
@@ -243,6 +253,13 @@ export default function FounderDashboard() {
     setTab("settings");
   };
 
+  const handleOpenPaymentSettings = () => {
+    setSettingsSection("payment");
+    setShowOnboarding(false);
+    setPendingProtectedTab(null);
+    setTab("settings");
+  };
+
   const missingProfileFields = getMissingFounderProfileFields(profile);
 
   return (
@@ -260,16 +277,18 @@ export default function FounderDashboard() {
       />
 
       <main className="flex-1 overflow-hidden">
-        {tab === "dashboard" && (
-          <DashboardOverview
-            profile={profile}
-            onNavigateWorkspace={(forge) => { setTab("workspace"); if (forge) setTriggerForge(true); }}
-            blueprints={blueprints}
-            onViewBlueprint={handleViewBlueprint}
-            profileComplete={profileComplete}
-          />
-        )}
-        {tab === "workspace" && (
+        {!dataLoaded ? null : (
+          <>
+            {tab === "dashboard" && (
+              <DashboardOverview
+                profile={profile}
+                onNavigateWorkspace={(forge) => { setTab("workspace"); if (forge) setTriggerForge(true); }}
+                blueprints={blueprints}
+                onViewBlueprint={handleViewBlueprint}
+                profileComplete={profileComplete}
+              />
+            )}
+            {tab === "workspace" && (
           <WorkspaceTab
             initialBlueprints={blueprints}
             onBlueprintsChange={saveBlueprints}
@@ -279,9 +298,21 @@ export default function FounderDashboard() {
             onClearForge={() => setTriggerForge(false)}
             profileComplete={profileComplete}
             onCompleteProfile={handleOpenProfile}
+            onMessage={handleOpenNetworkMessage}
+            onRequireProfile={requireFounderProfile}
           />
         )}
-        {tab === "analysis" && <AnalysisTab />}
+        {tab === "projects" && (
+          <ProjectsTab
+            blueprints={blueprints}
+            onBlueprintsChange={saveBlueprints}
+            onViewBlueprint={handleViewBlueprint}
+            onNavigateNetwork={() => setTab("network")}
+            onMessage={handleOpenNetworkMessage}
+            stripeConnected={Boolean(profile.stripeConnected)}
+            onNavigateSettingsPayment={handleOpenPaymentSettings}
+          />
+        )}
         {tab === "network" && (
           <NetworkTab
             onMessage={handleOpenNetworkMessage}
@@ -308,6 +339,8 @@ export default function FounderDashboard() {
             onSectionChange={setSettingsSection}
             editSignal={settingsEditSignal}
           />
+        )}
+        </>
         )}
       </main>
 
@@ -364,5 +397,13 @@ export default function FounderDashboard() {
         />
       )}
     </div>
+  );
+}
+
+export default function FounderDashboard() {
+  return (
+    <Suspense fallback={null}>
+      <FounderDashboardContent />
+    </Suspense>
   );
 }

@@ -67,7 +67,7 @@ const testimonialData: TestimonialItem[] = [
 
 export function Testimonials() {
   return (
-    <section className="relative overflow-hidden bg-dark px-4 py-20 sm:px-6 md:px-12 lg:py-24">
+    <section id="testimonials" className="relative overflow-hidden bg-dark px-4 py-20 sm:px-6 md:px-12 lg:py-24">
       <div className="absolute left-0 right-0 top-0 h-px bg-mint/10" />
       <div className="mx-auto max-w-7xl">
         <FadeIn className="mx-auto mb-12 max-w-2xl text-center">

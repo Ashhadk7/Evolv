@@ -420,7 +420,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative flex min-h-[100dvh] flex-col justify-center overflow-hidden bg-dark px-4 pt-24 pb-8 sm:px-6 md:px-12">
+    <section id="hero" className="relative flex min-h-[100dvh] flex-col justify-center overflow-hidden bg-dark px-4 pt-24 pb-8 sm:px-6 md:px-12">
       <HeroBackground />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl">
