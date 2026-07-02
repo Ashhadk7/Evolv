@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -1225,7 +1225,7 @@ function BlueprintDetail({
             )}
             <button onClick={copyLink} className="bp-icon-btn" style={iconBtn} title="Copy link"><LinkSimple size={16} weight="bold" style={{ color: C.teal }} /></button>
             <button onClick={() => window.print()} className="bp-icon-btn" style={iconBtn} title="Export PDF"><DownloadSimple size={16} weight="bold" style={{ color: C.teal }} /></button>
-            <button onClick={() => setEditing((e) => !e)} className="bp-icon-btn" style={{ ...iconBtn, background: editing ? C.forest : C.card, borderColor: editing ? C.forest : C.border }} title="Edit blueprint"><PencilSimple size={16} weight="bold" style={{ color: editing ? C.mint : C.teal }} /></button>
+
           </div>
         </div>
         <div style={{ position: "absolute", left: 0, bottom: -1, height: 2, width: `${progress * 100}%`, background: "linear-gradient(90deg, #428475, #89d7b7)", transition: "width 0.1s linear" }} />
@@ -1274,11 +1274,7 @@ function BlueprintDetail({
                     <Chip>{stageLabel}</Chip>
                     <Chip>Updated {bp.updatedAt}</Chip>
                   </div>
-                  {editing ? (
-                    <textarea value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} style={{ width: "100%", marginTop: 18, background: C.tint, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", color: C.ink, fontSize: 15, lineHeight: 1.65, resize: "vertical", minHeight: 84, outline: "none", fontFamily: "inherit" }} />
-                  ) : (
-                    <p style={{ fontSize: 16, color: C.body, lineHeight: 1.7, marginTop: 18, maxWidth: 540 }}>{bp.ideaDesc}</p>
-                  )}
+                  <p style={{ fontSize: 16, color: C.body, lineHeight: 1.7, marginTop: 18, maxWidth: 540 }}>{bp.ideaDesc}</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginTop: 20, fontSize: 12, color: C.label, fontFamily: MONO }}>
                     <span>{phases.length} milestones</span><span>·</span>
                     <span>{cost.buildWeeks}-week build</span><span>·</span>
@@ -1491,7 +1487,22 @@ function BlueprintDetail({
 
           {/* ── RECOMMENDED TECH STACK ── */}
           <Reveal>
-            <SectionHead icon={<Cube size={18} weight="duotone" style={{ color: C.teal }} />} kicker="Engineering" title="Recommended Tech Stack & Architecture" desc="A complete, opinionated stack — editable where you know better than the AI, plus the system diagram it produces." />
+                        <SectionHead 
+              icon={<Cube size={18} weight="duotone" style={{ color: C.teal }} />} 
+              kicker="Engineering" 
+              title="Recommended Tech Stack & Architecture" 
+              desc="A complete, opinionated stack â€” editable where you know better than the AI, plus the system diagram it produces."
+              right={
+                <button 
+                  onClick={() => setEditing((e) => !e)} 
+                  className="bp-icon-btn" 
+                  style={{ ...iconBtn, background: editing ? C.forest : C.card, borderColor: editing ? C.forest : C.border }} 
+                  title="Edit tech stack"
+                >
+                  <PencilSimple size={16} weight="bold" style={{ color: editing ? C.mint : C.teal }} />
+                </button>
+              }
+            />
             {/* editable core choices */}
             <div style={cardStyle({ padding: "20px 24px", marginBottom: 18 })}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
