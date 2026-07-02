@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Plus } from "@phosphor-icons/react";
@@ -399,23 +400,16 @@ function FooterColumn({ title, links }: FooterColumnProps) {
 ════════════════════════════════════════════════════════════ */
 
 const PRODUCT_LINKS: NavLink[] = [
-  { label: "How it Works", href: "#how-it-works" },
-  { label: "Blueprint",    href: "#blueprint"    },
-  { label: "Developers",   href: "#developers"   },
-  { label: "FAQ",          href: "#faq"          },
+  { label: "How it Works", href: "/#how-it-works" },
+  { label: "FAQ",          href: "/#faq"          },
 ];
 
 const COMPANY_LINKS: NavLink[] = [
   { label: "About",    href: "/about"                },
   { label: "Our Team", href: "/our-team"             },
-  { label: "Contact",  href: "mailto:hello@evolv.so" },
-  { label: "Careers",  href: "#"                     },
-  { label: "Blog",     href: "#"                     },
 ];
 
-const RESOURCE_LINKS: NavLink[] = [
-  { label: "Documentation",  href: "#" },
-  { label: "Support",        href: "#" },
+const LEGAL_LINKS: NavLink[] = [
   { label: "Privacy Policy", href: "#" },
   { label: "Terms of Use",   href: "#" },
 ];
@@ -441,16 +435,14 @@ export function Footer() {
           <div className="flex flex-col gap-5">
             {/* Logo */}
             <Link href="/" aria-label="Evolv home" className="flex items-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path
-                  d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5"
-                  stroke="#89d7b7"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="18" cy="3.5" r="2.1" fill="#89d7b7" />
-              </svg>
+              <Image
+                src="/evolv-logo-transparent.png"
+                alt=""
+                aria-hidden="true"
+                width={48}
+                height={32}
+                className="h-8 w-12 shrink-0 object-contain"
+              />
               <span
                 className="text-[20px] font-bold leading-none tracking-tight"
                 style={{ color: "#fff4e1" }}
@@ -485,69 +477,12 @@ export function Footer() {
               hello@evolv.so
             </a>
 
-            {/* Social icons */}
-            <div className="flex items-center gap-2.5">
-              {/* X / Twitter */}
-              <a
-                href="#"
-                aria-label="X / Twitter"
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200"
-                style={{ background: "rgba(255,244,225,0.06)" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(137,215,183,0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,244,225,0.06)";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,244,225,0.5)">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </a>
-
-              {/* LinkedIn */}
-              <a
-                href="#"
-                aria-label="LinkedIn"
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200"
-                style={{ background: "rgba(255,244,225,0.06)" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(137,215,183,0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,244,225,0.06)";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,244,225,0.5)">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-              </a>
-
-              {/* GitHub */}
-              <a
-                href="#"
-                aria-label="GitHub"
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200"
-                style={{ background: "rgba(255,244,225,0.06)" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(137,215,183,0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,244,225,0.06)";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,244,225,0.5)">
-                  <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z" />
-                </svg>
-              </a>
-            </div>
           </div>
 
           {/* ── Nav columns ── */}
           <FooterColumn title="Product"   links={PRODUCT_LINKS}  />
           <FooterColumn title="Company"   links={COMPANY_LINKS}  />
-          <FooterColumn title="Resources" links={RESOURCE_LINKS} />
+          <FooterColumn title="Legal"     links={LEGAL_LINKS}    />
         </div>
       </div>
 
@@ -577,10 +512,10 @@ export function Footer() {
 
           {/* Right: legal links */}
           <div className="flex items-center gap-6">
-            {["Privacy Policy", "Terms of Use"].map((label) => (
+            {LEGAL_LINKS.map(({ label, href }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
                 className="text-[12px] transition-colors duration-150"
                 style={{ color: "rgba(255,244,225,0.25)" }}
                 onMouseEnter={(e) =>

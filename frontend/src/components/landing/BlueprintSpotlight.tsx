@@ -228,6 +228,7 @@ const features = [
 export function BlueprintSpotlight() {
   return (
     <section
+      id="blueprint"
       className="relative overflow-hidden px-4 py-20 sm:px-6 md:px-12 lg:py-28"
       style={{ background: "#fdf9f4" }}
     >
