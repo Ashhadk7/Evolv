@@ -8,7 +8,7 @@ import type {
 export type FounderTab =
   | "dashboard"
   | "workspace"
-  | "analysis"
+  | "projects"
   | "network"
   | "inbox"
   | "settings";
@@ -96,12 +96,12 @@ export const INITIAL_NOTIFS: Notif[] = [
   {
     id: "n5",
     type: "system",
-    title: "Analysis ready",
-    body: "Your Aura Logistics blueprint analysis is complete",
+    title: "Milestone ready for review",
+    body: "Aura Logistics — Phase 2 deliverables are marked complete",
     time: "1d ago",
     read: true,
-    tab: "analysis",
-    actionLabel: "View Analysis",
+    tab: "projects",
+    actionLabel: "View Project",
   },
 ];
 
@@ -117,7 +117,7 @@ export const SECTIONS: { group: string; items: NavItem[] }[] = [
     group: "Workspace",
     items: [
       { id: "workspace", label: "Workspace", icon: "solar:notebook-minimalistic-bold-duotone" },
-      { id: "analysis",  label: "Analysis",  icon: "solar:graph-up-bold-duotone" },
+      { id: "projects",  label: "Projects",  icon: "solar:layers-minimalistic-bold-duotone" },
     ],
   },
   {

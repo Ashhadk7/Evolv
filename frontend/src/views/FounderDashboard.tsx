@@ -21,7 +21,7 @@ import { DEFAULT_BLUEPRINTS, type Blueprint } from "@/components/founder/Workspa
 
 // Lazy-load non-default tabs
 const WorkspaceTab  = dynamic(() => import("@/components/founder/WorkspaceTab").then(m => ({ default: m.WorkspaceTab })));
-const AnalysisTab   = dynamic(() => import("@/components/founder/AnalysisTab").then(m => ({ default: m.AnalysisTab })));
+const ProjectsTab   = dynamic(() => import("@/components/founder/ProjectsTab").then(m => ({ default: m.ProjectsTab })));
 const InboxTab      = dynamic(() => import("@/components/founder/InboxTab").then(m => ({ default: m.InboxTab })));
 const NetworkTab    = dynamic(() => import("@/components/founder/NetworkTab").then(m => ({ default: m.NetworkTab })));
 const SettingsTab   = dynamic(() => import("@/components/founder/SettingsTab").then(m => ({ default: m.SettingsTab })));
@@ -30,7 +30,7 @@ const DEFAULT_PROFILE: FounderProfile = {
   firstName: "Asad", lastName: "", bio: "", domains: [], linkedin: "",
   dob: "", gender: "", phone: "", education: "", educationLevel: "", degreeName: "", degreeSelection: "", customDegreeName: "", educations: [], description: "",
   headline: "", location: "", country: "", countryCode: "", stateProvince: "", city: "", primaryGoal: "",
-  email: "", avatarUrl: "", profileComplete: false,
+  email: "", avatarUrl: "", profileComplete: false, stripeConnected: false,
 };
 
 const STORAGE_KEY_PROFILE    = "evolv_founder_profile";
@@ -117,7 +117,7 @@ export default function FounderDashboard() {
       } catch { /* ignore */ }
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      const validTabs: FounderTab[] = ["dashboard", "workspace", "analysis", "network", "inbox", "settings"];
+      const validTabs: FounderTab[] = ["dashboard", "workspace", "projects", "network", "inbox", "settings"];
       if (tabParam && (validTabs as string[]).includes(tabParam)) {
         setTab(tabParam as FounderTab);
       }
@@ -243,6 +243,13 @@ export default function FounderDashboard() {
     setTab("settings");
   };
 
+  const handleOpenPaymentSettings = () => {
+    setSettingsSection("payment");
+    setShowOnboarding(false);
+    setPendingProtectedTab(null);
+    setTab("settings");
+  };
+
   const missingProfileFields = getMissingFounderProfileFields(profile);
 
   return (
@@ -283,7 +290,17 @@ export default function FounderDashboard() {
             onRequireProfile={requireFounderProfile}
           />
         )}
-        {tab === "analysis" && <AnalysisTab />}
+        {tab === "projects" && (
+          <ProjectsTab
+            blueprints={blueprints}
+            onBlueprintsChange={saveBlueprints}
+            onViewBlueprint={handleViewBlueprint}
+            onNavigateNetwork={() => setTab("network")}
+            onMessage={handleOpenNetworkMessage}
+            stripeConnected={Boolean(profile.stripeConnected)}
+            onNavigateSettingsPayment={handleOpenPaymentSettings}
+          />
+        )}
         {tab === "network" && (
           <NetworkTab
             onMessage={handleOpenNetworkMessage}

@@ -22,6 +22,19 @@ export function gradeFor(v: number): string {
   if (v >= 88) return "A+"; if (v >= 82) return "A"; if (v >= 76) return "A−";
   if (v >= 70) return "B+"; if (v >= 64) return "B"; return "B−";
 }
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+export function addWeeksISO(weeks: number, from: string = todayISO()): string {
+  const d = new Date(from);
+  d.setDate(d.getDate() + weeks * 7);
+  return d.toISOString().slice(0, 10);
+}
+export function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 /* ═══════════════════════════════════════════════════════ */
 /* Types — shaped like the future 8-agent pipeline output    */
@@ -480,5 +493,202 @@ export function buildBlueprintContent(bp: Blueprint): BlueprintContent {
     costModel,
     financials: deriveFinancials(bp, costModel.total),
     phases,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════ */
+/* Project management — runtime state for a started project  */
+/* (kept separate from the static agent-generated spec       */
+/* above; lives on Blueprint.project once a founder commits   */
+/* to actually building it, not just pitching it)             */
+/* ═══════════════════════════════════════════════════════ */
+export type ProjectStatus = "ONBOARDING" | "IN_DEVELOPMENT" | "COMPLETED";
+
+export type PhaseAssignment = {
+  developerId: string;
+  developerName: string;
+  developerInitials: string;
+  hiredAt: string;     // ISO date (YYYY-MM-DD)
+  amountAgreed: number;    // confirmed by the founder when hiring, pre-filled from phase.budget, editable at that moment
+  amountPaid: number;      // running total actually paid — "Not paid" / "Partially paid" / "Paid in full" is derived from this vs amountAgreed, never stored
+  payments: { amount: number; date: string }[];   // the ledger — real usage is incremental (weekly, partial work), not one all-or-nothing release
+};
+
+/* Permanent audit trail — if a founder removes a developer mid-phase,
+   the reason and amount paid at that moment are recorded and never
+   cleared. This is the platform's record if a dispute is ever reported. */
+export type DeveloperRemoval = {
+  developerId: string;
+  developerName: string;
+  reason: string;         // required, non-empty
+  amountPaid: number;     // pulled from the assignment at the moment of removal — not editable
+  date: string;           // ISO date
+};
+
+export type ProjectPhaseState = {
+  deliverables: { text: string; done: boolean }[];   // founder can add/remove; seeded from the blueprint spec but no longer index-locked to it
+  deadline: string | null;   // founder-set, independent of any assignment; null until the founder sets one
+  assignment: PhaseAssignment | null;
+  status: "Not Started" | "In Progress" | "In Review" | "Complete";
+  history: { label: string; date: string }[];
+  removals: DeveloperRemoval[];   // permanent — never cleared, even across multiple hire/remove cycles on the same phase
+  totalPaid: number;   // sunk cost — survives removing/replacing the assignment, so budget burn never forgets money already released
+  budget: number;      // founder-editable planned spend for this phase; defaults to phase.cost, adjustable regardless of who's assigned
+};
+
+/* Every dollar spent on the project — developer payouts (auto-logged on
+   release, never typed by hand) plus whatever the founder logs manually
+   for hosting, domains, tools, and API costs. This is the single ledger
+   behind "Total Spent". */
+export type ExpenseCategory = "Developer Payment" | "Hosting" | "Domain" | "Tools & Services" | "API Costs" | "Other";
+export type ProjectExpense = {
+  id: string;
+  label: string;
+  category: ExpenseCategory;
+  amount: number;
+  date: string;   // ISO date
+  phaseIndex: number | null;   // linked phase for dev payments; null for general project costs
+};
+
+/* GitHub-Issues-style: what's wrong with what was built, not what to build. */
+export type ProjectIssue = {
+  id: string;
+  title: string;
+  description: string;
+  priority: "High" | "Medium" | "Low";   // danger scale — High is red, same convention as risk severity
+  status: "Open" | "In Progress" | "Resolved";
+  phaseIndex: number | null;   // optional link to a specific phase; null = project-wide
+  createdAt: string;   // ISO date
+  history: { label: string; date: string }[];
+};
+
+export type ProjectDeadline = {
+  id: string;
+  note: string;
+  priority: "Low" | "Medium" | "High";
+  phaseIndex: number | null;
+  date: string;
+  status: "Pending" | "Met" | "Missed";
+  createdAt: string;
+};
+
+export type ProjectState = {
+  status: ProjectStatus;
+  startedAt: string;   // ISO date
+  phaseStates: ProjectPhaseState[];   // index-aligned with content.phases
+  issues: ProjectIssue[];
+  deadlines: ProjectDeadline[];
+  expenses: ProjectExpense[];
+};
+
+export function initProjectState(content: BlueprintContent): ProjectState {
+  return {
+    status: "ONBOARDING",
+    startedAt: new Date().toISOString().slice(0, 10),
+    phaseStates: content.phases.map((p) => ({
+      deliverables: p.deliverables.map((text) => ({ text, done: false })),
+      deadline: null,
+      assignment: null,
+      status: "Not Started",
+      history: [{ label: "Project started", date: new Date().toISOString().slice(0, 10) }],
+      removals: [],
+      totalPaid: 0,
+      budget: p.cost,
+    })),
+    issues: [],
+    deadlines: [],
+    expenses: [],
+  };
+}
+
+/* Backfills fields added to the schema after some projects were already
+   started (e.g. persisted in localStorage from an earlier session) —
+   old records won't have `expenses`, a per-phase `budget`, the newer
+   deliverables/deadline/removals shape, or the payment ledger yet. Call
+   this on any ProjectState read from storage before trusting its shape. */
+export function normalizeProjectState(content: BlueprintContent, project: ProjectState): ProjectState {
+  return {
+    ...project,
+    expenses: project.expenses ?? [],
+    deadlines: project.deadlines ?? [],
+    phaseStates: project.phaseStates.map((ps, i) => {
+      const legacy = ps as unknown as { deliverablesDone?: boolean[] };
+      const deliverables = ps.deliverables ?? legacy.deliverablesDone?.map((done, k) => ({ text: content.phases[i]?.deliverables[k] ?? `Deliverable ${k + 1}`, done })) ?? [];
+      const assignment = ps.assignment ? (() => {
+        const legacyAssignment = ps.assignment as unknown as { paymentStatus?: string; deadline?: string };
+        return {
+          ...ps.assignment,
+          amountPaid: ps.assignment.amountPaid ?? (legacyAssignment.paymentStatus === "Released" ? ps.assignment.amountAgreed : 0),
+          payments: ps.assignment.payments ?? [],
+        };
+      })() : null;
+      return {
+        ...ps,
+        deliverables,
+        deadline: ps.deadline ?? (ps.assignment as unknown as { deadline?: string })?.deadline ?? null,
+        assignment,
+        removals: ps.removals ?? [],
+        budget: ps.budget ?? content.phases[i]?.cost ?? 0,
+        totalPaid: ps.totalPaid ?? 0,
+      };
+    }),
+  };
+}
+
+/* Status is always derived from phase state, never hand-set — so it can
+   never drift out of sync with what's actually assigned/complete. */
+export function deriveProjectStatus(project: ProjectState): ProjectStatus {
+  if (project.phaseStates.length > 0 && project.phaseStates.every((ps) => ps.status === "Complete")) return "COMPLETED";
+  if (project.phaseStates.some((ps) => ps.assignment !== null)) return "IN_DEVELOPMENT";
+  return "ONBOARDING";
+}
+
+export type ProjectHealth = {
+  verdict: "On track" | "Attention needed" | "At risk";
+  budget: { spent: number; total: number; pct: number };
+  timeline: { delayedCount: number; totalAssigned: number };
+  deliverables: { done: number; total: number };
+  developers: { developerId: string; developerName: string; phasesAssigned: number; phasesComplete: number; phasesOverdue: number }[];
+};
+
+export function computeProjectHealth(content: BlueprintContent, project: ProjectState): ProjectHealth {
+  const today = new Date().toISOString().slice(0, 10);
+  let delayedCount = 0;
+  let totalAssigned = 0;
+  let doneCount = 0;
+  let totalDeliverables = 0;
+  const devMap = new Map<string, ProjectHealth["developers"][number]>();
+
+  project.phaseStates.forEach((ps) => {
+    totalDeliverables += ps.deliverables.length;
+    doneCount += ps.deliverables.filter((d) => d.done).length;
+
+    if (ps.assignment) {
+      totalAssigned += 1;
+      const overdue = ps.status !== "Complete" && !!ps.deadline && ps.deadline < today;
+      if (overdue) delayedCount += 1;
+
+      const key = ps.assignment.developerId;
+      const entry = devMap.get(key) || { developerId: key, developerName: ps.assignment.developerName, phasesAssigned: 0, phasesComplete: 0, phasesOverdue: 0 };
+      entry.phasesAssigned += 1;
+      if (ps.status === "Complete") entry.phasesComplete += 1;
+      if (overdue) entry.phasesOverdue += 1;
+      devMap.set(key, entry);
+    }
+  });
+
+  // Budget is the founder-editable phase-wise sum, not the fixed cost-model estimate.
+  // Falls back to the phase's derived cost for records saved before `budget` existed.
+  const total = project.phaseStates.reduce((s, ps, i) => s + (ps.budget ?? content.phases[i]?.cost ?? 0), 0);
+  // Spend is the single ledger — auto-logged payments + whatever the founder recorded manually.
+  const spent = (project.expenses ?? []).reduce((s, e) => s + e.amount, 0);
+  const verdict: ProjectHealth["verdict"] = delayedCount === 0 ? "On track" : delayedCount === 1 ? "Attention needed" : "At risk";
+
+  return {
+    verdict,
+    budget: { spent, total, pct: total ? Math.min(100, Math.round((spent / total) * 100)) : 0 },
+    timeline: { delayedCount, totalAssigned },
+    deliverables: { done: doneCount, total: totalDeliverables },
+    developers: Array.from(devMap.values()),
   };
 }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -17,6 +17,7 @@ import {
 import {
   buildBlueprintContent, buildArchitecture, gradeFor, fmtMoney,
   type BlueprintContent, type TechStackModel, type StackLayerKey, type StackCat, type Phase,
+  type ProjectState,
 } from "./blueprintContent";
 import {
   FOUNDER_NETWORK_PROFILES,
@@ -53,6 +54,7 @@ export interface Blueprint {
   features: string[];
   techStack: { frontend: string; backend: string; ai: string; db: string; vectorDb?: string; aiProvider?: string; hosting?: string };
   cost: { timeline: string; team: string; hosting: string; budget: string };
+  project?: ProjectState;
 }
 
 /* ─────────────────────────────────────────────────────── */
@@ -204,7 +206,25 @@ const ACTIVITY = [
 /* ─────────────────────────────────────────────────────── */
 /* StatusBadge                                            */
 /* ─────────────────────────────────────────────────────── */
-function StatusBadge({ status }: { status: Blueprint["status"] }) {
+export const PROJECT_STATUS_LABEL: Record<ProjectState["status"], string> = {
+  ONBOARDING: "Onboarding Project",
+  IN_DEVELOPMENT: "In Development",
+  COMPLETED: "Project Completed",
+};
+export const PROJECT_STATUS_STYLE: Record<ProjectState["status"], { bg: string; color: string }> = {
+  ONBOARDING: { bg: "#fef6e4", color: "#a66a10" },
+  IN_DEVELOPMENT: { bg: "#dcf0e6", color: "#1d6e47" },
+  COMPLETED: { bg: "#eef0ee", color: "#4f6358" },
+};
+function StatusBadge({ status, project }: { status: Blueprint["status"]; project?: ProjectState }) {
+  if (project) {
+    const s = PROJECT_STATUS_STYLE[project.status];
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 999, background: s.bg, color: s.color }}>
+        {PROJECT_STATUS_LABEL[project.status]}
+      </span>
+    );
+  }
   const pub = status === "PUBLISHED";
   return (
     <span
@@ -234,6 +254,7 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
   canPublish: boolean; onCompleteProfile?: () => void; onTogglePublic: () => void;
 }) {
   const pub = bp.status === "PUBLISHED";
+  const accent = bp.project ? PROJECT_STATUS_STYLE[bp.project.status].color : pub ? "#89d7b7" : "#c8d8d0";
   const metrics = [
     { value: String(bp.viability),     label: "Viability"   },
     { value: `${bp.marketPotential}%`, label: "Market"      },
@@ -251,7 +272,7 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
       style={{
         background: "#fff",
         border: "1px solid #e4ece7",
-        borderLeft: `4px solid ${pub ? "#89d7b7" : "#c8d8d0"}`,
+        borderLeft: `4px solid ${accent}`,
         borderRadius: 18,
         padding: "24px 26px 22px 24px",
         boxShadow: "0 2px 12px rgba(26,49,44,0.06)",
@@ -263,7 +284,7 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
           <h3 style={{ fontSize: 15, fontWeight: 800, color: "#1a2e26", lineHeight: 1, letterSpacing: "-0.01em" }}>
             {bp.name}
           </h3>
-          <StatusBadge status={bp.status} />
+          <StatusBadge status={bp.status} project={bp.project} />
         </div>
         <span style={{ fontSize: 11, color: "#9ab4a4", flexShrink: 0, marginLeft: 12 }}>{bp.updatedAt}</span>
       </div>
@@ -364,21 +385,12 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
           {bp.wordCount} words · {bp.interested} interested
         </span>
         <div style={{ display: "flex", gap: 8 }}>
-          <motion.button
+          <button
             onClick={onView}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 400, damping: 22 }}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              fontSize: 12, fontWeight: 700,
-              padding: "8px 18px", borderRadius: 10,
-              background: "#1a312c", color: "#89d7b7",
-              border: "none", cursor: "pointer",
-            }}
+            className="bp-primary-btn"
           >
-            <Eye size={13} /> View
-          </motion.button>
+            <Eye size={13} weight="bold" /> View
+          </button>
           <motion.button
             whileHover={{ scale: 1.04, background: "#e3ede8" }}
             whileTap={{ scale: 0.96 }}
@@ -403,7 +415,7 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
 /* Blueprint Detail — design tokens & primitives           */
 /* ═══════════════════════════════════════════════════════ */
 
-const C = {
+export const C = {
   forest: "#1a312c",
   deep: "#11221b",
   teal: "#428475",
@@ -427,15 +439,15 @@ const C = {
   successBg: "#e7f4ed",
   tint: "#f4f8f6",
 };
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
-const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
-const NUM: CSSProperties = { fontVariantNumeric: "tabular-nums" };
+export const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+export const MONO = "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace";
+export const NUM: CSSProperties = { fontVariantNumeric: "tabular-nums", fontFeatureSettings: '"tnum" 1, "ss01" 1' };
 
-const cardStyle = (extra?: CSSProperties): CSSProperties => ({
+export const cardStyle = (extra?: CSSProperties): CSSProperties => ({
   background: C.card,
   border: `1px solid ${C.border}`,
-  borderRadius: 18,
-  boxShadow: "0 1px 2px rgba(19,36,29,0.04), 0 10px 30px rgba(19,36,29,0.045)",
+  borderRadius: 20,
+  boxShadow: "0 1px 1px rgba(19,36,29,0.03), 0 2px 6px rgba(19,36,29,0.03), 0 16px 40px -18px rgba(19,36,29,0.14)",
   ...extra,
 });
 
@@ -460,13 +472,13 @@ function useCountUp(target: number, duration = 1200, run = true) {
   return val;
 }
 
-function CountNum({ value, suffix = "", decimals = 0, run = true }: { value: number; suffix?: string; decimals?: number; run?: boolean }) {
+export function CountNum({ value, suffix = "", decimals = 0, run = true }: { value: number; suffix?: string; decimals?: number; run?: boolean }) {
   const v = useCountUp(value, 1200, run);
   return <>{v.toFixed(decimals)}{suffix}</>;
 }
 
 /* Scroll-into-view reveal — calm, expo-out, honours reduced motion */
-function Reveal({ children, delay = 0, y = 18, style }: { children: ReactNode; delay?: number; y?: number; style?: CSSProperties }) {
+export function Reveal({ children, delay = 0, y = 18, style }: { children: ReactNode; delay?: number; y?: number; style?: CSSProperties }) {
   const reduce = useReducedMotion();
   return (
     <motion.div
@@ -482,7 +494,7 @@ function Reveal({ children, delay = 0, y = 18, style }: { children: ReactNode; d
 }
 
 /* Section heading — icon chip · kicker · title · description */
-function SectionHead({ icon, kicker, title, desc, right }: { icon: ReactNode; kicker?: string; title: string; desc?: string; right?: ReactNode }) {
+export function SectionHead({ icon, kicker, title, desc, right }: { icon: ReactNode; kicker?: string; title: string; desc?: string; right?: ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, marginBottom: 20 }}>
       <div style={{ minWidth: 0 }}>
@@ -500,11 +512,11 @@ function SectionHead({ icon, kicker, title, desc, right }: { icon: ReactNode; ki
   );
 }
 
-const Kicker = ({ children }: { children: ReactNode }) => (
+export const Kicker = ({ children }: { children: ReactNode }) => (
   <div style={{ fontSize: 10, fontWeight: 600, color: C.label, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7, fontFamily: MONO }}>{children}</div>
 );
 
-function Chip({ children, tone = "neutral", icon }: { children: ReactNode; tone?: "neutral" | "mint" | "amber" | "red" | "dark"; icon?: ReactNode }) {
+export function Chip({ children, tone = "neutral", icon }: { children: ReactNode; tone?: "neutral" | "mint" | "amber" | "red" | "dark"; icon?: ReactNode }) {
   const map = {
     neutral: { bg: C.tint, color: C.teal, bd: C.borderSoft },
     mint: { bg: C.successBg, color: "#1d6e47", bd: "#cfeadd" },
@@ -519,7 +531,7 @@ function Chip({ children, tone = "neutral", icon }: { children: ReactNode; tone?
   );
 }
 
-function Avatar({ initials, size = 44 }: { initials: string; size?: number }) {
+export function Avatar({ initials, size = 44 }: { initials: string; size?: number }) {
   return (
     <div style={{ width: size, height: size, borderRadius: 999, background: "linear-gradient(150deg, #1f3a30, #15271f)", color: C.mint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.32, fontWeight: 700, flexShrink: 0, letterSpacing: "0.02em" }}>
       {initials}
@@ -527,7 +539,7 @@ function Avatar({ initials, size = 44 }: { initials: string; size?: number }) {
   );
 }
 
-function Trend({ value, positive }: { value: string; positive: boolean }) {
+export function Trend({ value, positive }: { value: string; positive: boolean }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: positive ? C.success : C.red, background: positive ? C.successBg : C.redBg, padding: "3px 8px", borderRadius: 999, ...NUM }}>
       {positive ? <TrendUp size={11} weight="bold" /> : <TrendDown size={11} weight="bold" />} {value}
@@ -556,7 +568,7 @@ function SegmentedBar({ value, total = 14, lit: litOverride, height = 22 }: { va
 }
 
 /* Thin gradient meter line */
-function MeterBar({ value, height = 8 }: { value: number; height?: number }) {
+export function MeterBar({ value, height = 8 }: { value: number; height?: number }) {
   return (
     <div style={{ height, background: "#e7eee9", borderRadius: 999, overflow: "hidden" }}>
       <motion.div
@@ -571,13 +583,14 @@ function MeterBar({ value, height = 8 }: { value: number; height?: number }) {
 }
 
 /* Circular viability gauge — gradient arc, soft glow, counting centre */
-function ViabilityGauge({ score }: { score: number }) {
+export function ViabilityGauge({ score, label = "VIABILITY", size = 190 }: { score: number; label?: string; size?: number }) {
   const reduce = useReducedMotion();
+  const scale = size / 190;
   const r = 76, cx = 95, cy = 95, sw = 12;
   const Circ = 2 * Math.PI * r;
   return (
-    <div style={{ position: "relative", width: 190, height: 190 }}>
-      <svg width={190} height={190} viewBox="0 0 190 190" style={{ transform: "rotate(-90deg)" }}>
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} viewBox="0 0 190 190" style={{ transform: "rotate(-90deg)" }}>
         <defs>
           <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#428475" />
@@ -595,14 +608,14 @@ function ViabilityGauge({ score }: { score: number }) {
         />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 50, fontWeight: 800, color: C.ink, lineHeight: 1, letterSpacing: "-0.04em", ...NUM }}><CountNum value={score} /></div>
-        <div style={{ fontSize: 10, fontWeight: 600, color: C.label, letterSpacing: "0.2em", marginTop: 6, fontFamily: MONO }}>VIABILITY</div>
+        <div style={{ fontSize: 50 * scale, fontWeight: 800, color: C.ink, lineHeight: 1, letterSpacing: "-0.04em", ...NUM }}><CountNum value={score} /></div>
+        <div style={{ fontSize: 10 * Math.max(scale, 0.85), fontWeight: 600, color: C.label, letterSpacing: "0.2em", marginTop: 6 * scale, fontFamily: MONO }}>{label}</div>
       </div>
     </div>
   );
 }
 
-const Label = ({ children }: { children: ReactNode }) => (
+export const Label = ({ children }: { children: ReactNode }) => (
   <div style={{ fontSize: 10, fontWeight: 600, color: C.label, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 7, fontFamily: MONO }}>{children}</div>
 );
 
@@ -1191,19 +1204,27 @@ function BlueprintDetail({
       {/* ── Action bar ── */}
       <div className="blueprint-no-print" style={{ flexShrink: 0, position: "relative", background: "rgba(240,243,241,0.86)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.border}`, zIndex: 20 }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", display: "flex", alignItems: "center", gap: 14, padding: "12px 2px" }}>
-          <button onClick={handleBack} className="hover:bg-[#e3ede8] transition-colors" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: C.teal, padding: "8px 12px", borderRadius: 10, background: "transparent", border: "none", cursor: "pointer" }}>
-            <ArrowLeft size={15} weight="bold" /> Back
+          <button onClick={handleBack} className="bp-back-btn" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: C.teal, padding: "8px 13px 8px 11px", borderRadius: 10, background: "transparent", border: "none", cursor: "pointer" }}>
+            <ArrowLeft className="bp-back-arrow" size={15} weight="bold" /> Back
           </button>
           <div style={{ width: 1, height: 22, background: C.border }} />
-          <span style={{ fontSize: 15, fontWeight: 800, color: C.ink, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bp.name}</span>
-          <Chip tone="mint" icon={<span style={{ width: 5, height: 5, borderRadius: 999, background: bp.isPublic ? "#1d6e47" : "#9ab4a4", display: "inline-block" }} />}>{bp.isPublic ? "Public" : "Private"}</Chip>
+          <span style={{ fontSize: 15, fontWeight: 700, color: C.ink, letterSpacing: "-0.012em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bp.name}</span>
+          {bp.project ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", padding: "4px 11px", borderRadius: 999, background: PROJECT_STATUS_STYLE[bp.project.status].bg, color: PROJECT_STATUS_STYLE[bp.project.status].color }}>
+              <Buildings size={12} weight="bold" /> {PROJECT_STATUS_LABEL[bp.project.status]}
+            </span>
+          ) : (
+            <Chip tone="mint" icon={<span style={{ width: 5, height: 5, borderRadius: 999, background: bp.isPublic ? "#1d6e47" : "#9ab4a4", display: "inline-block" }} />}>{bp.isPublic ? "Public" : "Private"}</Chip>
+          )}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-            <motion.button onClick={togglePublish} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 11, background: C.forest, color: C.mint, border: "none", cursor: "pointer", boxShadow: "0 2px 10px rgba(17,34,27,0.18)" }}>
-              <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}
-            </motion.button>
-            <motion.button onClick={copyLink} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={iconBtn} title="Copy link"><LinkSimple size={16} style={{ color: C.teal }} /></motion.button>
-            <motion.button onClick={() => window.print()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={iconBtn} title="Export PDF"><DownloadSimple size={16} style={{ color: C.teal }} /></motion.button>
-            <motion.button onClick={() => setEditing((e) => !e)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={{ ...iconBtn, background: editing ? C.forest : C.card, borderColor: editing ? C.forest : C.border }} title="Edit"><PencilSimple size={16} style={{ color: editing ? C.mint : C.teal }} /></motion.button>
+            {!bp.project && (
+              <button onClick={togglePublish} className="bp-primary-btn">
+                <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}
+              </button>
+            )}
+            <button onClick={copyLink} className="bp-icon-btn" style={iconBtn} title="Copy link"><LinkSimple size={16} weight="bold" style={{ color: C.teal }} /></button>
+            <button onClick={() => window.print()} className="bp-icon-btn" style={iconBtn} title="Export PDF"><DownloadSimple size={16} weight="bold" style={{ color: C.teal }} /></button>
+            <button onClick={() => setEditing((e) => !e)} className="bp-icon-btn" style={{ ...iconBtn, background: editing ? C.forest : C.card, borderColor: editing ? C.forest : C.border }} title="Edit blueprint"><PencilSimple size={16} weight="bold" style={{ color: editing ? C.mint : C.teal }} /></button>
           </div>
         </div>
         <div style={{ position: "absolute", left: 0, bottom: -1, height: 2, width: `${progress * 100}%`, background: "linear-gradient(90deg, #428475, #89d7b7)", transition: "width 0.1s linear" }} />
@@ -1258,27 +1279,23 @@ function BlueprintDetail({
                     <p style={{ fontSize: 16, color: C.body, lineHeight: 1.7, marginTop: 18, maxWidth: 540 }}>{bp.ideaDesc}</p>
                   )}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginTop: 20, fontSize: 12, color: C.label, fontFamily: MONO }}>
-                    <span>{bp.wordCount} words</span><span>·</span>
-                    <span>{bp.devMatches} developer matches</span><span>·</span>
-                    <span>ID {bp.id}</span>
+                    <span>{phases.length} milestones</span><span>·</span>
+                    <span>{cost.buildWeeks}-week build</span><span>·</span>
+                    <span>{bp.devMatches} developer matches</span>
                   </div>
                 </div>
                 {/* right */}
-                <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 16, minWidth: 320, maxWidth: 340 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 16, minWidth: 330, maxWidth: 356 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <ViabilityGauge score={viabilityScore} />
-                    <div>
-                      <div style={{ fontSize: 40, fontWeight: 800, color: C.ink, lineHeight: 1, letterSpacing: "-0.03em" }}>{grade}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: C.teal, marginTop: 4 }}>Venture Grade</div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Top {topPct}% of blueprints</div>
-                    </div>
                   </div>
-                  <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.55, margin: 0 }}>{viabilityReasoning}</p>
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", paddingTop: 12, borderTop: `1px solid ${C.borderSoft}` }}>
+                  <p style={{ fontSize: 12.5, color: C.body, lineHeight: 1.6, margin: 0 }}>{viabilityReasoning}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, paddingTop: 14, borderTop: `1px solid ${C.borderSoft}` }}>
                     {subScoreRow.map((s) => (
-                      <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, ...NUM }}>{s.value}</span>
-                        <span style={{ fontSize: 9, color: C.label, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: MONO }}>{s.label}</span>
+                      <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: C.ink, lineHeight: 1, ...NUM }}>{s.value}</span>
+                        <MeterBar value={s.value} height={3} />
+                        <span style={{ fontSize: 9, color: C.label, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: MONO, whiteSpace: "nowrap" }}>{s.label}</span>
                       </div>
                     ))}
                   </div>
@@ -1666,8 +1683,8 @@ function BlueprintDetail({
                             {phaseHires[i] ? (
                               <Chip tone="mint" icon={<CheckCircle size={11} weight="fill" />}>{phaseHires[i]} hired for this phase</Chip>
                             ) : (
-                              <button onClick={() => setHirePanelPhase(hirePanelPhase === i ? null : i)} style={{ fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>
-                                Hire for this phase
+                              <button onClick={() => setHirePanelPhase(hirePanelPhase === i ? null : i)} className="bp-primary-btn">
+                                Hire for this phase <ArrowRight size={12} weight="bold" />
                               </button>
                             )}
                           </div>
@@ -2166,7 +2183,8 @@ function ForgeModal({ onClose, onCreated }: { onClose: () => void; onCreated: (b
                   disabled={!idea.trim() || !industry}
                   whileHover={idea.trim() && industry ? { scale: 1.01 } : {}}
                   whileTap={idea.trim() && industry ? { scale: 0.98 } : {}}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "13px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer", background: "#1a312c", color: "#89d7b7", border: "none", opacity: !idea.trim() || !industry ? 0.4 : 1 }}
+                  className="bp-primary-btn"
+                  style={{ width: "100%", opacity: !idea.trim() || !industry ? 0.4 : 1 }}
                 >
                   <Sparkle size={14} weight="fill" /> Generate Blueprint
                 </motion.button>
@@ -2211,7 +2229,7 @@ function ForgeModal({ onClose, onCreated }: { onClose: () => void; onCreated: (b
                   onClick={handleAccept}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 24px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer", background: "#1a312c", color: "#89d7b7", border: "none" }}
+                  className="bp-primary-btn"
                 >
                   <CheckCircle size={15} weight="fill" /> View Blueprint
                 </motion.button>
@@ -2452,22 +2470,12 @@ export function WorkspaceTab({
                     Manage and track your startup blueprints
                   </p>
                 </div>
-                <motion.button
+                <button
                   onClick={() => setForgeOpen(true)}
-                  whileHover={{ scale: 1.03, boxShadow: "0 8px 24px rgba(26,49,44,0.28)" }}
-                  whileTap={{ scale: 0.97 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    fontSize: 13, fontWeight: 700,
-                    padding: "11px 22px", borderRadius: 12,
-                    background: "#1a312c", color: "#89d7b7",
-                    border: "none", cursor: "pointer",
-                    boxShadow: "0 2px 10px rgba(26,49,44,0.18)",
-                  }}
+                  className="bp-primary-btn"
                 >
                   <Plus size={15} weight="bold" /> New idea
-                </motion.button>
+                </button>
               </div>
 
               {/* Dark stats bar */}

@@ -52,6 +52,57 @@ body {
 }
 .blueprint-scroll::-webkit-scrollbar-thumb:hover { background: #b6cfc3; }
 
+/* ── Blueprint detail: premium controls ── */
+.bp-icon-btn {
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 200ms ease, transform 140ms ease;
+}
+.bp-icon-btn:hover {
+  background: #f4f8f6;
+  border-color: #cfe0d7;
+  box-shadow: 0 6px 16px -8px rgba(19, 36, 29, 0.22);
+}
+.bp-icon-btn:active { transform: translateY(1px) scale(0.98); }
+
+.bp-primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #234840, #1a312c);
+  color: #89d7b7;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -4px rgba(17, 34, 27, 0.4);
+  position: relative;
+  transition: box-shadow 220ms ease, transform 150ms ease, filter 180ms ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.bp-primary-btn:hover {
+  box-shadow: 0 10px 26px -8px rgba(17, 34, 27, 0.5);
+  filter: brightness(1.07);
+}
+.bp-primary-btn:active { transform: translateY(1px); }
+
+.bp-back-btn { transition: background 150ms ease, gap 150ms ease; }
+.bp-back-btn:hover { background: #e6efe9; }
+.bp-back-btn:hover .bp-back-arrow { transform: translateX(-2px); }
+.bp-back-arrow { transition: transform 200ms ease; }
+
+/* Grade medallion sheen */
+.bp-grade-badge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%);
+  pointer-events: none;
+}
+
 /* ── Blueprint detail: clean PDF / print export ── */
 .blueprint-print-only { display: none; }
 @media print {
