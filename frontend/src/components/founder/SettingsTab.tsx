@@ -1042,7 +1042,7 @@ function NotificationsSection() {
 /* Main export                                                 */
 /* ────────────────────────────────────────────────────────── */
 
-function PaymentSection({ profile }: { profile: FounderProfile }) {
+function PaymentSection({ profile, onSave }: { profile: FounderProfile; onSave: (p: FounderProfile) => void }) {
   const [saved, setSaved] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [billing, setBilling] = useState({
@@ -1058,8 +1058,47 @@ function PaymentSection({ profile }: { profile: FounderProfile }) {
     window.setTimeout(() => setSaved(false), 2200);
   };
 
+  const connectStripe = () => onSave({ ...profile, stripeConnected: true });
+  const disconnectStripe = () => onSave({ ...profile, stripeConnected: false });
+
   return (
     <div className="flex flex-col gap-5">
+      <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <LinkSimple size={16} weight="bold" style={{ color: MID }} />
+            <h4 className="text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>Stripe Connect</h4>
+          </div>
+          {profile.stripeConnected && (
+            <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: "#e8f5ef", color: "#1d6e47" }}>
+              <CheckCircle size={12} weight="fill" /> Connected
+            </span>
+          )}
+        </div>
+        <p className="mb-4 text-[12.5px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+          Connect a Stripe account so you can pay developers per milestone. Funds route through Evolv&apos;s platform account, the platform fee is deducted, and the rest is released to the developer.
+        </p>
+        {profile.stripeConnected ? (
+          <button
+            type="button"
+            onClick={disconnectStripe}
+            className="flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-[13px] font-bold"
+            style={{ borderColor: BORDER, color: TEXT_MUTED, background: "#fff" }}
+          >
+            Disconnect Stripe account
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={connectStripe}
+            className="flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+            style={{ background: INK, color: MINT }}
+          >
+            <LinkSimple size={15} weight="bold" /> Connect Stripe account
+          </button>
+        )}
+      </section>
+
       <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
         <div className="mb-4 flex items-center gap-2">
           <CreditCard size={16} weight="bold" style={{ color: MID }} />
@@ -1467,7 +1506,7 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
               {activeSection === "profile" ? (
                 <ProfileSection profile={profile} onSave={onProfileSave} startEditingSignal={editSignal} />
               ) : activeSection === "payment" ? (
-                <PaymentSection profile={profile} />
+                <PaymentSection profile={profile} onSave={onProfileSave} />
               ) : activeSection === "security" ? (
                 <SecuritySection />
               ) : (

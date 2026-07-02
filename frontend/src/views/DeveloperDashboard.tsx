@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DeveloperDashboardPage from '../components/developer/DeveloperDashboard';
 import { DevOnboardingModal } from '../components/developer/shared';
 import { Sidebar, type DeveloperTab } from '../components/developer/shared/Sidebar';
@@ -43,8 +44,13 @@ const DEFAULT_PROFILE: DeveloperProfile = {
     profileComplete: false, firstTime: false,
 };
 
-export default function DeveloperDashboard() {
-    const [currentPage, setCurrentPage] = useState<DeveloperTab>('dashboard');
+function DeveloperDashboardContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const validTabs: DeveloperTab[] = ["dashboard", "applications", "discover", "projects", "settings", "network", "inbox"];
+    const currentPage = (tabParam && validTabs.includes(tabParam as DeveloperTab)) ? (tabParam as DeveloperTab) : "dashboard";
+
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
     const [profile, setProfile] = useState<DeveloperProfile>(DEFAULT_PROFILE);
@@ -53,6 +59,8 @@ export default function DeveloperDashboard() {
     const [userName, setUserName] = useState('');
     const [inboxActiveContactId, setInboxActiveContactId] = useState('asad');
     const [networkInboxContacts, setNetworkInboxContacts] = useState<DeveloperInboxLaunchContact[]>([]);
+
+    const [dataLoaded, setDataLoaded] = useState(false);
 
     useEffect(() => {
         const loadTimer = window.setTimeout(() => {
@@ -69,6 +77,7 @@ export default function DeveloperDashboard() {
                     setUserName("");
                 }
             } catch {}
+            setDataLoaded(true);
         }, 0);
         return () => window.clearTimeout(loadTimer);
     }, []);
@@ -111,19 +120,25 @@ export default function DeveloperDashboard() {
 
     const handleNavigate = (page: DeveloperTab) => {
         pendingProtectedActionRef.current = null;
-        setCurrentPage(page);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", page);
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     const handleOpenProfile = () => {
         setShowOnboarding(false);
         setProfilePromptDismissed(true);
-        setCurrentPage('settings');
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", "settings");
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     const handleOpenNetworkMessage = (contact: DeveloperNetworkMessageTarget) => {
         setNetworkInboxContacts((prev) => [contact, ...prev.filter((item) => item.id !== contact.id)]);
         setInboxActiveContactId(contact.id);
-        setCurrentPage('inbox');
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", "inbox");
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     const Page = pages[currentPage] || DeveloperDashboardPage;
@@ -132,27 +147,31 @@ export default function DeveloperDashboard() {
         <div style={{ display: 'flex', background: '#f5f6f4', minHeight: '100vh' }}>
             <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />
             <div style={{ flex: 1, minWidth: 0 }}>
-                {currentPage === 'network' ? (
-                    <Network
-                        onNavigate={handleNavigate}
-                        onMessage={handleOpenNetworkMessage}
-                        profileComplete={profileComplete}
-                        onRequireProfile={requireDeveloperProfile}
-                    />
-                ) : currentPage === 'inbox' ? (
-                    <Inbox
-                        activeContactId={inboxActiveContactId}
-                        onActiveContactChange={setInboxActiveContactId}
-                        extraContacts={networkInboxContacts}
-                        profileComplete={profileComplete}
-                        onRequireProfile={requireDeveloperProfile}
-                    />
-                ) : (
-                    <Page 
-                        onNavigate={handleNavigate} 
-                        profileComplete={profileComplete}
-                        onRequireProfile={requireDeveloperProfile}
-                    />
+                {!dataLoaded ? null : (
+                    <>
+                        {currentPage === 'network' ? (
+                            <Network
+                                onNavigate={handleNavigate}
+                                onMessage={handleOpenNetworkMessage}
+                                profileComplete={profileComplete}
+                                onRequireProfile={requireDeveloperProfile}
+                            />
+                        ) : currentPage === 'inbox' ? (
+                            <Inbox
+                                activeContactId={inboxActiveContactId}
+                                onActiveContactChange={setInboxActiveContactId}
+                                extraContacts={networkInboxContacts}
+                                profileComplete={profileComplete}
+                                onRequireProfile={requireDeveloperProfile}
+                            />
+                        ) : (
+                            <Page 
+                                onNavigate={handleNavigate} 
+                                profileComplete={profileComplete}
+                                onRequireProfile={requireDeveloperProfile}
+                            />
+                        )}
+                    </>
                 )}
             </div>
 
@@ -210,5 +229,13 @@ export default function DeveloperDashboard() {
                 />
             )}
         </div>
+    );
+}
+
+export default function DeveloperDashboard() {
+    return (
+        <Suspense fallback={null}>
+            <DeveloperDashboardContent />
+        </Suspense>
     );
 }
