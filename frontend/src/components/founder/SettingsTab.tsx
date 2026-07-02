@@ -1457,22 +1457,18 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange, 
           })}
         </div>
 
-        <div className="mt-auto pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
-          <div className="mb-3 rounded-xl px-3 py-3" style={{ background: "#fff7f6", border: "1px solid #f4d5d2" }}>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest" style={{ color: "#b03030" }}>
-              <WarningCircle size={13} weight="fill" />
-              Danger Zone
-            </div>
-            <button
-              type="button"
-              onClick={handleDeleteAccount}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-bold transition hover:bg-red-50"
-              style={{ color: "#c0392b" }}
-            >
-              <Trash size={13} weight="bold" />
-              Delete Account
-            </button>
+        <div className="Settings_dangerZone">
+          <div className="Settings_dangerTitle">
+            <WarningCircle size={13} weight="fill" />
+            Danger Zone
           </div>
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            className="Settings_dangerBtn"
+          >
+            Delete Account
+          </button>
         </div>
       </div>
 

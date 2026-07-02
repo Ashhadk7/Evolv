@@ -1,8 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useRef, useState } from 'react';
 
-import { Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
-import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
 import {
     createBlankDeveloperCertification,
     createBlankDeveloperSkill,
@@ -288,15 +286,21 @@ const Settings = ({ onNavigate }) => {
         { id: 'security', label: 'Security', icon: 'lock' },
         { id: 'preferences', label: 'Preferences', icon: 'sliders-h' },
     ];
+    const sectionCopy = {
+        profile: { title: 'Profile', subtitle: 'Update your developer details and public profile.' },
+        payment: { title: 'Payment', subtitle: 'Manage payout details, billing method, and earnings.' },
+        notifications: { title: 'Notifications', subtitle: 'Control which notifications you receive.' },
+        security: { title: 'Security', subtitle: 'Protect your developer account and login access.' },
+        preferences: { title: 'Preferences', subtitle: 'Tune your startup match and opportunity preferences.' },
+    }[activeTab];
 
     return (
         <div className={"Settings_container"}>
             <main className={"Settings_mainWrapper"}>
-                <Topbar title="Settings" subtitle="Manage your profile, preferences, and account security." onNavigate={onNavigate} />
-
                 <div className={"Settings_settingsLayout"}>
                     {/* Tabs */}
                     <div className={"Settings_tabsCol"}>
+                        <p className={"Settings_sideTitle"}>Settings</p>
                         {tabs.map((tab) => (
                             <button key={tab.id} className={"Settings_tabBtn" + (activeTab === tab.id ? ' ' + "Settings_tabBtnActive" : '')} onClick={() => setActiveTab(tab.id)}>
                                 <i className={'fas fa-' + tab.icon} />
@@ -311,6 +315,9 @@ const Settings = ({ onNavigate }) => {
 
                     {/* Content */}
                     <div className={"Settings_contentCol"}>
+                        <div className={"Settings_contentInner" + (activeTab === 'profile' ? ' Settings_contentInnerWide' : '')}>
+                            <h2 className={"Settings_pageTitle"}>{sectionCopy.title}</h2>
+                            <p className={"Settings_pageSubtitle"}>{sectionCopy.subtitle}</p>
 
                         {/* PROFILE TAB */}
                         {activeTab === 'profile' && (
@@ -859,12 +866,8 @@ const Settings = ({ onNavigate }) => {
                                 </div>
                             </div>
                         )}
+                        </div>
                     </div>
-                </div>
-
-                <div className={"Settings_footer"}>
-                    <span>Evolv · Settings</span>
-                    <div className={"Settings_footerRight"}><div className={"Settings_greenDot"} /><span>© 2025 Evolv. All rights reserved.</span></div>
                 </div>
             </main>
         </div>
