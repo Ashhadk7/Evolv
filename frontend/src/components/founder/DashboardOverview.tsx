@@ -278,6 +278,7 @@ function AIBriefingBanner({ state, onCta }: { state: AIState; onCta: () => void 
           whileHover={{ scale: 1.03, boxShadow: "0 6px 20px rgba(26,49,44,0.22)" }}
           whileTap={{ scale: 0.97 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          className="bp-gradient-btn"
           style={{
             flexShrink: 0, padding: "9px 16px", borderRadius: 11,
             fontSize: 12, fontWeight: 600, cursor: "pointer",
@@ -689,6 +690,7 @@ export function DashboardOverview({ profile, onNavigateWorkspace, blueprints, on
           whileHover={{ scale: 1.03, boxShadow: "0 8px 24px rgba(26,49,44,0.28)" }}
           whileTap={{ scale: 0.97 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          className="bp-gradient-btn"
           style={{
             flexShrink: 0,
             display: "flex", alignItems: "center", gap: 8,

@@ -528,7 +528,7 @@ function ComposeModal({
               onClick={submit}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
-              className="flex h-12 items-center gap-2 rounded-xl px-7 text-[14px] font-extrabold"
+              className="bp-gradient-btn flex h-12 items-center gap-2 rounded-xl px-7 text-[14px] font-extrabold"
               style={{ background: DARK, color: MINT }}
             >
               <PaperPlaneTilt size={15} weight="fill" />
@@ -678,6 +678,11 @@ export default function Inbox({
       : "general"
   );
   const messageListRef = useRef<HTMLDivElement>(null);
+  const messageIdRef = useRef(0);
+  const createMessageId = () => {
+    messageIdRef.current += 1;
+    return `local-msg-${messageIdRef.current}`;
+  };
 
   const mergedContacts = useMemo(() => {
     const toContact = (extra: DeveloperInboxLaunchContact, base?: Contact): Contact => {
@@ -831,7 +836,7 @@ export default function Inbox({
     const now = new Date();
     const body = draft.trim();
     const msg: Message = {
-      id: Date.now().toString(),
+      id: createMessageId(),
       from: "me",
       text: body,
       time: formatTime(now),
@@ -859,7 +864,7 @@ export default function Inbox({
     
     const now = new Date();
     const msg: Message = {
-      id: Date.now().toString(),
+      id: createMessageId(),
       from: "me",
       text: body,
       time: formatTime(now),
@@ -1003,7 +1008,7 @@ export default function Inbox({
           }}
           whileHover={{ y: -2, boxShadow: "0 12px 24px rgba(15,28,24,0.16)" }}
           whileTap={{ scale: 0.98 }}
-          className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
+          className="bp-gradient-btn flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
           style={{ background: DARK, color: MINT }}
         >
           <PencilSimple size={15} weight="bold" />
@@ -1252,7 +1257,7 @@ export default function Inbox({
                     onClick={() => acceptRequest(contact.id)}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-extrabold"
+                    className="bp-gradient-btn flex items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-extrabold"
                     style={{ background: DARK, color: MINT }}
                   >
                     <CheckCircle size={14} weight="fill" />
@@ -1325,7 +1330,7 @@ export default function Inbox({
                 whileHover={draft.trim() && !messageLocked ? { scale: 1.08 } : {}}
                 whileTap={draft.trim() && !messageLocked ? { scale: 0.92 } : {}}
                 transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                className="bp-gradient-icon-btn flex h-10 w-10 items-center justify-center rounded-xl"
                 style={{ background: DARK, opacity: draft.trim() && !messageLocked ? 1 : 0.4 }}
                 aria-label="Send message"
               >

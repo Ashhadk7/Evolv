@@ -389,7 +389,7 @@ function PaymentModal({
           <Lock size={14} weight="duotone" style={{ color: C.amber, flexShrink: 0, marginTop: 1 }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12.5, color: "#7a5c10", lineHeight: 1.5, marginBottom: 10 }}>Connect your Stripe account to pay developers — funds route through Evolv&apos;s platform account, the platform fee is deducted, and the rest releases to their connected account.</div>
-            <button onClick={() => { onClose(); onNavigateSettingsPayment?.(); }} style={{ fontSize: 12, fontWeight: 700, padding: "8px 15px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>Connect Stripe account</button>
+            <button onClick={() => { onClose(); onNavigateSettingsPayment?.(); }} className="bp-gradient-btn" style={{ fontSize: 12, fontWeight: 700, padding: "8px 15px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>Connect Stripe account</button>
           </div>
         </div>
       ) : (
@@ -525,6 +525,7 @@ function IssueModal({
         <button
           onClick={onSubmit}
           disabled={!draft.title.trim()}
+          className="bp-gradient-btn"
           style={{ width: "100%", fontSize: 13.5, fontWeight: 700, padding: "11px", borderRadius: 11, background: C.forest, color: C.mint, border: "none", cursor: draft.title.trim() ? "pointer" : "not-allowed", opacity: draft.title.trim() ? 1 : 0.5 }}
         >
           Raise issue
@@ -610,6 +611,7 @@ function DeadlineModal({
         <button
           onClick={onSubmit}
           disabled={!draft.note.trim() || !draft.date}
+          className="bp-gradient-btn"
           style={{ width: "100%", fontSize: 13.5, fontWeight: 700, padding: "11px", borderRadius: 11, background: C.forest, color: C.mint, border: "none", cursor: (draft.note.trim() && draft.date) ? "pointer" : "not-allowed", opacity: (draft.note.trim() && draft.date) ? 1 : 0.5 }}
         >
           Set deadline
@@ -872,7 +874,7 @@ function SpendHistoryModal({
               <input type="number" value={draft.amount || ""} onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) || 0 })} placeholder="Amount" style={{ fontSize: 12, padding: "8px 9px", borderRadius: 9, border: `1px solid ${C.border}`, outline: "none", fontFamily: "inherit", color: C.ink, ...NUM }} />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={submit} disabled={!draft.label.trim() || draft.amount <= 0} style={{ flex: 1, fontSize: 12.5, fontWeight: 700, padding: "9px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: draft.label.trim() && draft.amount > 0 ? "pointer" : "not-allowed", opacity: draft.label.trim() && draft.amount > 0 ? 1 : 0.5 }}>Add expense</button>
+              <button onClick={submit} disabled={!draft.label.trim() || draft.amount <= 0} className="bp-gradient-btn" style={{ flex: 1, fontSize: 12.5, fontWeight: 700, padding: "9px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: draft.label.trim() && draft.amount > 0 ? "pointer" : "not-allowed", opacity: draft.label.trim() && draft.amount > 0 ? 1 : 0.5 }}>Add expense</button>
               <button onClick={() => setFormOpen(false)} style={{ fontSize: 12.5, fontWeight: 600, padding: "9px 14px", borderRadius: 9, background: "transparent", border: `1px solid ${C.border}`, color: C.muted, cursor: "pointer" }}>Cancel</button>
             </div>
           </div>

@@ -485,7 +485,7 @@ export const DevOnboardingModal = ({ initialProfile, onComplete, onSkip, userNam
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 420, damping: 24 }}
-              className="flex h-10 items-center gap-2 rounded-xl px-5 text-[13px] font-bold"
+              className="bp-gradient-btn flex h-10 items-center gap-2 rounded-xl px-5 text-[13px] font-bold"
               style={{ background: "#1a312c", color: "#89d7b7" }}
             >
               {step < 3 ? "Next" : "Complete profile"}

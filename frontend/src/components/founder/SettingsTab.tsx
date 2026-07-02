@@ -654,7 +654,7 @@ function ProfileSection({
                       onClick={() => setEditing(true)}
                       whileHover={{ y: -2, boxShadow: "0 8px 18px rgba(26,49,44,0.18)" }}
                       whileTap={{ scale: 0.98 }}
-                      className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold"
+                      className="bp-gradient-btn flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold"
                       style={{ background: INK, color: MINT, marginRight: '1rem' }}
                     >
                       <PencilSimple size={15} weight="bold" />
@@ -872,7 +872,12 @@ function ProfileSection({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full"
-                      style={{ background: INK, border: "3px solid #fff", color: MINT }}
+                      style={{
+                        background: "linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%)",
+                        border: "3px solid #fff",
+                        color: MINT,
+                        boxShadow: "0 8px 18px -12px rgba(9,32,26,0.72)",
+                      }}
                       title="Upload photo"
                     >
                       <UploadSimple size={13} weight="bold" />
@@ -961,7 +966,7 @@ function ProfileSection({
               whileHover={{ y: -2, boxShadow: "0 10px 26px rgba(26,49,44,0.22)" }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 24 }}
-              className="mb-2 flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
+              className="bp-gradient-btn mb-2 flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
               style={{ background: INK, color: MINT, marginBottom: 35 }}
             >
               <Check size={15} weight="bold" />
@@ -1091,7 +1096,7 @@ function PaymentSection({ profile, onSave }: { profile: FounderProfile; onSave: 
           <button
             type="button"
             onClick={connectStripe}
-            className="flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+            className="bp-gradient-btn flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
             style={{ background: INK, color: MINT }}
           >
             <LinkSimple size={15} weight="bold" /> Connect Stripe account
@@ -1182,7 +1187,7 @@ function PaymentSection({ profile, onSave }: { profile: FounderProfile; onSave: 
         <button
           type="button"
           onClick={save}
-          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold ="
+          className="bp-gradient-btn mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
           style={{ background: INK, color: MINT, margin:15 }}
         >
           <Check size={15} weight="bold"/>
@@ -1265,7 +1270,7 @@ function SecuritySection() {
         <button
           type="button"
           onClick={save}
-          className="flex h-10 items-center justify-center gap-2 rounded-lg px-6 text-[13px] font-extrabold transition-all hover:opacity-90 active:scale-95 cursor-pointer" style={{ background: INK, color: MINT, marginTop: 24 }}
+          className="bp-gradient-btn flex h-10 items-center justify-center gap-2 rounded-lg px-6 text-[13px] font-extrabold transition-all hover:opacity-90 active:scale-95 cursor-pointer" style={{ background: INK, color: MINT, marginTop: 24 }}
         >
           <Check size={15} weight="bold" />
           {saved ? "Password Updated" : "Update Password"}
@@ -1372,7 +1377,7 @@ function PreferencesSection() {
         <button
           type="button"
           onClick={save}
-          className="mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
+          className="bp-gradient-btn mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
           style={{ background: INK, color: MINT }}
         >
           <Check size={15} weight="bold" />

@@ -682,9 +682,11 @@ function ChatPanel({ bp }: { bp: Blueprint }) {
         style={{
           position: "fixed", bottom: 26, right: 26, zIndex: 60,
           width: 54, height: 54, borderRadius: 999,
-          background: C.forest, border: "none", cursor: "pointer",
+          background: "linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%)",
+          border: "1px solid rgba(5, 31, 25, 0.88)",
+          cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 12px 34px rgba(17,34,27,0.42)",
+          boxShadow: "inset 0 1px 0 rgba(171,255,220,0.18), inset 0 -1px 0 rgba(0,0,0,0.18), 0 12px 34px rgba(17,34,27,0.42)",
         }}
         aria-label="Blueprint assistant"
       >
@@ -753,7 +755,7 @@ function ChatPanel({ bp }: { bp: Blueprint }) {
                 placeholder="Ask about the stack, scope, budget…"
                 style={{ flex: 1, fontSize: 12.5, padding: "10px 13px", borderRadius: 11, background: C.tint, border: `1px solid ${C.borderSoft}`, outline: "none", color: C.ink, fontFamily: "inherit" }}
               />
-              <motion.button onClick={send} whileTap={{ scale: 0.9 }} style={{ width: 38, height: 38, borderRadius: 11, background: C.forest, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <motion.button onClick={send} whileTap={{ scale: 0.9 }} className="bp-gradient-btn" style={{ width: 38, height: 38, borderRadius: 11, background: C.forest, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <PaperPlaneTilt size={16} weight="fill" style={{ color: C.mint }} />
               </motion.button>
             </div>
@@ -1728,7 +1730,7 @@ function BlueprintDetail({
                                         <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{d.role}</div>
                                       </div>
                                       <span style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 999, background: "#e8f5ef", color: "#1d6e47", ...NUM }}>{d.match}%</span>
-                                      <button onClick={() => { setPhaseHires((p) => ({ ...p, [i]: d.name })); setHirePanelPhase(null); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>
+                                      <button onClick={() => { setPhaseHires((p) => ({ ...p, [i]: d.name })); setHirePanelPhase(null); }} className="bp-gradient-btn" style={{ fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 9, background: C.forest, color: C.mint, border: "none", cursor: "pointer" }}>
                                         Hire
                                       </button>
                                     </div>

@@ -253,7 +253,7 @@ function ConnectionRequestModal({
                 onClick={() => setAddingNote(true)}
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
+                className="bp-gradient-btn flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"
                 style={{ background: "#1a312c", color: "#89d7b7" }}
               >
                 Add a note
@@ -266,7 +266,7 @@ function ConnectionRequestModal({
               disabled={!trimmedNote}
               whileHover={trimmedNote ? { y: -1 } : {}}
               whileTap={trimmedNote ? { scale: 0.98 } : {}}
-              className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold disabled:opacity-45"
+              className="bp-gradient-btn flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-extrabold disabled:opacity-45"
               style={{ background: "#1a312c", color: "#89d7b7" }}
             >
               <PaperPlaneTilt size={14} weight="fill" />
@@ -543,7 +543,7 @@ export default function Network({ onNavigate, onMessage, onPendingCountChange, p
                             whileHover={{ scale: 1.04 }}
                             whileTap={{ scale: 0.96 }}
                             transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                            className="cursor-pointer rounded-xl px-3 py-1.5 text-[12px] font-semibold"
+                            className="bp-gradient-btn cursor-pointer rounded-xl px-3 py-1.5 text-[12px] font-semibold"
                             style={{ background: "#1a312c", color: "#89d7b7" }}
                           >
                             Accept
@@ -656,7 +656,7 @@ export default function Network({ onNavigate, onMessage, onPendingCountChange, p
                           whileHover={{ scale: 1.04 }}
                           whileTap={{ scale: 0.96 }}
                           transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                          className="flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60"
+                          className={`flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60 ${!isConnected && !isRequested ? "bp-gradient-btn" : ""}`}
                           style={{
                             background: isConnected || isRequested ? "#e8f5ef" : "#0f1c18",
                             color: isConnected || isRequested ? "#2e7d5c" : "#89d7b7",
@@ -720,7 +720,7 @@ export default function Network({ onNavigate, onMessage, onPendingCountChange, p
                         event.stopPropagation();
                         handleConnectionButton(person);
                       }}
-                      className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-[#0f1c18]"
+                      className="bp-gradient-icon-btn flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-[#0f1c18]"
                       style={{ background: "#e8f5ef", color: "#2e7d5c", border: "1px solid #c5ddd0" }}
                     >
                       <UserPlus size={13} weight="bold" />

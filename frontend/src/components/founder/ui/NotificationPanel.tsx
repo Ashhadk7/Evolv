@@ -411,7 +411,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, NotificationPanelPro
                   >
                     <motion.button
                       onClick={onMarkAllRead}
-                      className="w-full flex items-center justify-center gap-2 cursor-pointer rounded-xl"
+                      className="bp-gradient-btn w-full flex items-center justify-center gap-2 cursor-pointer rounded-xl"
                       style={{
                         padding: "11px 0",
                         fontSize: 13,

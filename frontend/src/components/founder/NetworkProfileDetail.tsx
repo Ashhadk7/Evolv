@@ -543,7 +543,7 @@ export function NetworkProfileDetailScreen({
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
+                      className="bp-gradient-btn flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer"
                       style={{ background: "#1a312c", color: "#89d7b7" }}
                     >
                       <UserPlus size={14} weight="bold" /> Accept
@@ -557,7 +557,7 @@ export function NetworkProfileDetailScreen({
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-60"
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-60 ${!connected && !connectionDisabled ? "bp-gradient-btn" : ""}`}
                     style={{
                       background: connected || connectionDisabled ? "#e8f5ef" : "#0f1c18",
                       color: connected || connectionDisabled ? "#2e7d5c" : "#89d7b7",
@@ -671,7 +671,7 @@ export function NetworkProfileDetailScreen({
                     type="button"
                     disabled={!reviewText.trim()}
                     onClick={handleAddReview}
-                    className="px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-opacity disabled:opacity-40"
+                    className="bp-gradient-btn px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-opacity disabled:opacity-40"
                     style={{ background: "#1a312c", color: "#89d7b7" }}
                   >
                     Submit review

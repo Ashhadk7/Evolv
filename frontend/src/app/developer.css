@@ -6692,3 +6692,89 @@ opacity:1;
     background: #1a312c;
     transform: translateY(-1px);
 }
+
+/* Shared developer primary action button style. */
+.ActionModal_primaryBtn,
+.BlueprintPreview_primaryBtn,
+.DevOnboardingModal_continueBtn,
+.DevOnboardingModal_finishBtn,
+.Discover_applyBtn,
+.Discover_applyBtnSm,
+.Discover_resetBtn,
+.FeaturedMatch_btn.FeaturedMatch_primary,
+.FeaturedMatchCard_primaryBtn,
+.FilterBar_resetBtn,
+.Inbox_composeBtn,
+.Inbox_sendBtn:not(.Inbox_sendBtnSent),
+.Inbox_sendComposeBtn,
+.InvitationCard_acceptBtn,
+.MatchCard_btn.MatchCard_primary,
+.Network_acceptBtn,
+.Network_connectBtn,
+.Network_connectBtnSm,
+.StartupCard_primaryBtn,
+.AiMatchBanner_btn {
+    background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%) !important;
+    color: #9ff0cc !important;
+    border: 1px solid rgba(5, 31, 25, 0.88) !important;
+    border-radius: 14px !important;
+    font-weight: 700;
+    box-shadow:
+        inset 0 1px 0 rgba(171, 255, 220, 0.18),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+        0 14px 28px -16px rgba(9, 32, 26, 0.72),
+        0 5px 14px -8px rgba(9, 32, 26, 0.56) !important;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24);
+    transition: box-shadow 220ms ease, transform 150ms ease, filter 180ms ease;
+}
+
+.ActionModal_primaryBtn:hover,
+.BlueprintPreview_primaryBtn:hover,
+.DevOnboardingModal_continueBtn:hover:not(:disabled),
+.DevOnboardingModal_finishBtn:hover:not(:disabled),
+.Discover_applyBtn:hover,
+.Discover_applyBtnSm:hover,
+.Discover_resetBtn:hover,
+.FeaturedMatch_btn.FeaturedMatch_primary:hover,
+.FeaturedMatchCard_primaryBtn:hover,
+.FilterBar_resetBtn:hover,
+.Inbox_composeBtn:hover,
+.Inbox_sendBtn:hover:not(:disabled),
+.Inbox_sendComposeBtn:hover,
+.InvitationCard_acceptBtn:hover,
+.MatchCard_btn.MatchCard_primary:hover,
+.Network_acceptBtn:hover,
+.Network_connectBtn:hover,
+.Network_connectBtnSm:hover,
+.StartupCard_primaryBtn:hover,
+.AiMatchBanner_btn:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(171, 255, 220, 0.24),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+        0 18px 34px -16px rgba(9, 32, 26, 0.76),
+        0 8px 18px -10px rgba(9, 32, 26, 0.62) !important;
+    filter: brightness(1.07);
+}
+
+.ActionModal_primaryBtn:active,
+.BlueprintPreview_primaryBtn:active,
+.DevOnboardingModal_continueBtn:active,
+.DevOnboardingModal_finishBtn:active,
+.Discover_applyBtn:active,
+.Discover_applyBtnSm:active,
+.Discover_resetBtn:active,
+.FeaturedMatch_btn.FeaturedMatch_primary:active,
+.FeaturedMatchCard_primaryBtn:active,
+.FilterBar_resetBtn:active,
+.Inbox_composeBtn:active,
+.Inbox_sendBtn:active,
+.Inbox_sendComposeBtn:active,
+.InvitationCard_acceptBtn:active,
+.MatchCard_btn.MatchCard_primary:active,
+.Network_acceptBtn:active,
+.Network_connectBtn:active,
+.Network_connectBtnSm:active,
+.StartupCard_primaryBtn:active,
+.AiMatchBanner_btn:active {
+    transform: translateY(1px);
+}

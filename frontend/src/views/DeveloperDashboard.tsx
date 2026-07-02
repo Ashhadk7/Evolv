@@ -208,7 +208,7 @@ function DeveloperDashboardContent() {
                                 <button
                                     type="button"
                                     onClick={handleOpenProfile}
-                                    className="mt-3 flex h-9 items-center gap-2 rounded-lg px-3.5 text-[12px] font-bold"
+                                    className="bp-gradient-btn mt-3 flex h-9 items-center gap-2 rounded-lg px-3.5 text-[12px] font-bold"
                                     style={{ background: '#1a312c', color: '#89d7b7', border: 'none', cursor: 'pointer' , paddingLeft: 10, paddingRight: 10}}
                                 >
                                     Complete profile
