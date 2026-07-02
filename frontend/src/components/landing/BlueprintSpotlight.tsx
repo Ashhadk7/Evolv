@@ -99,7 +99,6 @@ function BlueprintPreview() {
           {/* Metric grid */}
           <div className="mb-5 grid grid-cols-2 gap-2.5">
             {[
-              { label: "Investor interest", value: 92 },
               { label: "Market potential", value: 91 },
               { label: "Developer demand", value: 78 },
               { label: "Funding readiness", value: 82 },
@@ -141,7 +140,7 @@ function BlueprintPreview() {
                 <div className="mb-2" style={{ color: "rgba(15,30,26,0.3)" }}>
                   Strengths
                 </div>
-                {["Strong market demand", "High investor engagement", "Growing developer interest"].map(
+                {["Strong market demand", "Growing developer interest"].map(
                   (s) => (
                     <div key={s} className="mb-1.5 flex items-center gap-1.5" style={{ color: "rgba(15,30,26,0.6)" }}>
                       <Check size={9} weight="bold" style={{ color: "#428475" }} />
@@ -155,7 +154,7 @@ function BlueprintPreview() {
                   Recommendation
                 </div>
                 <div className="leading-relaxed" style={{ color: "rgba(15,30,26,0.5)" }}>
-                  Publish publicly and invite seed investors. Current appeal is high.
+                  Publish publicly and invite developers. Current appeal is high.
                 </div>
               </div>
             </div>
@@ -221,7 +220,7 @@ const features = [
   {
     Icon: Star,
     title: "Viability score",
-    desc: "A 0–100 rating across market timing, demand, competition, investor fit, technical risk, and execution complexity.",
+    desc: "A 0–100 rating across market timing, demand, competition, technical risk, and execution complexity.",
   },
 ];
 
@@ -286,7 +285,7 @@ export function BlueprintSpotlight() {
               className="mb-10 text-[15px] leading-relaxed"
               style={{ color: "rgba(15,30,26,0.5)" }}
             >
-              A blueprint is the shared operating document for founders, developers, and investors:
+              A blueprint is the shared operating document for founders and developers:
               clear enough for execution, detailed enough for due diligence, and structured enough
               for AI matching.
             </p>

@@ -30,7 +30,7 @@ const steps = [
     Icon: ArrowsOut,
     title: "Matches surface instantly",
     description:
-      "Developers are ranked by stack fit while high-scoring blueprints are routed into investor feeds based on domain, stage, and viability thresholds.",
+      "Developers are ranked by stack fit while high-scoring blueprints are routed into developer feeds based on domain, stage, and viability thresholds.",
     tag: "Automatic",
     detail: "Vector matching",
   },

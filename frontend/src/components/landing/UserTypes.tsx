@@ -17,12 +17,11 @@ const users = [
     accent: "#428475",
     title: "Turn an idea into a venture-ready blueprint",
     description:
-      "Describe the startup in plain language. Evolv researches the market, maps competitors, and packages the opportunity into a structured plan developers and investors can act on.",
+      "Describe the startup in plain language. Evolv researches the market, maps competitors, and packages the opportunity into a structured plan developers can act on.",
     perks: [
       "Market analysis and competitor map",
       "Prioritized MVP scope and build order",
       "Technical architecture and cost estimate",
-      "Investor-ready viability score 0–100",
     ],
     cta: "Start as a founder",
   },
@@ -42,22 +41,7 @@ const users = [
     ],
     cta: "Join as a developer",
   },
-  {
-    id: "investors",
-    Icon: TrendUp,
-    role: "Investors",
-    accent: "#1a312c",
-    title: "Review AI-scored deals before they surface",
-    description:
-      "Use a filtered feed of venture blueprints scored by viability, domain, stage, and funding readiness. Move from signal to conversation without spreadsheet sprawl.",
-    perks: [
-      "Daily deal feed with viability scoring",
-      "Filters for domain, stage, and budget",
-      "Market and competitor data on every deal",
-      "Direct founder access with saved notes",
-    ],
-    cta: "Browse investor deals",
-  },
+
 ];
 
 const containerVariants = {
@@ -136,7 +120,7 @@ export function UserTypes() {
 
         {/* Cards */}
         <motion.div
-          className="grid grid-cols-1 gap-5 lg:grid-cols-3"
+          className="grid grid-cols-1 gap-5 lg:grid-cols-2"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"

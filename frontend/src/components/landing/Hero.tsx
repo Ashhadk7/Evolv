@@ -276,7 +276,7 @@ function BlueprintCard() {
         <div className="flex items-start gap-2 rounded-lg px-3 py-2.5" style={{ background: "rgba(137,215,183,0.055)", border: "1px solid rgba(137,215,183,0.1)" }}>
           <Sparkle size={11} weight="fill" className="mt-0.5 shrink-0 text-mint" />
           <p className="text-[10px] leading-relaxed text-cream/42">
-            Publish now — HealthTech investor demand is up 17% this month.
+            Publish now — HealthTech demand is up 17% this month.
           </p>
         </div>
       </div>
@@ -302,25 +302,6 @@ function DashboardMockup() {
         }}
       />
 
-      {/* Floating badge: top-left */}
-      <motion.div
-        animate={{ y: [0, -5, 0] }}
-        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-        className="absolute top-0 left-0 z-30 flex items-center gap-2 rounded-xl px-3 py-2"
-        style={{
-          background: "rgba(9,20,16,0.96)",
-          border: "1px solid rgba(137,215,183,0.18)",
-          backdropFilter: "blur(16px)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)",
-        }}
-      >
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(137,215,183,0.14)" }}>
-          <UsersThree size={11} weight="bold" className="text-mint" />
-        </div>
-        <span className="whitespace-nowrap text-[11px] font-medium tracking-tight text-cream/82">
-          3 investors active now
-        </span>
-      </motion.div>
 
       {/* Card deck */}
       <div className="relative" style={{ perspective: "1100px" }}>
@@ -558,29 +539,7 @@ export function Hero() {
               </p>
             </motion.div>
 
-            {/* Stats */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="grid grid-cols-2 gap-x-5 gap-y-4 border-t border-cream/[0.07] pt-5 sm:grid-cols-4"
-            >
-              {STATS.map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-[1.5rem] font-bold leading-none tracking-tight text-mint">
-                    <AnimatedCounter
-                      to={stat.value}
-                      suffix={stat.suffix}
-                      prefix={stat.prefix ?? ""}
-                    />
-                  </div>
-                  <div className="mt-1 flex items-center gap-1 text-[10px] leading-snug text-cream/32">
-                    <CheckCircle size={9} weight="bold" className="shrink-0 text-mint/40" />
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </motion.div>
+        
 
             {/* Mobile card */}
             <motion.div

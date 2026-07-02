@@ -41,7 +41,7 @@ interface FAQItem {
 const testimonialData: TestimonialItem[] = [
   {
     quote:
-      "I had my idea on Monday. By Wednesday I had a full blueprint, a developer match, and two investor inquiries.",
+      "I had my idea on Monday. By Wednesday I had a full blueprint and four developer match.",
     author: "Ayesha Khan — Founder, EdTech startup",
     image:
       "https://images.unsplash.com/photo-1664575602554-2087b04935a5?w=300&q=80&fit=crop&crop=faces",
@@ -58,7 +58,7 @@ const testimonialData: TestimonialItem[] = [
   {
     quote:
       "The viability scoring saves hours of first-pass diligence. I can filter by domain and move directly into founder conversations.",
-    author: "Sofia Reyes — Angel investor, HealthTech focus",
+    author: "Sofia Reyes — Web develper",
     image:
       "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&q=80&fit=crop&crop=faces",
     alt: "Sofia Reyes",
