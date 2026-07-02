@@ -8,6 +8,7 @@ import {
   useTransform,
 } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
@@ -17,28 +18,6 @@ const NAV_LINKS = [
   { label: "About",        href: "/about"         },
   { label: "Our Team",     href: "/our-team"      },
 ];
-
-function EvolvMark() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-      className="shrink-0"
-    >
-      <path
-        d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5"
-        stroke="#89d7b7"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="18" cy="3.5" r="2" fill="#89d7b7" />
-    </svg>
-  );
-}
 
 export function Navbar() {
   const { scrollY } = useScroll();
@@ -96,7 +75,14 @@ export function Navbar() {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5" aria-label="Evolv home">
-            <EvolvMark />
+            <Image
+              src="/evolv-logo-transparent.png"
+              alt=""
+              aria-hidden="true"
+              width={44}
+              height={28}
+              className="h-7 w-11 shrink-0 object-contain"
+            />
             <span className="text-[17px] font-semibold tracking-tight text-cream">
               Ev<span className="text-mint">olv</span>
             </span>

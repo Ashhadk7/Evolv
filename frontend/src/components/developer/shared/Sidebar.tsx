@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientIcon as Icon } from "./ClientIcon";
 import {
@@ -138,16 +139,14 @@ export function Sidebar({
       >
         {/* Brand */}
         <div className="flex items-center gap-3 px-6 pt-7 pb-6">
-          <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <path
-              d="M2 15 L6 10.5 L10 13 L14 7 L18 3.5"
-              stroke={ACCENT}
-              strokeWidth="1.85"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle cx="18" cy="3.5" r="2.2" fill={ACCENT} />
-          </svg>
+          <Image
+            src="/evolv-logo-transparent.png"
+            alt=""
+            aria-hidden="true"
+            width={36}
+            height={28}
+            className="h-7 w-9 shrink-0 object-contain"
+          />
           <span
             className="font-bold tracking-tight"
             style={{ fontSize: 18, color: TEXT_ON, letterSpacing: "-0.02em" }}

@@ -79,7 +79,7 @@ export function UserTypes() {
     <section
       id="who-it-is-for"
       className="relative overflow-hidden px-4 py-20 sm:px-6 md:px-12 lg:py-28"
-      style={{ background: "#f8f9f8" }}
+      style={{ background: "#fdf9f4" }}
     >
       <div
         className="absolute left-0 right-0 top-0 h-px"
