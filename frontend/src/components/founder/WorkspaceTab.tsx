@@ -386,12 +386,28 @@ function IdeaCard({ bp, idx, onView, onDelete, canPublish, onCompleteProfile, on
           {bp.wordCount} words · {bp.interested} interested
         </span>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.04, filter: "brightness(1.08)" }}
+            whileTap={{ scale: 0.96 }}
             onClick={onView}
-            className="bp-primary-btn"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "8px 18px",
+              borderRadius: 10,
+              background: "linear-gradient(180deg, #234840, #1a312c)",
+              color: "#89d7b7",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: "0 4px 14px -4px rgba(17, 34, 27, 0.4)",
+            }}
           >
             <Eye size={13} weight="bold" /> View
-          </button>
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.04, background: "#e3ede8" }}
             whileTap={{ scale: 0.96 }}
