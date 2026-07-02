@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Plus, X, Eye, PencilSimple, ArrowLeft, ArrowRight,
@@ -2403,9 +2404,15 @@ export function WorkspaceTab({
   onMessage,
   onRequireProfile,
 }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
-  const [viewingId, setViewingId] = useState<string | null>(openBlueprintId ?? null);
+  
+  // Use searchParams to initialize without flashing
+  const bpParam = searchParams.get("blueprint");
+  const [viewingId, setViewingId] = useState<string | null>(bpParam ?? openBlueprintId ?? null);
+  
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState("All Stages");
   const [sort, setSort] = useState("Viability");
@@ -2413,11 +2420,21 @@ export function WorkspaceTab({
   useEffect(() => { if (triggerForge) { setForgeOpen(true); onClearForge?.(); } }, [triggerForge, onClearForge]);
   useEffect(() => { if (openBlueprintId) setViewingId(openBlueprintId); }, [openBlueprintId]);
 
-  /* Deep-link restore: open the blueprint named in ?blueprint= on first mount */
+  // Sync to URL to persist across refreshes
   useEffect(() => {
-    const bpId = new URLSearchParams(window.location.search).get("blueprint");
-    if (bpId) setViewingId(bpId);
-  }, []);
+    const p = new URLSearchParams(searchParams.toString());
+    if (viewingId) {
+      if (p.get("blueprint") !== viewingId) {
+        p.set("blueprint", viewingId);
+        router.push(`?${p.toString()}`, { scroll: false });
+      }
+    } else {
+      if (p.has("blueprint")) {
+        p.delete("blueprint");
+        router.push(`?${p.toString()}`, { scroll: false });
+      }
+    }
+  }, [viewingId, router, searchParams]);
 
   const update = (bps: Blueprint[]) => { setBlueprints(bps); onBlueprintsChange?.(bps); };
   const viewingBP = blueprints.find((b) => b.id === viewingId);

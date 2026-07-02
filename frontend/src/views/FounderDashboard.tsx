@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle, X } from "@phosphor-icons/react";
@@ -74,11 +75,23 @@ function mergeFounderProfiles(...profiles: Array<Partial<FounderProfile> | null 
   return normalizeFounderProfileForSave(merged) as FounderProfile;
 }
 
-export default function FounderDashboard() {
-  const [tab, setTab] = useState<FounderTab>("dashboard");
+function FounderDashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const validTabs: FounderTab[] = ["dashboard", "workspace", "projects", "network", "inbox", "settings"];
+  const tab = (tabParam && validTabs.includes(tabParam as FounderTab)) ? (tabParam as FounderTab) : "dashboard";
+
+  const setTab = (nextTab: FounderTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", nextTab);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [profile, setProfile] = useState<FounderProfile>(DEFAULT_PROFILE);
   const [blueprints, setBlueprints] = useState<Blueprint[]>(DEFAULT_BLUEPRINTS);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [openBlueprintId, setOpenBlueprintId] = useState<string | null>(null);
   const [triggerForge, setTriggerForge] = useState(false);
   const [networkRequestCount, setNetworkRequestCount] = useState(3);
@@ -115,12 +128,9 @@ export default function FounderDashboard() {
         const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
         if (storedBlueprints) setBlueprints(JSON.parse(storedBlueprints));
       } catch { /* ignore */ }
+      setDataLoaded(true);
+      
       const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get("tab");
-      const validTabs: FounderTab[] = ["dashboard", "workspace", "projects", "network", "inbox", "settings"];
-      if (tabParam && (validTabs as string[]).includes(tabParam)) {
-        setTab(tabParam as FounderTab);
-      }
       if (params.get("setup") === "true") {
         params.delete("setup");
         const url = new URL(window.location.href);
@@ -267,16 +277,18 @@ export default function FounderDashboard() {
       />
 
       <main className="flex-1 overflow-hidden">
-        {tab === "dashboard" && (
-          <DashboardOverview
-            profile={profile}
-            onNavigateWorkspace={(forge) => { setTab("workspace"); if (forge) setTriggerForge(true); }}
-            blueprints={blueprints}
-            onViewBlueprint={handleViewBlueprint}
-            profileComplete={profileComplete}
-          />
-        )}
-        {tab === "workspace" && (
+        {!dataLoaded ? null : (
+          <>
+            {tab === "dashboard" && (
+              <DashboardOverview
+                profile={profile}
+                onNavigateWorkspace={(forge) => { setTab("workspace"); if (forge) setTriggerForge(true); }}
+                blueprints={blueprints}
+                onViewBlueprint={handleViewBlueprint}
+                profileComplete={profileComplete}
+              />
+            )}
+            {tab === "workspace" && (
           <WorkspaceTab
             initialBlueprints={blueprints}
             onBlueprintsChange={saveBlueprints}
@@ -327,6 +339,8 @@ export default function FounderDashboard() {
             onSectionChange={setSettingsSection}
             editSignal={settingsEditSignal}
           />
+        )}
+        </>
         )}
       </main>
 
@@ -383,5 +397,13 @@ export default function FounderDashboard() {
         />
       )}
     </div>
+  );
+}
+
+export default function FounderDashboard() {
+  return (
+    <Suspense fallback={null}>
+      <FounderDashboardContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 import { Sidebar, Topbar, StatCard, ActionModal, FilterBar, InsightCard, InvitationCard, MatchCard, ProfileCard, ProjectCard, StartupCard, ApplicationCard, BlueprintPreview, FeaturedMatch, FeaturedMatchCard, DevOnboardingModal } from './shared';
 import { discoverStats, featuredMatch, opportunities, filterOptions, trendingDomains, dashboardData } from './developerData';
@@ -93,7 +94,26 @@ const kanbanColors = {
 const avatarColors = ['#5BC8A0', '#C4973A', '#FF6B6B', '#7C5CBF', '#4A90D9'];
 
 const Projects = ({ onNavigate }) => {
-    const [selectedProject, setSelectedProject] = useState(projectsData[0]);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const projectParam = searchParams.get("project");
+    
+    // Initialize based on URL or default to first project
+    const initialProject = projectParam 
+        ? projectsData.find(p => p.id.toString() === projectParam) || projectsData[0]
+        : projectsData[0];
+        
+    const [selectedProject, setSelectedProject] = useState(initialProject);
+
+    useEffect(() => {
+        const p = new URLSearchParams(searchParams.toString());
+        if (selectedProject) {
+            if (p.get("project") !== selectedProject.id.toString()) {
+                p.set("project", selectedProject.id.toString());
+                router.push(`?${p.toString()}`, { scroll: false });
+            }
+        }
+    }, [selectedProject, router, searchParams]);
 
     return (
         <div className={"Projects_container"}>

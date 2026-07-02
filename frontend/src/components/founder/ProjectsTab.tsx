@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, X, ArrowLeft, ArrowRight, CheckCircle, Check, Circle, Warning, Clock,
@@ -1598,9 +1599,27 @@ export function ProjectsTab({
   stripeConnected: boolean;
   onNavigateSettingsPayment?: () => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectParam = searchParams.get("project");
+  const [selectedId, setSelectedId] = useState<string | null>(projectParam ?? null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (selectedId) {
+      if (p.get("project") !== selectedId) {
+        p.set("project", selectedId);
+        router.push(`?${p.toString()}`, { scroll: false });
+      }
+    } else {
+      if (p.has("project")) {
+        p.delete("project");
+        router.push(`?${p.toString()}`, { scroll: false });
+      }
+    }
+  }, [selectedId, router, searchParams]);
 
   // Backfills older localStorage records (started before `expenses`/phase
   // `budget` existed) so nothing downstream ever has to guard for it.
