@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, type MotionValue, useScroll, useSpring, useTransform } from "framer-motion";
-import { ArrowsOut, Clock, Handshake, Robot, Scroll } from "@phosphor-icons/react";
+import { Icon } from "@iconify/react";
 import { useRef } from "react";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ import { useRef } from "react";
 const steps = [
   {
     number: "01",
-    Icon: Scroll,
+    Icon: "solar:document-add-linear", // Represents inputting notes/idea
     title: "Submit your idea",
     description:
       "Type the concept, target customer, problem, and early vision. Evolv turns messy notes into a structured intake — no business-plan formatting required.",
@@ -18,7 +18,7 @@ const steps = [
   },
   {
     number: "02",
-    Icon: Robot,
+    Icon: "lucide:network", // Represents the agent pipeline and structured blueprint
     title: "AI forges the blueprint",
     description:
       "Specialized agents validate viability, map competitors, plan MVP features, design the architecture, estimate cost, and project the first financial model.",
@@ -27,7 +27,7 @@ const steps = [
   },
   {
     number: "03",
-    Icon: ArrowsOut,
+    Icon: "lucide:user-check", // Represents instantly verifying and finding the perfect developer matches
     title: "Matches surface instantly",
     description:
       "Developers are ranked by stack fit while high-scoring blueprints are routed into developer feeds based on domain, stage, and viability thresholds.",
@@ -36,7 +36,7 @@ const steps = [
   },
   {
     number: "04",
-    Icon: Handshake,
+    Icon: "carbon:collaborate", // Represents team building and execution
     title: "Connect and build",
     description:
       "Message developers, share investor-ready context, and keep the blueprint as the source of truth as the venture moves from concept to execution.",
@@ -278,7 +278,7 @@ function StepContent({ step }: { step: (typeof steps)[number] }) {
           border: "1px solid rgba(137,215,183,0.28)",
         }}
       >
-        <Clock size={11} weight="bold" className="text-mint/75" />
+        <Icon icon="solar:clock-circle-bold" width="12" height="12" className="text-mint/75" />
         <span className="text-[11px] font-medium text-mint/85">{step.tag}</span>
       </div>
     </div>
@@ -300,7 +300,7 @@ function StepVisual({ step }: { step: (typeof steps)[number] }) {
         <span className="absolute left-4 top-4 font-mono text-[10px] tracking-widest text-mint/45">
           {step.number}
         </span>
-        <step.Icon size={68} weight="bold" className="text-mint/85" />
+        <Icon icon={step.Icon} width="68" height="68" className="text-mint/85" />
       </div>
     </div>
   );

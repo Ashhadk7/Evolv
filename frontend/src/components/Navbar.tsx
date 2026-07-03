@@ -79,11 +79,11 @@ export function Navbar() {
               src="/evolv-logo-transparent.png"
               alt=""
               aria-hidden="true"
-              width={44}
-              height={28}
-              className="h-7 w-11 shrink-0 object-contain"
+              width={64}
+              height={40}
+              className="h-10 w-16 shrink-0 object-contain"
             />
-            <span className="text-[17px] font-semibold tracking-tight text-cream">
+            <span className="text-[20px] font-semibold tracking-tight text-cream">
               Ev<span className="text-mint">olv</span>
             </span>
           </Link>

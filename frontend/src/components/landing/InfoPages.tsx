@@ -247,7 +247,7 @@ export function AboutPage() {
             transition={{ duration: 0.65, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="mt-20 rounded-3xl p-7 sm:p-9"
             style={{
-              background: "#f8f9f8",
+              background: "#fdf9f4",
               border: "1px solid rgba(255,244,225,0.08)",
               marginTop: 50
             }}
@@ -448,7 +448,7 @@ export function TeamPage() {
             transition={{ duration: 0.62, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="mx-auto mt-14 max-w-4xl rounded-3xl px-6 py-8 text-center sm:px-9"
             style={{
-              background: "#f8f9f8",
+              background: "#fdf9f4",
               border: "1px solid rgba(255,244,225,0.08)",
               marginTop: 50
             }}
