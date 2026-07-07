@@ -137,6 +137,28 @@ class SignupResponse(BaseModel):
     message: str
 
 
+class SignupStartResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    expires_at: datetime
+    message: str
+    debug_otp: str | None = None
+
+
+class SignupVerifyEmailRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    otp: str = Field(pattern=r"^\d{6}$")
+
+
+class SignupResendOtpRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+
+
 class SigninRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

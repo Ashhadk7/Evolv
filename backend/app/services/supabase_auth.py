@@ -11,6 +11,7 @@ from app.schemas.auth import SigninRequest, SignupRequest
 from app.services.exceptions import (
     AuthProviderConfigurationError,
     AuthProviderError,
+    EmailOtpError,
     InvalidCredentialsError,
     InvalidTokenError,
 )
@@ -55,22 +56,24 @@ class SupabaseAuthClient:
                 "Supabase URL and service role key must be configured before auth operations."
             )
 
+        self._supabase_url = settings.SUPABASE_URL.rstrip("/")
+        self._service_role_key = service_role_key.strip()
         self._admin_client: Client = create_client(
-            settings.SUPABASE_URL,
-            service_role_key,
+            self._supabase_url,
+            self._service_role_key,
         )
         self._auth_client: Client = create_client(
-            settings.SUPABASE_URL,
+            self._supabase_url,
             anon_key.strip() or service_role_key,
         )
 
-    def create_user(self, signup: SignupRequest) -> CreatedAuthUser:
+    def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
         try:
             response = self._admin_client.auth.admin.create_user(
                 {
                     "email": str(signup.email).lower(),
                     "password": signup.password.get_secret_value(),
-                    "email_confirm": settings.SUPABASE_AUTH_EMAIL_CONFIRM,
+                    "email_confirm": False,
                     "user_metadata": {
                         "role": signup.role.value,
                         "first_name": signup.first_name,
@@ -79,8 +82,49 @@ class SupabaseAuthClient:
                 }
             )
         except Exception as exc:
-            raise AuthProviderError("Supabase Auth could not create this user.") from exc
+            raise AuthProviderError(
+                "Supabase Auth could not create this user. If this email already exists in "
+                "Supabase Auth, delete it from Authentication > Users or test with a new email."
+            ) from exc
 
+        return self._created_user_from_response(response, email_confirmed=False)
+
+    def confirm_email(self, user_id: UUID) -> CreatedAuthUser:
+        try:
+            response = self._admin_client.auth.admin.update_user_by_id(
+                str(user_id),
+                {
+                    "email_confirm": True,
+                },
+            )
+        except Exception as exc:
+            raise EmailOtpError("Supabase Auth could not confirm this email.") from exc
+
+        try:
+            return self._created_user_from_response(response, email_confirmed=True)
+        except AuthProviderError as exc:
+            raise EmailOtpError("Supabase Auth returned an incomplete user response.") from exc
+
+    def verify_signup_otp(self, email: str, otp: str) -> CreatedAuthUser:
+        try:
+            response = self._auth_client.auth.verify_otp(
+                {
+                    "email": email.lower(),
+                    "token": otp,
+                    "type": "email",
+                }
+            )
+        except Exception as exc:
+            raise EmailOtpError("Invalid or expired email verification code.") from exc
+
+        return self._created_user_from_response(response, email_confirmed=True)
+
+    def _created_user_from_response(
+        self,
+        response: Any,
+        *,
+        email_confirmed: bool,
+    ) -> CreatedAuthUser:
         user = self._read_user(response)
         user_id = self._read_value(user, "id")
         email = self._read_value(user, "email")
@@ -91,8 +135,19 @@ class SupabaseAuthClient:
         return CreatedAuthUser(
             id=UUID(str(user_id)),
             email=str(email).lower(),
-            email_confirmed=bool(settings.SUPABASE_AUTH_EMAIL_CONFIRM),
+            email_confirmed=email_confirmed,
         )
+
+    def resend_signup_otp(self, email: str) -> None:
+        try:
+            self._auth_client.auth.resend(
+                {
+                    "type": "signup",
+                    "email": email.lower(),
+                }
+            )
+        except Exception as exc:
+            raise EmailOtpError("Email verification code could not be resent.") from exc
 
     def sign_in(self, signin: SigninRequest) -> SupabaseAuthSession:
         try:

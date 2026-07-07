@@ -22,6 +22,26 @@ class InvalidTokenError(SignupError):
     """The submitted access token is invalid or expired."""
 
 
+class EmailOtpError(SignupError):
+    """Email OTP generation or verification failed."""
+
+
+class EmailDeliveryConfigurationError(SignupError):
+    """Email delivery settings are missing or invalid."""
+
+
+class EmailDeliveryError(SignupError):
+    """The verification email could not be sent."""
+
+
+class PendingSignupNotFoundError(SignupError):
+    """There is no pending signup for this email."""
+
+
+class PendingSignupExpiredError(SignupError):
+    """The pending signup expired before email verification."""
+
+
 class AuthUserMismatchError(SignupError):
     """The Supabase Auth user does not match the application user."""
 

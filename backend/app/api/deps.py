@@ -9,6 +9,7 @@ from app.models.user import User
 from app.repositories import users as users_repository
 from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.auth_service import AuthService
+from app.services.email_sender import SmtpEmailSender
 from app.services.supabase_auth import SupabaseAuthClient
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -16,7 +17,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_auth_service() -> AuthService:
-    return AuthService(auth_provider=SupabaseAuthClient())
+    return AuthService(auth_provider=SupabaseAuthClient(), email_sender=SmtpEmailSender())
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]

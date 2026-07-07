@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.user import DeveloperProfile, FounderProfile, User, UserRole
+from app.models.user import DeveloperProfile, FounderProfile, PendingSignup, User, UserRole
 from app.schemas.auth import DeveloperSignupDetails, FounderSignupDetails, SignupRequest
 
 
@@ -72,6 +72,31 @@ def create_user(db: Session, user_id: UUID, signup: SignupRequest) -> User:
     return user
 
 
+def create_user_from_pending_signup(
+    db: Session,
+    user_id: UUID,
+    pending_signup: PendingSignup,
+) -> User:
+    user = User(
+        id=user_id,
+        email=pending_signup.email,
+        role=pending_signup.role,
+        first_name=pending_signup.first_name,
+        last_name=pending_signup.last_name,
+        phone=pending_signup.phone,
+        country=pending_signup.country,
+        country_code=pending_signup.country_code,
+        state_province=pending_signup.state_province,
+        city=pending_signup.city,
+        dob=pending_signup.dob,
+        gender=pending_signup.gender,
+        avatar_url=pending_signup.avatar_url,
+        terms_accepted_at=pending_signup.terms_accepted_at,
+    )
+    db.add(user)
+    return user
+
+
 def create_founder_profile(
     db: Session,
     user_id: UUID,
@@ -86,6 +111,27 @@ def create_founder_profile(
         linkedin=details.linkedin,
         venture_stage=details.venture_stage,
         primary_goal=details.primary_goal or "not_selected",
+        profile_complete=False,
+        stripe_connected=False,
+    )
+    db.add(profile)
+    return profile
+
+
+def create_founder_profile_from_pending_signup(
+    db: Session,
+    user_id: UUID,
+    pending_signup: PendingSignup,
+) -> FounderProfile:
+    details = pending_signup.founder_details or {}
+    profile = FounderProfile(
+        user_id=user_id,
+        headline=details.get("headline"),
+        bio=details.get("bio"),
+        description=details.get("description"),
+        linkedin=details.get("linkedin"),
+        venture_stage=details.get("venture_stage"),
+        primary_goal=details.get("primary_goal") or "not_selected",
         profile_complete=False,
         stripe_connected=False,
     )
@@ -110,6 +156,30 @@ def create_developer_profile(
         github=details.github,
         linkedin=details.linkedin,
         portfolio_link=details.portfolio_link,
+        rating_avg=0,
+        profile_complete=False,
+    )
+    db.add(profile)
+    return profile
+
+
+def create_developer_profile_from_pending_signup(
+    db: Session,
+    user_id: UUID,
+    pending_signup: PendingSignup,
+) -> DeveloperProfile:
+    details = pending_signup.developer_details or {}
+    profile = DeveloperProfile(
+        user_id=user_id,
+        job_title=details.get("job_title"),
+        bio=details.get("bio"),
+        experience_years=details.get("experience_years"),
+        availability=details.get("availability", True),
+        open_to_remote=details.get("open_to_remote", False),
+        preferred_budget=details.get("preferred_budget"),
+        github=details.get("github"),
+        linkedin=details.get("linkedin"),
+        portfolio_link=details.get("portfolio_link"),
         rating_avg=0,
         profile_complete=False,
     )
