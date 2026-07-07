@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Boolean,
@@ -76,6 +76,10 @@ class User(Base):
     developer_profile: Mapped[DeveloperProfile | None] = relationship(
         back_populates="user",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    educations: Mapped[list[Education]] = relationship(
+        back_populates="user",
         cascade="all, delete-orphan",
     )
 
@@ -156,3 +160,21 @@ class DeveloperProfile(Base):
     profile_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped[User] = relationship(back_populates="developer_profile")
+
+
+class Education(Base):
+    __tablename__ = "educations"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    level: Mapped[str] = mapped_column(String, nullable=False)
+    degree: Mapped[str | None] = mapped_column(String, nullable=True)
+    custom_degree: Mapped[str | None] = mapped_column(String, nullable=True)
+    school: Mapped[str] = mapped_column(String, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="educations")

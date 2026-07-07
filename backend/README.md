@@ -295,6 +295,137 @@ The backend verifies the Firebase ID token with Firebase Admin SDK, reads the
 verified `phone_number` claim, and updates `public.users.phone` plus
 `public.users.phone_verified`.
 
+## Founder Profile
+
+Founder profile routes require a Supabase bearer access token from signin. Only
+users with role `founder` can use them.
+
+Get current founder profile:
+
+```text
+GET http://localhost:8000/api/v1/founder-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+Create founder profile if one does not already exist:
+
+```text
+POST http://localhost:8000/api/v1/founder-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Update founder profile:
+
+```text
+PATCH http://localhost:8000/api/v1/founder-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "headline": "Building Evolv",
+  "bio": "Founder focused on matching strong builders with early ventures.",
+  "description": "Looking for developers who can ship fast and communicate clearly.",
+  "linkedin": "https://www.linkedin.com/in/example",
+  "venture_stage": "idea",
+  "primary_goal": "find_developers",
+  "profile_complete": true,
+  "educations": [
+    {
+      "level": "bachelors",
+      "degree": "Computer Science",
+      "custom_degree": null,
+      "school": "FAST NUCES"
+    },
+    {
+      "level": "certification",
+      "degree": null,
+      "custom_degree": "Startup School",
+      "school": "Y Combinator"
+    }
+  ]
+}
+```
+
+When `educations` is included in PATCH, it replaces the current education list.
+Omit `educations` if you only want to update founder profile text fields.
+
+Delete founder profile and its educations:
+
+```text
+DELETE http://localhost:8000/api/v1/founder-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Developer Profile
+
+Developer profile routes require a Supabase bearer access token from signin.
+Only users with role `developer` can use them. Skills, tags, and domains are
+managed by their own APIs; these routes only handle the main developer profile
+fields plus education.
+
+Get current developer profile:
+
+```text
+GET http://localhost:8000/api/v1/developer-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+Create developer profile if one does not already exist:
+
+```text
+POST http://localhost:8000/api/v1/developer-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Update developer profile:
+
+```text
+PATCH http://localhost:8000/api/v1/developer-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "job_title": "Full-stack Developer",
+  "bio": "I build FastAPI and React products.",
+  "experience_years": 2,
+  "availability": true,
+  "open_to_remote": true,
+  "preferred_budget": "$20/hr",
+  "github": "https://github.com/example",
+  "linkedin": "https://www.linkedin.com/in/example",
+  "portfolio_link": "https://example.com",
+  "profile_complete": true,
+  "educations": [
+    {
+      "level": "bachelors",
+      "degree": "Software Engineering",
+      "custom_degree": null,
+      "school": "FAST NUCES"
+    }
+  ]
+}
+```
+
+When `educations` is included in PATCH, it replaces the current education list.
+Omit `educations` if you only want to update developer profile fields.
+
+Delete developer profile and its educations:
+
+```text
+DELETE http://localhost:8000/api/v1/developer-profile
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
 ## Tests And Checks
 
 ```bash

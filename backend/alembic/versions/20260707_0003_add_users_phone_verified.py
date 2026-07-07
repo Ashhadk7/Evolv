@@ -18,17 +18,28 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column(
-            "phone_verified",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.false(),
-        ),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    column_names = {column["name"] for column in inspector.get_columns("users")}
+
+    if "phone_verified" not in column_names:
+        op.add_column(
+            "users",
+            sa.Column(
+                "phone_verified",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.false(),
+            ),
+        )
+
     op.alter_column("users", "phone_verified", server_default=None)
 
 
 def downgrade() -> None:
-    op.drop_column("users", "phone_verified")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    column_names = {column["name"] for column in inspector.get_columns("users")}
+
+    if "phone_verified" in column_names:
+        op.drop_column("users", "phone_verified")
