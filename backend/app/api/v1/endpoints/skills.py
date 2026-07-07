@@ -25,6 +25,7 @@ from app.services import skills_service
 from app.services.exceptions import SkillConflictError, SkillNotFoundError
 
 router = APIRouter()
+me_router = APIRouter()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -98,14 +99,14 @@ def delete_skill(
 
 # ── Current user's skills ──────────────────────────────────────────────────────
 
-@router.get("/me/skills", response_model=list[UserSkillResponse], summary="Get my skills")
+@me_router.get("/skills", response_model=list[UserSkillResponse], summary="Get my skills")
 def list_my_skills(db: DbSession, current_user: CurrentUser) -> list[UserSkillResponse]:
     items = skills_service.list_user_skills(db, current_user.id)
     return [UserSkillResponse.model_validate(us) for us in items]
 
 
-@router.post(
-    "/me/skills",
+@me_router.post(
+    "/skills",
     response_model=UserSkillResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add a skill to my profile",
@@ -126,8 +127,8 @@ def add_my_skill(
     return UserSkillResponse.model_validate(user_skill)
 
 
-@router.delete(
-    "/me/skills/{skill_id}",
+@me_router.delete(
+    "/skills/{skill_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Remove a skill from my profile",
 )
@@ -215,14 +216,14 @@ def delete_tag(
 
 # ── Developer's tags ───────────────────────────────────────────────────────────
 
-@router.get("/me/tags", response_model=list[DeveloperTagResponse], summary="Get my tags")
+@me_router.get("/tags", response_model=list[DeveloperTagResponse], summary="Get my tags")
 def list_my_tags(db: DbSession, current_user: CurrentUser) -> list[DeveloperTagResponse]:
     items = skills_service.list_developer_tags(db, current_user.id)
     return [DeveloperTagResponse.model_validate(dt) for dt in items]
 
 
-@router.post(
-    "/me/tags",
+@me_router.post(
+    "/tags",
     response_model=DeveloperTagResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add a tag to my profile",
@@ -243,8 +244,8 @@ def add_my_tag(
     return DeveloperTagResponse.model_validate(dev_tag)
 
 
-@router.delete(
-    "/me/tags/{tag_id}",
+@me_router.delete(
+    "/tags/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Remove a tag from my profile",
 )
@@ -331,14 +332,14 @@ def delete_domain(
 
 # ── Founder's domains ──────────────────────────────────────────────────────────
 
-@router.get("/me/domains", response_model=list[FounderDomainResponse], summary="Get my domain interests")
+@me_router.get("/domains", response_model=list[FounderDomainResponse], summary="Get my domain interests")
 def list_my_domains(db: DbSession, current_user: CurrentUser) -> list[FounderDomainResponse]:
     items = skills_service.list_founder_domains(db, current_user.id)
     return [FounderDomainResponse.model_validate(fd) for fd in items]
 
 
-@router.post(
-    "/me/domains",
+@me_router.post(
+    "/domains",
     response_model=FounderDomainResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add a domain to my profile",
@@ -359,8 +360,8 @@ def add_my_domain(
     return FounderDomainResponse.model_validate(fd)
 
 
-@router.delete(
-    "/me/domains/{domain_id}",
+@me_router.delete(
+    "/domains/{domain_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Remove a domain from my profile",
 )
