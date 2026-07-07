@@ -47,6 +47,7 @@ class User(Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     country: Mapped[str | None] = mapped_column(String, nullable=True)
     country_code: Mapped[str | None] = mapped_column(String, nullable=True)
     state_province: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -34,6 +34,10 @@ class EmailDeliveryError(SignupError):
     """The verification email could not be sent."""
 
 
+class PhoneVerificationError(SignupError):
+    """The Firebase phone ID token is invalid, expired, or missing a phone number."""
+
+
 class PendingSignupNotFoundError(SignupError):
     """There is no pending signup for this email."""
 

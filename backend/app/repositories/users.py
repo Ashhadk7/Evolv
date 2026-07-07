@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models.user import DeveloperProfile, FounderProfile, PendingSignup, User, UserRole
@@ -14,6 +14,17 @@ def get_user_by_email(db: Session, email: str) -> User | None:
 
 def get_user_by_id(db: Session, user_id: UUID) -> User | None:
     return db.get(User, user_id)
+
+
+def set_verified_phone(db: Session, user_id: UUID, phone: str) -> None:
+    db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(
+            phone=phone,
+            phone_verified=True,
+        )
+    )
 
 
 def list_users(

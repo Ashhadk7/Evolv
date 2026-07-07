@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: SecretStr | None = None
     SUPABASE_ANON_KEY: SecretStr | None = None
     SUPABASE_AUTH_EMAIL_CONFIRM: bool = True
+    FIREBASE_CREDENTIALS_JSON: SecretStr | None = None
     SIGNUP_OTP_EXPIRE_MINUTES: int = 5
     SIGNUP_OTP_RETURN_DEBUG: bool = False
     EMAIL_FROM_EMAIL: str | None = None
