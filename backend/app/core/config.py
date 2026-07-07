@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: SecretStr | None = None
     SUPABASE_ANON_KEY: SecretStr | None = None
     SUPABASE_AUTH_EMAIL_CONFIRM: bool = True
-    SUPABASE_AUTH_PASSWORD_HASH_PLACEHOLDER: str = "supabase-auth-managed"
     SECRET_KEY: str = Field(default="change-me-in-local-development", min_length=8)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])

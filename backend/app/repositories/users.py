@@ -12,11 +12,10 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     return db.scalar(select(User).where(func.lower(User.email) == normalized_email))
 
 
-def create_user(db: Session, user_id: UUID, signup: SignupRequest, password_placeholder: str) -> User:
+def create_user(db: Session, user_id: UUID, signup: SignupRequest) -> User:
     user = User(
         id=user_id,
         email=str(signup.email).lower(),
-        password_hash=password_placeholder,
         role=UserRole(signup.role.value),
         first_name=signup.first_name,
         last_name=signup.last_name,

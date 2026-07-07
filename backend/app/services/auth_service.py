@@ -6,7 +6,6 @@ from uuid import UUID
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.user import UserRole
 from app.repositories import users as users_repository
 from app.schemas.auth import SigninRequest, SigninResponse, SignupRequest, SignupResponse, SignupRole
@@ -46,7 +45,6 @@ class AuthService:
                 db=db,
                 user_id=auth_user.id,
                 signup=signup,
-                password_placeholder=settings.SUPABASE_AUTH_PASSWORD_HASH_PLACEHOLDER,
             )
 
             if signup.role.value == UserRole.FOUNDER.value:

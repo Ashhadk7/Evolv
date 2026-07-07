@@ -116,9 +116,10 @@ Developer body:
 }
 ```
 
-Because the current Supabase schema has `public.users.password_hash`, see
-`supabase/schema_recommendations.sql`. Best practice is to make that column
-nullable or remove it once Supabase Auth is the source of truth for passwords.
+Because Supabase Auth is the source of truth for passwords, `public.users`
+should not have a `password_hash` column. Run
+`supabase/drop_users_password_hash.sql` in the Supabase SQL Editor before
+testing new signups against a schema that still has that column.
 
 ## Supabase Auth Signin
 
