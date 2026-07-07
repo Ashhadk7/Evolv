@@ -18,6 +18,10 @@ class InvalidCredentialsError(SignupError):
     """The submitted email or password is incorrect."""
 
 
+class InvalidTokenError(SignupError):
+    """The submitted access token is invalid or expired."""
+
+
 class AuthUserMismatchError(SignupError):
     """The Supabase Auth user does not match the application user."""
 

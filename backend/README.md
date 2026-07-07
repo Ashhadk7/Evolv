@@ -145,6 +145,32 @@ Signin only succeeds when:
 - The user also exists in `public.users`.
 - The Supabase Auth user id matches `public.users.id`.
 
+## Users
+
+List users:
+
+```text
+GET http://localhost:8000/api/v1/users
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+Optional filters:
+
+```text
+GET http://localhost:8000/api/v1/users?role=founder&limit=20&offset=0
+GET http://localhost:8000/api/v1/users?search=eman
+```
+
+Get one user:
+
+```text
+GET http://localhost:8000/api/v1/users/USER_UUID
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+The users list intentionally returns safe summary fields only. It does not
+expose phone, DOB, gender, or full location details.
+
 ## Tests And Checks
 
 ```bash

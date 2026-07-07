@@ -12,6 +12,7 @@ from app.services.exceptions import (
     AuthProviderConfigurationError,
     AuthProviderError,
     InvalidCredentialsError,
+    InvalidTokenError,
 )
 
 
@@ -31,6 +32,12 @@ class SupabaseAuthSession:
     token_type: str
     expires_in: int | None
     expires_at: int | None
+
+
+@dataclass(frozen=True)
+class SupabaseAuthenticatedUser:
+    id: UUID
+    email: str
 
 
 class SupabaseAuthClient:
@@ -117,6 +124,21 @@ class SupabaseAuthClient:
             expires_in=self._optional_int(self._read_value(session, "expires_in")),
             expires_at=self._optional_int(self._read_value(session, "expires_at")),
         )
+
+    def get_user(self, access_token: str) -> SupabaseAuthenticatedUser:
+        try:
+            response = self._auth_client.auth.get_user(access_token)
+        except Exception as exc:
+            raise InvalidTokenError("Invalid or expired access token.") from exc
+
+        user = self._read_user(response)
+        user_id = self._read_value(user, "id")
+        email = self._read_value(user, "email")
+
+        if user_id is None or email is None:
+            raise InvalidTokenError("Invalid or expired access token.")
+
+        return SupabaseAuthenticatedUser(id=UUID(str(user_id)), email=str(email).lower())
 
     def delete_user(self, user_id: UUID) -> None:
         try:
