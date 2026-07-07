@@ -28,3 +28,11 @@ class AuthUserMismatchError(SignupError):
 
 class ProfilePersistenceError(SignupError):
     """The auth user was created, but application profile data could not be saved."""
+
+
+class SkillNotFoundError(Exception):
+    """The requested skill, tag, or domain does not exist."""
+
+
+class SkillConflictError(Exception):
+    """A duplicate skill, tag, or domain name already exists."""
