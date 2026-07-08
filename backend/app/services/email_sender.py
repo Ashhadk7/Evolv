@@ -6,12 +6,12 @@ from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
 
-from app.core.config import Settings, settings
-from app.services.exceptions import AppError, ErrorCode
+from app.core.config import Settings
+from app.services.exceptions import EmailDeliveryError
 
 
 class SmtpEmailSender:
-    def __init__(self, app_settings: Settings = settings) -> None:
+    def __init__(self, app_settings: Settings) -> None:
         self._settings = app_settings
 
     def send_signup_otp(self, *, email: str, otp_code: str, expires_minutes: int) -> None:
@@ -37,15 +37,14 @@ class SmtpEmailSender:
             self._signup_otp_html(otp_code=otp_code, expires_minutes=expires_minutes),
             subtype="html",
         )
-
-        self._send(
-            message=message,
-        )
+        self._send(message=message)
 
     def _send(self, *, message: EmailMessage) -> None:
         timeout = self._settings.SMTP_TIMEOUT_SECONDS
         port = self._settings.SMTP_PORT
         context = ssl.create_default_context()
+        smtp_username = self._settings.SMTP_USERNAME
+        smtp_password = self._settings.SMTP_PASSWORD.get_secret_value().strip()
 
         try:
             if self._settings.SMTP_USE_SSL:
@@ -55,29 +54,21 @@ class SmtpEmailSender:
                     timeout=timeout,
                     context=context,
                 ) as server:
-                    server.login(
-                        self._settings.SMTP_USERNAME,
-                        self._settings.SMTP_PASSWORD.get_secret_value(),
-                    )
+                    server.login(smtp_username, smtp_password)
                     server.send_message(message)
                 return
 
             with smtplib.SMTP(self._settings.SMTP_HOST, port, timeout=timeout) as server:
                 if self._settings.SMTP_USE_STARTTLS:
                     server.starttls(context=context)
-                server.login(
-                    self._settings.SMTP_USERNAME,
-                    self._settings.SMTP_PASSWORD.get_secret_value(),
-                )
+                server.login(smtp_username, smtp_password)
                 server.send_message(message)
         except smtplib.SMTPAuthenticationError as exc:
-            raise AppError(
-                ErrorCode.EMAIL_DELIVERY,
+            raise EmailDeliveryError(
                 "SMTP login failed. Check the SMTP username and app password."
             ) from exc
         except (OSError, smtplib.SMTPException) as exc:
-            raise AppError(
-                ErrorCode.EMAIL_DELIVERY,
+            raise EmailDeliveryError(
                 "Verification email could not be sent by the SMTP provider."
             ) from exc
 

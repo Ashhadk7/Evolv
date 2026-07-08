@@ -20,6 +20,7 @@ class UserSummary(BaseModel):
     country_code: str | None = None
     city: str | None = None
     avatar_url: str | None = None
+    phone_verified: bool
     created_at: datetime
 
     @field_validator("role", mode="before")
