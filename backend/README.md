@@ -57,19 +57,55 @@ SUPABASE_URL=https://rwhyjahpxivjchowalsc.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 SUPABASE_ANON_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
 SUPABASE_AUTH_EMAIL_CONFIRM=true
+SIGNUP_OTP_EXPIRE_MINUTES=5
+SIGNUP_OTP_RETURN_DEBUG=false
+
+EMAIL_FROM_EMAIL=evolvv.aii@gmail.com
+EMAIL_FROM_NAME="Evolv AI"
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USERNAME=evolvv.aii@gmail.com
+SMTP_PASSWORD=YOUR_GOOGLE_APP_PASSWORD
+SMTP_USE_SSL=true
+SMTP_USE_STARTTLS=false
+SMTP_TIMEOUT_SECONDS=20
 ```
 
-`SUPABASE_ANON_KEY` is recommended for normal signin calls. If it is missing
-during local backend testing, the backend falls back to the service role key.
+`SUPABASE_ANON_KEY` is required for normal signin calls. The backend does not
+fall back to the service role key for user authentication.
 
 If Supabase gives you a URL starting with `postgresql://`, you can paste it as-is.
 The backend normalizes it to `postgresql+psycopg://` so SQLAlchemy uses the
 installed `psycopg` driver.
 
-Postman request:
+Run migrations before testing signup:
+
+```bash
+alembic upgrade head
+```
+
+In Supabase, make sure Email Auth is enabled. Do not add Firebase, Clerk, Auth0,
+or any other Third-Party Auth provider for this email OTP flow.
+
+The backend generates its own 6-digit verification code, stores only a hash in
+`pending_signups`, and sends the code by SMTP. For Gmail testing, `SMTP_PASSWORD`
+must be a Google App Password, not the normal Gmail password. If Google shows the
+app password with spaces, paste it without spaces.
+
+`pending_signups` is intentionally separate from `public.users`. A row becomes
+a real application user only after the email OTP is verified. This avoids
+polluting `public.users`, founder profiles, and developer profiles with
+unverified or expired signup attempts. Expired pending rows can be safely
+discarded without touching real user data.
+
+Keep `SIGNUP_OTP_RETURN_DEBUG=false` for real email testing. Set it to `true`
+only when you intentionally want the OTP returned in the Postman response during
+local debugging.
+
+Start signup:
 
 ```text
-POST http://localhost:8000/api/v1/auth/signup
+POST http://localhost:8000/api/v1/auth/signup/start
 Content-Type: application/json
 ```
 
@@ -116,10 +152,50 @@ Developer body:
 }
 ```
 
-Because Supabase Auth is the source of truth for passwords, `public.users`
-should not have a `password_hash` column. Run
-`supabase/drop_users_password_hash.sql` in the Supabase SQL Editor before
-testing new signups against a schema that still has that column.
+Response:
+
+```json
+{
+  "email": "founder@example.com",
+  "expires_at": "2026-07-07T12:05:00Z",
+  "message": "Verification code sent. Complete signup by verifying your email."
+}
+```
+
+Verify the email OTP:
+
+```text
+POST http://localhost:8000/api/v1/auth/signup/verify-email
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "email": "founder@example.com",
+  "otp": "123456"
+}
+```
+
+Resend OTP:
+
+```text
+POST http://localhost:8000/api/v1/auth/signup/resend-otp
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "email": "founder@example.com"
+}
+```
+
+Supabase Auth stores the password. The backend verifies the signup OTP, marks
+the Supabase Auth email as confirmed, and only then creates `public.users` plus
+the role-specific profile.
 
 ## Supabase Auth Signin
 

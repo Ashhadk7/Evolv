@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -24,7 +25,7 @@ def list_users(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[User], int]:
-    filters = []
+    filters = [User.email_verified.is_(True)]
 
     if role is not None:
         filters.append(User.role == role)
@@ -51,7 +52,14 @@ def list_users(
     return users, total
 
 
-def create_user(db: Session, user_id: UUID, signup: SignupRequest) -> User:
+def create_user(
+    db: Session,
+    user_id: UUID,
+    signup: SignupRequest,
+    *,
+    email_otp_hash: str,
+    email_otp_expires_at: datetime,
+) -> User:
     user = User(
         id=user_id,
         email=str(signup.email).lower(),
@@ -67,17 +75,35 @@ def create_user(db: Session, user_id: UUID, signup: SignupRequest) -> User:
         gender=signup.gender,
         avatar_url=str(signup.avatar_url) if signup.avatar_url else None,
         terms_accepted_at=signup.terms_accepted_at,
+        phone_verified=False,
+        email_verified=False,
+        email_otp_hash=email_otp_hash,
+        email_otp_expires_at=email_otp_expires_at,
     )
     db.add(user)
     return user
 
 
+def delete_user(db: Session, user: User) -> None:
+    db.delete(user)
+
+
+def set_email_otp(user: User, *, email_otp_hash: str, expires_at: datetime) -> None:
+    user.email_otp_hash = email_otp_hash
+    user.email_otp_expires_at = expires_at
+
+
+def mark_email_verified(user: User) -> None:
+    user.email_verified = True
+    user.email_otp_hash = None
+    user.email_otp_expires_at = None
+
+
 def create_founder_profile(
     db: Session,
     user_id: UUID,
-    details: FounderSignupDetails | None,
+    details: FounderSignupDetails,
 ) -> FounderProfile:
-    details = details or FounderSignupDetails()
     profile = FounderProfile(
         user_id=user_id,
         headline=details.headline,
@@ -96,9 +122,8 @@ def create_founder_profile(
 def create_developer_profile(
     db: Session,
     user_id: UUID,
-    details: DeveloperSignupDetails | None,
+    details: DeveloperSignupDetails,
 ) -> DeveloperProfile:
-    details = details or DeveloperSignupDetails()
     profile = DeveloperProfile(
         user_id=user_id,
         job_title=details.job_title,
