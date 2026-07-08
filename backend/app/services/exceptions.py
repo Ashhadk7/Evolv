@@ -1,50 +1,22 @@
-class SignupError(Exception):
-    """Base exception for signup failures."""
+from enum import StrEnum
 
 
-class AuthProviderConfigurationError(SignupError):
-    """Supabase Auth is not configured correctly."""
+class ErrorCode(StrEnum):
+    AUTH_CONFIGURATION = "auth_configuration"
+    AUTH_PROVIDER = "auth_provider"
+    AUTH_USER_MISMATCH = "auth_user_mismatch"
+    DUPLICATE_EMAIL = "duplicate_email"
+    EMAIL_DELIVERY = "email_delivery"
+    INVALID_CREDENTIALS = "invalid_credentials"
+    INVALID_OTP = "invalid_otp"
+    INVALID_TOKEN = "invalid_token"
+    PENDING_SIGNUP_EXPIRED = "pending_signup_expired"
+    PENDING_SIGNUP_NOT_FOUND = "pending_signup_not_found"
+    PROFILE_PERSISTENCE = "profile_persistence"
 
 
-class AuthProviderError(SignupError):
-    """Supabase Auth rejected or failed the request."""
-
-
-class DuplicateEmailError(SignupError):
-    """The email already exists in application data."""
-
-
-class InvalidCredentialsError(SignupError):
-    """The submitted email or password is incorrect."""
-
-
-class InvalidTokenError(SignupError):
-    """The submitted access token is invalid or expired."""
-
-
-class EmailOtpError(SignupError):
-    """Email OTP generation or verification failed."""
-
-
-class EmailDeliveryConfigurationError(SignupError):
-    """Email delivery settings are missing or invalid."""
-
-
-class EmailDeliveryError(SignupError):
-    """The verification email could not be sent."""
-
-
-class PendingSignupNotFoundError(SignupError):
-    """There is no pending signup for this email."""
-
-
-class PendingSignupExpiredError(SignupError):
-    """The pending signup expired before email verification."""
-
-
-class AuthUserMismatchError(SignupError):
-    """The Supabase Auth user does not match the application user."""
-
-
-class ProfilePersistenceError(SignupError):
-    """The auth user was created, but application profile data could not be saved."""
+class AppError(Exception):
+    def __init__(self, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message

@@ -24,20 +24,18 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: SecretStr
     SUPABASE_ANON_KEY: SecretStr
-    SUPABASE_AUTH_EMAIL_CONFIRM: bool = True
     SIGNUP_OTP_EXPIRE_MINUTES: int = 5
     SIGNUP_OTP_RETURN_DEBUG: bool = False
-    EMAIL_FROM_EMAIL: str | None = None
-    EMAIL_FROM_NAME: str = "Evolv AI"
-    SMTP_HOST: str | None = None
-    SMTP_PORT: int = 465
-    SMTP_USERNAME: str | None = None
-    SMTP_PASSWORD: SecretStr | None = None
-    SMTP_USE_SSL: bool = True
-    SMTP_USE_STARTTLS: bool = False
-    SMTP_TIMEOUT_SECONDS: int = 20
+    EMAIL_FROM_EMAIL: str
+    EMAIL_FROM_NAME: str
+    SMTP_HOST: str
+    SMTP_PORT: int
+    SMTP_USERNAME: str
+    SMTP_PASSWORD: SecretStr
+    SMTP_USE_SSL: bool
+    SMTP_USE_STARTTLS: bool
+    SMTP_TIMEOUT_SECONDS: int
     SECRET_KEY: str = Field(min_length=8)
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
@@ -47,14 +45,24 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
-    @field_validator("API_V1_STR", "DATABASE_URL", "SUPABASE_URL", "SECRET_KEY", mode="before")
+    @field_validator(
+        "API_V1_STR",
+        "DATABASE_URL",
+        "EMAIL_FROM_EMAIL",
+        "EMAIL_FROM_NAME",
+        "SECRET_KEY",
+        "SMTP_HOST",
+        "SMTP_USERNAME",
+        "SUPABASE_URL",
+        mode="before",
+    )
     @classmethod
     def require_non_empty_text(cls, value: Any) -> Any:
         if isinstance(value, str) and value.strip():
             return value.strip()
         raise ValueError("This environment variable is required.")
 
-    @field_validator("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY")
+    @field_validator("SMTP_PASSWORD", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY")
     @classmethod
     def require_non_empty_secret(cls, value: SecretStr) -> SecretStr:
         if value.get_secret_value().strip():

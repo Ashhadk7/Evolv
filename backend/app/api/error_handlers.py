@@ -1,78 +1,41 @@
-from collections.abc import Awaitable, Callable
-
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.services.exceptions import (
-    AuthProviderConfigurationError,
-    AuthProviderError,
-    AuthUserMismatchError,
-    DuplicateEmailError,
-    EmailDeliveryConfigurationError,
-    EmailDeliveryError,
-    EmailOtpError,
-    InvalidCredentialsError,
-    PendingSignupExpiredError,
-    PendingSignupNotFoundError,
-    ProfilePersistenceError,
-)
+from app.services.exceptions import AppError, ErrorCode
 
-ExceptionHandler = Callable[[Request, Exception], Awaitable[JSONResponse]]
+ERROR_STATUS_BY_CODE = {
+    ErrorCode.AUTH_CONFIGURATION: status.HTTP_500_INTERNAL_SERVER_ERROR,
+    ErrorCode.AUTH_PROVIDER: status.HTTP_400_BAD_REQUEST,
+    ErrorCode.AUTH_USER_MISMATCH: status.HTTP_403_FORBIDDEN,
+    ErrorCode.DUPLICATE_EMAIL: status.HTTP_409_CONFLICT,
+    ErrorCode.EMAIL_DELIVERY: status.HTTP_502_BAD_GATEWAY,
+    ErrorCode.INVALID_CREDENTIALS: status.HTTP_401_UNAUTHORIZED,
+    ErrorCode.INVALID_OTP: status.HTTP_400_BAD_REQUEST,
+    ErrorCode.INVALID_TOKEN: status.HTTP_401_UNAUTHORIZED,
+    ErrorCode.PENDING_SIGNUP_EXPIRED: status.HTTP_410_GONE,
+    ErrorCode.PENDING_SIGNUP_NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    ErrorCode.PROFILE_PERSISTENCE: status.HTTP_500_INTERNAL_SERVER_ERROR,
+}
+
+SAFE_DETAIL_BY_CODE = {
+    ErrorCode.AUTH_CONFIGURATION: "Supabase Auth is not configured.",
+    ErrorCode.INVALID_CREDENTIALS: "Invalid email or password.",
+    ErrorCode.INVALID_TOKEN: "Invalid or expired access token.",
+}
+
+ERROR_HEADERS_BY_CODE = {
+    ErrorCode.INVALID_TOKEN: {"WWW-Authenticate": "Bearer"},
+}
 
 
 def register_exception_handlers(application: FastAPI) -> None:
-    application.add_exception_handler(
-        DuplicateEmailError,
-        _json_error(status.HTTP_409_CONFLICT),
-    )
-    application.add_exception_handler(
-        AuthProviderConfigurationError,
-        _json_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Supabase Auth is not configured."),
-    )
-    application.add_exception_handler(
-        AuthProviderError,
-        _json_error(status.HTTP_400_BAD_REQUEST),
-    )
-    application.add_exception_handler(
-        EmailDeliveryConfigurationError,
-        _json_error(status.HTTP_500_INTERNAL_SERVER_ERROR),
-    )
-    application.add_exception_handler(
-        EmailDeliveryError,
-        _json_error(status.HTTP_502_BAD_GATEWAY),
-    )
-    application.add_exception_handler(
-        PendingSignupNotFoundError,
-        _json_error(status.HTTP_404_NOT_FOUND),
-    )
-    application.add_exception_handler(
-        PendingSignupExpiredError,
-        _json_error(status.HTTP_410_GONE),
-    )
-    application.add_exception_handler(
-        EmailOtpError,
-        _json_error(status.HTTP_400_BAD_REQUEST),
-    )
-    application.add_exception_handler(
-        ProfilePersistenceError,
-        _json_error(status.HTTP_500_INTERNAL_SERVER_ERROR),
-    )
-    application.add_exception_handler(
-        InvalidCredentialsError,
-        _json_error(status.HTTP_401_UNAUTHORIZED, "Invalid email or password."),
-    )
-    application.add_exception_handler(
-        AuthUserMismatchError,
-        _json_error(status.HTTP_403_FORBIDDEN),
-    )
+    application.add_exception_handler(AppError, app_error_handler)
 
 
-def _json_error(status_code: int, detail: str | None = None) -> ExceptionHandler:
-    async def handler(request: Request, exc: Exception) -> JSONResponse:
-        del request
-        return JSONResponse(
-            status_code=status_code,
-            content={"detail": detail or str(exc)},
-        )
-
-    return handler
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    del request
+    return JSONResponse(
+        status_code=ERROR_STATUS_BY_CODE[exc.code],
+        content={"detail": SAFE_DETAIL_BY_CODE.get(exc.code, exc.message), "code": exc.code},
+        headers=ERROR_HEADERS_BY_CODE.get(exc.code),
+    )

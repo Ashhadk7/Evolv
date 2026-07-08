@@ -7,13 +7,7 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
-from app.services.exceptions import (
-    AuthProviderConfigurationError,
-    AuthProviderError,
-    EmailOtpError,
-    InvalidCredentialsError,
-    InvalidTokenError,
-)
+from app.services.exceptions import AppError, ErrorCode
 from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
@@ -48,23 +42,24 @@ class SupabaseAuthClient:
         service_role_key = settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value().strip()
         anon_key = settings.SUPABASE_ANON_KEY.get_secret_value().strip()
         if not settings.SUPABASE_URL or not service_role_key or not anon_key:
-            raise AuthProviderConfigurationError(
+            raise AppError(
+                ErrorCode.AUTH_CONFIGURATION,
                 "Supabase URL, service role key, and anon key must be configured."
             )
 
         self._supabase_url = settings.SUPABASE_URL.rstrip("/")
-        self._admin_client: Client = create_client(
+        self._service_role_client: Client = create_client(
             self._supabase_url,
             service_role_key,
         )
-        self._auth_client: Client = create_client(
+        self._public_client: Client = create_client(
             self._supabase_url,
             anon_key,
         )
 
     def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
         try:
-            response = self._admin_client.auth.admin.create_user(
+            response = self._create_auth_user(
                 {
                     "email": str(signup.email).lower(),
                     "password": signup.password.get_secret_value(),
@@ -77,7 +72,8 @@ class SupabaseAuthClient:
                 }
             )
         except Exception as exc:
-            raise AuthProviderError(
+            raise AppError(
+                ErrorCode.AUTH_PROVIDER,
                 "Supabase Auth could not create this user. If this email already exists in "
                 "Supabase Auth, delete it from Authentication > Users or test with a new email."
             ) from exc
@@ -86,33 +82,20 @@ class SupabaseAuthClient:
 
     def confirm_email(self, user_id: UUID) -> CreatedAuthUser:
         try:
-            response = self._admin_client.auth.admin.update_user_by_id(
-                str(user_id),
-                {
-                    "email_confirm": True,
-                },
-            )
+            response = self._update_auth_user(user_id, {"email_confirm": True})
         except Exception as exc:
-            raise EmailOtpError("Supabase Auth could not confirm this email.") from exc
+            raise AppError(
+                ErrorCode.INVALID_OTP,
+                "Supabase Auth could not confirm this email.",
+            ) from exc
 
         try:
             return self._created_user_from_response(response, email_confirmed=True)
-        except AuthProviderError as exc:
-            raise EmailOtpError("Supabase Auth returned an incomplete user response.") from exc
-
-    def verify_signup_otp(self, email: str, otp: str) -> CreatedAuthUser:
-        try:
-            response = self._auth_client.auth.verify_otp(
-                {
-                    "email": email.lower(),
-                    "token": otp,
-                    "type": "email",
-                }
-            )
-        except Exception as exc:
-            raise EmailOtpError("Invalid or expired email verification code.") from exc
-
-        return self._created_user_from_response(response, email_confirmed=True)
+        except AppError as exc:
+            raise AppError(
+                ErrorCode.INVALID_OTP,
+                "Supabase Auth returned an incomplete user response.",
+            ) from exc
 
     def _created_user_from_response(
         self,
@@ -125,7 +108,10 @@ class SupabaseAuthClient:
         email = self._read_value(user, "email")
 
         if user_id is None or email is None:
-            raise AuthProviderError("Supabase Auth returned an incomplete user response.")
+            raise AppError(
+                ErrorCode.AUTH_PROVIDER,
+                "Supabase Auth returned an incomplete user response.",
+            )
 
         return CreatedAuthUser(
             id=UUID(str(user_id)),
@@ -133,27 +119,16 @@ class SupabaseAuthClient:
             email_confirmed=email_confirmed,
         )
 
-    def resend_signup_otp(self, email: str) -> None:
-        try:
-            self._auth_client.auth.resend(
-                {
-                    "type": "signup",
-                    "email": email.lower(),
-                }
-            )
-        except Exception as exc:
-            raise EmailOtpError("Email verification code could not be resent.") from exc
-
     def sign_in(self, signin: SigninRequest) -> SupabaseAuthSession:
         try:
-            response = self._auth_client.auth.sign_in_with_password(
+            response = self._public_client.auth.sign_in_with_password(
                 {
                     "email": str(signin.email).lower(),
                     "password": signin.password.get_secret_value(),
                 }
             )
         except Exception as exc:
-            raise InvalidCredentialsError("Invalid email or password.") from exc
+            raise AppError(ErrorCode.INVALID_CREDENTIALS, "Invalid email or password.") from exc
 
         user = self._read_user(response)
         session = self._read_session(response)
@@ -163,7 +138,10 @@ class SupabaseAuthClient:
         access_token = self._read_value(session, "access_token")
 
         if user_id is None or email is None or access_token is None:
-            raise AuthProviderError("Supabase Auth returned an incomplete signin response.")
+            raise AppError(
+                ErrorCode.AUTH_PROVIDER,
+                "Supabase Auth returned an incomplete signin response.",
+            )
 
         return SupabaseAuthSession(
             user_id=UUID(str(user_id)),
@@ -177,25 +155,34 @@ class SupabaseAuthClient:
 
     def get_user(self, access_token: str) -> SupabaseAuthenticatedUser:
         try:
-            response = self._auth_client.auth.get_user(access_token)
+            response = self._public_client.auth.get_user(access_token)
         except Exception as exc:
-            raise InvalidTokenError("Invalid or expired access token.") from exc
+            raise AppError(ErrorCode.INVALID_TOKEN, "Invalid or expired access token.") from exc
 
         user = self._read_user(response)
         user_id = self._read_value(user, "id")
         email = self._read_value(user, "email")
 
         if user_id is None or email is None:
-            raise InvalidTokenError("Invalid or expired access token.")
+            raise AppError(ErrorCode.INVALID_TOKEN, "Invalid or expired access token.")
 
         return SupabaseAuthenticatedUser(id=UUID(str(user_id)), email=str(email).lower())
 
     def delete_user(self, user_id: UUID) -> None:
         try:
-            self._admin_client.auth.admin.delete_user(str(user_id))
+            self._delete_auth_user(user_id)
         except Exception:
             logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
             return
+
+    def _create_auth_user(self, attributes: dict[str, Any]) -> Any:
+        return self._service_role_client.auth.admin.create_user(attributes)
+
+    def _update_auth_user(self, user_id: UUID, attributes: dict[str, Any]) -> Any:
+        return self._service_role_client.auth.admin.update_user_by_id(str(user_id), attributes)
+
+    def _delete_auth_user(self, user_id: UUID) -> None:
+        self._service_role_client.auth.admin.delete_user(str(user_id))
 
     @staticmethod
     def _read_user(response: Any) -> Any:
