@@ -28,3 +28,27 @@ class AuthUserMismatchError(SignupError):
 
 class ProfilePersistenceError(SignupError):
     """The auth user was created, but application profile data could not be saved."""
+
+
+class BlueprintError(Exception):
+    """Base exception for blueprint failures."""
+
+
+class BlueprintNotFoundError(BlueprintError):
+    """The requested blueprint (or version) does not exist."""
+
+
+class BlueprintAccessDeniedError(BlueprintError):
+    """The current user is not allowed to view or modify this blueprint."""
+
+
+class FounderProfileRequiredError(BlueprintError):
+    """Only users with a founder profile can own blueprints."""
+
+
+class BlueprintVersionNotFoundError(BlueprintError):
+    """The requested blueprint version does not exist."""
+
+
+class BlueprintPersistenceError(BlueprintError):
+    """Blueprint data could not be saved due to a database error."""

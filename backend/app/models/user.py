@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import (
@@ -21,6 +22,9 @@ from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.blueprint import Blueprint
 
 
 class UserRole(str, Enum):
@@ -95,6 +99,10 @@ class FounderProfile(Base):
     stripe_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped[User] = relationship(back_populates="founder_profile")
+    blueprints: Mapped[list[Blueprint]] = relationship(
+        back_populates="founder_profile",
+        cascade="all, delete-orphan",
+    )
 
 
 class DeveloperProfile(Base):
