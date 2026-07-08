@@ -6,12 +6,12 @@ from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
 
-from app.core.config import Settings, settings
+from app.core.config import Settings
 from app.services.exceptions import EmailDeliveryConfigurationError, EmailDeliveryError
 
 
 class SmtpEmailSender:
-    def __init__(self, app_settings: Settings = settings) -> None:
+    def __init__(self, app_settings: Settings) -> None:
         self._settings = app_settings
 
     def send_signup_otp(self, *, email: str, otp_code: str, expires_minutes: int) -> None:

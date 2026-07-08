@@ -6,7 +6,22 @@ from sqlalchemy.orm import Session
 
 from app.models.user import DeveloperProfile
 from app.repositories import educations as educations_repository
+from app.repositories.shared.profile_operations import apply_profile_updates, build_profile_values
 from app.schemas.developer_profiles import DeveloperProfileCreate, DeveloperProfileUpdate
+
+DEVELOPER_PROFILE_FIELDS = (
+    "job_title",
+    "bio",
+    "experience_years",
+    "availability",
+    "open_to_remote",
+    "preferred_budget",
+    "github",
+    "linkedin",
+    "portfolio_link",
+    "profile_complete",
+)
+EDUCATION_EXCLUDE = {"educations"}
 
 
 def get_developer_profile_by_user_id(db: Session, user_id: UUID) -> DeveloperProfile | None:
@@ -14,24 +29,17 @@ def get_developer_profile_by_user_id(db: Session, user_id: UUID) -> DeveloperPro
 
 
 def create_developer_profile(
-    db: Session,
-    *,
-    user_id: UUID,
-    payload: DeveloperProfileCreate,
+    db: Session, *, user_id: UUID, payload: DeveloperProfileCreate
 ) -> DeveloperProfile:
+    profile_values = build_profile_values(
+        payload,
+        DEVELOPER_PROFILE_FIELDS,
+        exclude=EDUCATION_EXCLUDE,
+    )
     profile = DeveloperProfile(
         user_id=user_id,
-        job_title=payload.job_title,
-        bio=payload.bio,
-        experience_years=payload.experience_years,
-        availability=payload.availability,
-        open_to_remote=payload.open_to_remote,
-        preferred_budget=payload.preferred_budget,
-        github=payload.github,
-        linkedin=payload.linkedin,
-        portfolio_link=payload.portfolio_link,
         rating_avg=0,
-        profile_complete=payload.profile_complete,
+        **profile_values,
     )
     db.add(profile)
     educations_repository.replace_educations_for_user(
@@ -43,14 +51,9 @@ def create_developer_profile(
 
 
 def update_developer_profile(
-    db: Session,
-    *,
-    profile: DeveloperProfile,
-    payload: DeveloperProfileUpdate,
+    db: Session, *, profile: DeveloperProfile, payload: DeveloperProfileUpdate
 ) -> DeveloperProfile:
-    updates = payload.model_dump(exclude_unset=True, exclude={"educations"})
-    for field, value in updates.items():
-        setattr(profile, field, value)
+    apply_profile_updates(profile, payload, DEVELOPER_PROFILE_FIELDS, exclude=EDUCATION_EXCLUDE)
 
     if payload.educations is not None:
         educations_repository.replace_educations_for_user(

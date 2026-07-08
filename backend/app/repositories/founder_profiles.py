@@ -6,7 +6,20 @@ from sqlalchemy.orm import Session
 
 from app.models.user import FounderProfile
 from app.repositories import educations as educations_repository
+from app.repositories.shared.profile_operations import apply_profile_updates, build_profile_values
 from app.schemas.founder_profiles import FounderProfileCreate, FounderProfileUpdate
+
+FOUNDER_PROFILE_FIELDS = (
+    "headline",
+    "bio",
+    "description",
+    "linkedin",
+    "venture_stage",
+    "primary_goal",
+    "profile_complete",
+)
+FOUNDER_DEFAULTS = {"primary_goal": "not_selected"}
+EDUCATION_EXCLUDE = {"educations"}
 
 
 def get_founder_profile_by_user_id(db: Session, user_id: UUID) -> FounderProfile | None:
@@ -14,21 +27,18 @@ def get_founder_profile_by_user_id(db: Session, user_id: UUID) -> FounderProfile
 
 
 def create_founder_profile(
-    db: Session,
-    *,
-    user_id: UUID,
-    payload: FounderProfileCreate,
+    db: Session, *, user_id: UUID, payload: FounderProfileCreate
 ) -> FounderProfile:
+    profile_values = build_profile_values(
+        payload,
+        FOUNDER_PROFILE_FIELDS,
+        defaults=FOUNDER_DEFAULTS,
+        exclude=EDUCATION_EXCLUDE,
+    )
     profile = FounderProfile(
         user_id=user_id,
-        headline=payload.headline,
-        bio=payload.bio,
-        description=payload.description,
-        linkedin=payload.linkedin,
-        venture_stage=payload.venture_stage,
-        primary_goal=payload.primary_goal or "not_selected",
-        profile_complete=payload.profile_complete,
         stripe_connected=False,
+        **profile_values,
     )
     db.add(profile)
     educations_repository.replace_educations_for_user(
@@ -40,16 +50,15 @@ def create_founder_profile(
 
 
 def update_founder_profile(
-    db: Session,
-    *,
-    profile: FounderProfile,
-    payload: FounderProfileUpdate,
+    db: Session, *, profile: FounderProfile, payload: FounderProfileUpdate
 ) -> FounderProfile:
-    updates = payload.model_dump(exclude_unset=True, exclude={"educations"})
-    for field, value in updates.items():
-        if field == "primary_goal":
-            value = value or "not_selected"
-        setattr(profile, field, value)
+    apply_profile_updates(
+        profile,
+        payload,
+        FOUNDER_PROFILE_FIELDS,
+        defaults=FOUNDER_DEFAULTS,
+        exclude=EDUCATION_EXCLUDE,
+    )
 
     if payload.educations is not None:
         educations_repository.replace_educations_for_user(

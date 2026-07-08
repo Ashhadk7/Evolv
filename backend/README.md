@@ -88,8 +88,8 @@ alembic upgrade head
 In Supabase, make sure Email Auth is enabled. Do not add Firebase, Clerk, Auth0,
 or any other Third-Party Auth provider for this email OTP flow.
 
-The backend generates its own 6-digit verification code, stores only a hash in
-`pending_signups`, and sends the code by SMTP. For Gmail testing, `SMTP_PASSWORD`
+The backend generates its own 6-digit verification code, stores only a hash on
+the `users` row, and sends the code by SMTP. For Gmail testing, `SMTP_PASSWORD`
 must be a Google App Password, not the normal Gmail password. If Google shows the
 app password with spaces, paste it without spaces.
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.user import Education
@@ -21,18 +21,8 @@ def replace_educations_for_user(
     educations: list[EducationCreate],
 ) -> None:
     delete_educations_for_user(db, user_id)
-    for education_data in educations:
-        db.add(
-            Education(
-                user_id=user_id,
-                level=education_data.level,
-                degree=education_data.degree,
-                custom_degree=education_data.custom_degree,
-                school=education_data.school,
-            )
-        )
+    db.add_all([Education(user_id=user_id, **education.model_dump()) for education in educations])
 
 
 def delete_educations_for_user(db: Session, user_id: UUID) -> None:
-    for education in list_educations_for_user(db, user_id):
-        db.delete(education)
+    db.execute(delete(Education).where(Education.user_id == user_id))

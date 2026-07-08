@@ -4,12 +4,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories import users as users_repository
-from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.auth_service import AuthService
 from app.services.email_sender import SmtpEmailSender
+from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.supabase_auth import SupabaseAuthClient
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -17,7 +18,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_auth_service() -> AuthService:
-    return AuthService(auth_provider=SupabaseAuthClient(), email_sender=SmtpEmailSender())
+    return AuthService(auth_client=SupabaseAuthClient(), email_sender=SmtpEmailSender(settings))
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]

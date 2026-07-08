@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from supabase import Client, create_client
+from pydantic import SecretStr
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
@@ -15,6 +15,7 @@ from app.services.exceptions import (
     InvalidCredentialsError,
     InvalidTokenError,
 )
+from supabase import Client, create_client
 
 
 @dataclass(frozen=True)
@@ -29,10 +30,10 @@ class SupabaseAuthSession:
     user_id: UUID
     email: str
     access_token: str
-    refresh_token: str | None
+    refresh_token: str
     token_type: str
-    expires_in: int | None
-    expires_at: int | None
+    expires_in: int
+    expires_at: int
 
 
 @dataclass(frozen=True)
@@ -43,29 +44,19 @@ class SupabaseAuthenticatedUser:
 
 class SupabaseAuthClient:
     def __init__(self) -> None:
-        service_role_key = (
-            settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value()
-            if settings.SUPABASE_SERVICE_ROLE_KEY
-            else ""
-        )
-        anon_key = (
-            settings.SUPABASE_ANON_KEY.get_secret_value() if settings.SUPABASE_ANON_KEY else ""
-        )
-        if not settings.SUPABASE_URL or not service_role_key.strip():
+        if not settings.SUPABASE_URL or not settings.SUPABASE_URL.strip():
             raise AuthProviderConfigurationError(
-                "Supabase URL and service role key must be configured before auth operations."
+                "SUPABASE_URL must be configured before auth operations."
             )
 
+        service_role_key = self._required_secret(
+            settings.SUPABASE_SERVICE_ROLE_KEY,
+            "SUPABASE_SERVICE_ROLE_KEY",
+        )
+        anon_key = self._required_secret(settings.SUPABASE_ANON_KEY, "SUPABASE_ANON_KEY")
         self._supabase_url = settings.SUPABASE_URL.rstrip("/")
-        self._service_role_key = service_role_key.strip()
-        self._admin_client: Client = create_client(
-            self._supabase_url,
-            self._service_role_key,
-        )
-        self._auth_client: Client = create_client(
-            self._supabase_url,
-            anon_key.strip() or service_role_key,
-        )
+        self._admin_client: Client = create_client(self._supabase_url, service_role_key)
+        self._auth_client: Client = create_client(self._supabase_url, anon_key)
 
     def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
         try:
@@ -105,20 +96,6 @@ class SupabaseAuthClient:
         except AuthProviderError as exc:
             raise EmailOtpError("Supabase Auth returned an incomplete user response.") from exc
 
-    def verify_signup_otp(self, email: str, otp: str) -> CreatedAuthUser:
-        try:
-            response = self._auth_client.auth.verify_otp(
-                {
-                    "email": email.lower(),
-                    "token": otp,
-                    "type": "email",
-                }
-            )
-        except Exception as exc:
-            raise EmailOtpError("Invalid or expired email verification code.") from exc
-
-        return self._created_user_from_response(response, email_confirmed=True)
-
     def _created_user_from_response(
         self,
         response: Any,
@@ -138,17 +115,6 @@ class SupabaseAuthClient:
             email_confirmed=email_confirmed,
         )
 
-    def resend_signup_otp(self, email: str) -> None:
-        try:
-            self._auth_client.auth.resend(
-                {
-                    "type": "signup",
-                    "email": email.lower(),
-                }
-            )
-        except Exception as exc:
-            raise EmailOtpError("Email verification code could not be resent.") from exc
-
     def sign_in(self, signin: SigninRequest) -> SupabaseAuthSession:
         try:
             response = self._auth_client.auth.sign_in_with_password(
@@ -166,18 +132,30 @@ class SupabaseAuthClient:
         user_id = self._read_value(user, "id")
         email = self._read_value(user, "email")
         access_token = self._read_value(session, "access_token")
+        refresh_token = self._read_value(session, "refresh_token")
+        token_type = self._read_value(session, "token_type")
+        expires_in = self._read_value(session, "expires_in")
+        expires_at = self._read_value(session, "expires_at")
 
-        if user_id is None or email is None or access_token is None:
+        if (
+            user_id is None
+            or email is None
+            or access_token is None
+            or refresh_token is None
+            or token_type is None
+            or expires_in is None
+            or expires_at is None
+        ):
             raise AuthProviderError("Supabase Auth returned an incomplete signin response.")
 
         return SupabaseAuthSession(
             user_id=UUID(str(user_id)),
             email=str(email).lower(),
             access_token=str(access_token),
-            refresh_token=self._optional_str(self._read_value(session, "refresh_token")),
-            token_type=self._optional_str(self._read_value(session, "token_type")) or "bearer",
-            expires_in=self._optional_int(self._read_value(session, "expires_in")),
-            expires_at=self._optional_int(self._read_value(session, "expires_at")),
+            refresh_token=str(refresh_token),
+            token_type=str(token_type),
+            expires_in=int(expires_in),
+            expires_at=int(expires_at),
         )
 
     def get_user(self, access_token: str) -> SupabaseAuthenticatedUser:
@@ -198,8 +176,14 @@ class SupabaseAuthClient:
     def delete_user(self, user_id: UUID) -> None:
         try:
             self._admin_client.auth.admin.delete_user(str(user_id))
-        except Exception:
-            return
+        except Exception as exc:
+            raise AuthProviderError("Supabase Auth user could not be deleted.") from exc
+
+    @staticmethod
+    def _required_secret(value: SecretStr | None, setting_name: str) -> str:
+        if value is None or not value.get_secret_value().strip():
+            raise AuthProviderConfigurationError(f"{setting_name} must be configured.")
+        return value.get_secret_value().strip()
 
     @staticmethod
     def _read_user(response: Any) -> Any:
@@ -235,14 +219,3 @@ class SupabaseAuthClient:
             return source.get(key)
         return getattr(source, key, None)
 
-    @staticmethod
-    def _optional_str(value: Any) -> str | None:
-        if value is None:
-            return None
-        return str(value)
-
-    @staticmethod
-    def _optional_int(value: Any) -> int | None:
-        if value is None:
-            return None
-        return int(value)

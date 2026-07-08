@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.educations import EducationCreate, EducationResponse
 
@@ -10,31 +10,16 @@ from app.schemas.educations import EducationCreate, EducationResponse
 class DeveloperProfileBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    job_title: str | None = Field(default=None, max_length=255)
+    job_title: str | None = Field(None, max_length=255)
     bio: str | None = None
-    experience_years: int | None = Field(default=None, ge=0, le=80)
+    experience_years: int | None = Field(None, ge=0, le=80)
     availability: bool = True
     open_to_remote: bool = False
-    preferred_budget: str | None = Field(default=None, max_length=100)
-    github: str | None = Field(default=None, max_length=255)
-    linkedin: str | None = Field(default=None, max_length=255)
-    portfolio_link: str | None = Field(default=None, max_length=255)
+    preferred_budget: str | None = Field(None, max_length=100)
+    github: str | None = Field(None, max_length=255)
+    linkedin: str | None = Field(None, max_length=255)
+    portfolio_link: str | None = Field(None, max_length=255)
     profile_complete: bool = False
-
-    @field_validator(
-        "job_title",
-        "bio",
-        "preferred_budget",
-        "github",
-        "linkedin",
-        "portfolio_link",
-        mode="before",
-    )
-    @classmethod
-    def strip_optional_text(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip()
-        return value
 
 
 class DeveloperProfileCreate(DeveloperProfileBase):
@@ -44,32 +29,17 @@ class DeveloperProfileCreate(DeveloperProfileBase):
 class DeveloperProfileUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    job_title: str | None = Field(default=None, max_length=255)
+    job_title: str | None = Field(None, max_length=255)
     bio: str | None = None
-    experience_years: int | None = Field(default=None, ge=0, le=80)
+    experience_years: int | None = Field(None, ge=0, le=80)
     availability: bool | None = None
     open_to_remote: bool | None = None
-    preferred_budget: str | None = Field(default=None, max_length=100)
-    github: str | None = Field(default=None, max_length=255)
-    linkedin: str | None = Field(default=None, max_length=255)
-    portfolio_link: str | None = Field(default=None, max_length=255)
+    preferred_budget: str | None = Field(None, max_length=100)
+    github: str | None = Field(None, max_length=255)
+    linkedin: str | None = Field(None, max_length=255)
+    portfolio_link: str | None = Field(None, max_length=255)
     profile_complete: bool | None = None
-    educations: list[EducationCreate] | None = Field(default=None, max_length=20)
-
-    @field_validator(
-        "job_title",
-        "bio",
-        "preferred_budget",
-        "github",
-        "linkedin",
-        "portfolio_link",
-        mode="before",
-    )
-    @classmethod
-    def strip_optional_text(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip()
-        return value
+    educations: list[EducationCreate] | None = Field(None, max_length=20)
 
 
 class DeveloperProfileResponse(DeveloperProfileBase):

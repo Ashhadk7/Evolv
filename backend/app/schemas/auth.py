@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -13,38 +13,12 @@ from pydantic import (
     HttpUrl,
     SecretStr,
     field_validator,
-    model_validator,
 )
 
 
-class SignupRole(str, Enum):
+class SignupRole(StrEnum):
     FOUNDER = "founder"
     DEVELOPER = "developer"
-
-
-class FounderSignupDetails(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    headline: str | None = Field(default=None, max_length=255)
-    bio: str | None = None
-    description: str | None = None
-    linkedin: str | None = Field(default=None, max_length=255)
-    venture_stage: str | None = Field(default=None, max_length=100)
-    primary_goal: str | None = Field(default=None, max_length=100)
-
-
-class DeveloperSignupDetails(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    job_title: str | None = Field(default=None, max_length=255)
-    bio: str | None = None
-    experience_years: int | None = Field(default=None, ge=0, le=80)
-    availability: bool = True
-    open_to_remote: bool = False
-    preferred_budget: str | None = Field(default=None, max_length=100)
-    github: str | None = Field(default=None, max_length=255)
-    linkedin: str | None = Field(default=None, max_length=255)
-    portfolio_link: str | None = Field(default=None, max_length=255)
 
 
 class SignupRequest(BaseModel):
@@ -55,17 +29,15 @@ class SignupRequest(BaseModel):
     password: SecretStr = Field(min_length=8, max_length=128)
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
-    phone: str | None = Field(default=None, max_length=50)
-    country: str | None = Field(default=None, max_length=100)
-    country_code: str | None = Field(default=None, max_length=10)
-    state_province: str | None = Field(default=None, max_length=100)
-    city: str | None = Field(default=None, max_length=100)
+    phone: str | None = Field(None, max_length=50)
+    country: str | None = Field(None, max_length=100)
+    country_code: str | None = Field(None, max_length=10)
+    state_province: str | None = Field(None, max_length=100)
+    city: str | None = Field(None, max_length=100)
     dob: date | None = None
-    gender: str | None = Field(default=None, max_length=50)
+    gender: str | None = Field(None, max_length=50)
     avatar_url: HttpUrl | None = None
     terms_accepted: bool
-    founder_details: FounderSignupDetails | None = None
-    developer_details: DeveloperSignupDetails | None = None
 
     @field_validator(
         "first_name",
@@ -83,14 +55,6 @@ class SignupRequest(BaseModel):
         if isinstance(value, str):
             return value.strip()
         return value
-
-    @model_validator(mode="after")
-    def validate_role_details(self) -> SignupRequest:
-        if self.role == SignupRole.FOUNDER and self.developer_details is not None:
-            raise ValueError("Founder signup cannot include developer_details.")
-        if self.role == SignupRole.DEVELOPER and self.founder_details is not None:
-            raise ValueError("Developer signup cannot include founder_details.")
-        return self
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -175,7 +139,7 @@ class SigninResponse(BaseModel):
     first_name: str
     last_name: str
     access_token: str
-    refresh_token: str | None = None
+    refresh_token: str
     token_type: str = "bearer"
-    expires_in: int | None = None
-    expires_at: int | None = None
+    expires_in: int
+    expires_at: int

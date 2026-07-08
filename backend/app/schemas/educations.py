@@ -9,8 +9,8 @@ class EducationBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     level: str = Field(min_length=1, max_length=100)
-    degree: str | None = Field(default=None, max_length=255)
-    custom_degree: str | None = Field(default=None, max_length=255)
+    degree: str | None = Field(None, max_length=255)
+    custom_degree: str | None = Field(None, max_length=255)
     school: str = Field(min_length=1, max_length=255)
 
     @field_validator("level", "degree", "custom_degree", "school", mode="before")

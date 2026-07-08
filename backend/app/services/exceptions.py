@@ -38,14 +38,6 @@ class PhoneVerificationError(SignupError):
     """The Firebase phone ID token is invalid, expired, or missing a phone number."""
 
 
-class PendingSignupNotFoundError(SignupError):
-    """There is no pending signup for this email."""
-
-
-class PendingSignupExpiredError(SignupError):
-    """The pending signup expired before email verification."""
-
-
 class AuthUserMismatchError(SignupError):
     """The Supabase Auth user does not match the application user."""
 
