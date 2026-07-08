@@ -1,22 +1,21 @@
 # Evolv Backend
 
-FastAPI backend for the Evolv platform. The structure keeps application code, settings, API routes, database wiring, and tests separated so the project can grow without becoming tangled.
+FastAPI backend for the Evolv platform. The structure keeps application code, settings, API routes, database wiring, and migrations separated so the project can grow without becoming tangled.
 
 ## Structure
 
 ```text
 backend/
   app/
-    api/              # API routers and request dependencies
+    api/              # API routers, request dependencies, and API error handlers
     core/             # Settings and shared application config
     db/               # SQLAlchemy engine, sessions, and base model
     models/           # Database models
     repositories/     # Data-access helpers
     schemas/          # Pydantic request/response models
-    services/         # Business logic
+    services/         # Business logic and business-rule validation
     main.py           # FastAPI application factory
   alembic/            # Database migrations
-  tests/              # API and unit tests
 ```
 
 ## Local Setup
@@ -247,11 +246,11 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 The users list intentionally returns safe summary fields only. It does not
 expose phone, DOB, gender, or full location details.
 
-## Tests And Checks
+## Checks
 
 ```bash
-pytest
 ruff check .
+mypy app
 ```
 
 ## Database Migrations

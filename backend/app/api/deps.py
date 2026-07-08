@@ -9,8 +9,12 @@ from app.db.session import get_db
 from app.models.user import User
 from app.repositories import users as users_repository
 from app.services.auth_service import AuthService
+<<<<<<< HEAD
 from app.services.email_sender import SmtpEmailSender
 from app.services.exceptions import AppError, ErrorCode
+=======
+from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
+>>>>>>> 8526559 (Issues resolved.)
 from app.services.supabase_auth import SupabaseAuthClient
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -22,6 +26,7 @@ def get_supabase_auth_client() -> SupabaseAuthClient:
     return SupabaseAuthClient()
 
 
+<<<<<<< HEAD
 @lru_cache
 def get_email_sender() -> SmtpEmailSender:
     return SmtpEmailSender()
@@ -35,14 +40,29 @@ def get_auth_service(
     auth_client: SupabaseAuthClientDep, email_sender: EmailSenderDep
 ) -> AuthService:
     return AuthService(auth_client=auth_client, email_sender=email_sender)
+=======
+SupabaseAuthClientDep = Annotated[SupabaseAuthClient, Depends(get_supabase_auth_client)]
+
+
+def get_auth_service(auth_client: SupabaseAuthClientDep) -> AuthService:
+    return AuthService(auth_client=auth_client)
+>>>>>>> 8526559 (Issues resolved.)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
+<<<<<<< HEAD
 def get_access_token(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
 ) -> str:
+=======
+def get_current_user(
+    db: DbSession,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    auth_client: SupabaseAuthClientDep,
+) -> User:
+>>>>>>> 8526559 (Issues resolved.)
     if credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,6 +71,22 @@ def get_access_token(
         )
     return credentials.credentials
 
+<<<<<<< HEAD
+=======
+    try:
+        auth_user = auth_client.get_user(credentials.credentials)
+    except AuthProviderConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase Auth is not configured.",
+        ) from exc
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+>>>>>>> 8526559 (Issues resolved.)
 
 AccessToken = Annotated[str, Depends(get_access_token)]
 

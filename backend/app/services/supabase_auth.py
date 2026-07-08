@@ -12,6 +12,8 @@ from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class CreatedAuthUser:
