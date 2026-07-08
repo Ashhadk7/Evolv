@@ -71,8 +71,8 @@ SMTP_USE_STARTTLS=false
 SMTP_TIMEOUT_SECONDS=20
 ```
 
-`SUPABASE_ANON_KEY` is recommended for normal signin calls. If it is missing
-during local backend testing, the backend falls back to the service role key.
+`SUPABASE_ANON_KEY` is required for normal signin calls. The backend does not
+fall back to the service role key for user authentication.
 
 If Supabase gives you a URL starting with `postgresql://`, you can paste it as-is.
 The backend normalizes it to `postgresql+psycopg://` so SQLAlchemy uses the
@@ -91,6 +91,12 @@ The backend generates its own 6-digit verification code, stores only a hash in
 `pending_signups`, and sends the code by SMTP. For Gmail testing, `SMTP_PASSWORD`
 must be a Google App Password, not the normal Gmail password. If Google shows the
 app password with spaces, paste it without spaces.
+
+`pending_signups` is intentionally separate from `public.users`. A row becomes
+a real application user only after the email OTP is verified. This avoids
+polluting `public.users`, founder profiles, and developer profiles with
+unverified or expired signup attempts. Expired pending rows can be safely
+discarded without touching real user data.
 
 Keep `SIGNUP_OTP_RETURN_DEBUG=false` for real email testing. Set it to `true`
 only when you intentionally want the OTP returned in the Postman response during

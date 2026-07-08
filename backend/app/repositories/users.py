@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -100,9 +102,8 @@ def create_user_from_pending_signup(
 def create_founder_profile(
     db: Session,
     user_id: UUID,
-    details: FounderSignupDetails | None,
+    details: FounderSignupDetails,
 ) -> FounderProfile:
-    details = details or FounderSignupDetails()
     profile = FounderProfile(
         user_id=user_id,
         headline=details.headline,
@@ -118,12 +119,11 @@ def create_founder_profile(
     return profile
 
 
-def create_founder_profile_from_pending_signup(
+def create_founder_profile_from_details(
     db: Session,
     user_id: UUID,
-    pending_signup: PendingSignup,
+    details: Mapping[str, Any],
 ) -> FounderProfile:
-    details = pending_signup.founder_details or {}
     profile = FounderProfile(
         user_id=user_id,
         headline=details.get("headline"),
@@ -142,9 +142,8 @@ def create_founder_profile_from_pending_signup(
 def create_developer_profile(
     db: Session,
     user_id: UUID,
-    details: DeveloperSignupDetails | None,
+    details: DeveloperSignupDetails,
 ) -> DeveloperProfile:
-    details = details or DeveloperSignupDetails()
     profile = DeveloperProfile(
         user_id=user_id,
         job_title=details.job_title,
@@ -163,12 +162,11 @@ def create_developer_profile(
     return profile
 
 
-def create_developer_profile_from_pending_signup(
+def create_developer_profile_from_details(
     db: Session,
     user_id: UUID,
-    pending_signup: PendingSignup,
+    details: Mapping[str, Any],
 ) -> DeveloperProfile:
-    details = pending_signup.developer_details or {}
     profile = DeveloperProfile(
         user_id=user_id,
         job_title=details.get("job_title"),

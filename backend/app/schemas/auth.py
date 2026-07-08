@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -17,7 +17,7 @@ from pydantic import (
 )
 
 
-class SignupRole(str, Enum):
+class SignupRole(StrEnum):
     FOUNDER = "founder"
     DEVELOPER = "developer"
 
@@ -86,10 +86,18 @@ class SignupRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_role_details(self) -> SignupRequest:
-        if self.role == SignupRole.FOUNDER and self.developer_details is not None:
-            raise ValueError("Founder signup cannot include developer_details.")
-        if self.role == SignupRole.DEVELOPER and self.founder_details is not None:
-            raise ValueError("Developer signup cannot include founder_details.")
+        if self.role == SignupRole.FOUNDER:
+            if self.developer_details is not None:
+                raise ValueError("Founder signup cannot include developer_details.")
+            if self.founder_details is None:
+                self.founder_details = FounderSignupDetails()
+
+        if self.role == SignupRole.DEVELOPER:
+            if self.founder_details is not None:
+                raise ValueError("Developer signup cannot include founder_details.")
+            if self.developer_details is None:
+                self.developer_details = DeveloperSignupDetails()
+
         return self
 
     @field_validator("first_name", "last_name")

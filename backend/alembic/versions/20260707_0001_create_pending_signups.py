@@ -1,5 +1,9 @@
 """create pending signups
 
+Pending signups are intentionally kept separate from public.users. The
+application only creates a public user/profile after the email OTP succeeds, so
+unverified or expired attempts do not appear as real users in application data.
+
 Revision ID: 20260707_0001
 Revises:
 Create Date: 2026-07-07
@@ -8,9 +12,9 @@ Create Date: 2026-07-07
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision = "20260707_0001"
 down_revision = None

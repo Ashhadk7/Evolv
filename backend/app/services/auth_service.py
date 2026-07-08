@@ -4,8 +4,6 @@ import hashlib
 import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Protocol
-from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,13 +15,14 @@ from app.repositories import users as users_repository
 from app.schemas.auth import (
     SigninRequest,
     SigninResponse,
-    SignupResendOtpRequest,
     SignupRequest,
+    SignupResendOtpRequest,
     SignupResponse,
     SignupRole,
     SignupStartResponse,
     SignupVerifyEmailRequest,
 )
+from app.services.email_sender import SmtpEmailSender
 from app.services.exceptions import (
     AuthUserMismatchError,
     DuplicateEmailError,
@@ -33,31 +32,12 @@ from app.services.exceptions import (
     PendingSignupNotFoundError,
     ProfilePersistenceError,
 )
-from app.services.supabase_auth import CreatedAuthUser, SupabaseAuthSession
-
-
-class AuthProvider(Protocol):
-    def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
-        pass
-
-    def confirm_email(self, user_id: UUID) -> CreatedAuthUser:
-        pass
-
-    def sign_in(self, signin: SigninRequest) -> SupabaseAuthSession:
-        pass
-
-    def delete_user(self, user_id: UUID) -> None:
-        pass
-
-
-class OtpEmailSender(Protocol):
-    def send_signup_otp(self, *, email: str, otp_code: str, expires_minutes: int) -> None:
-        pass
+from app.services.supabase_auth import SupabaseAuthClient
 
 
 class AuthService:
-    def __init__(self, auth_provider: AuthProvider, email_sender: OtpEmailSender) -> None:
-        self._auth_provider = auth_provider
+    def __init__(self, auth_client: SupabaseAuthClient, email_sender: SmtpEmailSender) -> None:
+        self._auth_client = auth_client
         self._email_sender = email_sender
 
     def start_signup(self, db: Session, signup: SignupRequest) -> SignupStartResponse:
@@ -72,10 +52,10 @@ class AuthService:
         if existing_pending is not None:
             pending_signups_repository.delete_pending_signup(db, existing_pending)
             db.flush()
-            self._auth_provider.delete_user(existing_pending.auth_user_id)
+            self._auth_client.delete_user(existing_pending.auth_user_id)
 
         expires_at = datetime.now(UTC) + timedelta(minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES)
-        auth_user = self._auth_provider.start_email_otp_signup(signup)
+        auth_user = self._auth_client.start_email_otp_signup(signup)
         otp_code = self._generate_otp()
 
         try:
@@ -89,7 +69,7 @@ class AuthService:
             db.commit()
         except SQLAlchemyError as exc:
             db.rollback()
-            self._auth_provider.delete_user(auth_user.id)
+            self._auth_client.delete_user(auth_user.id)
             raise ProfilePersistenceError("Pending signup data could not be saved.") from exc
 
         self._email_sender.send_signup_otp(
@@ -121,7 +101,7 @@ class AuthService:
             auth_user_id = pending_signup.auth_user_id
             pending_signups_repository.delete_pending_signup(db, pending_signup)
             db.commit()
-            self._auth_provider.delete_user(auth_user_id)
+            self._auth_client.delete_user(auth_user_id)
             raise PendingSignupExpiredError("This signup expired. Start signup again.")
 
         if not self._otp_matches(
@@ -131,7 +111,7 @@ class AuthService:
         ):
             raise EmailOtpError("Invalid or expired email verification code.")
 
-        auth_user = self._auth_provider.confirm_email(pending_signup.auth_user_id)
+        auth_user = self._auth_client.confirm_email(pending_signup.auth_user_id)
         if auth_user.id != pending_signup.auth_user_id:
             raise EmailOtpError("Verified auth user does not match pending signup.")
 
@@ -147,16 +127,16 @@ class AuthService:
             )
 
             if pending_signup.role.value == UserRole.FOUNDER.value:
-                users_repository.create_founder_profile_from_pending_signup(
+                users_repository.create_founder_profile_from_details(
                     db,
                     auth_user.id,
-                    pending_signup,
+                    pending_signup.founder_details or {},
                 )
             else:
-                users_repository.create_developer_profile_from_pending_signup(
+                users_repository.create_developer_profile_from_details(
                     db,
                     auth_user.id,
-                    pending_signup,
+                    pending_signup.developer_details or {},
                 )
 
             pending_signups_repository.delete_pending_signup(db, pending_signup)
@@ -164,7 +144,7 @@ class AuthService:
             db.refresh(app_user)
         except SQLAlchemyError as exc:
             db.rollback()
-            self._auth_provider.delete_user(auth_user.id)
+            self._auth_client.delete_user(auth_user.id)
             raise ProfilePersistenceError("Application profile data could not be saved.") from exc
 
         return SignupResponse(
@@ -218,7 +198,7 @@ class AuthService:
         if app_user is None:
             raise InvalidCredentialsError("Invalid email or password.")
 
-        auth_session = self._auth_provider.sign_in(signin)
+        auth_session = self._auth_client.sign_in(signin)
         if auth_session.user_id != app_user.id:
             raise AuthUserMismatchError("Auth user does not match application user.")
 
@@ -247,7 +227,7 @@ class AuthService:
 
     @staticmethod
     def _hash_otp(email: str, otp_code: str) -> str:
-        message = f"{email.strip().lower()}:{otp_code}".encode("utf-8")
+        message = f"{email.strip().lower()}:{otp_code}".encode()
         secret = settings.SECRET_KEY.encode("utf-8")
         return hmac.new(secret, message, hashlib.sha256).hexdigest()
 

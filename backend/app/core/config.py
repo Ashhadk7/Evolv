@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Evolv API"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
     DEBUG: bool = True
-    API_V1_STR: str = "/api/v1"
-    DATABASE_URL: str = "sqlite:///./evolv.db"
-    SUPABASE_URL: str | None = None
-    SUPABASE_SERVICE_ROLE_KEY: SecretStr | None = None
-    SUPABASE_ANON_KEY: SecretStr | None = None
+    API_V1_STR: str
+    DATABASE_URL: str
+    SUPABASE_URL: str
+    SUPABASE_SERVICE_ROLE_KEY: SecretStr
+    SUPABASE_ANON_KEY: SecretStr
     SUPABASE_AUTH_EMAIL_CONFIRM: bool = True
     SIGNUP_OTP_EXPIRE_MINUTES: int = 5
     SIGNUP_OTP_RETURN_DEBUG: bool = False
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = True
     SMTP_USE_STARTTLS: bool = False
     SMTP_TIMEOUT_SECONDS: int = 20
-    SECRET_KEY: str = Field(default="change-me-in-local-development", min_length=8)
+    SECRET_KEY: str = Field(min_length=8)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
@@ -46,6 +46,20 @@ class Settings(BaseSettings):
         if isinstance(value, str) and not value.startswith("["):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @field_validator("API_V1_STR", "DATABASE_URL", "SUPABASE_URL", "SECRET_KEY", mode="before")
+    @classmethod
+    def require_non_empty_text(cls, value: Any) -> Any:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        raise ValueError("This environment variable is required.")
+
+    @field_validator("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY")
+    @classmethod
+    def require_non_empty_secret(cls, value: SecretStr) -> SecretStr:
+        if value.get_secret_value().strip():
+            return value
+        raise ValueError("This environment variable is required.")
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

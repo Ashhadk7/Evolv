@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
-
-from supabase import Client, create_client
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
@@ -15,6 +14,9 @@ from app.services.exceptions import (
     InvalidCredentialsError,
     InvalidTokenError,
 )
+from supabase import Client, create_client
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -43,28 +45,21 @@ class SupabaseAuthenticatedUser:
 
 class SupabaseAuthClient:
     def __init__(self) -> None:
-        service_role_key = (
-            settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value()
-            if settings.SUPABASE_SERVICE_ROLE_KEY
-            else ""
-        )
-        anon_key = (
-            settings.SUPABASE_ANON_KEY.get_secret_value() if settings.SUPABASE_ANON_KEY else ""
-        )
-        if not settings.SUPABASE_URL or not service_role_key.strip():
+        service_role_key = settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value().strip()
+        anon_key = settings.SUPABASE_ANON_KEY.get_secret_value().strip()
+        if not settings.SUPABASE_URL or not service_role_key or not anon_key:
             raise AuthProviderConfigurationError(
-                "Supabase URL and service role key must be configured before auth operations."
+                "Supabase URL, service role key, and anon key must be configured."
             )
 
         self._supabase_url = settings.SUPABASE_URL.rstrip("/")
-        self._service_role_key = service_role_key.strip()
         self._admin_client: Client = create_client(
             self._supabase_url,
-            self._service_role_key,
+            service_role_key,
         )
         self._auth_client: Client = create_client(
             self._supabase_url,
-            anon_key.strip() or service_role_key,
+            anon_key,
         )
 
     def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
@@ -199,6 +194,7 @@ class SupabaseAuthClient:
         try:
             self._admin_client.auth.admin.delete_user(str(user_id))
         except Exception:
+            logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
             return
 
     @staticmethod

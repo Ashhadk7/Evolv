@@ -9,10 +9,23 @@ from sqlalchemy.orm import Session
 from app.models.user import PendingSignup, UserRole
 from app.schemas.auth import SignupRequest
 
+PENDING_SIGNUP_COPY_FIELDS = (
+    "first_name",
+    "last_name",
+    "phone",
+    "country",
+    "country_code",
+    "state_province",
+    "city",
+    "dob",
+    "gender",
+)
+
 
 def get_pending_signup_by_email(db: Session, email: str) -> PendingSignup | None:
     normalized_email = email.strip().lower()
-    return db.scalar(select(PendingSignup).where(func.lower(PendingSignup.email) == normalized_email))
+    statement = select(PendingSignup).where(func.lower(PendingSignup.email) == normalized_email)
+    return db.scalar(statement)
 
 
 def delete_pending_signup(db: Session, pending_signup: PendingSignup) -> None:
@@ -36,15 +49,10 @@ def create_or_update_pending_signup(
     pending_signup.auth_user_id = auth_user_id
     pending_signup.email = str(signup.email).lower()
     pending_signup.role = UserRole(signup.role.value)
-    pending_signup.first_name = signup.first_name
-    pending_signup.last_name = signup.last_name
-    pending_signup.phone = signup.phone
-    pending_signup.country = signup.country
-    pending_signup.country_code = signup.country_code
-    pending_signup.state_province = signup.state_province
-    pending_signup.city = signup.city
-    pending_signup.dob = signup.dob
-    pending_signup.gender = signup.gender
+
+    for field_name in PENDING_SIGNUP_COPY_FIELDS:
+        setattr(pending_signup, field_name, getattr(signup, field_name))
+
     pending_signup.avatar_url = str(signup.avatar_url) if signup.avatar_url else None
     pending_signup.terms_accepted_at = signup.terms_accepted_at
     pending_signup.founder_details = (

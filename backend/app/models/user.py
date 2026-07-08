@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
     ForeignKey,
-    JSON,
     Numeric,
     SmallInteger,
     String,
@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     FOUNDER = "founder"
     DEVELOPER = "developer"
 
@@ -80,6 +80,8 @@ class User(Base):
 
 
 class PendingSignup(Base):
+    """Temporary signup data kept until the email OTP is verified."""
+
     __tablename__ = "pending_signups"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
