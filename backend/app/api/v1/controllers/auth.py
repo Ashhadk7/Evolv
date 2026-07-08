@@ -15,7 +15,6 @@ from app.services.exceptions import (
     AuthProviderError,
     AuthUserMismatchError,
     DuplicateEmailError,
-    EmailDeliveryConfigurationError,
     EmailDeliveryError,
     EmailOtpError,
     InvalidCredentialsError,
@@ -45,11 +44,6 @@ def signup(
         ) from exc
     except AuthProviderError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except EmailDeliveryConfigurationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Email delivery is not configured: {exc}",
-        ) from exc
     except EmailDeliveryError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     except ProfilePersistenceError as exc:
@@ -105,11 +99,6 @@ def resend_signup_otp(
         ) from exc
     except EmailOtpError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except EmailDeliveryConfigurationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Email delivery is not configured: {exc}",
-        ) from exc
     except EmailDeliveryError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     except ProfilePersistenceError as exc:

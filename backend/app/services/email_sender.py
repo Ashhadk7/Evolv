@@ -7,7 +7,7 @@ from email.utils import formataddr
 from html import escape
 
 from app.core.config import Settings
-from app.services.exceptions import EmailDeliveryConfigurationError, EmailDeliveryError
+from app.services.exceptions import EmailDeliveryError
 
 
 class SmtpEmailSender:
@@ -15,14 +15,11 @@ class SmtpEmailSender:
         self._settings = app_settings
 
     def send_signup_otp(self, *, email: str, otp_code: str, expires_minutes: int) -> None:
-        smtp_host = self._required_text(self._settings.SMTP_HOST, "SMTP_HOST")
-        smtp_username = self._required_text(self._settings.SMTP_USERNAME, "SMTP_USERNAME")
-        smtp_password = self._required_secret("SMTP_PASSWORD")
-        from_email = self._required_text(self._settings.EMAIL_FROM_EMAIL, "EMAIL_FROM_EMAIL")
-
         message = EmailMessage()
         message["Subject"] = f"{otp_code} is your Evolv verification code"
-        message["From"] = formataddr((self._settings.EMAIL_FROM_NAME, from_email))
+        message["From"] = formataddr(
+            (self._settings.EMAIL_FROM_NAME, self._settings.EMAIL_FROM_EMAIL)
+        )
         message["To"] = email
         message.set_content(
             "\n".join(
@@ -43,9 +40,9 @@ class SmtpEmailSender:
 
         self._send(
             message=message,
-            smtp_host=smtp_host,
-            smtp_username=smtp_username,
-            smtp_password=smtp_password,
+            smtp_host=self._settings.SMTP_HOST,
+            smtp_username=self._settings.SMTP_USERNAME,
+            smtp_password=self._settings.SMTP_PASSWORD.get_secret_value().strip(),
         )
 
     def _send(
@@ -85,18 +82,6 @@ class SmtpEmailSender:
             raise EmailDeliveryError(
                 "Verification email could not be sent by the SMTP provider."
             ) from exc
-
-    def _required_secret(self, setting_name: str) -> str:
-        value = self._settings.SMTP_PASSWORD
-        if value is None or not value.get_secret_value().strip():
-            raise EmailDeliveryConfigurationError(f"{setting_name} is required.")
-        return value.get_secret_value()
-
-    @staticmethod
-    def _required_text(value: str | None, setting_name: str) -> str:
-        if value is None or not value.strip():
-            raise EmailDeliveryConfigurationError(f"{setting_name} is required.")
-        return value.strip()
 
     @staticmethod
     def _signup_otp_html(*, otp_code: str, expires_minutes: int) -> str:

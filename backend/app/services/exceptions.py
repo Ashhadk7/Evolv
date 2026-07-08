@@ -3,7 +3,7 @@ class SignupError(Exception):
 
 
 class AuthProviderConfigurationError(SignupError):
-    """Supabase Auth is not configured correctly."""
+    """External auth provider settings are not configured correctly."""
 
 
 class AuthProviderError(SignupError):
@@ -24,10 +24,6 @@ class InvalidTokenError(SignupError):
 
 class EmailOtpError(SignupError):
     """Email OTP generation or verification failed."""
-
-
-class EmailDeliveryConfigurationError(SignupError):
-    """Email delivery settings are missing or invalid."""
 
 
 class EmailDeliveryError(SignupError):

@@ -24,7 +24,6 @@ from app.services.email_sender import SmtpEmailSender
 from app.services.exceptions import (
     AuthUserMismatchError,
     DuplicateEmailError,
-    EmailDeliveryConfigurationError,
     EmailDeliveryError,
     EmailOtpError,
     InvalidCredentialsError,
@@ -71,7 +70,7 @@ class AuthService:
             db.rollback()
             self._auth_client.delete_user(auth_user.id)
             raise ProfilePersistenceError("Signup data could not be saved.") from exc
-        except (EmailDeliveryConfigurationError, EmailDeliveryError):
+        except EmailDeliveryError:
             db.rollback()
             self._auth_client.delete_user(auth_user.id)
             raise
@@ -154,7 +153,7 @@ class AuthService:
         except SQLAlchemyError as exc:
             db.rollback()
             raise ProfilePersistenceError("Verification code could not be saved.") from exc
-        except (EmailDeliveryConfigurationError, EmailDeliveryError):
+        except EmailDeliveryError:
             db.rollback()
             raise
 

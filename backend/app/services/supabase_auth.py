@@ -4,18 +4,20 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from pydantic import SecretStr
+from gotrue.errors import AuthApiError
+from httpx import HTTPError
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
 from app.services.exceptions import (
-    AuthProviderConfigurationError,
     AuthProviderError,
     EmailOtpError,
     InvalidCredentialsError,
     InvalidTokenError,
 )
 from supabase import Client, create_client
+
+SUPABASE_CLIENT_ERRORS = (AuthApiError, HTTPError)
 
 
 @dataclass(frozen=True)
@@ -44,19 +46,15 @@ class SupabaseAuthenticatedUser:
 
 class SupabaseAuthClient:
     def __init__(self) -> None:
-        if not settings.SUPABASE_URL or not settings.SUPABASE_URL.strip():
-            raise AuthProviderConfigurationError(
-                "SUPABASE_URL must be configured before auth operations."
-            )
-
-        service_role_key = self._required_secret(
-            settings.SUPABASE_SERVICE_ROLE_KEY,
-            "SUPABASE_SERVICE_ROLE_KEY",
-        )
-        anon_key = self._required_secret(settings.SUPABASE_ANON_KEY, "SUPABASE_ANON_KEY")
         self._supabase_url = settings.SUPABASE_URL.rstrip("/")
-        self._admin_client: Client = create_client(self._supabase_url, service_role_key)
-        self._auth_client: Client = create_client(self._supabase_url, anon_key)
+        self._admin_client: Client = create_client(
+            self._supabase_url,
+            settings.SUPABASE_SERVICE_ROLE_KEY.get_secret_value().strip(),
+        )
+        self._auth_client: Client = create_client(
+            self._supabase_url,
+            settings.SUPABASE_ANON_KEY.get_secret_value().strip(),
+        )
 
     def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
         try:
@@ -72,7 +70,7 @@ class SupabaseAuthClient:
                     },
                 }
             )
-        except Exception as exc:
+        except SUPABASE_CLIENT_ERRORS as exc:
             raise AuthProviderError(
                 "Supabase Auth could not create this user. If this email already exists in "
                 "Supabase Auth, delete it from Authentication > Users or test with a new email."
@@ -88,7 +86,7 @@ class SupabaseAuthClient:
                     "email_confirm": True,
                 },
             )
-        except Exception as exc:
+        except SUPABASE_CLIENT_ERRORS as exc:
             raise EmailOtpError("Supabase Auth could not confirm this email.") from exc
 
         try:
@@ -123,7 +121,7 @@ class SupabaseAuthClient:
                     "password": signin.password.get_secret_value(),
                 }
             )
-        except Exception as exc:
+        except SUPABASE_CLIENT_ERRORS as exc:
             raise InvalidCredentialsError("Invalid email or password.") from exc
 
         user = self._read_user(response)
@@ -161,7 +159,7 @@ class SupabaseAuthClient:
     def get_user(self, access_token: str) -> SupabaseAuthenticatedUser:
         try:
             response = self._auth_client.auth.get_user(access_token)
-        except Exception as exc:
+        except SUPABASE_CLIENT_ERRORS as exc:
             raise InvalidTokenError("Invalid or expired access token.") from exc
 
         user = self._read_user(response)
@@ -176,14 +174,8 @@ class SupabaseAuthClient:
     def delete_user(self, user_id: UUID) -> None:
         try:
             self._admin_client.auth.admin.delete_user(str(user_id))
-        except Exception as exc:
+        except SUPABASE_CLIENT_ERRORS as exc:
             raise AuthProviderError("Supabase Auth user could not be deleted.") from exc
-
-    @staticmethod
-    def _required_secret(value: SecretStr | None, setting_name: str) -> str:
-        if value is None or not value.get_secret_value().strip():
-            raise AuthProviderConfigurationError(f"{setting_name} must be configured.")
-        return value.get_secret_value().strip()
 
     @staticmethod
     def _read_user(response: Any) -> Any:
