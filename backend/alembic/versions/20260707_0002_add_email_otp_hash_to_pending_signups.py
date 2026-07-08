@@ -18,8 +18,18 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("pending_signups", sa.Column("email_otp_hash", sa.String(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    column_names = {column["name"] for column in inspector.get_columns("pending_signups")}
+
+    if "email_otp_hash" not in column_names:
+        op.add_column("pending_signups", sa.Column("email_otp_hash", sa.String(), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("pending_signups", "email_otp_hash")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    column_names = {column["name"] for column in inspector.get_columns("pending_signups")}
+
+    if "email_otp_hash" in column_names:
+        op.drop_column("pending_signups", "email_otp_hash")

@@ -60,7 +60,7 @@ def get_current_user(
 ) -> User:
     auth_user = auth_client.get_user(access_token)
     app_user = users_repository.get_user_by_id(db, auth_user.id)
-    if app_user is None:
+    if app_user is None or not app_user.email_verified:
         raise AppError(
             ErrorCode.INVALID_TOKEN,
             "Authenticated user is not registered in the application.",

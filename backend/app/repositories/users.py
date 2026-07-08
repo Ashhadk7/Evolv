@@ -1,11 +1,10 @@
-from collections.abc import Mapping
-from typing import Any
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.user import DeveloperProfile, FounderProfile, PendingSignup, User, UserRole
+from app.models.user import DeveloperProfile, FounderProfile, User, UserRole
 from app.schemas.auth import DeveloperSignupDetails, FounderSignupDetails, SignupRequest
 
 
@@ -26,7 +25,7 @@ def list_users(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[User], int]:
-    filters = []
+    filters = [User.email_verified.is_(True)]
 
     if role is not None:
         filters.append(User.role == role)
@@ -53,7 +52,14 @@ def list_users(
     return users, total
 
 
-def create_user(db: Session, user_id: UUID, signup: SignupRequest) -> User:
+def create_user(
+    db: Session,
+    user_id: UUID,
+    signup: SignupRequest,
+    *,
+    email_otp_hash: str,
+    email_otp_expires_at: datetime,
+) -> User:
     user = User(
         id=user_id,
         email=str(signup.email).lower(),
@@ -69,34 +75,28 @@ def create_user(db: Session, user_id: UUID, signup: SignupRequest) -> User:
         gender=signup.gender,
         avatar_url=str(signup.avatar_url) if signup.avatar_url else None,
         terms_accepted_at=signup.terms_accepted_at,
+        phone_verified=False,
+        email_verified=False,
+        email_otp_hash=email_otp_hash,
+        email_otp_expires_at=email_otp_expires_at,
     )
     db.add(user)
     return user
 
 
-def create_user_from_pending_signup(
-    db: Session,
-    user_id: UUID,
-    pending_signup: PendingSignup,
-) -> User:
-    user = User(
-        id=user_id,
-        email=pending_signup.email,
-        role=pending_signup.role,
-        first_name=pending_signup.first_name,
-        last_name=pending_signup.last_name,
-        phone=pending_signup.phone,
-        country=pending_signup.country,
-        country_code=pending_signup.country_code,
-        state_province=pending_signup.state_province,
-        city=pending_signup.city,
-        dob=pending_signup.dob,
-        gender=pending_signup.gender,
-        avatar_url=pending_signup.avatar_url,
-        terms_accepted_at=pending_signup.terms_accepted_at,
-    )
-    db.add(user)
-    return user
+def delete_user(db: Session, user: User) -> None:
+    db.delete(user)
+
+
+def set_email_otp(user: User, *, email_otp_hash: str, expires_at: datetime) -> None:
+    user.email_otp_hash = email_otp_hash
+    user.email_otp_expires_at = expires_at
+
+
+def mark_email_verified(user: User) -> None:
+    user.email_verified = True
+    user.email_otp_hash = None
+    user.email_otp_expires_at = None
 
 
 def create_founder_profile(
@@ -112,26 +112,6 @@ def create_founder_profile(
         linkedin=details.linkedin,
         venture_stage=details.venture_stage,
         primary_goal=details.primary_goal or "not_selected",
-        profile_complete=False,
-        stripe_connected=False,
-    )
-    db.add(profile)
-    return profile
-
-
-def create_founder_profile_from_details(
-    db: Session,
-    user_id: UUID,
-    details: Mapping[str, Any],
-) -> FounderProfile:
-    profile = FounderProfile(
-        user_id=user_id,
-        headline=details.get("headline"),
-        bio=details.get("bio"),
-        description=details.get("description"),
-        linkedin=details.get("linkedin"),
-        venture_stage=details.get("venture_stage"),
-        primary_goal=details.get("primary_goal") or "not_selected",
         profile_complete=False,
         stripe_connected=False,
     )
@@ -155,29 +135,6 @@ def create_developer_profile(
         github=details.github,
         linkedin=details.linkedin,
         portfolio_link=details.portfolio_link,
-        rating_avg=0,
-        profile_complete=False,
-    )
-    db.add(profile)
-    return profile
-
-
-def create_developer_profile_from_details(
-    db: Session,
-    user_id: UUID,
-    details: Mapping[str, Any],
-) -> DeveloperProfile:
-    profile = DeveloperProfile(
-        user_id=user_id,
-        job_title=details.get("job_title"),
-        bio=details.get("bio"),
-        experience_years=details.get("experience_years"),
-        availability=details.get("availability", True),
-        open_to_remote=details.get("open_to_remote", False),
-        preferred_budget=details.get("preferred_budget"),
-        github=details.get("github"),
-        linkedin=details.get("linkedin"),
-        portfolio_link=details.get("portfolio_link"),
         rating_avg=0,
         profile_complete=False,
     )

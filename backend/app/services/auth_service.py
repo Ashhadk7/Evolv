@@ -4,13 +4,13 @@ import hashlib
 import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.user import UserRole
-from app.repositories import pending_signups as pending_signups_repository
+from app.models.user import User
 from app.repositories import users as users_repository
 from app.schemas.auth import (
     SigninRequest,
@@ -35,46 +35,52 @@ class AuthService:
     def start_signup(self, db: Session, signup: SignupRequest) -> SignupStartResponse:
         existing_user = users_repository.get_user_by_email(db, str(signup.email))
         if existing_user is not None:
-            raise AppError(ErrorCode.DUPLICATE_EMAIL, "A user with this email already exists.")
+            if existing_user.email_verified:
+                raise AppError(ErrorCode.DUPLICATE_EMAIL, "A user with this email already exists.")
 
-        existing_pending = pending_signups_repository.get_pending_signup_by_email(
-            db,
-            str(signup.email),
-        )
-        if existing_pending is not None:
-            pending_signups_repository.delete_pending_signup(db, existing_pending)
-            db.flush()
-            self._auth_client.delete_user(existing_pending.auth_user_id)
+            auth_user_id = existing_user.id
+            users_repository.delete_user(db, existing_user)
+            try:
+                db.commit()
+            except SQLAlchemyError as exc:
+                db.rollback()
+                raise AppError(
+                    ErrorCode.PROFILE_PERSISTENCE,
+                    "Existing unverified signup could not be replaced.",
+                ) from exc
+            self._auth_client.delete_user(auth_user_id)
 
         expires_at = datetime.now(UTC) + timedelta(minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES)
-        auth_user = self._auth_client.start_email_otp_signup(signup)
+        auth_user = self._auth_client.create_signup_user(signup)
         otp_code = self._generate_otp()
 
         try:
-            pending_signups_repository.create_or_update_pending_signup(
+            app_user = users_repository.create_user(
                 db=db,
-                auth_user_id=auth_user.id,
+                user_id=auth_user.id,
                 signup=signup,
                 email_otp_hash=self._hash_otp(auth_user.email, otp_code),
-                expires_at=expires_at,
+                email_otp_expires_at=expires_at,
             )
+            self._create_role_profile(db, app_user.id, signup)
             db.commit()
+            db.refresh(app_user)
         except SQLAlchemyError as exc:
             db.rollback()
             self._auth_client.delete_user(auth_user.id)
             raise AppError(
                 ErrorCode.PROFILE_PERSISTENCE,
-                "Pending signup data could not be saved.",
+                "Signup data could not be saved.",
             ) from exc
 
         self._email_sender.send_signup_otp(
-            email=auth_user.email,
+            email=app_user.email,
             otp_code=otp_code,
             expires_minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES,
         )
 
         return SignupStartResponse(
-            email=auth_user.email,
+            email=app_user.email,
             expires_at=expires_at,
             message="Verification code sent. Complete signup by verifying your email.",
             debug_otp=self._debug_otp(otp_code),
@@ -85,122 +91,85 @@ class AuthService:
         db: Session,
         verification: SignupVerifyEmailRequest,
     ) -> SignupResponse:
-        pending_signup = pending_signups_repository.get_pending_signup_by_email(
-            db,
-            str(verification.email),
-        )
-        if pending_signup is None:
-            raise AppError(
-                ErrorCode.PENDING_SIGNUP_NOT_FOUND,
-                "No pending signup exists for this email.",
-            )
+        app_user = users_repository.get_user_by_email(db, str(verification.email))
+        if app_user is None:
+            raise AppError(ErrorCode.SIGNUP_NOT_FOUND, "No signup exists for this email.")
 
-        if self._as_aware_utc(pending_signup.expires_at) <= datetime.now(UTC):
-            auth_user_id = pending_signup.auth_user_id
-            pending_signups_repository.delete_pending_signup(db, pending_signup)
-            db.commit()
+        if app_user.email_verified:
+            return self._signup_response(app_user, message="Email is already verified.")
+
+        expires_at = app_user.email_otp_expires_at
+        if expires_at is None:
+            raise AppError(ErrorCode.SIGNUP_NOT_FOUND, "No signup verification code exists.")
+
+        if self._as_aware_utc(expires_at) <= datetime.now(UTC):
+            auth_user_id = app_user.id
+            try:
+                users_repository.delete_user(db, app_user)
+                db.commit()
+            except SQLAlchemyError as exc:
+                db.rollback()
+                raise AppError(
+                    ErrorCode.PROFILE_PERSISTENCE,
+                    "Expired signup data could not be removed.",
+                ) from exc
+
             self._auth_client.delete_user(auth_user_id)
-            raise AppError(
-                ErrorCode.PENDING_SIGNUP_EXPIRED,
-                "This signup expired. Start signup again.",
-            )
+            raise AppError(ErrorCode.SIGNUP_EXPIRED, "This signup expired. Start signup again.")
 
-        if not self._otp_matches(
-            pending_signup.email,
-            verification.otp,
-            pending_signup.email_otp_hash,
-        ):
+        if not self._otp_matches(app_user.email, verification.otp, app_user.email_otp_hash):
             raise AppError(ErrorCode.INVALID_OTP, "Invalid or expired email verification code.")
 
-        auth_user = self._auth_client.confirm_email(pending_signup.auth_user_id)
-        if auth_user.id != pending_signup.auth_user_id:
-            raise AppError(
-                ErrorCode.INVALID_OTP,
-                "Verified auth user does not match pending signup.",
-            )
-
-        existing_user = users_repository.get_user_by_email(db, pending_signup.email)
-        if existing_user is not None:
-            raise AppError(ErrorCode.DUPLICATE_EMAIL, "A user with this email already exists.")
-
         try:
-            app_user = users_repository.create_user_from_pending_signup(
-                db,
-                user_id=auth_user.id,
-                pending_signup=pending_signup,
-            )
-
-            if pending_signup.role.value == UserRole.FOUNDER.value:
-                users_repository.create_founder_profile_from_details(
-                    db,
-                    auth_user.id,
-                    pending_signup.founder_details or {},
-                )
-            else:
-                users_repository.create_developer_profile_from_details(
-                    db,
-                    auth_user.id,
-                    pending_signup.developer_details or {},
-                )
-
-            pending_signups_repository.delete_pending_signup(db, pending_signup)
+            users_repository.mark_email_verified(app_user)
             db.commit()
             db.refresh(app_user)
         except SQLAlchemyError as exc:
             db.rollback()
-            self._auth_client.delete_user(auth_user.id)
             raise AppError(
                 ErrorCode.PROFILE_PERSISTENCE,
-                "Application profile data could not be saved.",
+                "Email verification could not be saved.",
             ) from exc
 
-        return SignupResponse(
-            id=app_user.id,
-            email=app_user.email,
-            role=SignupRole(app_user.role.value),
-            first_name=app_user.first_name,
-            last_name=app_user.last_name,
-            email_confirmed=True,
-            message="Email verified and signup completed.",
-        )
+        return self._signup_response(app_user, message="Email verified and signup completed.")
 
     def resend_signup_otp(
         self,
         db: Session,
         resend_request: SignupResendOtpRequest,
     ) -> SignupStartResponse:
-        pending_signup = pending_signups_repository.get_pending_signup_by_email(
-            db,
-            str(resend_request.email),
-        )
-        if pending_signup is None:
+        app_user = users_repository.get_user_by_email(db, str(resend_request.email))
+        if app_user is None or app_user.email_verified:
             raise AppError(
-                ErrorCode.PENDING_SIGNUP_NOT_FOUND,
-                "No pending signup exists for this email.",
+                ErrorCode.SIGNUP_NOT_FOUND,
+                "No unverified signup exists for this email.",
             )
 
         expires_at = datetime.now(UTC) + timedelta(minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES)
         otp_code = self._generate_otp()
 
         try:
-            pending_signup.email_otp_hash = self._hash_otp(pending_signup.email, otp_code)
-            pending_signup.expires_at = expires_at
+            users_repository.set_email_otp(
+                app_user,
+                email_otp_hash=self._hash_otp(app_user.email, otp_code),
+                expires_at=expires_at,
+            )
             db.commit()
         except SQLAlchemyError as exc:
             db.rollback()
             raise AppError(
                 ErrorCode.PROFILE_PERSISTENCE,
-                "Pending signup data could not be updated.",
+                "Signup verification code could not be updated.",
             ) from exc
 
         self._email_sender.send_signup_otp(
-            email=pending_signup.email,
+            email=app_user.email,
             otp_code=otp_code,
             expires_minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES,
         )
 
         return SignupStartResponse(
-            email=pending_signup.email,
+            email=app_user.email,
             expires_at=expires_at,
             message="Verification code resent.",
             debug_otp=self._debug_otp(otp_code),
@@ -218,6 +187,9 @@ class AuthService:
                 "Auth user does not match application user.",
             )
 
+        if not app_user.email_verified:
+            raise AppError(ErrorCode.EMAIL_NOT_VERIFIED, "Email must be verified before signin.")
+
         return SigninResponse(
             id=app_user.id,
             email=app_user.email,
@@ -229,6 +201,30 @@ class AuthService:
             token_type=auth_session.token_type,
             expires_in=auth_session.expires_in,
             expires_at=auth_session.expires_at,
+        )
+
+    @staticmethod
+    def _create_role_profile(db: Session, user_id: UUID, signup: SignupRequest) -> None:
+        if signup.role == SignupRole.FOUNDER:
+            if signup.founder_details is None:
+                raise AppError(ErrorCode.PROFILE_PERSISTENCE, "Founder details are missing.")
+            users_repository.create_founder_profile(db, user_id, signup.founder_details)
+            return
+
+        if signup.developer_details is None:
+            raise AppError(ErrorCode.PROFILE_PERSISTENCE, "Developer details are missing.")
+        users_repository.create_developer_profile(db, user_id, signup.developer_details)
+
+    @staticmethod
+    def _signup_response(app_user: User, *, message: str) -> SignupResponse:
+        return SignupResponse(
+            id=app_user.id,
+            email=app_user.email,
+            role=SignupRole(app_user.role.value),
+            first_name=app_user.first_name,
+            last_name=app_user.last_name,
+            email_confirmed=app_user.email_verified,
+            message=message,
         )
 
     @staticmethod

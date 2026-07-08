@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 class CreatedAuthUser:
     id: UUID
     email: str
-    email_confirmed: bool
 
 
 @dataclass(frozen=True)
@@ -44,26 +43,27 @@ class SupabaseAuthClient:
         if not settings.SUPABASE_URL or not service_role_key or not anon_key:
             raise AppError(
                 ErrorCode.AUTH_CONFIGURATION,
-                "Supabase URL, service role key, and anon key must be configured."
+                "Supabase URL, service role key, and anon key must be configured.",
             )
 
         self._supabase_url = settings.SUPABASE_URL.rstrip("/")
-        self._service_role_client: Client = create_client(
+        service_role_client: Client = create_client(
             self._supabase_url,
             service_role_key,
         )
+        self._auth_admin = service_role_client.auth.admin
         self._public_client: Client = create_client(
             self._supabase_url,
             anon_key,
         )
 
-    def start_email_otp_signup(self, signup: SignupRequest) -> CreatedAuthUser:
+    def create_signup_user(self, signup: SignupRequest) -> CreatedAuthUser:
         try:
-            response = self._create_auth_user(
+            response = self._auth_admin.create_user(
                 {
                     "email": str(signup.email).lower(),
                     "password": signup.password.get_secret_value(),
-                    "email_confirm": False,
+                    "email_confirm": True,
                     "user_metadata": {
                         "role": signup.role.value,
                         "first_name": signup.first_name,
@@ -75,34 +75,12 @@ class SupabaseAuthClient:
             raise AppError(
                 ErrorCode.AUTH_PROVIDER,
                 "Supabase Auth could not create this user. If this email already exists in "
-                "Supabase Auth, delete it from Authentication > Users or test with a new email."
+                "Supabase Auth, delete it from Authentication > Users or test with a new email.",
             ) from exc
 
-        return self._created_user_from_response(response, email_confirmed=False)
+        return self._created_user_from_response(response)
 
-    def confirm_email(self, user_id: UUID) -> CreatedAuthUser:
-        try:
-            response = self._update_auth_user(user_id, {"email_confirm": True})
-        except Exception as exc:
-            raise AppError(
-                ErrorCode.INVALID_OTP,
-                "Supabase Auth could not confirm this email.",
-            ) from exc
-
-        try:
-            return self._created_user_from_response(response, email_confirmed=True)
-        except AppError as exc:
-            raise AppError(
-                ErrorCode.INVALID_OTP,
-                "Supabase Auth returned an incomplete user response.",
-            ) from exc
-
-    def _created_user_from_response(
-        self,
-        response: Any,
-        *,
-        email_confirmed: bool,
-    ) -> CreatedAuthUser:
+    def _created_user_from_response(self, response: Any) -> CreatedAuthUser:
         user = self._read_user(response)
         user_id = self._read_value(user, "id")
         email = self._read_value(user, "email")
@@ -116,7 +94,6 @@ class SupabaseAuthClient:
         return CreatedAuthUser(
             id=UUID(str(user_id)),
             email=str(email).lower(),
-            email_confirmed=email_confirmed,
         )
 
     def sign_in(self, signin: SigninRequest) -> SupabaseAuthSession:
@@ -170,19 +147,10 @@ class SupabaseAuthClient:
 
     def delete_user(self, user_id: UUID) -> None:
         try:
-            self._delete_auth_user(user_id)
+            self._auth_admin.delete_user(str(user_id))
         except Exception:
             logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
             return
-
-    def _create_auth_user(self, attributes: dict[str, Any]) -> Any:
-        return self._service_role_client.auth.admin.create_user(attributes)
-
-    def _update_auth_user(self, user_id: UUID, attributes: dict[str, Any]) -> Any:
-        return self._service_role_client.auth.admin.update_user_by_id(str(user_id), attributes)
-
-    def _delete_auth_user(self, user_id: UUID) -> None:
-        self._service_role_client.auth.admin.delete_user(str(user_id))
 
     @staticmethod
     def _read_user(response: Any) -> Any:

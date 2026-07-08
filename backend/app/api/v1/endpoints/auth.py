@@ -15,12 +15,12 @@ router = APIRouter()
 
 
 @router.post(
-    "/signup/start",
+    "/signup",
     response_model=SignupStartResponse,
     response_model_exclude_none=True,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def start_signup(
+def signup(
     signup_data: SignupRequest, db: DbSession, auth_service: AuthServiceDep
 ) -> SignupStartResponse:
     return auth_service.start_signup(db, signup_data)

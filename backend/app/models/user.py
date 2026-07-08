@@ -3,11 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
-    JSON,
     Boolean,
     Date,
     DateTime,
@@ -55,6 +53,13 @@ class User(Base):
     gender: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     terms_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_otp_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    email_otp_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -76,43 +81,6 @@ class User(Base):
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
-    )
-
-
-class PendingSignup(Base):
-    """Temporary signup data kept until the email OTP is verified."""
-
-    __tablename__ = "pending_signups"
-
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
-    auth_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
-    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    role: Mapped[UserRole] = mapped_column(user_role_enum, nullable=False)
-    first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[str] = mapped_column(String, nullable=False)
-    phone: Mapped[str | None] = mapped_column(String, nullable=True)
-    country: Mapped[str | None] = mapped_column(String, nullable=True)
-    country_code: Mapped[str | None] = mapped_column(String, nullable=True)
-    state_province: Mapped[str | None] = mapped_column(String, nullable=True)
-    city: Mapped[str | None] = mapped_column(String, nullable=True)
-    dob: Mapped[date | None] = mapped_column(Date, nullable=True)
-    gender: Mapped[str | None] = mapped_column(String, nullable=True)
-    avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    terms_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    founder_details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    developer_details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    email_otp_hash: Mapped[str | None] = mapped_column(String, nullable=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
     )
 
 

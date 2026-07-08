@@ -1,9 +1,5 @@
 """create pending signups
 
-Pending signups are intentionally kept separate from public.users. The
-application only creates a public user/profile after the email OTP succeeds, so
-unverified or expired attempts do not appear as real users in application data.
-
 Revision ID: 20260707_0001
 Revises:
 Create Date: 2026-07-07
@@ -24,6 +20,11 @@ depends_on = None
 
 def upgrade() -> None:
     user_role = postgresql.ENUM("founder", "developer", name="user_role", create_type=False)
+
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if inspector.has_table("pending_signups"):
+        return
 
     op.create_table(
         "pending_signups",
@@ -64,5 +65,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_pending_signups_email", table_name="pending_signups")
-    op.drop_table("pending_signups")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if inspector.has_table("pending_signups"):
+        op.drop_index("ix_pending_signups_email", table_name="pending_signups")
+        op.drop_table("pending_signups")

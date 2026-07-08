@@ -7,12 +7,13 @@ class ErrorCode(StrEnum):
     AUTH_USER_MISMATCH = "auth_user_mismatch"
     DUPLICATE_EMAIL = "duplicate_email"
     EMAIL_DELIVERY = "email_delivery"
+    EMAIL_NOT_VERIFIED = "email_not_verified"
     INVALID_CREDENTIALS = "invalid_credentials"
     INVALID_OTP = "invalid_otp"
     INVALID_TOKEN = "invalid_token"
-    PENDING_SIGNUP_EXPIRED = "pending_signup_expired"
-    PENDING_SIGNUP_NOT_FOUND = "pending_signup_not_found"
     PROFILE_PERSISTENCE = "profile_persistence"
+    SIGNUP_EXPIRED = "signup_expired"
+    SIGNUP_NOT_FOUND = "signup_not_found"
 
 
 class AppError(Exception):
