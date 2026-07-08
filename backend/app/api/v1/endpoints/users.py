@@ -14,13 +14,12 @@ router = APIRouter()
 @router.get("", response_model=UserListResponse)
 def list_users(
     db: DbSession,
-    current_user: CurrentUser,
+    _: CurrentUser,
     role: SignupRole | None = Query(default=None),
     search: str | None = Query(default=None, min_length=1, max_length=100),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> UserListResponse:
-    del current_user
     users, total = users_repository.list_users(
         db,
         role=UserRole(role.value) if role else None,
@@ -37,8 +36,7 @@ def list_users(
 
 
 @router.get("/{user_id}", response_model=UserSummary)
-def get_user(user_id: UUID, db: DbSession, current_user: CurrentUser) -> UserSummary:
-    del current_user
+def get_user(user_id: UUID, db: DbSession, _: CurrentUser) -> UserSummary:
     user = users_repository.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")

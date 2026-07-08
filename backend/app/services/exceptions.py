@@ -1,38 +1,38 @@
 class SignupError(Exception):
-    """Base exception for signup failures."""
+    pass
 
 
 class AuthProviderConfigurationError(SignupError):
-    """Supabase Auth is not configured correctly."""
+    pass
 
 
 class AuthProviderError(SignupError):
-    """Supabase Auth rejected or failed the request."""
+    pass
 
 
 class DuplicateEmailError(SignupError):
-    """The email already exists in application data."""
+    pass
 
 
 class InvalidCredentialsError(SignupError):
-    """The submitted email or password is incorrect."""
+    pass
 
 
 class InvalidTokenError(SignupError):
-    """The submitted access token is invalid or expired."""
+    pass
 
 
 class AuthUserMismatchError(SignupError):
-    """The Supabase Auth user does not match the application user."""
+    pass
 
 
 class ProfilePersistenceError(SignupError):
-    """The auth user was created, but application profile data could not be saved."""
+    pass
 
 
-class SkillNotFoundError(Exception):
-    """The requested skill, tag, or domain does not exist."""
+class NotFoundError(Exception):
+    pass
 
 
-class SkillConflictError(Exception):
-    """A duplicate skill, tag, or domain name already exists."""
+class ConflictError(Exception):
+    pass

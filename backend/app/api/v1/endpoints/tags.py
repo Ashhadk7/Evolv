@@ -4,9 +4,9 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.skills import (
-    SkillCreate,
-    SkillResponse,
-    SkillUpdate,
+    TagCreate,
+    TagResponse,
+    TagUpdate,
 )
 from app.services import skills_service
 from app.services.exceptions import NotFoundError, ConflictError
@@ -14,54 +14,54 @@ from app.services.exceptions import NotFoundError, ConflictError
 router = APIRouter()
 
 
-@router.get("", response_model=list[SkillResponse])
-def list_skills(
+@router.get("", response_model=list[TagResponse])
+def list_tags(
     db: DbSession,
     _: CurrentUser,
-) -> list[SkillResponse]:
-    items = skills_service.list_skills(db)
-    return [SkillResponse.model_validate(s) for s in items]
+) -> list[TagResponse]:
+    items = skills_service.list_tags(db)
+    return [TagResponse.model_validate(t) for t in items]
 
 
-@router.post("", response_model=SkillResponse, status_code=status.HTTP_201_CREATED)
-def create_skill(
-    payload: SkillCreate,
+@router.post("", response_model=TagResponse, status_code=status.HTTP_201_CREATED)
+def create_tag(
+    payload: TagCreate,
     db: DbSession,
     _: CurrentUser,
-) -> SkillResponse:
+) -> TagResponse:
     try:
-        skill = skills_service.create_skill(db, payload)
+        tag = skills_service.create_tag(db, payload)
         db.commit()
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return SkillResponse.model_validate(skill)
+    return TagResponse.model_validate(tag)
 
 
-@router.patch("/{skill_id}", response_model=SkillResponse)
-def update_skill(
-    skill_id: int,
-    payload: SkillUpdate,
+@router.patch("/{tag_id}", response_model=TagResponse)
+def update_tag(
+    tag_id: int,
+    payload: TagUpdate,
     db: DbSession,
     _: CurrentUser,
-) -> SkillResponse:
+) -> TagResponse:
     try:
-        skill = skills_service.update_skill(db, skill_id, payload)
+        tag = skills_service.update_tag(db, tag_id, payload)
         db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return SkillResponse.model_validate(skill)
+    return TagResponse.model_validate(tag)
 
 
-@router.delete("/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_skill(
-    skill_id: int,
+@router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_tag(
+    tag_id: int,
     db: DbSession,
     _: CurrentUser,
 ) -> None:
     try:
-        skills_service.delete_skill(db, skill_id)
+        skills_service.delete_tag(db, tag_id)
         db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

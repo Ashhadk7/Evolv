@@ -4,9 +4,9 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.skills import (
-    SkillCreate,
-    SkillResponse,
-    SkillUpdate,
+    DomainCreate,
+    DomainResponse,
+    DomainUpdate,
 )
 from app.services import skills_service
 from app.services.exceptions import NotFoundError, ConflictError
@@ -14,54 +14,54 @@ from app.services.exceptions import NotFoundError, ConflictError
 router = APIRouter()
 
 
-@router.get("", response_model=list[SkillResponse])
-def list_skills(
+@router.get("", response_model=list[DomainResponse])
+def list_domains(
     db: DbSession,
     _: CurrentUser,
-) -> list[SkillResponse]:
-    items = skills_service.list_skills(db)
-    return [SkillResponse.model_validate(s) for s in items]
+) -> list[DomainResponse]:
+    items = skills_service.list_domains(db)
+    return [DomainResponse.model_validate(d) for d in items]
 
 
-@router.post("", response_model=SkillResponse, status_code=status.HTTP_201_CREATED)
-def create_skill(
-    payload: SkillCreate,
+@router.post("", response_model=DomainResponse, status_code=status.HTTP_201_CREATED)
+def create_domain(
+    payload: DomainCreate,
     db: DbSession,
     _: CurrentUser,
-) -> SkillResponse:
+) -> DomainResponse:
     try:
-        skill = skills_service.create_skill(db, payload)
+        domain = skills_service.create_domain(db, payload)
         db.commit()
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return SkillResponse.model_validate(skill)
+    return DomainResponse.model_validate(domain)
 
 
-@router.patch("/{skill_id}", response_model=SkillResponse)
-def update_skill(
-    skill_id: int,
-    payload: SkillUpdate,
+@router.patch("/{domain_id}", response_model=DomainResponse)
+def update_domain(
+    domain_id: int,
+    payload: DomainUpdate,
     db: DbSession,
     _: CurrentUser,
-) -> SkillResponse:
+) -> DomainResponse:
     try:
-        skill = skills_service.update_skill(db, skill_id, payload)
+        domain = skills_service.update_domain(db, domain_id, payload)
         db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return SkillResponse.model_validate(skill)
+    return DomainResponse.model_validate(domain)
 
 
-@router.delete("/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_skill(
-    skill_id: int,
+@router.delete("/{domain_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_domain(
+    domain_id: int,
     db: DbSession,
     _: CurrentUser,
 ) -> None:
     try:
-        skills_service.delete_skill(db, skill_id)
+        skills_service.delete_domain(db, domain_id)
         db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

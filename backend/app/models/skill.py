@@ -10,8 +10,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-# ── Enums ──────────────────────────────────────────────────────────────────────
-
 class SkillKind(str, Enum):
     SKILL = "Skill"
     TECH_STACK = "Tech stack"
@@ -42,11 +40,7 @@ skill_experience_enum = SqlEnum(
 )
 
 
-# ── Models ─────────────────────────────────────────────────────────────────────
-
 class Skill(Base):
-    """Global skill / tech-stack / framework / tool catalogue."""
-
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, autoincrement=True)
@@ -59,8 +53,6 @@ class Skill(Base):
 
 
 class UserSkill(Base):
-    """Many-to-many: user ↔ skill with kind and experience level."""
-
     __tablename__ = "user_skills"
     __table_args__ = (
         UniqueConstraint("user_id", "skill_id", "kind", name="uq_user_skill_kind"),
@@ -84,8 +76,6 @@ class UserSkill(Base):
 
 
 class Tag(Base):
-    """Global tag catalogue used for developer discovery."""
-
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, autoincrement=True)
@@ -98,8 +88,6 @@ class Tag(Base):
 
 
 class DeveloperTag(Base):
-    """Many-to-many: developer_profile ↔ tag."""
-
     __tablename__ = "developer_tags"
 
     developer_id: Mapped[UUID] = mapped_column(
@@ -117,8 +105,6 @@ class DeveloperTag(Base):
 
 
 class Domain(Base):
-    """Global domain / industry taxonomy."""
-
     __tablename__ = "domains"
 
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, autoincrement=True)
@@ -131,8 +117,6 @@ class Domain(Base):
 
 
 class FounderDomain(Base):
-    """Many-to-many: founder_profile ↔ domain."""
-
     __tablename__ = "founder_domains"
 
     founder_id: Mapped[UUID] = mapped_column(
