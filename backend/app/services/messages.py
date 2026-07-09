@@ -24,10 +24,7 @@ from app.schemas.messages import (
 
 
 def send_message(
-    db: Session,
-    *,
-    payload: SendMessageRequest,
-    current_user: User,
+    db: Session, *, payload: SendMessageRequest, current_user: User
 ) -> MessageResponse:
     recipient = users_repository.get_user_by_id(db, payload.recipient_id)
     if recipient is None:
@@ -82,25 +79,6 @@ def list_outgoing_pending(db: Session, current_user: User) -> ConversationListRe
     )
 
 
-def list_unread(db: Session, current_user: User) -> ConversationListResponse:
-    ensure_user_can_use_messaging(current_user)
-    connections = [
-        *messages_repository.list_conversations_for_user(db, current_user.id),
-        *messages_repository.list_incoming_requests(db, current_user.id),
-    ]
-    items = [
-        build_conversation_summary(db, connection, current_user)
-        for connection in connections
-        if messages_repository.count_unread_messages(
-            db,
-            connection_id=connection.id,
-            recipient_id=current_user.id,
-        )
-        > 0
-    ]
-    return ConversationListResponse(items=items)
-
-
 def list_messages(
     db: Session,
     *,
@@ -145,10 +123,7 @@ def mark_read(db: Session, *, connection_id: UUID, current_user: User) -> MarkRe
 
 
 def accept_request(
-    db: Session,
-    *,
-    connection_id: UUID,
-    current_user: User,
+    db: Session, *, connection_id: UUID, current_user: User
 ) -> RequestActionResponse:
     ensure_user_can_use_messaging(current_user)
     connection = get_participating_connection(db, connection_id, current_user.id)
@@ -181,10 +156,7 @@ def accept_request(
 
 
 def decline_request(
-    db: Session,
-    *,
-    connection_id: UUID,
-    current_user: User,
+    db: Session, *, connection_id: UUID, current_user: User
 ) -> RequestActionResponse:
     ensure_user_can_use_messaging(current_user)
     connection = get_participating_connection(db, connection_id, current_user.id)
@@ -217,9 +189,7 @@ def decline_request(
 
 
 def get_or_create_sendable_connection(
-    db: Session,
-    current_user: User,
-    recipient: User,
+    db: Session, current_user: User, recipient: User
 ) -> MessageConnection:
     connection = messages_repository.get_connection_between(db, current_user.id, recipient.id)
     if connection is None:
@@ -261,9 +231,7 @@ def get_or_create_sendable_connection(
 
 
 def get_participating_connection(
-    db: Session,
-    connection_id: UUID,
-    user_id: UUID,
+    db: Session, connection_id: UUID, user_id: UUID
 ) -> MessageConnection:
     connection = messages_repository.get_connection_by_id(db, connection_id)
     if connection is None or user_id not in {connection.requester_id, connection.addressee_id}:
@@ -279,7 +247,6 @@ def ensure_can_start_messaging(current_user: User, recipient: User) -> None:
         )
 
     ensure_user_can_use_messaging(current_user)
-    ensure_user_can_use_messaging(recipient, subject="Recipient")
 
 
 def ensure_user_can_use_messaging(user: User, *, subject: str = "User") -> None:
@@ -301,9 +268,7 @@ def ensure_user_can_use_messaging(user: User, *, subject: str = "User") -> None:
 
 
 def build_conversation_summary(
-    db: Session,
-    connection: MessageConnection,
-    current_user: User,
+    db: Session, connection: MessageConnection, current_user: User
 ) -> ConversationSummary:
     if connection.requester_id == current_user.id:
         participant = connection.addressee
@@ -326,9 +291,7 @@ def build_conversation_summary(
 
 
 def build_conversation_summaries(
-    db: Session,
-    connections: list[MessageConnection],
-    current_user: User,
+    db: Session, connections: list[MessageConnection], current_user: User
 ) -> list[ConversationSummary]:
     return [
         build_conversation_summary(db, connection, current_user)
@@ -340,7 +303,7 @@ def build_participant(user: User) -> MessageParticipant:
     profile = get_profile_for_user(user)
     return MessageParticipant(
         id=user.id,
-        role=user.role,
+        role=user.role.value,
         first_name=user.first_name,
         last_name=user.last_name,
         avatar_url=user.avatar_url,

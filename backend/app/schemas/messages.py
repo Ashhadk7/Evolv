@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -23,13 +21,6 @@ class MessageParticipant(BaseModel):
     profile_complete: bool
     phone_verified: bool
 
-    @field_validator("role", mode="before")
-    @classmethod
-    def normalize_role(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value
-
 
 class MessageResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -49,7 +40,7 @@ class ConversationSummary(BaseModel):
     id: UUID
     status: ConnectionStatus
     participant: MessageParticipant
-    last_message: MessageResponse | None = None
+    last_message: MessageResponse | None
     unread_count: int
     created_at: datetime
     updated_at: datetime

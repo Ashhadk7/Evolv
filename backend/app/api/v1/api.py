@@ -7,11 +7,11 @@ from app.api.v1.controllers import (
     founder_profiles,
     health,
     me,
+    messages,
     phone,
     skills,
     tags,
     users,
-    messages
 )
 
 api_router = APIRouter()
