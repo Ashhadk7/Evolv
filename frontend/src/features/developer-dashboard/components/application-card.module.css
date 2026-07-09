@@ -1,0 +1,125 @@
+.appItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #f5f3ef;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
+  border-radius: 0.4rem;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+  margin-left: -0.3rem;
+  margin-right: -0.3rem;
+}
+
+.appItem:last-child {
+  border-bottom: none;
+}
+
+.appItem:hover {
+  transform: translateX(4px) scale(1.02);
+  background: #faf9f7;
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.icon.health {
+  background: #eaf5f0;
+  color: #2e8b6a;
+}
+
+.icon.logistics {
+  background: #fdf3e7;
+  color: #c07830;
+}
+
+.icon.finflow {
+  background: #e8f0fd;
+  color: #2b5cc8;
+}
+
+.icon.energy {
+  background: #f3eaf5;
+  color: #7b2e8b;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: #1b1b1b;
+  line-height: 1.2;
+}
+
+.role {
+  font-size: 0.65rem;
+  color: #888;
+}
+
+.date {
+  font-size: 0.6rem;
+  color: #aaa;
+}
+
+.status {
+  font-size: 0.54rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.status.interview {
+  background: #eaf5f0;
+  color: #0d5c35;
+  border: 1px solid #8fd8be;
+}
+
+.status.pending {
+  background: #fdf3e7;
+  color: #7a5030;
+  border: 1px solid #dba870;
+}
+
+.status.accepted {
+  background: #e8f0fd;
+  color: #1b44a8;
+  border: 1px solid #7aabf0;
+}
+
+.status.declined {
+  background: #fde8e8;
+  color: #8a2020;
+  border: 1px solid #f0a0a0;
+}
+
+.chevron {
+  color: #ccc;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition:
+    transform 0.25s ease,
+    color 0.25s ease;
+}
+
+.chevron:hover {
+  color: #5bc8a0;
+  transform: translateX(3px);
+}

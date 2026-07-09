@@ -1,0 +1,77 @@
+.statCard {
+  background: #ffffff;
+  border-radius: 0.6rem;
+  padding: 1rem 1.15rem 0.85rem;
+  border: 1px solid #e6e0d7;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(13, 43, 34, 0.08);
+  border-color: #8fd8be;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.2rem;
+}
+
+.label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  font-weight: 600;
+}
+
+.trend {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  background: #eaf5f0;
+  color: #1a5c40;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.trend.down {
+  background: #fde8e8;
+  color: #8a2020;
+}
+
+.value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #1b1b1b;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
+}
+
+.sparkline {
+  width: 100%;
+  height: 36px;
+}
+
+.sparkline path {
+  fill: none;
+  stroke: #8fd8be;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparkline .area {
+  fill: rgba(143, 216, 190, 0.12);
+  stroke: none;
+}

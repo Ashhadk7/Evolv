@@ -1,6 +1,6 @@
 """Import SQLAlchemy models here so Alembic can detect them."""
 
-from app.models.messaging import ConnectionStatus, Message, MessageConnection
+from app.models.messaging import Message, MessageConnection
 from app.models.skill import (
     DeveloperTag,
     Domain,
@@ -12,6 +12,8 @@ from app.models.skill import (
     UserSkill,
 )
 from app.models.user import DeveloperProfile, Education, FounderProfile, User, UserRole
+from app.models.connection import Connection, ConnectionStatus
+from app.models.certification import Certification
 
 __all__ = [
     "ConnectionStatus",
@@ -30,4 +32,6 @@ __all__ = [
     "User",
     "UserRole",
     "UserSkill",
+    "Connection",
+    "Certification",
 ]

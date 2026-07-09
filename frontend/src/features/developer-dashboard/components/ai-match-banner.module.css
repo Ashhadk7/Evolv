@@ -1,0 +1,112 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f4fbf8;
+  border: 1px solid #c9ebd8;
+  border-radius: 12px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.5rem;
+  gap: 1.25rem;
+  box-shadow: 0 4px 18px rgba(46, 125, 92, 0.03);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.iconBadge {
+  width: 38px;
+  height: 38px;
+  background: rgba(46, 125, 92, 0.1);
+  color: #2e7d5c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.label {
+  color: #2e7d5c;
+}
+
+.badge {
+  background: #2e7d5c;
+  color: #ffffff;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.6rem;
+}
+
+.text {
+  font-size: 0.85rem;
+  color: #1a2e26;
+  line-height: 1.45;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pills {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.15rem;
+}
+
+.pill {
+  font-size: 0.68rem;
+  color: #7a9e8e;
+  background: rgba(122, 158, 142, 0.06);
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+}
+
+.pill.scorePill {
+  color: #2e7d5c;
+  background: rgba(46, 125, 92, 0.08);
+  border: 1px solid rgba(46, 125, 92, 0.15);
+  font-weight: 600;
+}
+
+/* Layout-only; visual skin comes from the shared dev-primary-button module. */
+.btn {
+  padding: 0.55rem 1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn:hover {
+  background: #1a312c;
+  transform: translateY(-1px);
+}
