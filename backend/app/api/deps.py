@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.repositories import users as users_repository
 from app.services.account_service import AccountService
 from app.services.auth_service import AuthService
@@ -61,24 +61,6 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if settings.SECRET_KEY == "change-me-in-local-development" and credentials.credentials.startswith("mock-"):
-        token_val = credentials.credentials[5:]
-        if "@" in token_val:
-            app_user = users_repository.get_user_by_email(db, token_val)
-        else:
-            from uuid import UUID
-            try:
-                app_user = users_repository.get_user_by_id(db, UUID(token_val))
-            except ValueError:
-                app_user = None
-        if app_user is None or not app_user.email_verified:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Mock user not found or not verified in database.",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return app_user
-
     try:
         auth_user = auth_client.get_user(credentials.credentials)
     except AuthProviderConfigurationError as exc:
@@ -105,9 +87,6 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
-
-
-from app.models.user import UserRole
 
 
 def get_current_developer(current_user: CurrentUser) -> User:

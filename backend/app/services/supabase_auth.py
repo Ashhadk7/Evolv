@@ -142,18 +142,6 @@ class SupabaseAuthClient:
         except SUPABASE_CLIENT_ERRORS:
             logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
 
-    
-        def update_password(self, user_id: UUID, new_password: str) -> None:
-            try:
-                self._auth_admin.update_user_by_id(str(user_id), {"password": new_password})
-            except SUPABASE_CLIENT_ERRORS as exc:
-                logger.exception("Supabase Auth failed to update password for user %s.", user_id)
-                provider_detail = getattr(exc, "message", None)
-                raise AuthProviderError(
-                    provider_detail or "Supabase Auth could not update the password."
-                ) from exc
-
-    
     def update_password(self, user_id: UUID, new_password: str) -> None:
         try:
             self._auth_admin.update_user_by_id(str(user_id), {"password": new_password})

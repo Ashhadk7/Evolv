@@ -4,7 +4,11 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import AccountServiceDep, CurrentUser, DbSession
 from app.schemas.account import ChangePasswordRequest, DeleteAccountRequest, MessageResponse
-from app.services.exceptions import AuthProviderError, InvalidCredentialsError, ProfilePersistenceError
+from app.services.exceptions import (
+    AuthProviderError,
+    InvalidCredentialsError,
+    ProfilePersistenceError,
+)
 
 router = APIRouter()
 

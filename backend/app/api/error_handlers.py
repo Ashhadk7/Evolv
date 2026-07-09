@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from app.services.exceptions import AppError, ErrorCode
+
+logger = logging.getLogger(__name__)
 
 ERROR_STATUS_BY_CODE = {
     ErrorCode.AUTH_CONFIGURATION: status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -43,4 +47,27 @@ ERROR_HEADERS_BY_CODE = {
 
 
 def register_exception_handlers(application: FastAPI) -> None:
-    del application
+    @application.exception_handler(AppError)
+    async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
+        status_code = ERROR_STATUS_BY_CODE.get(exc.code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        detail = SAFE_DETAIL_BY_CODE.get(exc.code, exc.message)
+        if status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
+            logger.exception(
+                "Application error on %s %s", request.method, request.url.path
+            )
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": detail, "code": exc.code.value},
+            headers=ERROR_HEADERS_BY_CODE.get(exc.code),
+        )
+
+    @application.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "detail": "An unexpected server error occurred.",
+                "code": "internal_error",
+            },
+        )
