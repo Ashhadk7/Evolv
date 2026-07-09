@@ -8,29 +8,35 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
 import { Logo } from "./logo";
 import { InputField } from "./input-field";
+import { ApiRequestError, getApiErrorMessage, signin } from "../lib/auth-api";
+import {
+  authSessionFromSignin,
+  getRoleSafeRedirect,
+  persistSignedInUserLocally,
+  savePendingEmailAuth,
+  storeAuthSession,
+} from "../lib/auth-session";
 
 const BRAND_INK = "#0f1c18";
 const BRAND_MID = "#428475";
 const BRAND_MINT = "#89d7b7";
 
-interface StoredUser {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  role: "founder" | "developer";
-  profile?: Record<string, unknown>;
-}
-
-export function SignInForm() {
+export function SignInForm({
+  verifiedEmail = "",
+  nextPath = "",
+}: {
+  verifiedEmail?: string;
+  nextPath?: string;
+}) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(verifiedEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -45,89 +51,26 @@ export function SignInForm() {
       return;
     }
 
-    if (
-      email.toLowerCase() === "sarah@evolv.dev" ||
-      email.toLowerCase() === "sarah.mitchell@evolv.dev"
-    ) {
-      localStorage.setItem(
-        "evolv_user",
-        JSON.stringify({
-          firstName: "Sarah",
-          lastName: "Mitchell",
-          email: email.toLowerCase(),
-          profileComplete: false,
-          firstTime: false,
-        })
-      );
-      router.push("/developer/dashboard");
-      return;
-    }
-    if (email.toLowerCase() === "asad@evolv.dev") {
-      localStorage.setItem(
-        "evolv_founder_profile",
-        JSON.stringify({
-          firstName: "Asad",
-          lastName: "",
-          email: email.toLowerCase(),
-          bio: "",
-          domains: [],
-          linkedin: "",
-          dob: "",
-          gender: "",
-          phone: "",
-          education: "",
-          description: "",
-        })
-      );
-      router.push("/founder/dashboard");
-      return;
-    }
-
+    setLoading(true);
     try {
-      const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredUser[];
-      const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (!user) {
-        setError("Account not found. Please sign up.");
+      const response = await signin({ email: email.trim().toLowerCase(), password });
+      const session = authSessionFromSignin(response);
+      storeAuthSession(session, { remember: rememberMe });
+      persistSignedInUserLocally(session);
+      router.push(getRoleSafeRedirect(session.role, nextPath));
+    } catch (signinError) {
+      if (
+        signinError instanceof ApiRequestError &&
+        signinError.status === 403 &&
+        signinError.message.toLowerCase().includes("verification")
+      ) {
+        savePendingEmailAuth(email.trim().toLowerCase(), password);
+        router.push(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
         return;
       }
-      if (user.password !== password) {
-        setError("Incorrect password.");
-        return;
-      }
-
-      if (user.role === "founder") {
-        localStorage.setItem(
-          "evolv_founder_profile",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            bio: "",
-            domains: [],
-            linkedin: "",
-            dob: "",
-            gender: "",
-            phone: "",
-            education: "",
-            description: "",
-            ...(user.profile ?? {}),
-          })
-        );
-        router.push("/founder/dashboard");
-      } else {
-        localStorage.setItem(
-          "evolv_user",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            ...(user.profile ?? {}),
-          })
-        );
-        router.push("/developer/dashboard");
-      }
-    } catch {
-      setError("An error occurred during sign in.");
+      setError(getApiErrorMessage(signinError));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -167,6 +110,16 @@ export function SignInForm() {
         </div>
 
         <form onSubmit={handleSignIn} className="flex flex-col gap-4">
+          {verifiedEmail && !error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border border-emerald-100 bg-emerald-50 px-3.5 py-3 text-[12.5px] font-medium text-emerald-700"
+            >
+              Email verified. Sign in to continue.
+            </motion.div>
+          )}
+
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
@@ -249,15 +202,18 @@ export function SignInForm() {
             whileHover={{ scale: 1.012 }}
             whileTap={{ scale: 0.988 }}
             type="submit"
+            disabled={loading}
+            aria-busy={loading}
             className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13.5px] font-semibold transition-all"
             style={{
               background: BRAND_INK,
               color: BRAND_MINT,
+              opacity: loading ? 0.72 : 1,
               boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
             }}
           >
-            Sign in
-            <ArrowRight size={14} weight="bold" />
+            {loading ? "Signing in..." : "Sign in"}
+            {!loading && <ArrowRight size={14} weight="bold" />}
           </motion.button>
 
           <div className="flex items-center gap-3">

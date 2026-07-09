@@ -1,6 +1,8 @@
 "use client";
 
 import type { PasswordData } from "./developer-settings-types";
+import type { PhoneVerificationStatus } from "@/features/auth/lib/phone-verification";
+import { PhoneVerificationCard } from "@/features/settings/components/phone-verification-card";
 import styles from "./developer-settings.module.css";
 
 export function SecurityTab({
@@ -8,11 +10,17 @@ export function SecurityTab({
   onChangePasswordData,
   pwSaved,
   onSave,
+  phone,
+  phoneVerified,
+  onPhoneStatusChange,
 }: {
   passwordData: PasswordData;
   onChangePasswordData: (patch: Partial<PasswordData>) => void;
   pwSaved: boolean;
   onSave: () => void;
+  phone?: string;
+  phoneVerified?: boolean;
+  onPhoneStatusChange: (status: PhoneVerificationStatus) => void;
 }) {
   return (
     <div className={styles.card}>
@@ -20,6 +28,13 @@ export function SecurityTab({
         <span>
           <i className="fas fa-lock" /> Security Settings
         </span>
+      </div>
+      <div style={{ padding: "0 1.2rem" }}>
+        <PhoneVerificationCard
+          initialPhone={phone}
+          initialPhoneVerified={Boolean(phoneVerified)}
+          onStatusChange={onPhoneStatusChange}
+        />
       </div>
       <div className={styles.formGrid}>
         <div className={`${styles.formGroup} ${styles.formGroupFull}`}>

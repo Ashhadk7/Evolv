@@ -4,11 +4,17 @@
 // and every developer page. Mirror of use-founder-navigation.
 import { useRouter } from "next/navigation";
 import {
-  isDeveloperProfileComplete,
+  getMissingDeveloperProfileFields,
+  normalizeDeveloperProfileForSave,
   type DeveloperProfile,
 } from "@/features/developer-dashboard/profile-utils";
+import { PHONE_VERIFICATION_LABEL } from "@/features/auth/lib/phone-verification";
 import type { DeveloperNetworkMessageTarget } from "@/features/network/types";
 import { useDeveloperDashboardStore } from "./store";
+
+function onlyPhoneVerificationMissing(missing: string[]) {
+  return missing.length === 1 && missing[0] === PHONE_VERIFICATION_LABEL;
+}
 
 export function useDeveloperNavigation() {
   const router = useRouter();
@@ -21,9 +27,12 @@ export function useDeveloperNavigation() {
 
   const handleOpenProfile = () => {
     const s = useDeveloperDashboardStore.getState();
+    const missing = getMissingDeveloperProfileFields(s.profile);
     s.setShowOnboarding(false);
     s.setProfilePromptDismissed(true);
-    go("settings");
+    router.push(
+      onlyPhoneVerificationMissing(missing) ? "/developer/settings?tab=security" : "/developer/settings"
+    );
   };
 
   const handleOpenNetworkMessage = (contact: DeveloperNetworkMessageTarget) => {
@@ -33,23 +42,36 @@ export function useDeveloperNavigation() {
 
   const requireDeveloperProfile = (afterComplete?: () => void) => {
     const s = useDeveloperDashboardStore.getState();
-    if (isDeveloperProfileComplete(s.profile)) {
+    const missing = getMissingDeveloperProfileFields(s.profile);
+    if (!missing.length) {
       afterComplete?.();
       return;
     }
     s.setPendingProtectedAction(afterComplete ?? null);
     s.setProfilePromptDismissed(true);
+    if (onlyPhoneVerificationMissing(missing)) {
+      s.setShowOnboarding(false);
+      router.push("/developer/settings?tab=security");
+      return;
+    }
     s.setShowOnboarding(true);
   };
 
   const handleOnboardingComplete = (updatedProfile?: DeveloperProfile) => {
     const s = useDeveloperDashboardStore.getState();
     const pendingAction = s.pendingProtectedAction;
-    s.completeProfile(updatedProfile);
+    const nextProfile = normalizeDeveloperProfileForSave(updatedProfile ?? s.profile);
+    const missing = getMissingDeveloperProfileFields(nextProfile);
+    s.completeProfile(nextProfile);
     s.setShowOnboarding(false);
     s.setProfilePromptDismissed(true);
     s.setPendingProtectedAction(null);
-    if (pendingAction) window.setTimeout(pendingAction, 0);
+    if (!missing.length && pendingAction) {
+      window.setTimeout(pendingAction, 0);
+    } else if (pendingAction && onlyPhoneVerificationMissing(missing)) {
+      s.setPendingProtectedAction(pendingAction);
+      router.push("/developer/settings?tab=security");
+    }
   };
 
   const handleOnboardingSkip = () => {

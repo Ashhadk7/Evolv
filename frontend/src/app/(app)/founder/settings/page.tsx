@@ -4,8 +4,14 @@ import { SettingsTab } from "@/features/settings/components/founder-settings-tab
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 
 export default function FounderSettingsPage() {
-  const { profile, settingsSection, settingsEditSignal, saveProfile, setSettingsSection } =
-    useFounderDashboardStore();
+  const {
+    profile,
+    settingsSection,
+    settingsEditSignal,
+    saveProfile,
+    setSettingsSection,
+    setPhoneVerificationStatus,
+  } = useFounderDashboardStore();
 
   return (
     <SettingsTab
@@ -13,6 +19,7 @@ export default function FounderSettingsPage() {
       onProfileSave={saveProfile}
       section={settingsSection}
       onSectionChange={setSettingsSection}
+      onPhoneStatusChange={setPhoneVerificationStatus}
       editSignal={settingsEditSignal}
     />
   );

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ClientIcon as Icon } from "@/components/ui/client-icon";
 import { Logo } from "@/features/auth/components/logo";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
+import { clearAuthSession } from "@/features/auth/lib/auth-session";
 import type { AppNotif } from "@/features/notifications/types";
 import type { BadgeKey, NavSection } from "@/config/navigation";
 
@@ -125,6 +126,7 @@ export function DashboardSidebar({
       return;
     }
     try {
+      clearAuthSession();
       localStorage.removeItem("evolv_developer_profile");
       localStorage.removeItem("evolv_user");
     } catch {

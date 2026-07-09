@@ -11,6 +11,7 @@ export interface FounderProfile {
   dob: string;
   gender: string;
   phone: string;
+  phoneVerified?: boolean;
   education: string;
   educationLevel?: string;
   degreeName?: string;

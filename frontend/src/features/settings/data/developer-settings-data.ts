@@ -30,6 +30,8 @@ export type DeveloperSettingsProfile = DeveloperProfile & {
   educations: DeveloperEducation[];
   certifications: DeveloperCertification[];
   portfolioLink: string;
+  phone: string;
+  phoneVerified: boolean;
 };
 
 export const PROFILE_TAGS = [
@@ -71,6 +73,8 @@ export const defaultProfile: DeveloperSettingsProfile = {
   github: "",
   linkedin: "",
   portfolioLink: "",
+  phone: "",
+  phoneVerified: false,
   certifications: [],
   rating: 5,
   reviews: [

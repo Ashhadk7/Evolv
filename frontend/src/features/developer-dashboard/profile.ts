@@ -21,6 +21,8 @@ export const DEFAULT_DEVELOPER_PROFILE: DeveloperProfile = {
   github: "",
   linkedin: "",
   portfolioLink: "",
+  phone: "",
+  phoneVerified: false,
   certifications: [],
   profileComplete: false,
   firstTime: false,

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ElementType } from "react";
+import { useCallback, useState, type ElementType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { User, Bell, CreditCard, LockKey, WarningCircle, ArrowLeft } from "@phosphor-icons/react";
 import type { FounderProfile } from "@/features/founder-dashboard/types";
+import type { PhoneVerificationStatus } from "@/features/auth/lib/phone-verification";
 import { Logo } from "@/features/auth/components/logo";
 import { useRouter } from "next/navigation";
 import {
@@ -26,6 +27,7 @@ interface Props {
   onProfileSave: (p: FounderProfile) => void;
   section?: SettingsSection;
   onSectionChange?: (section: SettingsSection) => void;
+  onPhoneStatusChange?: (status: PhoneVerificationStatus) => void;
   editSignal?: number;
 }
 
@@ -34,12 +36,27 @@ export function SettingsTab({
   onProfileSave,
   section,
   onSectionChange,
+  onPhoneStatusChange,
   editSignal = 0,
 }: Props) {
   const [localSection, setLocalSection] = useState<SettingsSection>("profile");
   const activeSection = section ?? localSection;
   const setSection = onSectionChange ?? setLocalSection;
   const router = useRouter();
+  const handlePhoneStatusChange = useCallback(
+    (status: PhoneVerificationStatus) => {
+      if (onPhoneStatusChange) {
+        onPhoneStatusChange(status);
+        return;
+      }
+      onProfileSave({
+        ...profile,
+        phone: status.phone ?? profile.phone,
+        phoneVerified: status.phoneVerified,
+      });
+    },
+    [onPhoneStatusChange, onProfileSave, profile]
+  );
 
   const NAV: { id: SettingsSection; label: string; Icon: ElementType }[] = [
     { id: "profile", label: "Profile", Icon: User },
@@ -195,7 +212,10 @@ export function SettingsTab({
               ) : activeSection === "payment" ? (
                 <PaymentSection profile={profile} onSave={onProfileSave} />
               ) : activeSection === "security" ? (
-                <SecuritySection />
+                <SecuritySection
+                  profile={profile}
+                  onPhoneStatusChange={handlePhoneStatusChange}
+                />
               ) : (
                 <NotificationsSection />
               )}

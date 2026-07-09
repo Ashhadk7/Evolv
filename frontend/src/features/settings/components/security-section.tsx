@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import { Check, LockKey, ShieldCheck } from "@phosphor-icons/react";
+import type { FounderProfile } from "@/features/founder-dashboard/types";
+import type { PhoneVerificationStatus } from "@/features/auth/lib/phone-verification";
 import { MID, TEXT_BODY, TEXT_MUTED } from "@/features/settings/lib/settings-theme";
+import { PhoneVerificationCard } from "./phone-verification-card";
 import { Field } from "./field";
 
-export function SecuritySection() {
+export function SecuritySection({
+  profile,
+  onPhoneStatusChange,
+}: {
+  profile: FounderProfile;
+  onPhoneStatusChange: (status: PhoneVerificationStatus) => void;
+}) {
   const [saved, setSaved] = useState(false);
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
 
@@ -31,6 +40,12 @@ export function SecuritySection() {
             Security Settings
           </h4>
         </div>
+
+        <PhoneVerificationCard
+          initialPhone={profile.phone}
+          initialPhoneVerified={Boolean(profile.phoneVerified)}
+          onStatusChange={onPhoneStatusChange}
+        />
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
