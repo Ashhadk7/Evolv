@@ -10,7 +10,6 @@ from app.db.session import get_db
 from app.models.user import User
 from app.repositories import users as users_repository
 from app.services.auth_service import AuthService
-from app.services.blueprint_service import BlueprintService
 from app.services.email_sender import SmtpEmailSender
 from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.supabase_auth import SupabaseAuthClient
@@ -40,13 +39,6 @@ def get_auth_service(
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
-
-
-def get_blueprint_service() -> BlueprintService:
-    return BlueprintService()
-
-
-BlueprintServiceDep = Annotated[BlueprintService, Depends(get_blueprint_service)]
 
 
 def get_current_user(

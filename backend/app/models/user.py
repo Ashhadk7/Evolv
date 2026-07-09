@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.application import Application, SavedBlueprint
     from app.models.blueprint import Blueprint
 
 
@@ -134,6 +135,14 @@ class DeveloperProfile(Base):
     profile_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped[User] = relationship(back_populates="developer_profile")
+    applications: Mapped[list[Application]] = relationship(
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
+    saved_blueprints: Mapped[list[SavedBlueprint]] = relationship(
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
 
 
 class Education(Base):

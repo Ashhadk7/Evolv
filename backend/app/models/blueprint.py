@@ -100,6 +100,14 @@ class Blueprint(Base):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def current_version(self) -> BlueprintVersion | None:
+        return next((v for v in self.versions if v.state == VersionState.CURRENT), None)
+
+    @property
+    def pending_version(self) -> BlueprintVersion | None:
+        return next((v for v in self.versions if v.state == VersionState.PENDING), None)
+
 
 class BlueprintVersion(Base):
     __tablename__ = "blueprint_versions"

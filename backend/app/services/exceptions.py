@@ -20,6 +20,13 @@ class ErrorCode(str, Enum):
     BLUEPRINT_VERSION_NOT_FOUND = "blueprint_version_not_found"
     FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
     NO_PENDING_VERSION = "no_pending_version"
+    DEVELOPER_PROFILE_REQUIRED = "developer_profile_required"
+    ALREADY_APPLIED = "already_applied"
+    ALREADY_SAVED = "already_saved"
+    APPLICATION_NOT_FOUND = "application_not_found"
+    SAVED_BLUEPRINT_NOT_FOUND = "saved_blueprint_not_found"
+    APPLICATION_ACCESS_DENIED = "application_access_denied"
+    APPLICATION_PERSISTENCE = "application_persistence"
 
 
 class AppError(Exception):
@@ -117,6 +124,57 @@ class NoPendingVersionError(AppError):
 
     def __init__(self, message: str = "There is no pending version to promote.") -> None:
         super().__init__(ErrorCode.NO_PENDING_VERSION, message)
+
+
+class DeveloperProfileRequiredError(AppError):
+    """Only users with a developer profile can apply to or save blueprints."""
+
+    def __init__(
+        self, message: str = "Only developers with a developer profile can do this."
+    ) -> None:
+        super().__init__(ErrorCode.DEVELOPER_PROFILE_REQUIRED, message)
+
+
+class AlreadyAppliedError(AppError):
+    """The developer has already applied to this blueprint."""
+
+    def __init__(self, message: str = "You have already applied to this blueprint.") -> None:
+        super().__init__(ErrorCode.ALREADY_APPLIED, message)
+
+
+class AlreadySavedError(AppError):
+    """The developer has already saved this blueprint."""
+
+    def __init__(self, message: str = "You have already saved this blueprint.") -> None:
+        super().__init__(ErrorCode.ALREADY_SAVED, message)
+
+
+class ApplicationNotFoundError(AppError):
+    """The requested application does not exist."""
+
+    def __init__(self, message: str = "Application not found.") -> None:
+        super().__init__(ErrorCode.APPLICATION_NOT_FOUND, message)
+
+
+class SavedBlueprintNotFoundError(AppError):
+    """The requested saved blueprint does not exist."""
+
+    def __init__(self, message: str = "This blueprint is not in your saved list.") -> None:
+        super().__init__(ErrorCode.SAVED_BLUEPRINT_NOT_FOUND, message)
+
+
+class ApplicationAccessDeniedError(AppError):
+    """The current user is not allowed to view or modify this application."""
+
+    def __init__(self, message: str = "You do not have access to this application.") -> None:
+        super().__init__(ErrorCode.APPLICATION_ACCESS_DENIED, message)
+
+
+class ApplicationPersistenceError(AppError):
+    """Application data could not be saved due to a database error."""
+
+    def __init__(self, message: str = "Application data could not be saved.") -> None:
+        super().__init__(ErrorCode.APPLICATION_PERSISTENCE, message)
 
 
 class NotFoundError(Exception):

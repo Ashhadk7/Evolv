@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.schemas.applications import SavedBlueprintResponse
 from app.schemas.skills import (
     DeveloperTagCreate,
     DeveloperTagResponse,
@@ -11,7 +12,7 @@ from app.schemas.skills import (
     UserSkillCreate,
     UserSkillResponse,
 )
-from app.services import skills_service
+from app.services import application_service, skills_service
 from app.services.exceptions import NotFoundError, ConflictError
 
 router = APIRouter()
@@ -124,3 +125,16 @@ def remove_my_domain(
         db.commit()
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/saved-blueprints", response_model=list[SavedBlueprintResponse])
+def list_my_saved_blueprints(
+    db: DbSession,
+    current_user: CurrentUser,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> list[SavedBlueprintResponse]:
+    saved, _total = application_service.list_saved_blueprints(
+        db, current_user, limit=limit, offset=offset
+    )
+    return [SavedBlueprintResponse.model_validate(s) for s in saved]

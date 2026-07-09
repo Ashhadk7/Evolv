@@ -86,7 +86,7 @@ class BlueprintUpdate(BaseModel):
 
 
 class BlueprintResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: UUID
     founder_id: UUID
