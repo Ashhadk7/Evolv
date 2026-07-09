@@ -12,6 +12,22 @@ class SignupRole(StrEnum):
     FOUNDER = "founder"
     DEVELOPER = "developer"
 
+def password_strength_validator(value: SecretStr) -> SecretStr:
+    password = value.get_secret_value()
+    missing_requirements: list[str] = []
+
+    if not any(character.islower() for character in password):
+        missing_requirements.append("a lowercase letter")
+    if not any(character.isupper() for character in password):
+        missing_requirements.append("an uppercase letter")
+    if not any(character.isdigit() for character in password):
+        missing_requirements.append("a number")
+
+    if missing_requirements:
+        raise ValueError(f"Password must include {', '.join(missing_requirements)}.")
+
+    return value
+
 
 class SignupRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -60,14 +76,7 @@ class SignupRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, value: SecretStr) -> SecretStr:
-        password = value.get_secret_value()
-        has_lower = any(character.islower() for character in password)
-        has_upper = any(character.isupper() for character in password)
-        has_digit = any(character.isdigit() for character in password)
-
-        if not (has_lower and has_upper and has_digit):
-            raise ValueError("Password must include uppercase, lowercase, and number characters.")
-        return value
+        return password_strength_validator(value)
 
     @field_validator("terms_accepted")
     @classmethod
@@ -135,3 +144,30 @@ class SigninResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     expires_at: int
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: str
+    debug_otp: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr
+    otp: str = Field(pattern=r"^\d{6}$")
+    new_password: SecretStr = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: SecretStr) -> SecretStr:
+        return password_strength_validator(value)
+
+
+class ResetPasswordResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: str

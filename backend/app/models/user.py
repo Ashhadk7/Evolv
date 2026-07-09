@@ -56,6 +56,8 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     email_otp_hash: Mapped[str | None] = mapped_column(String)
     email_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    password_reset_otp_hash: Mapped[str | None] = mapped_column(String)
+    password_reset_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     phone: Mapped[str | None] = mapped_column(String)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     country: Mapped[str | None] = mapped_column(String)

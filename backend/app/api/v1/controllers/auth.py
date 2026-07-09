@@ -2,6 +2,10 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import AuthServiceDep, DbSession
 from app.schemas.auth import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     SigninRequest,
     SigninResponse,
     SignupRequest,
@@ -121,3 +125,39 @@ def signin(
         ) from exc
     except AuthProviderError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def forgot_password(
+    forgot_request: ForgotPasswordRequest, db: DbSession, auth_service: AuthServiceDep
+) -> ForgotPasswordResponse:
+    try:
+        return auth_service.forgot_password(db, forgot_request)
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except ProfilePersistenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password reset code could not be saved.",
+        ) from exc
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password(
+    reset_request: ResetPasswordRequest, db: DbSession, auth_service: AuthServiceDep
+) -> ResetPasswordResponse:
+    try:
+        return auth_service.reset_password(db, reset_request)
+    except EmailOtpError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except AuthProviderError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except ProfilePersistenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password reset could not be completed.",
+        ) from exc
