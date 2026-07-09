@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -12,6 +13,10 @@ from app.core.config import settings
 from app.models.user import User
 from app.repositories import users as users_repository
 from app.schemas.auth import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     SigninRequest,
     SigninResponse,
     SignupRequest,
@@ -32,6 +37,7 @@ from app.services.exceptions import (
 )
 from app.services.supabase_auth import SupabaseAuthClient
 
+logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self, auth_client: SupabaseAuthClient, email_sender: SmtpEmailSender) -> None:
@@ -175,6 +181,80 @@ class AuthService:
             token_type=auth_session.token_type,
             expires_in=auth_session.expires_in,
             expires_at=auth_session.expires_at,
+        )
+    def forgot_password(
+        self, db: Session, forgot_request: ForgotPasswordRequest
+    ) -> ForgotPasswordResponse:
+        app_user = users_repository.get_user_by_email(db, str(forgot_request.email))
+        generic_message = "If an account exists for this email, a reset code has been sent."
+
+        if app_user is None or not app_user.email_verified:
+            return ForgotPasswordResponse(message=generic_message)
+
+        otp_code = self._generate_otp()
+        expires_at = datetime.now(UTC) + timedelta(minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES)
+
+        try:
+            users_repository.set_password_reset_otp(
+                app_user,
+                otp_hash=self._hash_otp(app_user.email, otp_code),
+                expires_at=expires_at,
+            )
+            db.flush()
+            self._email_sender.send_password_reset_otp(
+                email=app_user.email,
+                otp_code=otp_code,
+                expires_minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES,
+            )
+            db.commit()
+        except SQLAlchemyError as exc:
+            db.rollback()
+            logger.exception(
+                "Database error while saving password reset OTP for %s.", app_user.email
+            )
+            raise ProfilePersistenceError("Password reset code could not be saved.") from exc
+        except EmailDeliveryError:
+            db.rollback()
+            logger.exception(
+                "Email delivery failed while sending password reset OTP to %s.", app_user.email
+            )
+            raise
+
+        return ForgotPasswordResponse(message=generic_message, debug_otp=self._debug_otp(otp_code))
+
+    def reset_password(
+        self, db: Session, reset_request: ResetPasswordRequest
+    ) -> ResetPasswordResponse:
+        app_user = users_repository.get_user_by_email(db, str(reset_request.email))
+        if app_user is None or app_user.password_reset_otp_expires_at is None:
+            raise EmailOtpError("No password reset is in progress for this email.")
+
+        if self._as_aware_utc(app_user.password_reset_otp_expires_at) <= datetime.now(UTC):
+            raise EmailOtpError("This reset code expired. Request a new code.")
+
+        if not self._otp_matches(
+            app_user.email, reset_request.otp, app_user.password_reset_otp_hash
+        ):
+            raise EmailOtpError("Invalid password reset code.")
+
+        self._auth_client.update_password(
+            app_user.id, reset_request.new_password.get_secret_value()
+        )
+
+        try:
+            users_repository.clear_password_reset_otp(app_user)
+            db.commit()
+        except SQLAlchemyError as exc:
+            db.rollback()
+            logger.exception(
+                "Password was reset for %s but clearing the reset code failed.", app_user.email
+            )
+            raise ProfilePersistenceError(
+                "Password was reset, but the reset code could not be cleared."
+            ) from exc
+
+        return ResetPasswordResponse(
+            message="Password has been reset. You can sign in with your new password."
         )
 
     @staticmethod

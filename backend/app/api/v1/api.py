@@ -1,7 +1,11 @@
 from fastapi import APIRouter
 
 from app.api.v1.controllers import (
+<<<<<<< HEAD
     applications,
+=======
+    account,
+>>>>>>> feat/account-settings-security
     auth,
     blueprints,
     connections,
@@ -18,6 +22,7 @@ from app.api.v1.controllers import (
 )
 
 api_router = APIRouter()
+api_router.include_router(account.router, prefix="/me", tags=["account"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(
     founder_profiles.router, prefix="/founder-profile", tags=["founder-profile"]
