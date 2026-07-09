@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientIcon as Icon } from "./ui/ClientIcon";
+import { Logo } from "../auth/Logo";
 import {
   INITIAL_NOTIFS,
   SECTIONS,
@@ -138,21 +139,8 @@ export function Sidebar({
         }}
       >
         {/* Brand */}
-        <div className="flex items-center gap-3 px-6 pt-7 pb-6">
-          <Image
-            src="/evolv-logo-transparent.png"
-            alt=""
-            aria-hidden="true"
-            width={36}
-            height={28}
-            className="h-7 w-9 shrink-0 object-contain"
-          />
-          <span
-            className="font-bold tracking-tight"
-            style={{ fontSize: 18, color: TEXT_ON, letterSpacing: "-0.02em" }}
-          >
-            Ev<span style={{ color: ACCENT }}>olv</span>
-          </span>
+        <div className="flex items-center px-6 pt-7 pb-6">
+          <Logo dark />
         </div>
 
         {/* Divider */}
