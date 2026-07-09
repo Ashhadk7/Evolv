@@ -5,9 +5,13 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from gotrue.errors import AuthApiError
 from httpx import HTTPError
 from supabase import Client, create_client
+
+try:
+    from gotrue.errors import AuthApiError
+except ModuleNotFoundError:
+    from supabase_auth.errors import AuthApiError
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
