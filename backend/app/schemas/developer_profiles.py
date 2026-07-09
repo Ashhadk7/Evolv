@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.educations import EducationCreate, EducationResponse
+from app.schemas.certifications import CertificationCreate, CertificationResponse
 
 
 class DeveloperProfileBase(BaseModel):
@@ -24,6 +25,7 @@ class DeveloperProfileBase(BaseModel):
 
 class DeveloperProfileCreate(DeveloperProfileBase):
     educations: list[EducationCreate] = Field(default_factory=list, max_length=20)
+    certifications: list[CertificationCreate] = Field(default_factory=list, max_length=20)
 
 
 class DeveloperProfileUpdate(BaseModel):
@@ -40,6 +42,7 @@ class DeveloperProfileUpdate(BaseModel):
     portfolio_link: str | None = Field(None, max_length=255)
     profile_complete: bool | None = None
     educations: list[EducationCreate] | None = Field(None, max_length=20)
+    certifications: list[CertificationCreate] | None = Field(None, max_length=20)
 
 
 class DeveloperProfileResponse(DeveloperProfileBase):
@@ -48,3 +51,4 @@ class DeveloperProfileResponse(DeveloperProfileBase):
     user_id: UUID
     rating_avg: float
     educations: list[EducationResponse] = Field(default_factory=list)
+    certifications: list[CertificationResponse] = Field(default_factory=list)
