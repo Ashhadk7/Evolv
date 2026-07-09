@@ -4,7 +4,12 @@
 // every founder page. Each handler composes a store action with router navigation.
 // Reads use `getState()` so this hook does not subscribe/re-render on store changes.
 import { useRouter } from "next/navigation";
-import { isFounderProfileComplete } from "@/features/founder-dashboard/profile-utils";
+import {
+  getMissingFounderProfileFields,
+  normalizeFounderProfileForSave,
+} from "@/features/founder-dashboard/profile-utils";
+import { clearAuthSession } from "@/features/auth/lib/auth-session";
+import { PHONE_VERIFICATION_LABEL } from "@/features/auth/lib/phone-verification";
 import type { FounderProfile } from "./types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
 import { useFounderDashboardStore } from "./store";
@@ -15,6 +20,10 @@ function cleanupSetupParam() {
   const url = new URL(window.location.href);
   url.searchParams.delete("setup");
   window.history.replaceState({}, "", url.toString());
+}
+
+function onlyPhoneVerificationMissing(missing: string[]) {
+  return missing.length === 1 && missing[0] === PHONE_VERIFICATION_LABEL;
 }
 
 export function useFounderNavigation() {
@@ -40,7 +49,8 @@ export function useFounderNavigation() {
 
   const handleOpenProfile = () => {
     const s = useFounderDashboardStore.getState();
-    s.setSettingsSection("profile");
+    const missing = getMissingFounderProfileFields(s.profile);
+    s.setSettingsSection(onlyPhoneVerificationMissing(missing) ? "security" : "profile");
     s.setShowOnboarding(false);
     s.setPendingProtectedTab(null);
     s.setProfilePromptDismissed(true);
@@ -58,26 +68,39 @@ export function useFounderNavigation() {
 
   const requireFounderProfile = (afterComplete?: () => void) => {
     const s = useFounderDashboardStore.getState();
-    if (isFounderProfileComplete(s.profile)) {
+    const missing = getMissingFounderProfileFields(s.profile);
+    if (!missing.length) {
       afterComplete?.();
       return;
     }
     s.setPendingProtectedAction(afterComplete ?? null);
     s.setPendingProtectedTab(null);
     s.setProfilePromptDismissed(true);
+    if (onlyPhoneVerificationMissing(missing)) {
+      s.setSettingsSection("security");
+      s.setShowOnboarding(false);
+      go("settings");
+      return;
+    }
     s.setShowOnboarding(true);
   };
 
   const handleOnboardingComplete = (p: FounderProfile) => {
     const s = useFounderDashboardStore.getState();
     const pendingAction = s.pendingProtectedAction;
+    const nextProfile = normalizeFounderProfileForSave(p) as FounderProfile;
+    const missing = getMissingFounderProfileFields(nextProfile);
     s.setPendingProtectedAction(null);
-    s.saveProfile(p);
+    s.saveProfile(nextProfile);
     s.setShowOnboarding(false);
     s.setProfilePromptDismissed(true);
-    if (pendingAction) {
+    if (!missing.length && pendingAction) {
       window.setTimeout(pendingAction, 0);
       s.setPendingProtectedTab(null);
+    } else if (pendingAction && onlyPhoneVerificationMissing(missing)) {
+      s.setPendingProtectedAction(pendingAction);
+      s.setSettingsSection("security");
+      go("settings");
     } else if (s.pendingProtectedTab) {
       go(s.pendingProtectedTab);
       s.setPendingProtectedTab(null);
@@ -96,6 +119,7 @@ export function useFounderNavigation() {
 
   const handleLogout = () => {
     try {
+      clearAuthSession();
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_BLUEPRINTS);
     } catch {

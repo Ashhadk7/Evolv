@@ -7,6 +7,13 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
 import { DevOnboardingModal } from "@/features/onboarding/components/developer-onboarding-modal";
 import { developerNav } from "@/config/navigation";
+import { getPhoneStatus } from "@/features/auth/lib/auth-api";
+import { getStoredAuthSession } from "@/features/auth/lib/auth-session";
+import {
+  PHONE_VERIFICATION_LABEL,
+  toPhoneVerificationStatus,
+} from "@/features/auth/lib/phone-verification";
+import { useRequireAuth } from "@/features/auth/hooks/use-require-auth";
 import { developerNotifs } from "@/features/notifications/data";
 import {
   getMissingDeveloperProfileFields,
@@ -17,6 +24,7 @@ import { useDeveloperNavigation } from "@/features/developer-dashboard/use-devel
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const authorized = useRequireAuth("developer");
   const activeId = pathname.split("/")[2] || "dashboard";
   const isSettings = pathname === "/developer/settings";
 
@@ -27,17 +35,26 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     showOnboarding,
     profilePromptDismissed,
     loadData,
+    setPhoneVerificationStatus,
     setProfilePromptDismissed,
   } = useDeveloperDashboardStore();
   const nav = useDeveloperNavigation();
 
   useEffect(() => {
-    const loadTimer = window.setTimeout(() => loadData(), 0);
+    if (!authorized) return;
+    const loadTimer = window.setTimeout(() => {
+      loadData();
+      syncPhoneStatus(setPhoneVerificationStatus);
+    }, 0);
     return () => window.clearTimeout(loadTimer);
-  }, [loadData]);
+  }, [authorized, loadData, setPhoneVerificationStatus]);
 
   const profileComplete = isDeveloperProfileComplete(profile);
   const missingProfileFields = getMissingDeveloperProfileFields(profile);
+  const onlyPhoneMissing =
+    missingProfileFields.length === 1 && missingProfileFields[0] === PHONE_VERIFICATION_LABEL;
+
+  if (!authorized) return <div className="min-h-screen bg-[#f5f6f4]" />;
 
   return (
     <div className="flex min-h-screen bg-[#f5f6f4]">
@@ -68,6 +85,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         missingProfileFields={missingProfileFields}
         messageSuffix="before applying, messaging, or using network actions."
         headerClassName="pr-3.5 pl-3.5"
+        actionLabel={onlyPhoneMissing ? "Verify phone" : "Complete profile"}
         buttonPaddingX={10}
         onDismiss={() => setProfilePromptDismissed(true)}
         onOpenProfile={nav.handleOpenProfile}
@@ -83,4 +101,18 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
       )}
     </div>
   );
+}
+
+async function syncPhoneStatus(
+  setPhoneVerificationStatus: (status: ReturnType<typeof toPhoneVerificationStatus>) => void
+) {
+  const session = getStoredAuthSession();
+  if (!session) return;
+
+  try {
+    const response = await getPhoneStatus(session.accessToken);
+    setPhoneVerificationStatus(toPhoneVerificationStatus(response));
+  } catch {
+    /* status sync should not block the dashboard */
+  }
 }

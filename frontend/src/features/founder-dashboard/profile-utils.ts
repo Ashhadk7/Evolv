@@ -1,3 +1,5 @@
+import { PHONE_VERIFICATION_LABEL } from "@/features/auth/lib/phone-verification";
+
 export interface FounderEducation {
   id: string;
   level: string;
@@ -20,6 +22,7 @@ export interface FounderProfileShape {
   customDegreeName?: string;
   educations?: FounderEducation[];
   profileComplete?: boolean;
+  phoneVerified?: boolean;
 }
 
 export const EDUCATION_LEVELS = [
@@ -229,6 +232,7 @@ export function getMissingFounderProfileFields(profile: FounderProfileShape) {
   if (!profile.bio?.trim()) missing.push("short bio");
   if (!domains.length) missing.push("domains of interest");
   if (!getFounderEducationSummary(profile)) missing.push("education");
+  if (!profile.phoneVerified) missing.push(PHONE_VERIFICATION_LABEL);
 
   return missing;
 }

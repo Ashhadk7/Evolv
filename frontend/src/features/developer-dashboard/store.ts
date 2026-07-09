@@ -4,9 +4,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { create } from "zustand";
 import {
+  isDeveloperProfileComplete,
   normalizeDeveloperProfileForSave,
   type DeveloperProfile,
 } from "@/features/developer-dashboard/profile-utils";
+import type { PhoneVerificationStatus } from "@/features/auth/lib/phone-verification";
 import type { DeveloperInboxLaunchContact } from "@/features/messaging/types/developer-inbox-types";
 import { DEFAULT_DEVELOPER_PROFILE } from "./profile";
 
@@ -22,6 +24,7 @@ interface DeveloperDashboardState {
 
   loadData: () => void;
   completeProfile: (updatedProfile?: DeveloperProfile) => void;
+  setPhoneVerificationStatus: (status: PhoneVerificationStatus) => void;
   setShowOnboarding: (v: boolean) => void;
   setProfilePromptDismissed: (v: boolean) => void;
   setInboxActiveContactId: (id: string) => void;
@@ -65,17 +68,40 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
 
   completeProfile: (updatedProfile) => {
     const nextProfile = normalizeDeveloperProfileForSave(updatedProfile ?? get().profile);
+    const profileComplete = isDeveloperProfileComplete(nextProfile);
     try {
       const raw = localStorage.getItem("evolv_user");
       const existing = raw ? JSON.parse(raw) : {};
       localStorage.setItem(
         "evolv_user",
-        JSON.stringify({ ...existing, ...nextProfile, profileComplete: true, firstTime: false })
+        JSON.stringify({ ...existing, ...nextProfile, profileComplete, firstTime: false })
       );
     } catch {
       /* ignore */
     }
-    set({ profile: { ...nextProfile, profileComplete: true, firstTime: false } });
+    set({ profile: { ...nextProfile, profileComplete, firstTime: false } });
+  },
+
+  setPhoneVerificationStatus: (status) => {
+    const current = get().profile;
+    const nextProfile = normalizeDeveloperProfileForSave({
+      ...current,
+      phone: status.phone ?? current.phone,
+      phoneVerified: status.phoneVerified,
+    });
+    try {
+      const raw = localStorage.getItem("evolv_user");
+      const existing = raw ? JSON.parse(raw) : {};
+      localStorage.setItem("evolv_user", JSON.stringify({ ...existing, ...nextProfile }));
+    } catch {
+      /* ignore */
+    }
+    set({ profile: nextProfile });
+    const pendingAction = get().pendingProtectedAction;
+    if (pendingAction && isDeveloperProfileComplete(nextProfile)) {
+      set({ pendingProtectedAction: null, profilePromptDismissed: true });
+      window.setTimeout(pendingAction, 0);
+    }
   },
 
   setShowOnboarding: (v) => set({ showOnboarding: v }),

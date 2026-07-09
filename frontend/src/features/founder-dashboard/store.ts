@@ -13,7 +13,11 @@ import { DEFAULT_BLUEPRINTS } from "@/features/workspace/components/workspace-ta
 import type { Blueprint } from "@/features/blueprints/types";
 import type { SettingsSection } from "@/features/settings/components/founder-settings-tab";
 import type { InboxLaunchContact } from "@/features/messaging/types/inbox-types";
-import { normalizeFounderProfileForSave } from "@/features/founder-dashboard/profile-utils";
+import {
+  isFounderProfileComplete,
+  normalizeFounderProfileForSave,
+} from "@/features/founder-dashboard/profile-utils";
+import type { PhoneVerificationStatus } from "@/features/auth/lib/phone-verification";
 import {
   DEFAULT_FOUNDER_PROFILE,
   STORAGE_KEY_BLUEPRINTS,
@@ -45,6 +49,7 @@ interface FounderDashboardState {
   // ── actions (data + persistence) ──
   loadData: () => void;
   saveProfile: (p: FounderProfile) => void;
+  setPhoneVerificationStatus: (status: PhoneVerificationStatus) => void;
   saveBlueprints: (bps: Blueprint[]) => void;
   // ── granular setters ──
   setOpenBlueprintId: (id: string | null) => void;
@@ -60,7 +65,7 @@ interface FounderDashboardState {
   setPendingProtectedAction: (fn: (() => void) | null) => void;
 }
 
-export const useFounderDashboardStore = create<FounderDashboardState>((set) => ({
+export const useFounderDashboardStore = create<FounderDashboardState>((set, get) => ({
   profile: DEFAULT_FOUNDER_PROFILE,
   blueprints: DEFAULT_BLUEPRINTS,
   dataLoaded: false,
@@ -136,6 +141,22 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
       }
     } catch {
       /* ignore */
+    }
+  },
+
+  setPhoneVerificationStatus: (status) => {
+    const current = get().profile;
+    const nextProfile = normalizeFounderProfileForSave({
+      ...current,
+      phone: status.phone ?? current.phone,
+      phoneVerified: status.phoneVerified,
+    }) as FounderProfile;
+    const pendingAction = get().pendingProtectedAction;
+
+    get().saveProfile(nextProfile);
+    if (pendingAction && isFounderProfileComplete(nextProfile)) {
+      set({ pendingProtectedAction: null, pendingProtectedTab: null, profilePromptDismissed: true });
+      window.setTimeout(pendingAction, 0);
     }
   },
 

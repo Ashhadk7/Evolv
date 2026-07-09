@@ -18,6 +18,7 @@ export const DEFAULT_FOUNDER_PROFILE: FounderProfile = {
   dob: "",
   gender: "",
   phone: "",
+  phoneVerified: false,
   education: "",
   educationLevel: "",
   degreeName: "",

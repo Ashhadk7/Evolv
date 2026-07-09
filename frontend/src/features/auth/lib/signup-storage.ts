@@ -1,4 +1,4 @@
-// Signup profile building + localStorage persistence, extracted from SignUpForm.tsx.
+// Signup profile building + local/session storage persistence, extracted from SignUpForm.tsx.
 import type {
   DeveloperSignupProfile,
   FounderSignupProfile,
@@ -7,13 +7,62 @@ import type {
   StoredSignupUser,
 } from "../components/signup/types";
 
-type PersistSignupAccountInput = {
-  role: Role | "";
+const PENDING_SIGNUP_KEY = "evolv_pending_signup";
+
+export type PersistSignupAccountInput = {
+  role: Role;
   account: SignupAccount;
   founder: FounderSignupProfile;
   developer: DeveloperSignupProfile;
   profileComplete: boolean;
 };
+
+export type PendingSignupData = PersistSignupAccountInput & {
+  expiresAt?: string;
+  debugOtp?: string | null;
+  startedAt: number;
+};
+
+export function formatSignupPhone(account: SignupAccount) {
+  const localPhone = account.phone.trim();
+  if (!localPhone) return "";
+  if (localPhone.startsWith("+")) return localPhone;
+  return `${account.countryCode} ${localPhone}`.trim();
+}
+
+export function savePendingSignup({
+  expiresAt,
+  debugOtp,
+  ...input
+}: PersistSignupAccountInput & { expiresAt?: string; debugOtp?: string | null }) {
+  sessionStorage.setItem(
+    PENDING_SIGNUP_KEY,
+    JSON.stringify({
+      ...input,
+      expiresAt,
+      debugOtp,
+      startedAt: Date.now(),
+    } satisfies PendingSignupData)
+  );
+}
+
+export function getPendingSignup(email?: string | null) {
+  const raw = sessionStorage.getItem(PENDING_SIGNUP_KEY);
+  if (!raw) return null;
+
+  try {
+    const pending = JSON.parse(raw) as PendingSignupData;
+    if (email && pending.account.email.toLowerCase() !== email.toLowerCase()) return null;
+    return pending;
+  } catch {
+    sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+    return null;
+  }
+}
+
+export function clearPendingSignup() {
+  sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+}
 
 export function persistSignupAccount({
   role,
@@ -22,9 +71,10 @@ export function persistSignupAccount({
   developer,
   profileComplete,
 }: PersistSignupAccountInput) {
-  const fullPhone = `${account.countryCode} ${account.phone}`.trim();
+  const fullPhone = formatSignupPhone(account);
   const accountLocation = {
     phone: fullPhone,
+    phoneVerified: false,
     phoneLocal: account.phone,
     country: account.country,
     countryCode: account.countryCode,
@@ -36,7 +86,6 @@ export function persistSignupAccount({
     firstName: account.firstName,
     lastName: account.lastName,
     email: account.email,
-    password: account.password,
     role,
     ...accountLocation,
   };

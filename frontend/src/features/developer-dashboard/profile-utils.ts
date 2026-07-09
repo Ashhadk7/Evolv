@@ -3,6 +3,7 @@ import {
   formatFounderEducation,
   formatFounderEducations,
 } from "@/features/founder-dashboard/profile-utils";
+import { PHONE_VERIFICATION_LABEL } from "@/features/auth/lib/phone-verification";
 
 export type DeveloperEducation = FounderEducation;
 
@@ -45,6 +46,8 @@ export interface DeveloperProfile {
   portfolioLink?: string;
   certifications?: Array<string | DeveloperCertification>;
   profileComplete?: boolean;
+  phone?: string;
+  phoneVerified?: boolean;
   firstTime?: boolean;
 }
 
@@ -155,6 +158,7 @@ export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
     missing.push("skills and tech stack");
   if (!profile.github?.trim()) missing.push("GitHub");
   if (!getDeveloperLinkedIn(profile)) missing.push("LinkedIn");
+  if (!profile.phoneVerified) missing.push(PHONE_VERIFICATION_LABEL);
 
   return missing;
 }

@@ -4,6 +4,13 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
+import { getPhoneStatus } from "@/features/auth/lib/auth-api";
+import { getStoredAuthSession } from "@/features/auth/lib/auth-session";
+import {
+  PHONE_VERIFICATION_LABEL,
+  toPhoneVerificationStatus,
+} from "@/features/auth/lib/phone-verification";
+import { useRequireAuth } from "@/features/auth/hooks/use-require-auth";
 import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wizard";
 import { founderNav } from "@/config/navigation";
 import { founderNotifs } from "@/features/notifications/data";
@@ -16,6 +23,7 @@ import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-n
 
 export default function FounderLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const authorized = useRequireAuth("founder");
   // URL is /founder/<tab> — segment [2] is the active tab.
   const activeId = pathname.split("/")[2] || "dashboard";
   const isSettings = pathname === "/founder/settings";
@@ -27,13 +35,16 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
     showOnboarding,
     profilePromptDismissed,
     loadData,
+    setPhoneVerificationStatus,
     setProfilePromptDismissed,
   } = useFounderDashboardStore();
   const nav = useFounderNavigation();
 
   useEffect(() => {
+    if (!authorized) return;
     const loadTimer = window.setTimeout(() => {
       loadData();
+      syncPhoneStatus(setPhoneVerificationStatus);
       const params = new URLSearchParams(window.location.search);
       if (params.get("setup") === "true") {
         const url = new URL(window.location.href);
@@ -42,10 +53,14 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
       }
     }, 0);
     return () => window.clearTimeout(loadTimer);
-  }, [loadData]);
+  }, [authorized, loadData, setPhoneVerificationStatus]);
 
   const profileComplete = isFounderProfileComplete(profile);
   const missingProfileFields = getMissingFounderProfileFields(profile);
+  const onlyPhoneMissing =
+    missingProfileFields.length === 1 && missingProfileFields[0] === PHONE_VERIFICATION_LABEL;
+
+  if (!authorized) return <div className="min-h-screen bg-[#f5f6f4]" />;
 
   return (
     <div className="founder-shell flex h-screen overflow-hidden bg-[#f5f6f4]">
@@ -78,6 +93,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
         visible={!profileComplete && !showOnboarding && !profilePromptDismissed}
         missingProfileFields={missingProfileFields}
         messageSuffix="before sending messages or connection requests."
+        actionLabel={onlyPhoneMissing ? "Verify phone" : "Complete profile"}
         buttonPaddingX={5}
         onDismiss={() => setProfilePromptDismissed(true)}
         onOpenProfile={nav.handleOpenProfile}
@@ -92,4 +108,18 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
       )}
     </div>
   );
+}
+
+async function syncPhoneStatus(
+  setPhoneVerificationStatus: (status: ReturnType<typeof toPhoneVerificationStatus>) => void
+) {
+  const session = getStoredAuthSession();
+  if (!session) return;
+
+  try {
+    const response = await getPhoneStatus(session.accessToken);
+    setPhoneVerificationStatus(toPhoneVerificationStatus(response));
+  } catch {
+    /* status sync should not block the dashboard */
+  }
 }

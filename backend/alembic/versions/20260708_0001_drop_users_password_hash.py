@@ -1,7 +1,7 @@
 """drop users password hash
 
 Revision ID: 20260708_0001
-Revises: 20260707_0004
+Revises: 20260707_0005
 Create Date: 2026-07-08
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20260708_0001"
-down_revision = "20260707_0004"
+down_revision = "20260707_0005"
 branch_labels = None
 depends_on = None
 

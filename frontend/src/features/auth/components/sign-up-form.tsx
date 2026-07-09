@@ -20,7 +20,8 @@ import { AccountStep } from "./signup/account-step";
 import { FounderProfileStep } from "./signup/founder-profile-step";
 import { DeveloperProfileStep } from "./signup/developer-profile-step";
 import { useSignupLocationOptions } from "../hooks/use-signup-location-options";
-import { persistSignupAccount } from "../lib/signup-storage";
+import { getApiErrorMessage, startSignup } from "../lib/auth-api";
+import { formatSignupPhone, savePendingSignup } from "../lib/signup-storage";
 import type { Role, AccountField, AccountValidationField } from "./signup/types";
 
 export function SignUpForm() {
@@ -31,6 +32,7 @@ export function SignUpForm() {
   const [role, setRole] = useState<Role | "">("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [accountTouched, setAccountTouched] = useState<
     Partial<Record<AccountValidationField, boolean>>
@@ -208,52 +210,85 @@ export function SignUpForm() {
     return true;
   };
 
-  const persistAccount = (profileComplete: boolean) => {
-    const redirectPath = persistSignupAccount({
-      role,
-      account,
-      founder,
-      developer,
-      profileComplete,
-    });
-    router.push(redirectPath);
-    return true;
-  };
-
-  const finish = (skip = false) => {
+  const finish = async (skip = false) => {
     setError("");
-    if (!role) return;
+    if (!role || submitting) return;
+
+    const selectedRole: Role = role;
+    let profileComplete = false;
+
     if (role === "founder") {
       const founderDegreeName =
         founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
-      const complete = Boolean(
+      profileComplete = !skip && Boolean(
         founder.headline &&
         founder.bio &&
         founder.domains.length &&
         founder.educationLevel &&
         founderDegreeName
       );
-      try {
-        persistAccount(!skip && complete);
-      } catch {
-        setError("Something went wrong while creating your account.");
-      }
-      return;
+    } else {
+      profileComplete =
+        !skip &&
+        Boolean(
+          developer.jobTitle ||
+            developer.experience ||
+            developer.educationLevel ||
+            developer.degreeName ||
+            developer.bio ||
+            developer.github ||
+            developer.linkedIn ||
+            developer.skills.length
+        );
     }
-    const complete = Boolean(
-      developer.jobTitle ||
-      developer.experience ||
-      developer.educationLevel ||
-      developer.degreeName ||
-      developer.bio ||
-      developer.github ||
-      developer.linkedIn ||
-      developer.skills.length
-    );
+
+    const normalizedAccount = {
+      ...account,
+      firstName: account.firstName.trim(),
+      lastName: account.lastName.trim(),
+      email: account.email.trim().toLowerCase(),
+      confirmEmail: account.confirmEmail.trim().toLowerCase(),
+      country: account.country.trim(),
+      countryCode: account.countryCode.trim(),
+      stateProvince: account.stateProvince.trim(),
+      city: account.city.trim(),
+      phone: account.phone.trim(),
+      dob: account.dob.trim(),
+    };
+
+    setSubmitting(true);
     try {
-      persistAccount(!skip && complete);
-    } catch {
-      setError("Something went wrong while creating your account.");
+      const response = await startSignup({
+        role: selectedRole,
+        email: normalizedAccount.email,
+        password: normalizedAccount.password,
+        first_name: normalizedAccount.firstName,
+        last_name: normalizedAccount.lastName,
+        phone: formatSignupPhone(normalizedAccount),
+        country: normalizedAccount.country,
+        country_code: normalizedAccount.countryCode,
+        state_province: normalizedAccount.stateProvince,
+        city: normalizedAccount.city,
+        dob: normalizedAccount.dob,
+        terms_accepted: agreed,
+      });
+
+      savePendingSignup({
+        role: selectedRole,
+        account: normalizedAccount,
+        founder,
+        developer,
+        profileComplete,
+        expiresAt: response.expires_at,
+        debugOtp: response.debug_otp,
+      });
+
+      router.push(`/verify-email?email=${encodeURIComponent(response.email)}`);
+    } catch (signupError) {
+      setError(getApiErrorMessage(signupError));
+      scrollToErrorSummary();
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -447,33 +482,37 @@ export function SignUpForm() {
               {step === 2 && (
                 <button
                   type="button"
-                  onClick={() => finish(true)}
+                  onClick={() => void finish(true)}
+                  disabled={submitting}
                   className="h-10 rounded-xl border bg-white px-5 text-[13px] font-bold transition hover:bg-gray-50"
                   style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_MID }}
                 >
-                  Skip for now
+                  Skip profile
                 </button>
               )}
               <motion.button
                 whileHover={{ scale: 1.012 }}
                 whileTap={{ scale: 0.988 }}
                 type="button"
-                onClick={step < 2 ? goNext : () => finish(false)}
+                onClick={step < 2 ? goNext : () => void finish(false)}
+                disabled={submitting}
+                aria-busy={submitting}
                 className="flex h-10 items-center gap-2 rounded-xl px-6 text-[13px] font-semibold transition-all"
                 style={{
                   background: BRAND_INK,
                   color: BRAND_MINT,
                   boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
+                  opacity: submitting ? 0.72 : 1,
                 }}
               >
-                {step < 2 ? "Continue" : "Complete profile"}
-                {step < 2 ? (
+                {submitting ? "Creating..." : step < 2 ? "Continue" : "Create account"}
+                {!submitting && step < 2 ? (
                   <ArrowRight size={14} weight="bold" />
-                ) : role === "founder" ? (
+                ) : !submitting && role === "founder" ? (
                   <RocketLaunch size={14} weight="bold" />
-                ) : (
+                ) : !submitting ? (
                   <Briefcase size={14} weight="bold" />
-                )}
+                ) : null}
               </motion.button>
             </div>
           </div>

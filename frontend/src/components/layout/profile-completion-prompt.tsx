@@ -11,6 +11,7 @@ export function ProfileCompletionPrompt({
   missingProfileFields,
   messageSuffix,
   headerClassName = "",
+  actionLabel = "Complete profile",
   buttonPaddingX,
   onDismiss,
   onOpenProfile,
@@ -19,6 +20,7 @@ export function ProfileCompletionPrompt({
   missingProfileFields: string[];
   messageSuffix: string;
   headerClassName?: string;
+  actionLabel?: string;
   buttonPaddingX: number;
   onDismiss: () => void;
   onOpenProfile: () => void;
@@ -73,7 +75,7 @@ export function ProfileCompletionPrompt({
                   paddingRight: buttonPaddingX,
                 }}
               >
-                Complete profile
+                {actionLabel}
                 <ArrowRight size={13} weight="bold" />
               </button>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createBlankDeveloperCertification,
   createBlankDeveloperSkill,
@@ -16,6 +16,8 @@ import {
   formatFounderEducation,
   formatFounderEducations,
 } from "@/features/founder-dashboard/profile-utils";
+import type { PhoneVerificationStatus } from "@/features/auth/lib/phone-verification";
+import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import {
   defaultProfile,
   defaultNotifications,
@@ -53,9 +55,17 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
 };
 
 const Settings = () => {
+  const setPhoneVerificationStatus = useDeveloperDashboardStore(
+    (state) => state.setPhoneVerificationStatus
+  );
   const [profile, setProfile] = useState(defaultProfile);
   const [notifications, setNotifications] = useState(defaultNotifications);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("tab") === "security"
+      ? "security"
+      : "profile"
+  );
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [passwordData, setPasswordData] = useState<PasswordData>({
@@ -196,6 +206,18 @@ const Settings = () => {
     setPasswordData({ current: "", newPass: "", confirm: "" });
     setTimeout(() => setPwSaved(false), 2000);
   };
+
+  const handlePhoneStatusChange = useCallback(
+    (status: PhoneVerificationStatus) => {
+      setProfile((current) => ({
+        ...current,
+        phone: status.phone ?? current.phone,
+        phoneVerified: status.phoneVerified,
+      }));
+      setPhoneVerificationStatus(status);
+    },
+    [setPhoneVerificationStatus]
+  );
 
   const handleDeleteAccount = () => {
     // Preserved from the original component: no confirmation/localStorage
@@ -427,6 +449,9 @@ const Settings = () => {
                   }
                   pwSaved={pwSaved}
                   onSave={handlePwSave}
+                  phone={profile.phone}
+                  phoneVerified={profile.phoneVerified}
+                  onPhoneStatusChange={handlePhoneStatusChange}
                 />
               )}
 
