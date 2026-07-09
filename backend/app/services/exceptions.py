@@ -1,30 +1,75 @@
+from enum import StrEnum
+
+
+class ErrorCode(StrEnum):
+    AUTH_CONFIGURATION = "auth_configuration"
+    AUTH_PROVIDER = "auth_provider"
+    AUTH_USER_MISMATCH = "auth_user_mismatch"
+    DUPLICATE_EMAIL = "duplicate_email"
+    EMAIL_DELIVERY = "email_delivery"
+    EMAIL_NOT_VERIFIED = "email_not_verified"
+    INVALID_CREDENTIALS = "invalid_credentials"
+    INVALID_OTP = "invalid_otp"
+    INVALID_TOKEN = "invalid_token"
+    PROFILE_PERSISTENCE = "profile_persistence"
+    SIGNUP_EXPIRED = "signup_expired"
+    SIGNUP_NOT_FOUND = "signup_not_found"
+
+
+class AppError(Exception):
+    def __init__(self, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class SignupError(Exception):
-    """Base exception for signup failures."""
+    pass
 
 
 class AuthProviderConfigurationError(SignupError):
-    """Supabase Auth is not configured correctly."""
+    pass
 
 
 class AuthProviderError(SignupError):
-    """Supabase Auth rejected or failed the request."""
+    pass
 
 
 class DuplicateEmailError(SignupError):
-    """The email already exists in application data."""
+    pass
 
 
 class InvalidCredentialsError(SignupError):
-    """The submitted email or password is incorrect."""
+    pass
 
 
 class InvalidTokenError(SignupError):
-    """The submitted access token is invalid or expired."""
+    pass
+
+
+class EmailOtpError(SignupError):
+    pass
+
+
+class EmailDeliveryError(SignupError):
+    pass
+
+
+class PhoneVerificationError(SignupError):
+    pass
 
 
 class AuthUserMismatchError(SignupError):
-    """The Supabase Auth user does not match the application user."""
+    pass
 
 
 class ProfilePersistenceError(SignupError):
-    """The auth user was created, but application profile data could not be saved."""
+    pass
+
+
+class NotFoundError(Exception):
+    pass
+
+
+class ConflictError(Exception):
+    pass
