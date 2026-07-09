@@ -8,19 +8,11 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
 import { Logo } from "./logo";
 import { InputField } from "./input-field";
+import { saveAuthSession, signin } from "../lib/auth-api";
 
 const BRAND_INK = "#0f1c18";
 const BRAND_MID = "#428475";
 const BRAND_MINT = "#89d7b7";
-
-interface StoredUser {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  role: "founder" | "developer";
-  profile?: Record<string, unknown>;
-}
 
 export function SignInForm() {
   const router = useRouter();
@@ -29,8 +21,9 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -45,89 +38,17 @@ export function SignInForm() {
       return;
     }
 
-    if (
-      email.toLowerCase() === "sarah@evolv.dev" ||
-      email.toLowerCase() === "sarah.mitchell@evolv.dev"
-    ) {
-      localStorage.setItem(
-        "evolv_user",
-        JSON.stringify({
-          firstName: "Sarah",
-          lastName: "Mitchell",
-          email: email.toLowerCase(),
-          profileComplete: false,
-          firstTime: false,
-        })
-      );
-      router.push("/developer/dashboard");
-      return;
-    }
-    if (email.toLowerCase() === "asad@evolv.dev") {
-      localStorage.setItem(
-        "evolv_founder_profile",
-        JSON.stringify({
-          firstName: "Asad",
-          lastName: "",
-          email: email.toLowerCase(),
-          bio: "",
-          domains: [],
-          linkedin: "",
-          dob: "",
-          gender: "",
-          phone: "",
-          education: "",
-          description: "",
-        })
-      );
-      router.push("/founder/dashboard");
-      return;
-    }
-
+    setIsSubmitting(true);
     try {
-      const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredUser[];
-      const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (!user) {
-        setError("Account not found. Please sign up.");
-        return;
-      }
-      if (user.password !== password) {
-        setError("Incorrect password.");
-        return;
-      }
-
-      if (user.role === "founder") {
-        localStorage.setItem(
-          "evolv_founder_profile",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            bio: "",
-            domains: [],
-            linkedin: "",
-            dob: "",
-            gender: "",
-            phone: "",
-            education: "",
-            description: "",
-            ...(user.profile ?? {}),
-          })
-        );
-        router.push("/founder/dashboard");
-      } else {
-        localStorage.setItem(
-          "evolv_user",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            ...(user.profile ?? {}),
-          })
-        );
-        router.push("/developer/dashboard");
-      }
-    } catch {
-      setError("An error occurred during sign in.");
+      const session = await signin(email, password);
+      saveAuthSession(session);
+      router.push(session.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
+    } catch (signInError) {
+      setError(
+        signInError instanceof Error ? signInError.message : "An error occurred during sign in."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -249,14 +170,16 @@ export function SignInForm() {
             whileHover={{ scale: 1.012 }}
             whileTap={{ scale: 0.988 }}
             type="submit"
+            disabled={isSubmitting}
             className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13.5px] font-semibold transition-all"
             style={{
               background: BRAND_INK,
               color: BRAND_MINT,
               boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
+              opacity: isSubmitting ? 0.75 : 1,
             }}
           >
-            Sign in
+            {isSubmitting ? "Signing in..." : "Sign in"}
             <ArrowRight size={14} weight="bold" />
           </motion.button>
 

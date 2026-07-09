@@ -20,7 +20,17 @@ import { AccountStep } from "./signup/account-step";
 import { FounderProfileStep } from "./signup/founder-profile-step";
 import { DeveloperProfileStep } from "./signup/developer-profile-step";
 import { useSignupLocationOptions } from "../hooks/use-signup-location-options";
-import { persistSignupAccount } from "../lib/signup-storage";
+import {
+  createDeveloperProfile,
+  createFounderProfile,
+  saveAuthSession,
+  saveLocalSignupProfile,
+  signin,
+  signup,
+  verifySignupEmail,
+  type SigninResponse,
+  type SignupPayload,
+} from "../lib/auth-api";
 import type { Role, AccountField, AccountValidationField } from "./signup/types";
 
 export function SignUpForm() {
@@ -32,6 +42,10 @@ export function SignUpForm() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpNotice, setOtpNotice] = useState("");
+  const [profileCompleteAfterVerify, setProfileCompleteAfterVerify] = useState(false);
   const [accountTouched, setAccountTouched] = useState<
     Partial<Record<AccountValidationField, boolean>>
   >({});
@@ -208,19 +222,7 @@ export function SignUpForm() {
     return true;
   };
 
-  const persistAccount = (profileComplete: boolean) => {
-    const redirectPath = persistSignupAccount({
-      role,
-      account,
-      founder,
-      developer,
-      profileComplete,
-    });
-    router.push(redirectPath);
-    return true;
-  };
-
-  const finish = (skip = false) => {
+  const finish = async (skip = false) => {
     setError("");
     if (!role) return;
     if (role === "founder") {
@@ -234,9 +236,13 @@ export function SignUpForm() {
         founderDegreeName
       );
       try {
-        persistAccount(!skip && complete);
-      } catch {
-        setError("Something went wrong while creating your account.");
+        await startBackendSignup(!skip && complete);
+      } catch (signupError) {
+        setError(
+          signupError instanceof Error
+            ? signupError.message
+            : "Something went wrong while creating your account."
+        );
       }
       return;
     }
@@ -251,10 +257,145 @@ export function SignUpForm() {
       developer.skills.length
     );
     try {
-      persistAccount(!skip && complete);
-    } catch {
-      setError("Something went wrong while creating your account.");
+      await startBackendSignup(!skip && complete);
+    } catch (signupError) {
+      setError(
+        signupError instanceof Error
+          ? signupError.message
+          : "Something went wrong while creating your account."
+      );
     }
+  };
+
+  const startBackendSignup = async (profileComplete: boolean) => {
+    if (!role) return;
+    setIsSubmitting(true);
+    try {
+      const response = await signup(buildSignupPayload(role));
+      setProfileCompleteAfterVerify(profileComplete);
+      setOtpNotice(
+        response.debug_otp ? `${response.message} Code: ${response.debug_otp}` : response.message
+      );
+      setStep(3);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const verifyEmailAndSignIn = async () => {
+    if (!otpCode.trim()) {
+      setError("Enter the 6 digit verification code.");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await verifySignupEmail(account.email, otpCode.trim());
+      const session = await signin(account.email, account.password);
+      saveAuthSession(session);
+      saveSignupSnapshot(session, profileCompleteAfterVerify);
+      try {
+        await createRoleProfile(session, profileCompleteAfterVerify);
+      } catch {
+        // The dashboard still lets the user complete this profile later.
+      }
+      router.push(session.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
+    } catch (verifyError) {
+      setError(verifyError instanceof Error ? verifyError.message : "Email verification failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const buildSignupPayload = (selectedRole: Role): SignupPayload => {
+    const fullPhone = `${account.countryCode} ${account.phone}`.trim();
+    return {
+      role: selectedRole,
+      email: account.email,
+      password: account.password,
+      first_name: account.firstName,
+      last_name: account.lastName,
+      phone: fullPhone || undefined,
+      country: account.country || undefined,
+      country_code: account.countryCode || undefined,
+      state_province: account.stateProvince || undefined,
+      city: account.city || undefined,
+      dob: account.dob || undefined,
+      terms_accepted: agreed,
+    };
+  };
+
+  const saveSignupSnapshot = (session: SigninResponse, profileComplete: boolean) => {
+    const fullPhone = `${account.countryCode} ${account.phone}`.trim();
+    const baseProfile = {
+      id: session.id,
+      userId: session.id,
+      firstName: account.firstName,
+      lastName: account.lastName,
+      email: account.email,
+      role: session.role,
+      phone: fullPhone,
+      phoneLocal: account.phone,
+      country: account.country,
+      countryCode: account.countryCode,
+      stateProvince: account.stateProvince,
+      city: account.city,
+      dob: account.dob,
+      profileComplete,
+    };
+
+    if (session.role === "founder") {
+      saveLocalSignupProfile("founder", { ...baseProfile, ...founder, location: account.city });
+      return;
+    }
+    saveLocalSignupProfile("developer", {
+      ...baseProfile,
+      jobTitle: developer.jobTitle,
+      role: developer.jobTitle,
+      location: account.city,
+      experience: developer.experience,
+      bio: developer.bio,
+      techStack: developer.skills,
+      github: developer.github,
+      linkedin: developer.linkedIn,
+      firstTime: !profileComplete,
+    });
+  };
+
+  const createRoleProfile = async (session: SigninResponse, profileComplete: boolean) => {
+    if (session.role === "founder") {
+      await createFounderProfile(
+        {
+          headline: founder.headline || undefined,
+          bio: founder.bio || undefined,
+          linkedin: founder.linkedin || undefined,
+          primary_goal: founder.primaryGoal || undefined,
+          profile_complete: profileComplete,
+        },
+        session.access_token
+      );
+      return;
+    }
+
+    await createDeveloperProfile(
+      {
+        job_title: developer.jobTitle || undefined,
+        bio: developer.bio || undefined,
+        experience_years: parseExperienceYears(developer.experience),
+        github: developer.github || undefined,
+        linkedin: developer.linkedIn || undefined,
+        profile_complete: profileComplete,
+      },
+      session.access_token
+    );
+  };
+
+  const parseExperienceYears = (experience: string) => {
+    if (!experience) return undefined;
+    if (experience.startsWith("<")) return 0;
+    const match = experience.match(/\d+/);
+    return match ? Number(match[0]) : undefined;
   };
 
   const goNext = () => {
@@ -298,7 +439,7 @@ export function SignUpForm() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className={`flex flex-col px-8 sm:px-10 xl:px-14 ${step === 2 ? "pt-10 pb-52" : "flex-1 justify-center"}`}
+        className={`flex flex-col px-8 sm:px-10 xl:px-14 ${step >= 2 ? "pt-10 pb-52" : "flex-1 justify-center"}`}
       >
         <div className="mx-auto w-full max-w-[560px]">
           <div className="mb-8">
@@ -314,18 +455,22 @@ export function SignUpForm() {
                 ? "What kind of account are you creating?"
                 : step === 1
                   ? "Create your login"
-                  : role === "founder"
-                    ? "Shape your founder profile"
-                    : "Build your developer profile"}
+                  : step === 2
+                    ? role === "founder"
+                      ? "Shape your founder profile"
+                      : "Build your developer profile"
+                    : "Verify your email"}
             </h1>
             <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "rgba(15,28,24,0.5)" }}>
               {step === 0
                 ? "Evolv personalizes onboarding, permissions, and matching based on your role."
                 : step === 1
                   ? "Use an email you can keep tied to your venture or professional profile."
-                  : role === "founder"
-                    ? "This is what developers see when they discover your project. You can skip and come back."
-                    : "Complete this now to appear in founder searches and apply to blueprint-backed projects."}
+                  : step === 2
+                    ? role === "founder"
+                      ? "This is what developers see when they discover your project. You can skip and come back."
+                      : "Complete this now to appear in founder searches and apply to blueprint-backed projects."
+                    : "Enter the 6 digit code we sent to your email to finish creating your account."}
             </p>
           </div>
 
@@ -384,6 +529,46 @@ export function SignUpForm() {
                 onSkillToggle={toggleSkill}
               />
             )}
+            {step === 3 && (
+              <motion.div
+                key="verify-email"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-5"
+              >
+                {otpNotice && (
+                  <div
+                    className="rounded-lg border px-4 py-3 text-[13px] font-medium"
+                    style={{
+                      borderColor: "rgba(66,132,117,0.18)",
+                      background: "rgba(137,215,183,0.16)",
+                      color: BRAND_INK,
+                    }}
+                  >
+                    {otpNotice}
+                  </div>
+                )}
+                <label className="block">
+                  <span
+                    className="mb-2 block text-[12px] font-bold uppercase tracking-[0.08em]"
+                    style={{ color: "rgba(15,28,24,0.55)" }}
+                  >
+                    Verification code
+                  </span>
+                  <input
+                    value={otpCode}
+                    onChange={(event) =>
+                      setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    inputMode="numeric"
+                    placeholder="000000"
+                    className="h-12 w-full rounded-xl border bg-white px-4 text-center text-[20px] font-bold tracking-[0.22em] outline-none"
+                    style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_INK }}
+                  />
+                </label>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </motion.div>
@@ -420,7 +605,7 @@ export function SignUpForm() {
           </AnimatePresence>
 
           <AnimatePresence>
-            {step === 2 && error && (
+            {step >= 2 && error && (
               <motion.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -458,16 +643,26 @@ export function SignUpForm() {
                 whileHover={{ scale: 1.012 }}
                 whileTap={{ scale: 0.988 }}
                 type="button"
-                onClick={step < 2 ? goNext : () => finish(false)}
+                onClick={
+                  step === 3 ? verifyEmailAndSignIn : step < 2 ? goNext : () => finish(false)
+                }
+                disabled={isSubmitting}
                 className="flex h-10 items-center gap-2 rounded-xl px-6 text-[13px] font-semibold transition-all"
                 style={{
                   background: BRAND_INK,
                   color: BRAND_MINT,
                   boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
+                  opacity: isSubmitting ? 0.75 : 1,
                 }}
               >
-                {step < 2 ? "Continue" : "Complete profile"}
-                {step < 2 ? (
+                {isSubmitting
+                  ? "Please wait..."
+                  : step === 3
+                    ? "Verify email"
+                    : step < 2
+                      ? "Continue"
+                      : "Complete profile"}
+                {step < 2 || step === 3 ? (
                   <ArrowRight size={14} weight="bold" />
                 ) : role === "founder" ? (
                   <RocketLaunch size={14} weight="bold" />
