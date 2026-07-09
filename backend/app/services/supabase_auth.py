@@ -82,8 +82,13 @@ class SupabaseAuthClient:
                     "password": signin.password.get_secret_value(),
                 }
             )
-        except SUPABASE_CLIENT_ERRORS as exc:
+        except AuthApiError as exc:
             raise InvalidCredentialsError("Invalid email or password.") from exc
+        except HTTPError as exc:
+            logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
+            raise AuthProviderError(
+                "Could not reach the authentication service. Please try again shortly."
+            ) from exc
 
         user = self._read_user(response)
         session = self._read_session(response)
@@ -136,6 +141,28 @@ class SupabaseAuthClient:
             self._auth_admin.delete_user(str(user_id))
         except SUPABASE_CLIENT_ERRORS:
             logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
+
+    
+        def update_password(self, user_id: UUID, new_password: str) -> None:
+            try:
+                self._auth_admin.update_user_by_id(str(user_id), {"password": new_password})
+            except SUPABASE_CLIENT_ERRORS as exc:
+                logger.exception("Supabase Auth failed to update password for user %s.", user_id)
+                provider_detail = getattr(exc, "message", None)
+                raise AuthProviderError(
+                    provider_detail or "Supabase Auth could not update the password."
+                ) from exc
+
+    
+    def update_password(self, user_id: UUID, new_password: str) -> None:
+        try:
+            self._auth_admin.update_user_by_id(str(user_id), {"password": new_password})
+        except SUPABASE_CLIENT_ERRORS as exc:
+            logger.exception("Supabase Auth failed to update password for user %s.", user_id)
+            provider_detail = getattr(exc, "message", None)
+            raise AuthProviderError(
+                provider_detail or "Supabase Auth could not update the password."
+            ) from exc
 
     def _create_client(self, key: str) -> Client:
         return create_client(self._supabase_url, key.strip())

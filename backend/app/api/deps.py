@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories import users as users_repository
+from app.services.account_service import AccountService
 from app.services.auth_service import AuthService
 from app.services.email_sender import SmtpEmailSender
 from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
@@ -40,6 +41,13 @@ def get_auth_service(
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
+
+
+def get_account_service(auth_client: SupabaseAuthClientDep) -> AccountService:
+    return AccountService(auth_client=auth_client)
+
+
+AccountServiceDep = Annotated[AccountService, Depends(get_account_service)]
 
 def get_current_user(
     db: DbSession,

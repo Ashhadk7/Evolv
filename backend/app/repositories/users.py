@@ -65,6 +65,17 @@ def mark_email_verified(user: User) -> User:
     user.email_otp_expires_at = None
     return user
 
+def set_password_reset_otp(user: User, *, otp_hash: str, expires_at: datetime) -> User:
+    user.password_reset_otp_hash = otp_hash
+    user.password_reset_otp_expires_at = expires_at
+    return user
+
+
+def clear_password_reset_otp(user: User) -> User:
+    user.password_reset_otp_hash = None
+    user.password_reset_otp_expires_at = None
+    return user
+
 
 def set_verified_phone(db: Session, user_id: UUID, phone: str) -> None:
     db.execute(
