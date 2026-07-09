@@ -31,22 +31,18 @@ def list_blueprints(
         total=total,
         limit=limit,
         offset=offset,
-        items=[BlueprintResponse.model_validate(blueprint) for blueprint in blueprints],
+        items=blueprints,
     )
 
 
 @router.post("", response_model=BlueprintResponse, status_code=status.HTTP_201_CREATED)
-def create_blueprint(
-    payload: BlueprintCreate, db: DbSession, current_user: CurrentUser
-) -> BlueprintResponse:
+def create_blueprint(payload: BlueprintCreate, db: DbSession, current_user: CurrentUser) -> BlueprintResponse:
     blueprint = blueprint_service.create_blueprint(db, current_user, payload)
     return BlueprintResponse.model_validate(blueprint)
 
 
 @router.get("/{blueprint_id}", response_model=BlueprintResponse)
-def get_blueprint(
-    blueprint_id: UUID, db: DbSession, current_user: CurrentUser
-) -> BlueprintResponse:
+def get_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> BlueprintResponse:
     blueprint = blueprint_service.get_blueprint(
         db, blueprint_id, current_user, require_ownership=False
     )
@@ -79,11 +75,9 @@ def submit_pending_version(
 
 
 @router.get("/{blueprint_id}/versions", response_model=list[BlueprintVersionResponse])
-def list_versions(
-    blueprint_id: UUID, db: DbSession, current_user: CurrentUser
-) -> list[BlueprintVersionResponse]:
+def list_versions(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> list[BlueprintVersionResponse]:
     versions = blueprint_service.list_versions(db, blueprint_id, current_user)
-    return [BlueprintVersionResponse.model_validate(version) for version in versions]
+    return versions
 
 
 @router.get("/{blueprint_id}/versions/latest", response_model=BlueprintVersionResponse)

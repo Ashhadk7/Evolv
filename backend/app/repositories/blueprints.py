@@ -59,6 +59,24 @@ def get_version_by_state(
     return db.scalar(statement)
 
 
+_BLUEPRINT_VERSION_FIELDS = (
+    "name",
+    "industry",
+    "idea_desc",
+    "differentiator",
+    "ai_recommend",
+    "viability",
+    "market_potential",
+    "funding_readiness",
+    "developer_demand",
+)
+
+
+def _apply_version_content(version: BlueprintVersion, content: BlueprintVersionCreate) -> None:
+    for field in _BLUEPRINT_VERSION_FIELDS:
+        setattr(version, field, getattr(content, field))
+
+
 def create_version(
     db: Session,
     blueprint_id: UUID,
@@ -86,15 +104,7 @@ def create_version(
 def overwrite_version_content(
     version: BlueprintVersion, content: BlueprintVersionCreate
 ) -> BlueprintVersion:
-    version.name = content.name
-    version.industry = content.industry
-    version.idea_desc = content.idea_desc
-    version.differentiator = content.differentiator
-    version.ai_recommend = content.ai_recommend
-    version.viability = content.viability
-    version.market_potential = content.market_potential
-    version.funding_readiness = content.funding_readiness
-    version.developer_demand = content.developer_demand
+    _apply_version_content(version, content)
     version.generated_at = func.now()
     return version
 

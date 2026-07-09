@@ -28,22 +28,18 @@ def list_applications(
         total=total,
         limit=limit,
         offset=offset,
-        items=[ApplicationResponse.model_validate(a) for a in applications],
+        items=applications,
     )
 
 
 @router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
-def create_application(
-    payload: ApplicationCreate, db: DbSession, current_user: CurrentUser
-) -> ApplicationResponse:
+def create_application(payload: ApplicationCreate, db: DbSession, current_user: CurrentUser) -> ApplicationResponse:
     application = application_service.create_application(db, current_user, payload.blueprint_id)
     return ApplicationResponse.model_validate(application)
 
 
 @router.patch("/{application_id}", response_model=ApplicationResponse)
-def update_application(
-    application_id: UUID, payload: ApplicationUpdate, db: DbSession, current_user: CurrentUser
-) -> ApplicationResponse:
+def update_application(application_id: UUID, payload: ApplicationUpdate, db: DbSession, current_user: CurrentUser) -> ApplicationResponse:
     application = application_service.update_application(
         db, application_id, current_user, payload.connection_id
     )
