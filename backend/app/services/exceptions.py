@@ -32,43 +32,43 @@ class AppError(Exception):
 
 
 class SignupError(Exception):
-    """Base exception for signup and auth failures."""
+    pass
 
 
 class AuthProviderConfigurationError(SignupError):
-    """External auth provider settings are not configured correctly."""
+    pass
 
 
 class AuthProviderError(SignupError):
-    """Supabase Auth rejected or failed the request."""
+    pass
 
 
 class DuplicateEmailError(SignupError):
-    """The email already exists in application data."""
+    pass
 
 
 class InvalidCredentialsError(SignupError):
-    """The submitted email or password is incorrect."""
+    pass
 
 
 class InvalidTokenError(SignupError):
-    """The submitted access token is invalid or expired."""
+    pass
 
 
 class EmailOtpError(SignupError):
-    """Email OTP generation or verification failed."""
+    pass
 
 
 class EmailDeliveryError(SignupError):
-    """The verification email could not be sent."""
+    pass
 
 
 class PhoneVerificationError(SignupError):
-    """The Firebase phone ID token is invalid, expired, or missing a phone number."""
+    pass
 
 
 class AuthUserMismatchError(SignupError):
-    """The Supabase Auth user does not match the application user."""
+    pass
 
 
 class ProfilePersistenceError(SignupError):
@@ -117,3 +117,11 @@ class NoPendingVersionError(AppError):
 
     def __init__(self, message: str = "There is no pending version to promote.") -> None:
         super().__init__(ErrorCode.NO_PENDING_VERSION, message)
+
+
+class NotFoundError(Exception):
+    """A requested resource could not be found."""
+
+
+class ConflictError(Exception):
+    """A requested create or update operation conflicts with existing state."""
