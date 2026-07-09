@@ -2,6 +2,16 @@
 
 from app.models.messaging import ConnectionStatus, Message, MessageConnection
 from app.models.user import DeveloperProfile, Education, FounderProfile, User, UserRole
+from app.models.skill import (
+    Skill,
+    UserSkill,
+    Tag,
+    DeveloperTag,
+    Domain,
+    FounderDomain,
+    SkillKind,
+    SkillExperience,
+)
 
 __all__ = [
     "ConnectionStatus",
@@ -12,4 +22,12 @@ __all__ = [
     "MessageConnection",
     "User",
     "UserRole",
+    "Skill",
+    "UserSkill",
+    "Tag",
+    "DeveloperTag",
+    "Domain",
+    "FounderDomain",
+    "SkillKind",
+    "SkillExperience",
 ]
