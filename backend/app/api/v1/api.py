@@ -1,11 +1,8 @@
 from fastapi import APIRouter
 
 from app.api.v1.controllers import (
-<<<<<<< HEAD
     applications,
-=======
     account,
->>>>>>> feat/account-settings-security
     auth,
     blueprints,
     connections,
