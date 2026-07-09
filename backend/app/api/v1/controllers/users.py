@@ -1,26 +1,30 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import DbSession, get_current_user
 from app.models.user import UserRole
 from app.repositories import users as users_repository
 from app.schemas.auth import SignupRole
 from app.schemas.users import UserListResponse, UserSummary
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
+
+RoleFilter = Annotated[SignupRole | None, Query()]
+SearchFilter = Annotated[str | None, Query(min_length=1, max_length=100)]
+LimitFilter = Annotated[int, Query(ge=1, le=100)]
+OffsetFilter = Annotated[int, Query(ge=0)]
 
 
 @router.get("", response_model=UserListResponse)
 def list_users(
     db: DbSession,
-    current_user: CurrentUser,
-    role: SignupRole | None = Query(default=None),
-    search: str | None = Query(default=None, min_length=1, max_length=100),
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    role: RoleFilter = None,
+    search: SearchFilter = None,
+    limit: LimitFilter = 50,
+    offset: OffsetFilter = 0,
 ) -> UserListResponse:
-    del current_user
     users, total = users_repository.list_users(
         db,
         role=UserRole(role.value) if role else None,
@@ -37,8 +41,7 @@ def list_users(
 
 
 @router.get("/{user_id}", response_model=UserSummary)
-def get_user(user_id: UUID, db: DbSession, current_user: CurrentUser) -> UserSummary:
-    del current_user
+def get_user(user_id: UUID, db: DbSession) -> UserSummary:
     user = users_repository.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")

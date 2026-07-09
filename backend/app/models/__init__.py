@@ -7,13 +7,14 @@ from app.models.blueprint import (
     LevelRating,
     VersionState,
 )
-from app.models.user import DeveloperProfile, FounderProfile, User, UserRole
+from app.models.user import DeveloperProfile, Education, FounderProfile, User, UserRole
 
 __all__ = [
     "Blueprint",
     "BlueprintVersion",
     "BlueprintVisibility",
     "DeveloperProfile",
+    "Education",
     "FounderProfile",
     "LevelRating",
     "User",
