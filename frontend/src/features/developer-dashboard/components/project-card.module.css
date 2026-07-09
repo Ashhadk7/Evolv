@@ -1,0 +1,171 @@
+.projItem {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #f5f3ef;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
+  border-radius: 0.4rem;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+  margin-left: -0.3rem;
+  margin-right: -0.3rem;
+}
+
+.projItem:last-child {
+  border-bottom: none;
+}
+
+.projItem:hover {
+  transform: translateX(4px) scale(1.02);
+  background: #faf9f7;
+}
+
+.top {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-bottom: 0.3rem;
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.icon.health {
+  background: #eaf5f0;
+  color: #2e8b6a;
+}
+
+.icon.logistics {
+  background: #fdf3e7;
+  color: #c07830;
+}
+
+.icon.finflow {
+  background: #e8f0fd;
+  color: #2b5cc8;
+}
+
+.icon.energy {
+  background: #f3eaf5;
+  color: #7b2e8b;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #1b1b1b;
+  line-height: 1.2;
+}
+
+.role {
+  font-size: 0.65rem;
+  color: #888;
+}
+
+.right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.pct {
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #1b1b1b;
+}
+
+.progress {
+  height: 5px;
+  background: #edebe6;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+}
+
+.progress .fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress .fill.green {
+  background: #5bc8a0;
+}
+
+.progress .fill.orange {
+  background: #f0a050;
+}
+
+.avatars {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 0.2rem;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  background: #a0c8b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.45rem;
+  font-weight: 700;
+  color: #0d2b22;
+  margin-left: -4px;
+}
+
+.avatar:first-child {
+  margin-left: 0;
+}
+
+.avatar.more {
+  background: #e6e0d7;
+  color: #888;
+  font-size: 0.42rem;
+}
+
+.metaRow {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.6rem;
+  color: #999;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.metaRow span {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.stageBadge {
+  font-size: 0.54rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: #eaf5f0;
+  color: #0d5c35;
+}
+
+.deadlineValue,
+.hoursValue {
+  font-weight: 600;
+  color: #555;
+}

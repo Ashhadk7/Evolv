@@ -1,20 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./globals.css";
-import "./spacing-fix.css";
-
-const geist = Geist({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-  variable: "--font-geist-mono",
-});
 
 export const metadata: Metadata = {
   title: "Evolv",
@@ -24,10 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.className} ${geistMono.variable}`}>
-      <head>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-      </head>
+    <html lang="en" className={`${GeistSans.className} ${GeistMono.variable}`}>
       <body>{children}</body>
     </html>
   );

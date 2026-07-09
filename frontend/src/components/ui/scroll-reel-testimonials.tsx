@@ -23,12 +23,12 @@ export interface ScrollReelTestimonialsProps {
 }
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────
-const CELL     = 121.33;
-const GAP      = 8;
-const STEP     = 3 * (CELL + GAP);   // pitch between portrait centres
-const EXIT_MS  = 240;                 // old text exits before new chars rise
-const SLIDE_MS = 800;                 // column slide + interaction lock
-const EASE     = "cubic-bezier(0.65,0,0.35,1)";
+const CELL = 121.33;
+const GAP = 8;
+const STEP = 3 * (CELL + GAP); // pitch between portrait centres
+const EXIT_MS = 240; // old text exits before new chars rise
+const SLIDE_MS = 800; // column slide + interaction lock
+const EASE = "cubic-bezier(0.65,0,0.35,1)";
 
 // Shadow that gives the portrait tile depth on a dark background
 const FEATURED_SHADOW =
@@ -56,11 +56,9 @@ function Cell() {
       style={{
         width: CELL,
         height: CELL,
-        background:
-          "linear-gradient(to bottom, rgba(26,49,44,0.65), rgba(11,26,22,0.88))",
+        background: "linear-gradient(to bottom, rgba(26,49,44,0.65), rgba(11,26,22,0.88))",
         border: "1px solid rgba(137,215,183,0.08)",
-        boxShadow:
-          "0 1px 2px rgba(0,0,0,0.35), inset 0 1px 0 rgba(137,215,183,0.05)",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.35), inset 0 1px 0 rgba(137,215,183,0.05)",
       }}
     />
   );
@@ -94,7 +92,7 @@ function Featured({ src, alt }: { src: string; alt?: string }) {
       {/* Diagonal mint sheen */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-[3] blur-[6px] mix-blend-overlay"
+        className="pointer-events-none absolute inset-0 z-[3] mix-blend-overlay blur-[6px]"
         style={{
           background:
             "linear-gradient(220.99deg, rgba(137,215,183,0) 32%, rgb(137,215,183) 41%, rgb(200,240,224) 47%, rgba(66,132,117,0.55) 54%, rgba(66,132,117,0) 65%)",
@@ -154,23 +152,22 @@ export function ScrollReelTestimonials({
   charStaggerMs = 6,
   className,
 }: ScrollReelTestimonialsProps) {
-  const [index, setIndex]               = React.useState(0);
+  const [index, setIndex] = React.useState(0);
   const [displayIndex, setDisplayIndex] = React.useState(0);
-  const [exiting, setExiting]           = React.useState(false);
-  const [mounted, setMounted]           = React.useState(false);
+  const [exiting, setExiting] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   const animating = React.useRef(false);
-  const timeouts  = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  const timeouts = React.useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const count = testimonials.length;
 
   React.useEffect(() => {
     // Delay enabling column transitions so the initial position doesn't slide in
-    const raf = requestAnimationFrame(() =>
-      requestAnimationFrame(() => setMounted(true))
-    );
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setMounted(true)));
+    const timeoutsAtMount = timeouts.current;
     return () => {
       cancelAnimationFrame(raf);
-      timeouts.current.forEach(clearTimeout);
+      timeoutsAtMount.forEach(clearTimeout);
     };
   }, []);
 
@@ -189,15 +186,23 @@ export function ScrollReelTestimonials({
         }, EXIT_MS)
       );
       timeouts.current.push(
-        setTimeout(() => { animating.current = false; }, SLIDE_MS)
+        setTimeout(() => {
+          animating.current = false;
+        }, SLIDE_MS)
       );
     },
     [index, count]
   );
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowRight") { e.preventDefault(); paginate(1);  }
-    if (e.key === "ArrowLeft")  { e.preventDefault(); paginate(-1); }
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      paginate(1);
+    }
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      paginate(-1);
+    }
   };
 
   // Middle column: 3 leading blanks → portrait + 2 blanks between each → 3 trailing blanks
@@ -215,12 +220,12 @@ export function ScrollReelTestimonials({
   }, [testimonials, count]);
 
   const sideCellCount = 4 + 2 * count;
-  const centerIdx     = (count - 1) / 2;
-  const middleY       = (centerIdx - index) * STEP;
-  const sideY         = -middleY;
+  const centerIdx = (count - 1) / 2;
+  const middleY = (centerIdx - index) * STEP;
+  const sideY = -middleY;
 
   const colStyle = (y: number): React.CSSProperties => ({
-    transform:  `translateY(${y}px)`,
+    transform: `translateY(${y}px)`,
     transition: mounted ? `transform ${SLIDE_MS}ms ${EASE}` : "none",
   });
 
@@ -239,8 +244,8 @@ export function ScrollReelTestimonials({
       )}
       style={{
         background: "rgba(11,26,22,0.82)",
-        border:     "1px solid rgba(137,215,183,0.14)",
-        boxShadow:  "inset 0 1px 0 rgba(137,215,183,0.07), 0 8px 40px rgba(0,0,0,0.28)",
+        border: "1px solid rgba(137,215,183,0.14)",
+        boxShadow: "inset 0 1px 0 rgba(137,215,183,0.07), 0 8px 40px rgba(0,0,0,0.28)",
       }}
     >
       {/* ── Scroll reel ──────────────────────────────────────────── */}
@@ -258,12 +263,20 @@ export function ScrollReelTestimonials({
       >
         <div className="absolute inset-0 flex items-center justify-center gap-2">
           {/* Left (counter-rotates) */}
-          <div className="flex shrink-0 flex-col gap-2 will-change-transform" style={colStyle(sideY)}>
-            {Array.from({ length: sideCellCount }).map((_, i) => <Cell key={i} />)}
+          <div
+            className="flex shrink-0 flex-col gap-2 will-change-transform"
+            style={colStyle(sideY)}
+          >
+            {Array.from({ length: sideCellCount }).map((_, i) => (
+              <Cell key={i} />
+            ))}
           </div>
 
           {/* Middle — portraits */}
-          <div className="flex shrink-0 flex-col gap-2 will-change-transform" style={colStyle(middleY)}>
+          <div
+            className="flex shrink-0 flex-col gap-2 will-change-transform"
+            style={colStyle(middleY)}
+          >
             {middleItems.map((item, i) =>
               item.type === "featured" ? (
                 <Featured key={i} src={testimonials[item.i].image} alt={testimonials[item.i].alt} />
@@ -274,8 +287,13 @@ export function ScrollReelTestimonials({
           </div>
 
           {/* Right (counter-rotates) */}
-          <div className="flex shrink-0 flex-col gap-2 will-change-transform" style={colStyle(sideY)}>
-            {Array.from({ length: sideCellCount }).map((_, i) => <Cell key={i} />)}
+          <div
+            className="flex shrink-0 flex-col gap-2 will-change-transform"
+            style={colStyle(sideY)}
+          >
+            {Array.from({ length: sideCellCount }).map((_, i) => (
+              <Cell key={i} />
+            ))}
           </div>
         </div>
       </div>
@@ -298,12 +316,16 @@ export function ScrollReelTestimonials({
               absolute-positioned animated text never clips */}
           <div className="relative w-full max-w-[420px] overflow-hidden" aria-live="polite">
             <div aria-hidden="true" className="invisible flex min-h-[130px] flex-col gap-5">
-              <p className="m-0 text-lg font-medium leading-[1.35] tracking-[-0.02em] sm:text-[21px]"
-                 style={{ color: "#fff4e1" }}>
+              <p
+                className="m-0 text-lg leading-[1.35] font-medium tracking-[-0.02em] sm:text-[21px]"
+                style={{ color: "#fff4e1" }}
+              >
                 {current.quote}
               </p>
-              <p className="m-0 text-sm font-medium leading-[1.3]"
-                 style={{ color: "rgba(255,244,225,0.48)" }}>
+              <p
+                className="m-0 text-sm leading-[1.3] font-medium"
+                style={{ color: "rgba(255,244,225,0.48)" }}
+              >
                 {current.author}
               </p>
             </div>
@@ -315,12 +337,16 @@ export function ScrollReelTestimonials({
                 exiting && "scroll-reel-exit"
               )}
             >
-              <p className="m-0 text-lg font-medium leading-[1.35] tracking-[-0.02em] sm:text-[21px]"
-                 style={{ color: "#fff4e1" }}>
+              <p
+                className="m-0 text-lg leading-[1.35] font-medium tracking-[-0.02em] sm:text-[21px]"
+                style={{ color: "#fff4e1" }}
+              >
                 <Chars text={current.quote} startIndex={0} staggerMs={charStaggerMs} />
               </p>
-              <p className="m-0 text-sm font-medium leading-[1.3]"
-                 style={{ color: "rgba(255,244,225,0.48)" }}>
+              <p
+                className="m-0 text-sm leading-[1.3] font-medium"
+                style={{ color: "rgba(255,244,225,0.48)" }}
+              >
                 <Chars
                   text={current.author}
                   startIndex={current.quote.length + 6}
@@ -338,15 +364,22 @@ export function ScrollReelTestimonials({
             onClick={() => paginate(-1)}
             disabled={index === 0}
             aria-label="Previous testimonial"
-            className="grid h-7 w-7 cursor-pointer place-items-center rounded-full p-0 transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:enabled:scale-[1.08] active:enabled:scale-[0.94] disabled:cursor-default disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#89d7b7]"
+            className="grid h-7 w-7 cursor-pointer place-items-center rounded-full p-0 transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-2 focus-visible:ring-[#89d7b7] focus-visible:outline-none hover:enabled:scale-[1.08] active:enabled:scale-[0.94] disabled:cursor-default disabled:opacity-30"
             style={{
               background: "rgba(137,215,183,0.08)",
-              border:     "1px solid rgba(137,215,183,0.28)",
-              color:      "rgba(137,215,183,0.75)",
+              border: "1px solid rgba(137,215,183,0.28)",
+              color: "rgba(137,215,183,0.75)",
             }}
           >
-            <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor"
-                 strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="h-3 w-3"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M7.5 2.5 3.5 6l4 3.5" />
             </svg>
           </button>
@@ -356,15 +389,22 @@ export function ScrollReelTestimonials({
             onClick={() => paginate(1)}
             disabled={index === count - 1}
             aria-label="Next testimonial"
-            className="grid h-7 w-7 cursor-pointer place-items-center rounded-full p-0 transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:enabled:scale-[1.08] active:enabled:scale-[0.94] disabled:cursor-default disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#89d7b7]"
+            className="grid h-7 w-7 cursor-pointer place-items-center rounded-full p-0 transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-2 focus-visible:ring-[#89d7b7] focus-visible:outline-none hover:enabled:scale-[1.08] active:enabled:scale-[0.94] disabled:cursor-default disabled:opacity-30"
             style={{
               background: "rgba(137,215,183,0.08)",
-              border:     "1px solid rgba(137,215,183,0.28)",
-              color:      "rgba(137,215,183,0.75)",
+              border: "1px solid rgba(137,215,183,0.28)",
+              color: "rgba(137,215,183,0.75)",
             }}
           >
-            <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor"
-                 strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="h-3 w-3"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="m4.5 2.5 4 3.5-4 3.5" />
             </svg>
           </button>
@@ -376,11 +416,9 @@ export function ScrollReelTestimonials({
                 key={i}
                 className="rounded-full transition-all duration-300"
                 style={{
-                  width:      i === index ? "16px" : "5px",
-                  height:     "5px",
-                  background: i === index
-                    ? "rgba(137,215,183,0.75)"
-                    : "rgba(137,215,183,0.25)",
+                  width: i === index ? "16px" : "5px",
+                  height: "5px",
+                  background: i === index ? "rgba(137,215,183,0.75)" : "rgba(137,215,183,0.25)",
                 }}
               />
             ))}
