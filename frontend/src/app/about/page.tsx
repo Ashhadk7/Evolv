@@ -1,1 +1,1 @@
-export { AboutPage as default } from "@/components/landing/InfoPages";
+export { AboutPage as default } from "@/features/public-site/screens/about-page";

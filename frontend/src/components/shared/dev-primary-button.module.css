@@ -1,0 +1,34 @@
+/*
+ * Shared dark-green "primary action" button skin used across the developer
+ * dashboard (ActionModal, Discover, MatchCard, AiMatchBanner). Previously this
+ * was a single global selector in developer.css listing every consumer's
+ * class name — this module is the single source of truth instead.
+ * Each consumer keeps its own layout-only styles (padding, flex, font-size)
+ * and applies this class alongside them for the shared skin.
+ */
+.button {
+  background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%) !important;
+  color: #9ff0cc !important;
+  border: 1px solid rgba(5, 31, 25, 0.88) !important;
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(171, 255, 220, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 14px 28px -16px rgba(9, 32, 26, 0.72),
+    0 5px 14px -8px rgba(9, 32, 26, 0.56) !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24);
+}
+
+.button:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(171, 255, 220, 0.24),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 18px 34px -16px rgba(9, 32, 26, 0.76),
+    0 8px 18px -10px rgba(9, 32, 26, 0.62) !important;
+  filter: brightness(1.07);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
