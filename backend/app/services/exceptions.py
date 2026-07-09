@@ -14,6 +14,12 @@ class ErrorCode(str, Enum):
     PROFILE_PERSISTENCE = "profile_persistence"
     SIGNUP_EXPIRED = "signup_expired"
     SIGNUP_NOT_FOUND = "signup_not_found"
+    BLUEPRINT_NOT_FOUND = "blueprint_not_found"
+    BLUEPRINT_ACCESS_DENIED = "blueprint_access_denied"
+    BLUEPRINT_PERSISTENCE = "blueprint_persistence"
+    BLUEPRINT_VERSION_NOT_FOUND = "blueprint_version_not_found"
+    FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
+    NO_PENDING_VERSION = "no_pending_version"
 
 
 class AppError(Exception):
@@ -69,25 +75,45 @@ class ProfilePersistenceError(SignupError):
     """The auth user was created, but application profile data could not be saved."""
 
 
-class BlueprintError(Exception):
-    """Base exception for blueprint failures."""
-
-
-class BlueprintNotFoundError(BlueprintError):
+class BlueprintNotFoundError(AppError):
     """The requested blueprint (or version) does not exist."""
 
+    def __init__(self, message: str = "Blueprint not found.") -> None:
+        super().__init__(ErrorCode.BLUEPRINT_NOT_FOUND, message)
 
-class BlueprintAccessDeniedError(BlueprintError):
+
+class BlueprintAccessDeniedError(AppError):
     """The current user is not allowed to view or modify this blueprint."""
 
+    def __init__(self, message: str = "You do not have access to this blueprint.") -> None:
+        super().__init__(ErrorCode.BLUEPRINT_ACCESS_DENIED, message)
 
-class FounderProfileRequiredError(BlueprintError):
+
+class FounderProfileRequiredError(AppError):
     """Only users with a founder profile can own blueprints."""
 
+    def __init__(
+        self, message: str = "Only founders with a founder profile can own blueprints."
+    ) -> None:
+        super().__init__(ErrorCode.FOUNDER_PROFILE_REQUIRED, message)
 
-class BlueprintVersionNotFoundError(BlueprintError):
+
+class BlueprintVersionNotFoundError(AppError):
     """The requested blueprint version does not exist."""
 
+    def __init__(self, message: str = "Blueprint version not found.") -> None:
+        super().__init__(ErrorCode.BLUEPRINT_VERSION_NOT_FOUND, message)
 
-class BlueprintPersistenceError(BlueprintError):
+
+class BlueprintPersistenceError(AppError):
     """Blueprint data could not be saved due to a database error."""
+
+    def __init__(self, message: str = "Blueprint data could not be saved.") -> None:
+        super().__init__(ErrorCode.BLUEPRINT_PERSISTENCE, message)
+
+
+class NoPendingVersionError(AppError):
+    """There is no pending version available to promote to current."""
+
+    def __init__(self, message: str = "There is no pending version to promote.") -> None:
+        super().__init__(ErrorCode.NO_PENDING_VERSION, message)

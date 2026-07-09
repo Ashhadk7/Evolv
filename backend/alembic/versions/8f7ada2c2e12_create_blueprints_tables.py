@@ -1,8 +1,8 @@
 """create blueprints and blueprint_versions tables
 
 Revision ID: 8f7ada2c2e12
-Revises:
-Create Date: 2026-07-08 00:00:00.000000
+Revises: 20260708_0001
+Create Date: 2026-07-09 00:00:00.000000
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "8f7ada2c2e12"
-down_revision = "3c1f9a7d2b4e"
+down_revision = "20260708_0001"
 branch_labels = None
 depends_on = None
 
@@ -35,23 +35,25 @@ def upgrade() -> None:
             "id",
             sa.Uuid(as_uuid=True),
             primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("founder_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "visibility",
             blueprint_visibility,
             nullable=False,
+            server_default=sa.text("'private'::blueprint_visibility"),
         ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("CURRENT_TIMESTAMP"),
+            server_default=sa.text("now()"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("CURRENT_TIMESTAMP"),
+            server_default=sa.text("now()"),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
@@ -61,8 +63,13 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
     )
+    op.create_index("idx_blueprints_founder", "blueprints", ["founder_id"], unique=False)
     op.create_index(
-        op.f("ix_blueprints_founder_id"), "blueprints", ["founder_id"], unique=False
+        "idx_blueprints_public",
+        "blueprints",
+        ["visibility"],
+        unique=False,
+        postgresql_where=sa.text("visibility = 'public'::blueprint_visibility"),
     )
 
     op.create_table(
@@ -71,11 +78,12 @@ def upgrade() -> None:
             "id",
             sa.Uuid(as_uuid=True),
             primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("blueprint_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("state", version_state, nullable=False),
-        sa.Column("name", sa.String(), nullable=False),
-        sa.Column("industry", sa.String(), nullable=False),
+        sa.Column("name", sa.String(150), nullable=False),
+        sa.Column("industry", sa.String(60), nullable=False),
         sa.Column("idea_desc", sa.Text(), nullable=False),
         sa.Column("differentiator", sa.Text(), nullable=True),
         sa.Column("ai_recommend", sa.Text(), nullable=True),
@@ -86,7 +94,7 @@ def upgrade() -> None:
         sa.Column(
             "generated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("CURRENT_TIMESTAMP"),
+            server_default=sa.text("now()"),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
@@ -106,18 +114,12 @@ def upgrade() -> None:
             name="blueprint_versions_market_potential_check",
         ),
     )
-    op.create_index(
-        op.f("ix_blueprint_versions_blueprint_id"),
-        "blueprint_versions",
-        ["blueprint_id"],
-        unique=False,
-    )
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_blueprint_versions_blueprint_id"), table_name="blueprint_versions")
     op.drop_table("blueprint_versions")
-    op.drop_index(op.f("ix_blueprints_founder_id"), table_name="blueprints")
+    op.drop_index("idx_blueprints_public", table_name="blueprints")
+    op.drop_index("idx_blueprints_founder", table_name="blueprints")
     op.drop_table("blueprints")
 
     bind = op.get_bind()

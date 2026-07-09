@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
 from app.api.deps import BlueprintServiceDep, CurrentUser, DbSession
 from app.schemas.blueprints import (
@@ -10,13 +10,6 @@ from app.schemas.blueprints import (
     BlueprintUpdate,
     BlueprintVersionCreate,
     BlueprintVersionResponse,
-)
-from app.services.exceptions import (
-    BlueprintAccessDeniedError,
-    BlueprintNotFoundError,
-    BlueprintPersistenceError,
-    BlueprintVersionNotFoundError,
-    FounderProfileRequiredError,
 )
 
 router = APIRouter()
@@ -48,11 +41,7 @@ def list_blueprints(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> BlueprintListResponse:
-    try:
-        blueprints, total = service.list_blueprints(db, current_user, limit=limit, offset=offset)
-    except FounderProfileRequiredError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-
+    blueprints, total = service.list_blueprints(db, current_user, limit=limit, offset=offset)
     return BlueprintListResponse(
         total=total,
         limit=limit,
@@ -68,15 +57,7 @@ def create_blueprint(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> BlueprintResponse:
-    try:
-        blueprint = service.create_blueprint(db, current_user, payload)
-    except FounderProfileRequiredError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except BlueprintPersistenceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
-
+    blueprint = service.create_blueprint(db, current_user, payload)
     return _to_response(blueprint)
 
 
@@ -87,13 +68,7 @@ def get_blueprint(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> BlueprintResponse:
-    try:
-        blueprint = service.get_blueprint(db, blueprint_id, current_user, require_ownership=False)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-
+    blueprint = service.get_blueprint(db, blueprint_id, current_user, require_ownership=False)
     return _to_response(blueprint)
 
 
@@ -105,17 +80,7 @@ def update_blueprint(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> BlueprintResponse:
-    try:
-        blueprint = service.update_visibility(db, blueprint_id, current_user, payload)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except BlueprintPersistenceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
-
+    blueprint = service.update_visibility(db, blueprint_id, current_user, payload)
     return _to_response(blueprint)
 
 
@@ -126,16 +91,7 @@ def delete_blueprint(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> None:
-    try:
-        service.delete_blueprint(db, blueprint_id, current_user)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except BlueprintPersistenceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+    service.delete_blueprint(db, blueprint_id, current_user)
 
 
 @router.post(
@@ -150,17 +106,7 @@ def submit_pending_version(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> BlueprintVersionResponse:
-    try:
-        version = service.submit_pending_version(db, blueprint_id, current_user, payload)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except BlueprintPersistenceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
-
+    version = service.submit_pending_version(db, blueprint_id, current_user, payload)
     return BlueprintVersionResponse.model_validate(version)
 
 
@@ -171,13 +117,7 @@ def list_versions(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> list[BlueprintVersionResponse]:
-    try:
-        versions = service.list_versions(db, blueprint_id, current_user)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-
+    versions = service.list_versions(db, blueprint_id, current_user)
     return [BlueprintVersionResponse.model_validate(version) for version in versions]
 
 
@@ -188,15 +128,7 @@ def get_latest_version(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> BlueprintVersionResponse:
-    try:
-        version = service.get_latest_version(db, blueprint_id, current_user)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except BlueprintVersionNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
+    version = service.get_latest_version(db, blueprint_id, current_user)
     return BlueprintVersionResponse.model_validate(version)
 
 
@@ -207,17 +139,5 @@ def promote_pending_version(
     current_user: CurrentUser,
     service: BlueprintServiceDep,
 ) -> BlueprintVersionResponse:
-    try:
-        version = service.promote_pending_version(db, blueprint_id, current_user)
-    except BlueprintNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except BlueprintAccessDeniedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except BlueprintVersionNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    except BlueprintPersistenceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
-
+    version = service.promote_pending_version(db, blueprint_id, current_user)
     return BlueprintVersionResponse.model_validate(version)

@@ -19,14 +19,11 @@ from app.services.exceptions import (
     BlueprintPersistenceError,
     BlueprintVersionNotFoundError,
     FounderProfileRequiredError,
+    NoPendingVersionError,
 )
 
 
 def _require_founder_profile(user: User) -> UUID:
-    """Return the founder_profiles.user_id that blueprints are owned by.
-
-    Raises FounderProfileRequiredError if the current user cannot own blueprints.
-    """
     if user.role != UserRole.FOUNDER or user.founder_profile is None:
         raise FounderProfileRequiredError(
             "Only founders with a founder profile can own blueprints."
@@ -81,8 +78,6 @@ class BlueprintService:
         founder_id = _require_founder_profile(current_user)
         try:
             blueprint = blueprints_repository.create_blueprint(db, founder_id, payload.visibility)
-            # The very first version of a brand-new blueprint is published
-            # immediately as `current` — there is nothing to promote yet.
             blueprints_repository.create_version(
                 db, blueprint.id, VersionState.CURRENT, payload.initial_version
             )
@@ -129,11 +124,6 @@ class BlueprintService:
         current_user: User,
         payload: BlueprintVersionCreate,
     ) -> BlueprintVersion:
-        """Create the draft (`pending`) version, or overwrite it if one already exists.
-
-        At most one `pending` row can exist per blueprint (enforced by a DB
-        unique constraint), so this operation is an upsert rather than an insert.
-        """
         blueprint = self.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
 
         try:
@@ -182,7 +172,7 @@ class BlueprintService:
             db, blueprint.id, VersionState.PENDING
         )
         if pending_version is None:
-            raise BlueprintVersionNotFoundError("There is no pending version to promote.")
+            raise NoPendingVersionError()
 
         try:
             current_version = blueprints_repository.get_version_by_state(

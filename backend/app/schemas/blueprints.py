@@ -80,12 +80,6 @@ class BlueprintCreate(BaseModel):
 
 
 class BlueprintUpdate(BaseModel):
-    """Blueprints only expose `visibility` as a mutable field.
-
-    Content changes (name, industry, idea_desc, etc.) belong to
-    blueprint_versions and go through the version endpoints instead.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     visibility: BlueprintVisibility
