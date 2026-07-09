@@ -22,6 +22,18 @@ class InvalidTokenError(SignupError):
     pass
 
 
+class EmailOtpError(SignupError):
+    pass
+
+
+class EmailDeliveryError(SignupError):
+    pass
+
+
+class PhoneVerificationError(SignupError):
+    pass
+
+
 class AuthUserMismatchError(SignupError):
     pass
 

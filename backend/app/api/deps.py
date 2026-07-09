@@ -1,22 +1,41 @@
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories import users as users_repository
-from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.auth_service import AuthService
+from app.services.email_sender import SmtpEmailSender
+from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.supabase_auth import SupabaseAuthClient
 
 DbSession = Annotated[Session, Depends(get_db)]
-bearer_scheme = HTTPBearer(auto_error=False)
+bearer_scheme = HTTPBearer()
 
 
-def get_auth_service() -> AuthService:
-    return AuthService(auth_provider=SupabaseAuthClient())
+@lru_cache
+def get_supabase_auth_client() -> SupabaseAuthClient:
+    return SupabaseAuthClient()
+
+
+@lru_cache
+def get_email_sender() -> SmtpEmailSender:
+    return SmtpEmailSender(settings)
+
+
+SupabaseAuthClientDep = Annotated[SupabaseAuthClient, Depends(get_supabase_auth_client)]
+EmailSenderDep = Annotated[SmtpEmailSender, Depends(get_email_sender)]
+
+
+def get_auth_service(
+    auth_client: SupabaseAuthClientDep, email_sender: EmailSenderDep
+) -> AuthService:
+    return AuthService(auth_client=auth_client, email_sender=email_sender)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
@@ -24,9 +43,10 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 def get_current_user(
     db: DbSession,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    auth_client: SupabaseAuthClientDep,
 ) -> User:
-    if credentials is None or credentials.scheme.lower() != "bearer":
+    if credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer access token.",
@@ -34,7 +54,7 @@ def get_current_user(
         )
 
     try:
-        auth_user = SupabaseAuthClient().get_user(credentials.credentials)
+        auth_user = auth_client.get_user(credentials.credentials)
     except AuthProviderConfigurationError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -48,7 +68,7 @@ def get_current_user(
         ) from exc
 
     app_user = users_repository.get_user_by_id(db, auth_user.id)
-    if app_user is None:
+    if app_user is None or not app_user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authenticated user is not registered in the application.",
