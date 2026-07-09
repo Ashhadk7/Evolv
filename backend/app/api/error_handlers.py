@@ -43,13 +43,4 @@ ERROR_HEADERS_BY_CODE = {
 
 
 def register_exception_handlers(application: FastAPI) -> None:
-    application.add_exception_handler(AppError, app_error_handler)
-
-
-async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    del request
-    return JSONResponse(
-        status_code=ERROR_STATUS_BY_CODE[exc.code],
-        content={"detail": SAFE_DETAIL_BY_CODE.get(exc.code, exc.message), "code": exc.code},
-        headers=ERROR_HEADERS_BY_CODE.get(exc.code),
-    )
+    del application

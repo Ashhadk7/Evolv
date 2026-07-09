@@ -1,0 +1,10 @@
+export const INK = "#1a312c";
+export const DARK = "#1a312c"; // sidebar BG — used for selected chips
+export const MINT = "#89d7b7";
+export const MID = "#428475";
+export const TEXT_BODY = "#1a2e26";
+export const TEXT_MUTED = "#7a9e8e";
+export const TEXT_DIM = "#b0c0b8";
+export const BORDER = "#e0e9e3";
+export const FIELD_BG = "#f5f7f5";
+export const CLEAR = "rgba(0,0,0,0)";

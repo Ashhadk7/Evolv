@@ -8,6 +8,7 @@ from app.models.blueprint import (
     LevelRating,
     VersionState,
 )
+from app.models.messaging import Message, MessageConnection
 from app.models.skill import (
     DeveloperTag,
     Domain,
@@ -19,26 +20,31 @@ from app.models.skill import (
     UserSkill,
 )
 from app.models.user import DeveloperProfile, Education, FounderProfile, User, UserRole
+from app.models.connection import Connection, ConnectionStatus
+from app.models.certification import Certification
 
 __all__ = [
-    "Application",
     "Blueprint",
     "BlueprintVersion",
     "BlueprintVisibility",
-    "DeveloperProfile",
-    "DeveloperTag",
-    "Domain",
-    "Education",
-    "FounderDomain",
-    "FounderProfile",
     "LevelRating",
     "SavedBlueprint",
+    "ConnectionStatus",
+    "DeveloperProfile",
+    "Education",
+    "FounderProfile",
+    "Message",
+    "MessageConnection",
     "Skill",
+    "Domain",
+    "DeveloperTag",
+    "FounderDomain",
     "SkillExperience",
     "SkillKind",
-    "Tag",
     "User",
     "UserRole",
     "UserSkill",
     "VersionState",
+    "Connection",
+    "Certification",
 ]

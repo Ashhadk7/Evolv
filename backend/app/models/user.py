@@ -6,6 +6,10 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
+if TYPE_CHECKING:
+    from app.models.connection import Connection
+    from app.models.certification import Certification
+
 from sqlalchemy import (
     Boolean,
     Date,
@@ -85,6 +89,23 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     educations: Mapped[list[Education]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    sent_connections: Mapped[list[Connection]] = relationship(
+        "Connection",
+        foreign_keys="[Connection.requester_id]",
+        back_populates="requester",
+        cascade="all, delete-orphan",
+    )
+    received_connections: Mapped[list[Connection]] = relationship(
+        "Connection",
+        foreign_keys="[Connection.receiver_id]",
+        back_populates="receiver",
+        cascade="all, delete-orphan",
+    )
+    certifications: Mapped[list[Certification]] = relationship(
+        "Certification",
         back_populates="user",
         cascade="all, delete-orphan",
     )

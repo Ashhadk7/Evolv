@@ -1,1 +1,1 @@
-export { TeamPage as default } from "@/components/landing/InfoPages";
+export { TeamPage as default } from "@/features/public-site/screens/team-page";

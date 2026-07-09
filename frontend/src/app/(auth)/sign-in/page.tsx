@@ -1,5 +1,5 @@
-import { AuthVisual } from "@/components/auth/AuthVisual";
-import { SignInForm } from "@/components/auth/SignInForm";
+import { AuthVisual } from "@/features/auth/components/auth-visual";
+import { SignInForm } from "@/features/auth/components/sign-in-form";
 
 export default function SignInPage() {
   return (

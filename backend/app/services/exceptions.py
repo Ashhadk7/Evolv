@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 from enum import Enum
 
 
 class ErrorCode(str, Enum):
+=======
+from enum import StrEnum
+
+
+class ErrorCode(StrEnum):
+>>>>>>> origin/Eman
     AUTH_CONFIGURATION = "auth_configuration"
     AUTH_PROVIDER = "auth_provider"
     AUTH_USER_MISMATCH = "auth_user_mismatch"
@@ -14,6 +21,7 @@ class ErrorCode(str, Enum):
     PROFILE_PERSISTENCE = "profile_persistence"
     SIGNUP_EXPIRED = "signup_expired"
     SIGNUP_NOT_FOUND = "signup_not_found"
+<<<<<<< HEAD
     BLUEPRINT_NOT_FOUND = "blueprint_not_found"
     BLUEPRINT_ACCESS_DENIED = "blueprint_access_denied"
     BLUEPRINT_PERSISTENCE = "blueprint_persistence"
@@ -36,6 +44,15 @@ class AppError(Exception):
         self.code = code
         self.message = message
         super().__init__(message)
+=======
+
+
+class AppError(Exception):
+    def __init__(self, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+>>>>>>> origin/Eman
 
 
 class SignupError(Exception):

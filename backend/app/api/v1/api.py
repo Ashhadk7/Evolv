@@ -4,11 +4,13 @@ from app.api.v1.controllers import (
     applications,
     auth,
     blueprints,
+    connections,
     developer_profiles,
     domains,
     founder_profiles,
     health,
     me,
+    messages,
     phone,
     skills,
     tags,
@@ -24,6 +26,7 @@ api_router.include_router(
     developer_profiles.router, prefix="/developer-profile", tags=["developer-profile"]
 )
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
 api_router.include_router(phone.router, prefix="/phone", tags=["phone"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(blueprints.router, prefix="/blueprints", tags=["blueprints"])
@@ -32,3 +35,4 @@ api_router.include_router(tags.router, prefix="/tags", tags=["tags"])
 api_router.include_router(domains.router, prefix="/domains", tags=["domains"])
 api_router.include_router(applications.router, prefix="/applications", tags=["applications"])
 api_router.include_router(me.router, prefix="/me", tags=["me"])
+api_router.include_router(connections.router, prefix="/connections", tags=["connections"])
