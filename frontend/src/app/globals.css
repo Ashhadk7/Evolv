@@ -1,31 +1,176 @@
 @import "tailwindcss";
-@import "./settings-shared.css";
 
 @theme {
-  --color-dark: #1a312c;
-  --color-mid: #428475;
-  --color-mint: #89d7b7;
-  --color-cream: #fff4e1;
+  /* ══════════════════════════════════════════════════════════════════════
+     EVOLV DESIGN TOKENS
+     Single source of truth for colour, shape and motion.
 
+     Every token here is available TWO ways at once (Tailwind v4):
+       • as a utility class →  bg-surface, text-mint, border-soft, rounded-card
+       • as a CSS variable  →  style={{ color: "var(--color-mint)" }}
+     This dual access matters because Evolv styles with BOTH class names and
+     inline styles. Change a value here → it propagates everywhere.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* ── BRAND ─ the canonical Evolv palette ───────────────────────────────── */
+  --color-dark: #1a312c; /* primary dark green — app background      */
+  --color-mid: #428475; /* mid green — secondary surfaces          */
+  --color-mint: #89d7b7; /* primary accent (mint)                   */
+  --color-mint-bright: #5bc8a0; /* brighter mint accent variant     */
+  --color-cream: #fff4e1; /* primary light / text on dark            */
+  --color-gold: #c4973a; /* premium gold accent                     */
+
+  /* ── SEMANTIC · surfaces (dark dashboard theme) ────────────────────────── */
+  --color-surface: #1a312c; /* page background                      */
+  --color-surface-card: #1e3831; /* cards, sidebar menu             */
+  --color-surface-raised: #244b42; /* raised / gradient top         */
+
+  /* ── SEMANTIC · borders ────────────────────────────────────────────────── */
+  --color-border-soft: rgba(137, 215, 183, 0.09); /* hairline mint border   */
+  --color-border-hair: rgba(137, 215, 183, 0.07); /* faintest divider       */
+
+  /* ── SEMANTIC · text on dark ───────────────────────────────────────────── */
+  --color-text-on: #e8f4ef; /* primary text on dark                 */
+  --color-text-off: rgba(232, 244, 239, 0.7); /* secondary text      */
+  --color-text-muted: rgba(232, 244, 239, 0.42); /* muted text       */
+
+  /* ── SEMANTIC · interaction states ─────────────────────────────────────── */
+  --color-accent-soft: rgba(137, 215, 183, 0.11); /* active nav pill bg     */
+  --color-accent-dim: rgba(137, 215, 183, 0.55); /* dimmed accent text      */
+  --color-hover-bg: rgba(255, 255, 255, 0.045); /* row hover                */
+
+  /* ── BLUEPRINT/PROJECT CARDS · light theme (workspace + projects UI) ────
+     Mirrors src/components/shared/card-style.ts's `C` object 1:1 so those
+     features can move from inline styles to real Tailwind utilities
+     (bg-bp-card, text-bp-teal, border-bp-border, ...) without touching the
+     underlying palette. */
+  --color-bp-forest: #1a312c;
+  --color-bp-deep: #11221b;
+  --color-bp-teal: #428475;
+  --color-bp-mint: #89d7b7;
+  --color-bp-mint-soft: #a8dfc9;
+  --color-bp-page: #f0f3f1;
+  --color-bp-card: #ffffff;
+  --color-bp-border: #e6ede9;
+  --color-bp-border-soft: #eef3f0;
+  --color-bp-ink: #15271f;
+  --color-bp-body: #4f6358;
+  --color-bp-muted: #647a6e;
+  --color-bp-label: #8aa99c;
+  --color-bp-amber: #b07d10;
+  --color-bp-amber-bg: #fffaef;
+  --color-bp-amber-line: #f0dfa0;
+  --color-bp-red: #c0392b;
+  --color-bp-red-bg: #fdeeec;
+  --color-bp-red-line: #f3d4cf;
+  --color-bp-success: #2e7d5c;
+  --color-bp-success-bg: #e7f4ed;
+  --color-bp-tint: #f4f8f6;
+
+  /* ── SHAPE ─────────────────────────────────────────────────────────────── */
+  --radius-card: 1.25rem;
+  --radius-button: 0.875rem;
+  --shadow-card: 0 12px 40px rgba(9, 45, 36, 0.08);
+
+  /* ── TYPOGRAPHY ────────────────────────────────────────────────────────── */
   --font-family-sans: inherit;
+  /* Mirrors card-style.ts's `MONO` constant so blueprint/project card UI can
+     use font-mono-app instead of an inline fontFamily style. */
+  --font-mono-app: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* ── MOTION ────────────────────────────────────────────────────────────── */
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-slow: pulse 4s ease-in-out infinite;
   --animate-spin-slow: spin 20s linear infinite;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-16px); }
+/* ══════════════════════════════════════════════════════════════════════════
+   SHADCN/UI TOKEN MAPPING
+   shadcn primitives (components/ui/button.tsx etc.) reference semantic names
+   (bg-primary, text-foreground, ...) that must be namespaced under --color-*
+   to become real Tailwind v4 utilities — a bare --primary inside @theme is
+   NOT enough (Tailwind won't generate bg-primary from it). shadcn's own
+   convention: raw values live in a plain :root block (also enables dark-mode
+   swaps later), then get remapped into Tailwind's colour namespace via
+   `@theme inline`. Mapped onto Evolv's own brand palette rather than shadcn's
+   generic defaults, so new shadcn components match the app's existing
+   dark-CTA / mint-accent look out of the box: light-surface baseline (matches
+   dashboard content areas); "primary" mirrors the existing .bp-primary-btn /
+   .bp-gradient-btn pattern (dark bg, mint text) used for CTAs throughout the
+   app. Starting point — adjust as shadcn components get adopted into real
+   screens.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --radius: 0.875rem;
+  --background: #ffffff;
+  --foreground: #1a2e26;
+  --card: #ffffff;
+  --card-foreground: #1a2e26;
+  --popover: #ffffff;
+  --popover-foreground: #1a2e26;
+  --primary: #1a312c;
+  --primary-foreground: #89d7b7;
+  --secondary: #f0f5f2;
+  --secondary-foreground: #1a2e26;
+  --muted: #f5f7f5;
+  --muted-foreground: #7a9e8e;
+  --accent: #e8f5ef;
+  --accent-foreground: #1a312c;
+  --destructive: #c0392b;
+  --border: #e0e9e3;
+  --input: #e0e9e3;
+  --ring: #89d7b7;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
 
-html { scroll-behavior: smooth; }
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+/* NOTE: no custom `* { margin/padding/box-sizing }` reset here — Tailwind's
+   own Preflight (@layer base) already sets these identically. A duplicate,
+   unlayered version of this rule used to live here; because it sat outside
+   Tailwind's cascade layers, it silently beat every Tailwind margin/padding
+   utility class in the entire app (unlayered styles always win over layered
+   ones, regardless of specificity). Removed as the real fix for that bug. */
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
-  background: #1a312c;
-  color: #fff4e1;
+  background: var(--color-surface);
+  color: var(--color-cream);
   font-family: inherit;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -34,34 +179,53 @@ body {
 }
 
 ::selection {
-  background: #89d7b7;
-  color: #1a312c;
+  background: var(--color-mint);
+  color: var(--color-dark);
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #1a312c; }
-::-webkit-scrollbar-thumb { background: #428475; border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-mid);
+  border-radius: 3px;
+}
 
 /* ── Blueprint detail: light scrollbar ── */
-.blueprint-scroll::-webkit-scrollbar { width: 10px; }
-.blueprint-scroll::-webkit-scrollbar-track { background: transparent; }
+.blueprint-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.blueprint-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
 .blueprint-scroll::-webkit-scrollbar-thumb {
   background: #cfdfd7;
   border-radius: 999px;
   border: 3px solid #f0f3f1;
 }
-.blueprint-scroll::-webkit-scrollbar-thumb:hover { background: #b6cfc3; }
+.blueprint-scroll::-webkit-scrollbar-thumb:hover {
+  background: #b6cfc3;
+}
 
 /* ── Blueprint detail: premium controls ── */
 .bp-icon-btn {
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 200ms ease, transform 140ms ease;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 200ms ease,
+    transform 140ms ease;
 }
 .bp-icon-btn:hover {
   background: #f4f8f6;
   border-color: #cfe0d7;
   box-shadow: 0 6px 16px -8px rgba(19, 36, 29, 0.22);
 }
-.bp-icon-btn:active { transform: translateY(1px) scale(0.98); }
+.bp-icon-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
 
 .bp-primary-btn,
 .bp-gradient-btn {
@@ -73,9 +237,9 @@ body {
   font-weight: 700;
   padding: 10px 18px;
   border-radius: 14px !important;
-  background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%) !important;
-  color: #9ff0cc !important;
-  border: 1px solid rgba(5, 31, 25, 0.88) !important;
+  background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%);
+  color: #9ff0cc;
+  border: 1px solid rgba(5, 31, 25, 0.88);
   cursor: pointer;
   box-shadow:
     inset 0 1px 0 rgba(171, 255, 220, 0.18),
@@ -83,7 +247,10 @@ body {
     0 14px 28px -16px rgba(9, 32, 26, 0.72),
     0 5px 14px -8px rgba(9, 32, 26, 0.56) !important;
   position: relative;
-  transition: box-shadow 220ms ease, transform 150ms ease, filter 180ms ease;
+  transition:
+    box-shadow 220ms ease,
+    transform 150ms ease,
+    filter 180ms ease;
   flex-shrink: 0;
   white-space: nowrap;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24);
@@ -98,12 +265,14 @@ body {
   filter: brightness(1.07);
 }
 .bp-primary-btn:active,
-.bp-gradient-btn:active { transform: translateY(1px); }
+.bp-gradient-btn:active {
+  transform: translateY(1px);
+}
 
 .bp-gradient-icon-btn {
-  background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%) !important;
-  color: #9ff0cc !important;
-  border: 1px solid rgba(5, 31, 25, 0.88) !important;
+  background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%);
+  color: #9ff0cc;
+  border: 1px solid rgba(5, 31, 25, 0.88);
   cursor: pointer;
   box-shadow:
     inset 0 1px 0 rgba(171, 255, 220, 0.18),
@@ -111,7 +280,10 @@ body {
     0 14px 28px -16px rgba(9, 32, 26, 0.72),
     0 5px 14px -8px rgba(9, 32, 26, 0.56) !important;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24);
-  transition: box-shadow 220ms ease, transform 150ms ease, filter 180ms ease;
+  transition:
+    box-shadow 220ms ease,
+    transform 150ms ease,
+    filter 180ms ease;
 }
 .bp-gradient-icon-btn:hover {
   box-shadow:
@@ -121,13 +293,27 @@ body {
     0 8px 18px -10px rgba(9, 32, 26, 0.62) !important;
   filter: brightness(1.07);
 }
-.bp-gradient-icon-btn:active { transform: translateY(1px); }
-.bp-gradient-icon-btn svg { color: currentColor !important; }
+.bp-gradient-icon-btn:active {
+  transform: translateY(1px);
+}
+.bp-gradient-icon-btn svg {
+  color: currentColor !important;
+}
 
-.bp-back-btn { transition: background 150ms ease, gap 150ms ease; }
-.bp-back-btn:hover { background: #e6efe9; }
-.bp-back-btn:hover .bp-back-arrow { transform: translateX(-2px); }
-.bp-back-arrow { transition: transform 200ms ease; }
+.bp-back-btn {
+  transition:
+    background 150ms ease,
+    gap 150ms ease;
+}
+.bp-back-btn:hover {
+  background: #e6efe9;
+}
+.bp-back-btn:hover .bp-back-arrow {
+  transform: translateX(-2px);
+}
+.bp-back-arrow {
+  transition: transform 200ms ease;
+}
 
 /* Grade medallion sheen */
 .bp-grade-badge::after {
@@ -135,15 +321,21 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(145deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 55%);
   pointer-events: none;
 }
 
 /* ── Blueprint detail: clean PDF / print export ── */
-.blueprint-print-only { display: none; }
+.blueprint-print-only {
+  display: none;
+}
 @media print {
-  body { background: #ffffff !important; }
-  .blueprint-no-print { display: none !important; }
+  body {
+    background: #ffffff !important;
+  }
+  .blueprint-no-print {
+    display: none !important;
+  }
   .blueprint-scroll {
     overflow: visible !important;
     height: auto !important;
@@ -152,7 +344,10 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .blueprint-page-break { break-inside: avoid; page-break-inside: avoid; }
+  .blueprint-page-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .blueprint-print-only {
     display: block !important;
     page-break-after: always;
@@ -165,38 +360,68 @@ body {
   color: rgba(255, 244, 225, 0.42);
   transition: color 200ms ease;
 }
-.footer-link:hover { color: #89d7b7; }
+.footer-link:hover {
+  color: var(--color-mint);
+}
 
 .footer-social {
   color: rgba(255, 244, 225, 0.38);
-  transition: color 180ms ease, background 180ms ease;
+  transition:
+    color 180ms ease,
+    background 180ms ease;
 }
 .footer-social:hover {
-  color: #89d7b7;
-  background: rgba(137, 215, 183, 0.12) !important;
+  color: var(--color-mint);
+  background: rgba(137, 215, 183, 0.12);
 }
 
 /* ── CTA blob drift ── */
 @keyframes blob-drift-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(40px, -30px) scale(1.06); }
-  66%       { transform: translate(-20px, 25px) scale(0.96); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.06);
+  }
+  66% {
+    transform: translate(-20px, 25px) scale(0.96);
+  }
 }
 @keyframes blob-drift-b {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  40%       { transform: translate(-35px, 20px) scale(1.04); }
-  75%       { transform: translate(25px, -35px) scale(0.98); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  40% {
+    transform: translate(-35px, 20px) scale(1.04);
+  }
+  75% {
+    transform: translate(25px, -35px) scale(0.98);
+  }
 }
 
 /* ── ScrollReelTestimonials ── */
 @keyframes scroll-reel-char-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scroll-reel-exit {
-  from { opacity: 1; transform: translateY(0);   }
-  to   { opacity: 0; transform: translateY(-8px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
 .scroll-reel-char {

@@ -24,3 +24,4 @@ __pycache__/
 # Node / Next.js (root-level, frontend has its own .gitignore)
 node_modules/
 .next/
+next-env.d.ts
