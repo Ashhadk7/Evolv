@@ -7,6 +7,7 @@ from app.api.v1.controllers import (
     founder_profiles,
     health,
     me,
+    messages,
     phone,
     skills,
     tags,
@@ -22,6 +23,7 @@ api_router.include_router(
     developer_profiles.router, prefix="/developer-profile", tags=["developer-profile"]
 )
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
 api_router.include_router(phone.router, prefix="/phone", tags=["phone"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(skills.router, prefix="/skills", tags=["skills"])
