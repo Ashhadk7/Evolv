@@ -38,9 +38,9 @@ export function SignInForm() {
       setError("Please fill in all fields.");
       return;
     }
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!EMAIL_REGEX.test(email)) {
       setError("Please enter a valid email address.");
       return;
     }
