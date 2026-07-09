@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.controllers import (
     auth,
+    connections,
     developer_profiles,
     domains,
     founder_profiles,
@@ -28,3 +29,4 @@ api_router.include_router(skills.router, prefix="/skills", tags=["skills"])
 api_router.include_router(tags.router, prefix="/tags", tags=["tags"])
 api_router.include_router(domains.router, prefix="/domains", tags=["domains"])
 api_router.include_router(me.router, prefix="/me", tags=["me"])
+api_router.include_router(connections.router, prefix="/connections", tags=["connections"])

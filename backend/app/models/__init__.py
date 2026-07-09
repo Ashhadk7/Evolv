@@ -11,6 +11,8 @@ from app.models.skill import (
     SkillKind,
     SkillExperience,
 )
+from app.models.connection import Connection, ConnectionStatus
+from app.models.certification import Certification
 
 __all__ = [
     "DeveloperProfile",
@@ -26,4 +28,7 @@ __all__ = [
     "FounderDomain",
     "SkillKind",
     "SkillExperience",
+    "Connection",
+    "ConnectionStatus",
+    "Certification",
 ]
