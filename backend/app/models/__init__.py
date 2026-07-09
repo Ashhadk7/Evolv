@@ -1,5 +1,13 @@
 """Import SQLAlchemy models here so Alembic can detect them."""
 
+from app.models.application import Application, SavedBlueprint
+from app.models.blueprint import (
+    Blueprint,
+    BlueprintVersion,
+    BlueprintVisibility,
+    LevelRating,
+    VersionState,
+)
 from app.models.messaging import Message, MessageConnection
 from app.models.skill import (
     DeveloperTag,
@@ -16,6 +24,11 @@ from app.models.connection import Connection, ConnectionStatus
 from app.models.certification import Certification
 
 __all__ = [
+    "Blueprint",
+    "BlueprintVersion",
+    "BlueprintVisibility",
+    "LevelRating",
+    "SavedBlueprint",
     "ConnectionStatus",
     "DeveloperProfile",
     "Education",
@@ -28,10 +41,10 @@ __all__ = [
     "FounderDomain",
     "SkillExperience",
     "SkillKind",
-    "Tag",
     "User",
     "UserRole",
     "UserSkill",
+    "VersionState",
     "Connection",
     "Certification",
 ]
