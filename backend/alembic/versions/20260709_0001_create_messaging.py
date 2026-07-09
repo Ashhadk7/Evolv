@@ -8,6 +8,7 @@ Create Date: 2026-07-09
 from __future__ import annotations
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -18,7 +19,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    connection_status = sa.Enum("pending", "accepted", "declined", name="connection_status")
+    connection_status = postgresql.ENUM("pending", "accepted", "declined", name="connection_status")
     connection_status.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
@@ -26,7 +27,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("requester_id", sa.Uuid(), nullable=False),
         sa.Column("addressee_id", sa.Uuid(), nullable=False),
-        sa.Column("status", connection_status, nullable=False),
+        sa.Column("status", postgresql.ENUM("pending", "accepted", "declined", name="connection_status", create_type=False), nullable=False),
         sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("declined_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
@@ -101,7 +102,7 @@ def downgrade() -> None:
     op.drop_index("ix_message_connections_requester_id", table_name="message_connections")
     op.drop_index("ix_message_connections_addressee_id", table_name="message_connections")
     op.drop_table("message_connections")
-    sa.Enum("pending", "accepted", "declined", name="connection_status").drop(
+    postgresql.ENUM("pending", "accepted", "declined", name="connection_status").drop(
         op.get_bind(),
         checkfirst=True,
     )

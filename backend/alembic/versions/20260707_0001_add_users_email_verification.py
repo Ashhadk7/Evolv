@@ -1,7 +1,7 @@
 """add users email verification
 
 Revision ID: 20260707_0001
-Revises:
+Revises: 56521dc74bd8
 Create Date: 2026-07-07
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20260707_0001"
-down_revision = None
+down_revision = "56521dc74bd8"
 branch_labels = None
 depends_on = None
 
