@@ -8,9 +8,3 @@ export type PaymentData = {
   currency: string;
   paypal: string;
 };
-
-export type PasswordData = {
-  current: string;
-  newPass: string;
-  confirm: string;
-};

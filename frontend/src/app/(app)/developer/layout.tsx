@@ -3,6 +3,7 @@
 import "../../developer.css";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { AuthGuard } from "@/features/auth/components/auth-guard";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
 import { DevOnboardingModal } from "@/features/onboarding/components/developer-onboarding-modal";
@@ -40,6 +41,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   const missingProfileFields = getMissingDeveloperProfileFields(profile);
 
   return (
+    <AuthGuard requiredRole="developer">
     <div className="flex min-h-screen bg-[#f5f6f4]">
       {!isSettings && (
         <DashboardSidebar
@@ -82,5 +84,6 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         />
       )}
     </div>
+    </AuthGuard>
   );
 }

@@ -18,6 +18,7 @@ import { ProfileSection } from "@/features/settings/components/profile-section";
 import { NotificationsSection } from "@/features/settings/components/notifications-section";
 import { PaymentSection } from "@/features/settings/components/payment-section";
 import { SecuritySection } from "@/features/settings/components/security-section";
+import { DeleteAccountModal } from "@/features/settings/components/delete-account-modal";
 
 export type SettingsSection = "profile" | "payment" | "notifications" | "security";
 
@@ -37,6 +38,7 @@ export function SettingsTab({
   editSignal = 0,
 }: Props) {
   const [localSection, setLocalSection] = useState<SettingsSection>("profile");
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const activeSection = section ?? localSection;
   const setSection = onSectionChange ?? setLocalSection;
   const router = useRouter();
@@ -49,17 +51,7 @@ export function SettingsTab({
   ];
 
   const handleDeleteAccount = () => {
-    const confirmed = window.confirm(
-      "Delete this founder account from this browser? This removes saved founder profile and blueprint data."
-    );
-    if (!confirmed) return;
-    try {
-      localStorage.removeItem("evolv_founder_profile");
-      localStorage.removeItem("evolv_founder_blueprints");
-    } catch {
-      /* ignore */
-    }
-    window.location.href = "/sign-in";
+    setDeleteAccountOpen(true);
   };
 
   return (
@@ -203,6 +195,8 @@ export function SettingsTab({
           </AnimatePresence>
         </div>
       </div>
+
+      <DeleteAccountModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   REQUIRED_ACCOUNT_FIELDS,
   STATE_CITIES_URL,
 } from "./constants";
+import { getPasswordStrengthError } from "@/features/auth/lib/validation";
 import type {
   AccountErrors,
   AccountField,
@@ -104,7 +105,10 @@ export function getAccountErrors(
   else if (trimmed.email && trimmed.email.toLowerCase() !== trimmed.confirmEmail.toLowerCase())
     errors.confirmEmail = "Confirm email must match email.";
   if (!trimmed.password) errors.password = "Password is required.";
-  else if (trimmed.password.length < 8) errors.password = "Password must be at least 8 characters.";
+  else {
+    const strengthError = getPasswordStrengthError(trimmed.password);
+    if (strengthError) errors.password = strengthError;
+  }
   if (!trimmed.confirmPassword) errors.confirmPassword = "Confirm password is required.";
   else if (trimmed.password && trimmed.password !== trimmed.confirmPassword)
     errors.confirmPassword = "Confirm password must match password.";

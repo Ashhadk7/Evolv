@@ -8,18 +8,35 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
 import { Logo } from "./logo";
 import { InputField } from "./input-field";
+import { getApiErrorMessage } from "@/lib/api";
+import { signIn } from "@/features/auth/lib/auth-api";
+import { saveSession, type SessionUser } from "@/features/auth/lib/session";
+import { EMAIL_REGEX } from "@/features/auth/lib/validation";
 
 const BRAND_INK = "#0f1c18";
 const BRAND_MID = "#428475";
 const BRAND_MINT = "#89d7b7";
 
-interface StoredUser {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  role: "founder" | "developer";
-  profile?: Record<string, unknown>;
+function writeLegacyProfileKeys(user: SessionUser): void {
+  const base = { firstName: user.firstName, lastName: user.lastName, email: user.email };
+  if (user.role === "founder") {
+    localStorage.setItem(
+      "evolv_founder_profile",
+      JSON.stringify({
+        ...base,
+        bio: "",
+        domains: [],
+        linkedin: "",
+        dob: "",
+        gender: "",
+        phone: "",
+        education: "",
+        description: "",
+      })
+    );
+  } else {
+    localStorage.setItem("evolv_user", JSON.stringify(base));
+  }
 }
 
 export function SignInForm() {
@@ -29,8 +46,9 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -38,96 +56,21 @@ export function SignInForm() {
       setError("Please fill in all fields.");
       return;
     }
-    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
     if (!EMAIL_REGEX.test(email)) {
       setError("Please enter a valid email address.");
       return;
     }
 
-    if (
-      email.toLowerCase() === "sarah@evolv.dev" ||
-      email.toLowerCase() === "sarah.mitchell@evolv.dev"
-    ) {
-      localStorage.setItem(
-        "evolv_user",
-        JSON.stringify({
-          firstName: "Sarah",
-          lastName: "Mitchell",
-          email: email.toLowerCase(),
-          profileComplete: false,
-          firstTime: false,
-        })
-      );
-      router.push("/developer/dashboard");
-      return;
-    }
-    if (email.toLowerCase() === "asad@evolv.dev") {
-      localStorage.setItem(
-        "evolv_founder_profile",
-        JSON.stringify({
-          firstName: "Asad",
-          lastName: "",
-          email: email.toLowerCase(),
-          bio: "",
-          domains: [],
-          linkedin: "",
-          dob: "",
-          gender: "",
-          phone: "",
-          education: "",
-          description: "",
-        })
-      );
-      router.push("/founder/dashboard");
-      return;
-    }
-
+    setIsSubmitting(true);
     try {
-      const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredUser[];
-      const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (!user) {
-        setError("Account not found. Please sign up.");
-        return;
-      }
-      if (user.password !== password) {
-        setError("Incorrect password.");
-        return;
-      }
-
-      if (user.role === "founder") {
-        localStorage.setItem(
-          "evolv_founder_profile",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            bio: "",
-            domains: [],
-            linkedin: "",
-            dob: "",
-            gender: "",
-            phone: "",
-            education: "",
-            description: "",
-            ...(user.profile ?? {}),
-          })
-        );
-        router.push("/founder/dashboard");
-      } else {
-        localStorage.setItem(
-          "evolv_user",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            ...(user.profile ?? {}),
-          })
-        );
-        router.push("/developer/dashboard");
-      }
-    } catch {
-      setError("An error occurred during sign in.");
+      const session = await signIn(email, password);
+      saveSession(session, rememberMe);
+      writeLegacyProfileKeys(session.user);
+      router.push(session.user.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
+    } catch (err) {
+      setError(getApiErrorMessage(err, (e) => (e.status === 401 ? "Invalid email or password." : undefined)));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -236,27 +179,28 @@ export function SignInForm() {
                 Keep me signed in
               </span>
             </label>
-            <a
-              href="#"
+            <Link
+              href="/forgot-password"
               className="text-[12px] font-semibold transition-opacity hover:opacity-70"
               style={{ color: BRAND_MID }}
             >
               Forgot password?
-            </a>
+            </Link>
           </div>
 
           <motion.button
             whileHover={{ scale: 1.012 }}
             whileTap={{ scale: 0.988 }}
             type="submit"
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13.5px] font-semibold transition-all"
+            disabled={isSubmitting}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13.5px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60"
             style={{
               background: BRAND_INK,
               color: BRAND_MINT,
               boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
             }}
           >
-            Sign in
+            {isSubmitting ? "Signing in..." : "Sign in"}
             <ArrowRight size={14} weight="bold" />
           </motion.button>
 

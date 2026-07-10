@@ -23,8 +23,9 @@ import {
   getProfileInitials,
   hydrateDeveloperProfile,
 } from "@/features/settings/data/developer-settings-data";
-import type { PaymentData, PasswordData, SettingsTab } from "./developer-settings-types";
+import type { PaymentData, SettingsTab } from "./developer-settings-types";
 import styles from "./developer-settings.module.css";
+import { DeleteAccountModal } from "@/features/settings/components/delete-account-modal";
 import { SettingsSidebarNav } from "./settings-sidebar-nav";
 import { ProfileTabView } from "./profile-tab-view";
 import { ProfileTabEdit } from "./profile-tab-edit";
@@ -58,12 +59,8 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [passwordData, setPasswordData] = useState<PasswordData>({
-    current: "",
-    newPass: "",
-    confirm: "",
-  });
   const [paySaved, setPaySaved] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [payData, setPayData] = useState<PaymentData>({
     method: "bank",
     accountName: "Sarah Mitchell",
@@ -73,7 +70,6 @@ const Settings = () => {
     paypal: "sarah.mitchell@evolv.dev",
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [pwSaved, setPwSaved] = useState(false);
 
   useEffect(() => {
     try {
@@ -190,16 +186,8 @@ const Settings = () => {
     setTimeout(() => setPaySaved(false), 2000);
   };
 
-  const handlePwSave = () => {
-    if (!passwordData.current || !passwordData.newPass) return;
-    setPwSaved(true);
-    setPasswordData({ current: "", newPass: "", confirm: "" });
-    setTimeout(() => setPwSaved(false), 2000);
-  };
-
   const handleDeleteAccount = () => {
-    // Preserved from the original component: no confirmation/localStorage
-    // clearing was wired up here yet, matching prior behavior exactly.
+    setDeleteAccountOpen(true);
   };
 
   const toggleTag = (tag: string) => {
@@ -419,16 +407,7 @@ const Settings = () => {
                 />
               )}
 
-              {activeTab === "security" && (
-                <SecurityTab
-                  passwordData={passwordData}
-                  onChangePasswordData={(patch) =>
-                    setPasswordData((prev) => ({ ...prev, ...patch }))
-                  }
-                  pwSaved={pwSaved}
-                  onSave={handlePwSave}
-                />
-              )}
+              {activeTab === "security" && <SecurityTab />}
 
               {activeTab === "preferences" && (
                 <PreferencesTab
@@ -446,6 +425,8 @@ const Settings = () => {
           </div>
         </div>
       </main>
+
+      <DeleteAccountModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
     </div>
   );
 };

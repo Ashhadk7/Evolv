@@ -21,7 +21,20 @@ import { FounderProfileStep } from "./signup/founder-profile-step";
 import { DeveloperProfileStep } from "./signup/developer-profile-step";
 import { useSignupLocationOptions } from "../hooks/use-signup-location-options";
 import { persistSignupAccount } from "../lib/signup-storage";
+import { OtpVerification } from "./otp-verification";
+import { getApiErrorMessage } from "@/lib/api";
+import { resendSignupOtp, signIn, signUp, verifySignupEmail } from "../lib/auth-api";
+import { saveSession } from "../lib/session";
 import type { Role, AccountField, AccountValidationField } from "./signup/types";
+
+function resolveSignUpError(err: unknown): string {
+  return getApiErrorMessage(err, (e) => {
+    if (e.status === 409)
+      return "An account with this email already exists. Try logging in instead.";
+    if (e.status === 502) return "We couldn't send the verification email. Please try again shortly.";
+    return undefined;
+  });
+}
 
 export function SignUpForm() {
   const router = useRouter();
@@ -36,6 +49,8 @@ export function SignUpForm() {
     Partial<Record<AccountValidationField, boolean>>
   >({});
   const [accountSubmitted, setAccountSubmitted] = useState(false);
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [account, setAccount] = useState({
     firstName: "",
@@ -208,39 +223,67 @@ export function SignUpForm() {
     return true;
   };
 
-  const persistAccount = (profileComplete: boolean) => {
-    const redirectPath = persistSignupAccount({
-      role,
-      account,
-      founder,
-      developer,
-      profileComplete,
-    });
-    router.push(redirectPath);
-    return true;
+  // Step 1 (account) submit: creates the auth user and sends the email OTP.
+  // Profile fields are not part of signup — they are collected after login.
+  const submitSignup = async () => {
+    if (!role) return;
+    setIsSubmitting(true);
+    setError("");
+    try {
+      await signUp({
+        role,
+        email: account.email,
+        password: account.password,
+        firstName: account.firstName,
+        lastName: account.lastName,
+        phone: account.phone,
+        country: account.country,
+        countryCode: account.countryCode,
+        stateProvince: account.stateProvince,
+        city: account.city,
+        dob: account.dob,
+        termsAccepted: agreed,
+      });
+      setAwaitingOtp(true);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      setError(resolveSignUpError(err));
+      scrollToErrorSummary();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const finish = (skip = false) => {
+  // OTP verified: mark email verified, auto-sign-in, then move to the profile step.
+  const completeVerifiedSignup = async (otp: string) => {
+    await verifySignupEmail(account.email, otp);
+
+    try {
+      const session = await signIn(account.email, account.password);
+      saveSession(session, true);
+    } catch {
+      router.push("/sign-in");
+      return;
+    }
+
+    setAwaitingOtp(false);
     setError("");
-    if (!role) return;
+    setStep(2);
+  };
+
+  const isProfileComplete = () => {
     if (role === "founder") {
       const founderDegreeName =
         founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
-      const complete = Boolean(
+      return Boolean(
         founder.headline &&
         founder.bio &&
         founder.domains.length &&
         founder.educationLevel &&
         founderDegreeName
       );
-      try {
-        persistAccount(!skip && complete);
-      } catch {
-        setError("Something went wrong while creating your account.");
-      }
-      return;
     }
-    const complete = Boolean(
+    return Boolean(
       developer.jobTitle ||
       developer.experience ||
       developer.educationLevel ||
@@ -250,16 +293,30 @@ export function SignUpForm() {
       developer.linkedIn ||
       developer.skills.length
     );
+  };
+
+  // Step 2 (profile) finish: the user is already signed in — persist the profile
+  // details and redirect to their dashboard.
+  const finish = (skip = false) => {
+    setError("");
+    if (!role) return;
     try {
-      persistAccount(!skip && complete);
+      const redirectPath = persistSignupAccount({
+        role,
+        account,
+        founder,
+        developer,
+        profileComplete: !skip && isProfileComplete(),
+      });
+      router.push(redirectPath);
     } catch {
-      setError("Something went wrong while creating your account.");
+      setError("Something went wrong while saving your profile.");
     }
   };
 
   const goNext = () => {
     if (step === 0 && validateRole()) setStep(1);
-    if (step === 1 && validateAccount()) setStep(2);
+    if (step === 1 && validateAccount()) void submitSignup();
   };
 
   return (
@@ -301,6 +358,17 @@ export function SignUpForm() {
         className={`flex flex-col px-8 sm:px-10 xl:px-14 ${step === 2 ? "pt-10 pb-52" : "flex-1 justify-center"}`}
       >
         <div className="mx-auto w-full max-w-[560px]">
+          {awaitingOtp ? (
+            <OtpVerification
+              email={account.email}
+              title="Verify your email"
+              description="We sent a 6-digit code to"
+              submitLabel="Verify & create account"
+              onVerify={completeVerifiedSignup}
+              onResend={() => resendSignupOtp(account.email)}
+            />
+          ) : (
+            <>
           <div className="mb-8">
             <SignupProgress step={step} role={role} />
           </div>
@@ -385,9 +453,12 @@ export function SignUpForm() {
               />
             )}
           </AnimatePresence>
+            </>
+          )}
         </div>
       </motion.div>
 
+      {!awaitingOtp && (
       <div
         className="sticky bottom-0 z-20 px-8 sm:px-10 xl:px-14"
         style={{ background: "#f5f6f4", borderTop: "1px solid rgba(15,28,24,0.07)" }}
@@ -433,22 +504,27 @@ export function SignUpForm() {
           </AnimatePresence>
 
           <div className="flex items-center justify-between py-4">
-            <button
-              type="button"
-              onClick={() => (step === 0 ? router.push("/") : setStep((s) => s - 1))}
-              className="flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-bold transition hover:bg-black/5"
-              style={{ color: "rgba(15,28,24,0.6)" }}
-            >
-              <ArrowLeft size={14} weight="bold" />
-              {step === 0 ? "Back home" : "Back"}
-            </button>
+            {step < 2 ? (
+              <button
+                type="button"
+                onClick={() => (step === 0 ? router.push("/") : setStep((s) => s - 1))}
+                className="flex h-10 items-center gap-2 rounded-xl px-4 text-[13px] font-bold transition hover:bg-black/5"
+                style={{ color: "rgba(15,28,24,0.6)" }}
+              >
+                <ArrowLeft size={14} weight="bold" />
+                {step === 0 ? "Back home" : "Back"}
+              </button>
+            ) : (
+              <span />
+            )}
 
             <div className="flex items-center gap-3">
               {step === 2 && (
                 <button
                   type="button"
                   onClick={() => finish(true)}
-                  className="h-10 rounded-xl border bg-white px-5 text-[13px] font-bold transition hover:bg-gray-50"
+                  disabled={isSubmitting}
+                  className="h-10 rounded-xl border bg-white px-5 text-[13px] font-bold transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_MID }}
                 >
                   Skip for now
@@ -459,14 +535,15 @@ export function SignUpForm() {
                 whileTap={{ scale: 0.988 }}
                 type="button"
                 onClick={step < 2 ? goNext : () => finish(false)}
-                className="flex h-10 items-center gap-2 rounded-xl px-6 text-[13px] font-semibold transition-all"
+                disabled={isSubmitting}
+                className="flex h-10 items-center gap-2 rounded-xl px-6 text-[13px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
                   background: BRAND_INK,
                   color: BRAND_MINT,
                   boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
                 }}
               >
-                {step < 2 ? "Continue" : "Complete profile"}
+                {step < 2 ? (isSubmitting ? "Creating account..." : "Continue") : "Complete profile"}
                 {step < 2 ? (
                   <ArrowRight size={14} weight="bold" />
                 ) : role === "founder" ? (
@@ -479,6 +556,7 @@ export function SignUpForm() {
           </div>
         </div>
       </div>
+      )}
     </main>
   );
 }

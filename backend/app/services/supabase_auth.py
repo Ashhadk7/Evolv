@@ -139,8 +139,15 @@ class SupabaseAuthClient:
     def delete_user(self, user_id: UUID) -> None:
         try:
             self._auth_admin.delete_user(str(user_id))
-        except SUPABASE_CLIENT_ERRORS:
-            logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
+        except SUPABASE_CLIENT_ERRORS as exc:
+            # If the user is already gone from Supabase, log it cleanly without a scary traceback
+            msg = getattr(exc, "message", "").lower()
+            status = getattr(exc, "status", None)
+            if status == 404 or "not found" in msg:
+                logger.info("Supabase Auth user %s was already deleted or not found during cleanup.", user_id)
+            else:
+                logger.exception("Failed to delete Supabase Auth user %s during cleanup.", user_id)
+
 
     def update_password(self, user_id: UUID, new_password: str) -> None:
         try:

@@ -36,7 +36,6 @@ export function persistSignupAccount({
     firstName: account.firstName,
     lastName: account.lastName,
     email: account.email,
-    password: account.password,
     role,
     ...accountLocation,
   };

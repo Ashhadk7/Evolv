@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { AuthGuard } from "@/features/auth/components/auth-guard";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
 import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wizard";
@@ -48,6 +49,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
   const missingProfileFields = getMissingFounderProfileFields(profile);
 
   return (
+    <AuthGuard requiredRole="founder">
     <div className="founder-shell flex h-screen overflow-hidden bg-[#f5f6f4]">
       <style
         dangerouslySetInnerHTML={{
@@ -91,5 +93,6 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
         />
       )}
     </div>
+    </AuthGuard>
   );
 }
