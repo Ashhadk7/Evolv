@@ -1,7 +1,5 @@
-// Inbox helpers that are byte-identical between the founder and developer
-// inboxes. Role-specific logic (readStoredUsers, contactFromStoredUser,
-// roleToPersonType, current-user name getters) stays in each role's own
-// helpers file since the behavior genuinely differs.
+// Inbox helpers that are shared between founder and developer inboxes.
+// Role-specific logic stays in each role's own helper file.
 import type { Contact, Message } from "@/features/messaging/types/inbox-types";
 
 export function getInitials(name: string) {

@@ -41,8 +41,8 @@ export type SigninResponse = {
 };
 
 type RequestOptions = {
-  method: "POST" | "PATCH";
-  body: unknown;
+  method: "GET" | "POST" | "PATCH";
+  body?: unknown;
   token?: string;
 };
 
@@ -55,12 +55,18 @@ function apiBaseUrl() {
 async function request<T>(path: string, options: RequestOptions): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
+  const baseUrl = apiBaseUrl();
 
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    method: options.method,
-    headers,
-    body: JSON.stringify(options.body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method: options.method,
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+  } catch {
+    throw new Error(`Could not reach backend at ${baseUrl}. Make sure FastAPI is running.`);
+  }
 
   if (!response.ok) throw new Error(await errorMessage(response));
   return response.json() as Promise<T>;
@@ -90,6 +96,33 @@ export function verifySignupEmail(email: string, otp: string) {
 
 export function signin(email: string, password: string) {
   return request<SigninResponse>("/auth/signin", { method: "POST", body: { email, password } });
+}
+
+export type PhoneStatusResponse = {
+  phone: string | null;
+  phone_verified: boolean;
+};
+
+export type PhoneVerifyResponse = {
+  phone: string;
+  phone_verified: boolean;
+  message: string;
+};
+
+export function getPhoneStatus(token: string) {
+  return request<PhoneStatusResponse>("/phone/status", { method: "GET", token });
+}
+
+export function verifyPhone(firebaseIdToken: string, token: string) {
+  return request<PhoneVerifyResponse>("/phone/verify", {
+    method: "POST",
+    body: { firebase_id_token: firebaseIdToken },
+    token,
+  });
+}
+
+export function getApiErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Request failed. Please try again.";
 }
 
 export function saveAuthSession(session: SigninResponse) {

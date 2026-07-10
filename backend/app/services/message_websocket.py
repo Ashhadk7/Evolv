@@ -107,8 +107,4 @@ def authenticate_websocket_user(db: Session, token: str | None) -> User | None:
     app_user = users_repository.get_user_by_id(db, auth_user.id)
     if app_user is None or not app_user.email_verified:
         return None
-    try:
-        message_service.ensure_user_can_use_messaging(app_user)
-    except HTTPException:
-        return None
     return app_user

@@ -10,22 +10,17 @@ import type {
   CurrentFounder,
   InboxFilter,
   InboxLaunchContact,
-  Message,
 } from "@/features/messaging/types/inbox-types";
 import { BORDER, MUTED, TEXT } from "@/features/messaging/lib/inbox-theme";
-import { CONTACTS, MOCK_MSGS } from "@/features/messaging/data/inbox-mock-data";
 import {
   getInitials,
   getFounderName,
-  formatDate,
-  formatTime,
-  readStoredUsers,
   roleToPersonType,
   isIncomingRequest,
   isOutgoingPending,
   hasSentIntro,
-  contactFromStoredUser,
 } from "@/features/messaging/lib/inbox-helpers";
+import { useMessagingBackend } from "@/features/messaging/hooks/use-messaging-backend";
 import { MessageRow } from "../message-row";
 import { ComposeModal } from "../compose-modal";
 import { CallOverlay } from "../call-overlay";
@@ -50,9 +45,18 @@ export function InboxTab({
   profileComplete?: boolean;
   onRequireProfile?: (afterComplete?: () => void) => void;
 }) {
-  const [localActiveId, setLocalActiveId] = useState("sarah");
-  const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
-  const [messages, setMessages] = useState<Record<string, Message[]>>(MOCK_MSGS);
+  const [localActiveId, setLocalActiveId] = useState("");
+  const {
+    contacts,
+    setContacts,
+    messages,
+    error: messagingError,
+    setError: setMessagingError,
+    sendMessage: sendBackendMessage,
+    acceptRequest: acceptBackendRequest,
+    declineRequest: declineBackendRequest,
+    markRead: markBackendRead,
+  } = useMessagingBackend();
   const [draft, setDraft] = useState("");
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
@@ -72,6 +76,7 @@ export function InboxTab({
       const initialMessage = extra.initialMessage?.trim();
       return {
         id: base?.id ?? extra.id,
+        recipientId: extra.recipientId ?? base?.recipientId ?? extra.id,
         name: extra.name || base?.name || "Evolv member",
         role: extra.role || base?.role || "Evolv Network",
         personType,
@@ -100,6 +105,7 @@ export function InboxTab({
       const existing = contacts.find(
         (item) =>
           item.id === extra.id ||
+          (extra.recipientId ? item.recipientId === extra.recipientId : false) ||
           (normalizedEmail ? item.email?.toLowerCase() === normalizedEmail : false)
       );
       const nextContact = toContact(extra, existing);
@@ -118,8 +124,10 @@ export function InboxTab({
   }, [contacts, extraContacts]);
 
   const activeId = activeContactId ?? localActiveId;
-  const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0] ?? CONTACTS[0];
+  const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0];
   const thread = useMemo(() => {
+    if (!contact) return [];
+
     const rawThread = contact ? (messages[contact.id] ?? []) : [];
     const launchContact = extraContacts.find(
       (extra) =>
@@ -145,13 +153,13 @@ export function InboxTab({
       },
     ];
   }, [contact, extraContacts, messages]);
-  const contactProfile = buildProfileFromContact(contact);
-  const incomingRequestActive = isIncomingRequest(contact);
-  const outgoingPendingActive = isOutgoingPending(contact);
+  const contactProfile = contact ? buildProfileFromContact(contact) : null;
+  const incomingRequestActive = contact ? isIncomingRequest(contact) : false;
+  const outgoingPendingActive = contact ? isOutgoingPending(contact) : false;
   const sentOutgoingIntro = outgoingPendingActive && hasSentIntro(thread);
   const messageLocked = incomingRequestActive || (outgoingPendingActive && sentOutgoingIntro);
   const inputPlaceholder = incomingRequestActive
-    ? contact.requestStatus === "rejected"
+    ? contact?.requestStatus === "rejected"
       ? "Request rejected. Accept it to reply."
       : "Accept the request before replying."
     : sentOutgoingIntro
@@ -198,6 +206,7 @@ export function InboxTab({
     if (onActiveContactChange) onActiveContactChange(id);
     else setLocalActiveId(id);
     setContacts((prev) => prev.map((item) => (item.id === id ? { ...item, unread: 0 } : item)));
+    markBackendRead(id).catch(() => undefined);
     setViewingProfile(false);
   };
 
@@ -213,29 +222,23 @@ export function InboxTab({
   }, [activeId, thread.length]);
 
   const sendMsg = () => {
+    if (!contact) return;
     if (messageLocked) return;
     if (!draft.trim()) return;
-    const now = new Date();
     const body = draft.trim();
-    const msg: Message = {
-      id: Date.now().toString(),
-      from: "me",
-      text: body,
-      time: formatTime(now),
-      date: formatDate(now),
-    };
-
-    setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
-    setContacts((prev) => {
-      const nextContact = { ...contact, lastMsg: body, lastTime: "Now", unread: 0 };
-      return prev.some((item) => item.id === contact.id)
-        ? prev.map((item) => (item.id === contact.id ? nextContact : item))
-        : [nextContact, ...prev];
-    });
+    try {
+      sendBackendMessage(contact, body);
+    } catch (sendError) {
+      setMessagingError(
+        sendError instanceof Error ? sendError.message : "Message could not be sent."
+      );
+      return;
+    }
     setDraft("");
   };
 
   const sendMeetInvite = () => {
+    if (!contact) return;
     if (messageLocked) return;
     const chars = "abcdefghijklmnopqrstuvwxyz";
     const segment = (len: number) =>
@@ -243,26 +246,24 @@ export function InboxTab({
     const meetCode = `${segment(3)}-${segment(4)}-${segment(3)}`;
     const meetLink = `https://meet.google.com/${meetCode}`;
     const body = `Let's connect over video call. Join here: ${meetLink}`;
-
-    const now = new Date();
-    const msg: Message = {
-      id: Date.now().toString(),
-      from: "me",
-      text: body,
-      time: formatTime(now),
-      date: formatDate(now),
-    };
-
-    setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
-    setContacts((prev) => {
-      const nextContact = { ...contact, lastMsg: body, lastTime: "Now", unread: 0 };
-      return prev.some((item) => item.id === contact.id)
-        ? prev.map((item) => (item.id === contact.id ? nextContact : item))
-        : [nextContact, ...prev];
-    });
+    try {
+      sendBackendMessage(contact, body);
+    } catch (sendError) {
+      setMessagingError(
+        sendError instanceof Error ? sendError.message : "Message could not be sent."
+      );
+    }
   };
 
-  const acceptRequest = (id: string) => {
+  const acceptRequest = async (id: string) => {
+    try {
+      await acceptBackendRequest(id);
+    } catch (requestError) {
+      setMessagingError(
+        requestError instanceof Error ? requestError.message : "Request could not be accepted."
+      );
+      return;
+    }
     setContacts((prev) => {
       const acceptedContact = {
         ...contact,
@@ -281,7 +282,15 @@ export function InboxTab({
     setInboxFilter("general");
   };
 
-  const rejectRequest = (id: string) => {
+  const rejectRequest = async (id: string) => {
+    try {
+      await declineBackendRequest(id);
+    } catch (requestError) {
+      setMessagingError(
+        requestError instanceof Error ? requestError.message : "Request could not be declined."
+      );
+      return;
+    }
     setContacts((prev) =>
       prev.map((item) =>
         item.id === id
@@ -303,11 +312,7 @@ export function InboxTab({
     const normalized = email.toLowerCase();
     const existing = mergedContacts.find((item) => item.email?.toLowerCase() === normalized);
     if (existing) return existing;
-
-    const storedUser = readStoredUsers().find(
-      (user) => (user.email || user.profile?.email)?.toLowerCase() === normalized
-    );
-    return storedUser ? contactFromStoredUser(storedUser) : null;
+    return null;
   };
 
   const sendComposedMessage = ({
@@ -328,20 +333,10 @@ export function InboxTab({
     if (!trimmedMessage) return "Write a message before sending.";
 
     const recipient = findRecipient(normalizedEmail);
-    if (!recipient) return "No Evolv account was found with that email.";
+    if (!recipient) return "Open this user from Network first, then send a message.";
     const existingRecipient = mergedContacts.some(
       (item) => item.id === recipient.id || item.email?.toLowerCase() === normalizedEmail
     );
-
-    const now = new Date();
-    const msg: Message = {
-      id: Date.now().toString(),
-      from: "me",
-      text: trimmedMessage,
-      time: formatTime(now),
-      date: formatDate(now),
-      subject: trimmedSubject || undefined,
-    };
 
     const nextContact: Contact = {
       ...recipient,
@@ -355,10 +350,11 @@ export function InboxTab({
     };
 
     setContacts((prev) => [nextContact, ...prev.filter((item) => item.id !== nextContact.id)]);
-    setMessages((prev) => ({
-      ...prev,
-      [nextContact.id]: [...(prev[nextContact.id] ?? []), msg],
-    }));
+    try {
+      sendBackendMessage(nextContact, trimmedMessage);
+    } catch (sendError) {
+      return sendError instanceof Error ? sendError.message : "Message could not be sent.";
+    }
     if (onActiveContactChange) onActiveContactChange(nextContact.id);
     else setLocalActiveId(nextContact.id);
     if (nextContact.requestDirection === "outgoing") setInboxFilter("pending");
@@ -366,6 +362,27 @@ export function InboxTab({
     setComposeOpen(false);
     return null;
   };
+
+  if (!contact) {
+    return (
+      <div
+        className="flex h-full min-h-0 flex-col overflow-hidden"
+        style={{ background: "#f5f6f4", padding: "24px 28px" }}
+      >
+        <h2 className="text-[1.2rem] font-bold" style={{ color: TEXT }}>
+          Inbox
+        </h2>
+        <p className="mt-2 text-[12px]" style={{ color: MUTED }}>
+          No conversations yet. Open a real user from Network to start messaging.
+        </p>
+        {messagingError && (
+          <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
+            {messagingError}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const handleComposeClick = () => {
     if (!profileComplete && onRequireProfile) {
@@ -375,7 +392,7 @@ export function InboxTab({
     setComposeOpen(true);
   };
 
-  if (viewingProfile) {
+  if (viewingProfile && contactProfile) {
     return (
       <NetworkProfileDetailScreen
         key={contactProfile.id}
@@ -405,6 +422,11 @@ export function InboxTab({
             Manage founder and developer conversations in one place.
           </p>
         </div>
+        {messagingError && (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
+            {messagingError}
+          </div>
+        )}
         <motion.button
           type="button"
           onClick={handleComposeClick}

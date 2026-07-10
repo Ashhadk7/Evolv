@@ -22,6 +22,8 @@ export function NetworkTab({
     setSearchQuery,
     roleFilter,
     setRoleFilter,
+    peopleLoading,
+    peopleError,
     selectedPerson,
     setSelectedPerson,
     requestModalPerson,
@@ -187,8 +189,18 @@ export function NetworkTab({
               </div>
             </div>
 
+            {peopleError && (
+              <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
+                {peopleError}
+              </div>
+            )}
+
             {/* Grid of suggested matches */}
-            {filteredSuggested.length > 0 ? (
+            {peopleLoading ? (
+              <div className="rounded-2xl bg-white py-10 px-6 text-center text-[13px] font-semibold text-[#6b8e7e] border border-[#e8ede9]">
+                Loading real users...
+              </div>
+            ) : filteredSuggested.length > 0 ? (
               <motion.div
                 layout
                 className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
@@ -215,7 +227,7 @@ export function NetworkTab({
                 </div>
                 <h3 className="text-[14px] font-bold text-[#1a2e26]">No results found</h3>
                 <p className="mt-1 max-w-sm text-[11px] text-[#6b8e7e] leading-relaxed">
-                  We couldn't find any developers matching "{searchQuery}" and the active filters. Try refining your keywords.
+                  We could not find any developers matching &quot;{searchQuery}&quot; and the active filters. Try refining your keywords.
                 </p>
               </div>
             )}

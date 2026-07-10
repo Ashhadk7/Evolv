@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, LockKey, ShieldCheck } from "@phosphor-icons/react";
 import { MID, TEXT_BODY, TEXT_MUTED } from "@/features/settings/lib/settings-theme";
 import { Field } from "./field";
+import { PhoneVerificationCard } from "./phone-verification-card";
 
 export function SecuritySection() {
   const [saved, setSaved] = useState(false);
@@ -97,6 +98,16 @@ export function SecuritySection() {
           <Check size={15} weight="bold" />
           {saved ? "Password Updated" : "Update Password"}
         </button>
+      </section>
+      <section
+        className="max-w-2xl bg-white p-6 sm:p-8"
+        style={{
+          border: "1.5px solid #d4e4db",
+          borderRadius: 12,
+          boxShadow: "0 4px 20px rgba(26,49,44,0.04)",
+        }}
+      >
+        <PhoneVerificationCard />
       </section>
     </div>
   );

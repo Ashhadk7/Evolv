@@ -31,6 +31,7 @@ def send_message(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient not found.")
 
     ensure_can_start_messaging(current_user, recipient)
+    ensure_user_can_use_messaging(recipient, subject="Recipient")
     connection = get_or_create_sendable_connection(db, current_user, recipient)
 
     try:
@@ -56,7 +57,6 @@ def send_message(
 
 
 def list_conversations(db: Session, current_user: User) -> ConversationListResponse:
-    ensure_user_can_use_messaging(current_user)
     connections = messages_repository.list_conversations_for_user(db, current_user.id)
     return ConversationListResponse(
         items=build_conversation_summaries(db, connections, current_user)
@@ -64,7 +64,6 @@ def list_conversations(db: Session, current_user: User) -> ConversationListRespo
 
 
 def list_incoming_requests(db: Session, current_user: User) -> ConversationListResponse:
-    ensure_user_can_use_messaging(current_user)
     connections = messages_repository.list_incoming_requests(db, current_user.id)
     return ConversationListResponse(
         items=build_conversation_summaries(db, connections, current_user)
@@ -72,7 +71,6 @@ def list_incoming_requests(db: Session, current_user: User) -> ConversationListR
 
 
 def list_outgoing_pending(db: Session, current_user: User) -> ConversationListResponse:
-    ensure_user_can_use_messaging(current_user)
     connections = messages_repository.list_outgoing_pending(db, current_user.id)
     return ConversationListResponse(
         items=build_conversation_summaries(db, connections, current_user)
@@ -87,7 +85,6 @@ def list_messages(
     limit: int,
     offset: int,
 ) -> MessageListResponse:
-    ensure_user_can_use_messaging(current_user)
     connection = get_participating_connection(db, connection_id, current_user.id)
     messages = messages_repository.list_messages(
         db,
@@ -102,7 +99,6 @@ def list_messages(
 
 
 def mark_read(db: Session, *, connection_id: UUID, current_user: User) -> MarkReadResponse:
-    ensure_user_can_use_messaging(current_user)
     connection = get_participating_connection(db, connection_id, current_user.id)
 
     try:

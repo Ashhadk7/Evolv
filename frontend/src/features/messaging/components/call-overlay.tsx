@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Microphone, MicrophoneSlash, PhoneSlash, VideoCamera } from "@phosphor-icons/react";
 import { DARK, MID, MINT } from "@/features/messaging/lib/inbox-theme";
-import { AUDIO_BAR_DURATIONS } from "@/features/messaging/data/inbox-mock-data";
 import { Avatar } from "./inbox-avatar";
+
+const AUDIO_BAR_DURATIONS = [0.55, 0.8, 0.65, 0.95, 0.7, 0.9];
 
 interface CallContact {
   name: string;

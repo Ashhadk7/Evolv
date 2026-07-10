@@ -48,11 +48,12 @@ def create_developer_profile(
         user_id=user_id,
         educations=payload.educations,
     )
-    certifications_repository.replace_certifications_for_user(
-        db,
-        user_id=user_id,
-        certifications=payload.certifications,
-    )
+    if payload.certifications:
+        certifications_repository.replace_certifications_for_user(
+            db,
+            user_id=user_id,
+            certifications=payload.certifications,
+        )
     return profile
 
 
@@ -68,7 +69,7 @@ def update_developer_profile(
             educations=payload.educations,
         )
 
-    if payload.certifications is not None:
+    if payload.certifications:
         certifications_repository.replace_certifications_for_user(
             db,
             user_id=profile.user_id,

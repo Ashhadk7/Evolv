@@ -98,26 +98,31 @@ export function AccountStep({
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextInput
-          label="Password"
-          required
-          type={showPassword ? "text" : "password"}
-          value={account.password}
-          onChange={(value) => onAccountFieldChange("password", value)}
-          onBlur={() => onAccountTouched("password")}
-          error={accountErrorFor("password")}
-          placeholder="Minimum 8 characters"
-          right={
-            <button
-              type="button"
-              onClick={onTogglePassword}
-              className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-[#0f1c18]/45 hover:bg-[#f0f5f2]"
-              aria-label={showPassword ? "Hide" : "Show"}
-            >
-              {showPassword ? <EyeSlash size={17} /> : <Eye size={17} />}
-            </button>
-          }
-        />
+        <div>
+          <TextInput
+            label="Password"
+            required
+            type={showPassword ? "text" : "password"}
+            value={account.password}
+            onChange={(value) => onAccountFieldChange("password", value)}
+            onBlur={() => onAccountTouched("password")}
+            error={accountErrorFor("password")}
+            placeholder="Minimum 8 characters"
+            right={
+              <button
+                type="button"
+                onClick={onTogglePassword}
+                className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-[#0f1c18]/45 hover:bg-[#f0f5f2]"
+                aria-label={showPassword ? "Hide" : "Show"}
+              >
+                {showPassword ? <EyeSlash size={17} /> : <Eye size={17} />}
+              </button>
+            }
+          />
+          <p className="mt-1.5 text-[11.5px] leading-5 text-[#0f1c18]/45">
+            Use at least 8 characters with uppercase, lowercase, and a number.
+          </p>
+        </div>
         <TextInput
           label="Confirm password"
           required

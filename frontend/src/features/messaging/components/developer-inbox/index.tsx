@@ -4,45 +4,38 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { AnimatePresence, motion } from "framer-motion";
 import { PencilSimple } from "@phosphor-icons/react";
 import { NetworkProfileDetailScreen } from "@/features/network/components/network-profile-detail";
-import {
-  buildDeveloperProfileFromContact,
-  DEVELOPER_NETWORK_PROFILES,
-} from "@/features/developer-dashboard/data/developer-network-data";
+import { buildDeveloperProfileFromContact } from "@/features/developer-dashboard/data/developer-network-data";
 import type {
   Contact,
   CurrentDeveloper,
   DeveloperInboxLaunchContact,
   InboxFilter,
-  Message,
 } from "@/features/messaging/types/developer-inbox-types";
 import { BORDER, MUTED, TEXT } from "@/features/messaging/lib/inbox-theme";
 import {
-  CONTACTS,
-  MOCK_MSGS,
-  DEFAULT_DEVELOPER_USER,
-} from "@/features/messaging/data/developer-inbox-mock-data";
-import {
   getInitials,
-  formatDate,
-  formatTime,
   roleToPersonType,
   isIncomingRequest,
   isOutgoingPending,
   hasSentIntro,
-  readStoredUsers,
-  contactFromStoredUser,
   getDeveloperUser,
   getDeveloperName,
 } from "@/features/messaging/lib/developer-inbox-helpers";
+import { useMessagingBackend } from "@/features/messaging/hooks/use-messaging-backend";
 import { MessageRow } from "../message-row";
 import { ComposeModal } from "../compose-modal";
 import { CallOverlay } from "../call-overlay";
-import { profileToContact } from "@/features/messaging/lib/profile-to-contact";
 import { ConversationListPanel } from "../conversation-list-panel";
 import { ChatHeader } from "../chat-header";
 import { RequestBanner } from "../request-banner";
 import { PendingBanner } from "../pending-banner";
 import { MessageComposer } from "../message-composer";
+
+const DEFAULT_DEVELOPER_USER: CurrentDeveloper = {
+  firstName: "",
+  lastName: "",
+  email: "",
+};
 
 export default function Inbox({
   activeContactId,
@@ -57,9 +50,18 @@ export default function Inbox({
   profileComplete?: boolean;
   onRequireProfile?: (afterComplete?: () => void) => void;
 }) {
-  const [localActiveId, setLocalActiveId] = useState("asad");
-  const [contacts, setContacts] = useState<Contact[]>(CONTACTS);
-  const [messages, setMessages] = useState<Record<string, Message[]>>(MOCK_MSGS);
+  const [localActiveId, setLocalActiveId] = useState("");
+  const {
+    contacts,
+    setContacts,
+    messages,
+    error: messagingError,
+    setError: setMessagingError,
+    sendMessage: sendBackendMessage,
+    acceptRequest: acceptBackendRequest,
+    declineRequest: declineBackendRequest,
+    markRead: markBackendRead,
+  } = useMessagingBackend();
   const [draft, setDraft] = useState("");
   const [call, setCall] = useState<{ mode: "voice" | "video" } | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
@@ -73,11 +75,6 @@ export default function Inbox({
       : "general"
   );
   const messageListRef = useRef<HTMLDivElement>(null);
-  const messageIdRef = useRef(0);
-  const createMessageId = () => {
-    messageIdRef.current += 1;
-    return `local-msg-${messageIdRef.current}`;
-  };
 
   const mergedContacts = useMemo(() => {
     const toContact = (extra: DeveloperInboxLaunchContact, base?: Contact): Contact => {
@@ -85,6 +82,7 @@ export default function Inbox({
       const initialMessage = extra.initialMessage?.trim();
       return {
         id: base?.id ?? extra.id,
+        recipientId: extra.recipientId ?? base?.recipientId ?? extra.id,
         name: extra.name || base?.name || "Evolv member",
         role: extra.role || base?.role || "Evolv Network",
         personType,
@@ -113,6 +111,7 @@ export default function Inbox({
       const existing = contacts.find(
         (item) =>
           item.id === extra.id ||
+          (extra.recipientId ? item.recipientId === extra.recipientId : false) ||
           (normalizedEmail ? item.email?.toLowerCase() === normalizedEmail : false)
       );
       const nextContact = toContact(extra, existing);
@@ -131,8 +130,10 @@ export default function Inbox({
   }, [contacts, extraContacts]);
 
   const activeId = activeContactId ?? localActiveId;
-  const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0] ?? CONTACTS[0];
+  const contact = mergedContacts.find((c) => c.id === activeId) ?? mergedContacts[0];
   const thread = useMemo(() => {
+    if (!contact) return [];
+
     const rawThread = contact ? (messages[contact.id] ?? []) : [];
     const launchContact = extraContacts.find(
       (extra) =>
@@ -158,13 +159,13 @@ export default function Inbox({
       },
     ];
   }, [contact, extraContacts, messages]);
-  const contactProfile = buildDeveloperProfileFromContact(contact);
-  const incomingRequestActive = isIncomingRequest(contact);
-  const outgoingPendingActive = isOutgoingPending(contact);
+  const contactProfile = contact ? buildDeveloperProfileFromContact(contact) : null;
+  const incomingRequestActive = contact ? isIncomingRequest(contact) : false;
+  const outgoingPendingActive = contact ? isOutgoingPending(contact) : false;
   const sentOutgoingIntro = outgoingPendingActive && hasSentIntro(thread);
   const messageLocked = incomingRequestActive || (outgoingPendingActive && sentOutgoingIntro);
   const inputPlaceholder = incomingRequestActive
-    ? contact.requestStatus === "rejected"
+    ? contact?.requestStatus === "rejected"
       ? "Request rejected. Accept it to reply."
       : "Accept the request before replying."
     : sentOutgoingIntro
@@ -210,6 +211,7 @@ export default function Inbox({
     if (onActiveContactChange) onActiveContactChange(id);
     else setLocalActiveId(id);
     setContacts((prev) => prev.map((item) => (item.id === id ? { ...item, unread: 0 } : item)));
+    markBackendRead(id).catch(() => undefined);
     setViewingProfile(false);
   };
 
@@ -239,30 +241,24 @@ export default function Inbox({
   }, [activeId, thread.length]);
 
   const sendMsg = () => {
+    if (!contact) return;
     if (messageLocked) return;
     if (!draft.trim()) return;
     if (requireProfileBeforeAction(() => sendMsg())) return;
-    const now = new Date();
     const body = draft.trim();
-    const msg: Message = {
-      id: createMessageId(),
-      from: "me",
-      text: body,
-      time: formatTime(now),
-      date: formatDate(now),
-    };
-
-    setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
-    setContacts((prev) => {
-      const nextContact = { ...contact, lastMsg: body, lastTime: "Now", unread: 0 };
-      return prev.some((item) => item.id === contact.id)
-        ? prev.map((item) => (item.id === contact.id ? nextContact : item))
-        : [nextContact, ...prev];
-    });
+    try {
+      sendBackendMessage(contact, body);
+    } catch (sendError) {
+      setMessagingError(
+        sendError instanceof Error ? sendError.message : "Message could not be sent."
+      );
+      return;
+    }
     setDraft("");
   };
 
   const sendMeetInvite = () => {
+    if (!contact) return;
     if (messageLocked) return;
     if (requireProfileBeforeAction(() => sendMeetInvite())) return;
     const chars = "abcdefghijklmnopqrstuvwxyz";
@@ -271,27 +267,25 @@ export default function Inbox({
     const meetCode = `${segment(3)}-${segment(4)}-${segment(3)}`;
     const meetLink = `https://meet.google.com/${meetCode}`;
     const body = `Let's connect over video call. Join here: ${meetLink}`;
-
-    const now = new Date();
-    const msg: Message = {
-      id: createMessageId(),
-      from: "me",
-      text: body,
-      time: formatTime(now),
-      date: formatDate(now),
-    };
-
-    setMessages((prev) => ({ ...prev, [contact.id]: [...(prev[contact.id] ?? []), msg] }));
-    setContacts((prev) => {
-      const nextContact = { ...contact, lastMsg: body, lastTime: "Now", unread: 0 };
-      return prev.some((item) => item.id === contact.id)
-        ? prev.map((item) => (item.id === contact.id ? nextContact : item))
-        : [nextContact, ...prev];
-    });
+    try {
+      sendBackendMessage(contact, body);
+    } catch (sendError) {
+      setMessagingError(
+        sendError instanceof Error ? sendError.message : "Message could not be sent."
+      );
+    }
   };
 
-  const acceptRequest = (id: string) => {
+  const acceptRequest = async (id: string) => {
     if (requireProfileBeforeAction(() => acceptRequest(id))) return;
+    try {
+      await acceptBackendRequest(id);
+    } catch (requestError) {
+      setMessagingError(
+        requestError instanceof Error ? requestError.message : "Request could not be accepted."
+      );
+      return;
+    }
     setContacts((prev) => {
       const acceptedContact = {
         ...contact,
@@ -310,8 +304,16 @@ export default function Inbox({
     setInboxFilter("general");
   };
 
-  const rejectRequest = (id: string) => {
+  const rejectRequest = async (id: string) => {
     if (requireProfileBeforeAction(() => rejectRequest(id))) return;
+    try {
+      await declineBackendRequest(id);
+    } catch (requestError) {
+      setMessagingError(
+        requestError instanceof Error ? requestError.message : "Request could not be declined."
+      );
+      return;
+    }
     setContacts((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, requestStatus: "rejected", unread: 0, lastTime: "Now" } : item
@@ -331,16 +333,7 @@ export default function Inbox({
     const normalized = email.toLowerCase();
     const existing = mergedContacts.find((item) => item.email?.toLowerCase() === normalized);
     if (existing) return existing;
-
-    const networkProfile = DEVELOPER_NETWORK_PROFILES.find(
-      (profile) => `${profile.name.toLowerCase().replace(/\s+/g, ".")}@evolv.app` === normalized
-    );
-    if (networkProfile) return profileToContact(networkProfile);
-
-    const storedUser = readStoredUsers().find(
-      (user) => (user.email || user.profile?.email)?.toLowerCase() === normalized
-    );
-    return storedUser ? contactFromStoredUser(storedUser) : null;
+    return null;
   };
 
   const sendComposedMessage = ({
@@ -361,20 +354,10 @@ export default function Inbox({
     if (!trimmedMessage) return "Write a message before sending.";
 
     const recipient = findRecipient(normalizedEmail);
-    if (!recipient) return "No Evolv account was found with that email.";
+    if (!recipient) return "Open this user from Network first, then send a message.";
     const existingRecipient = mergedContacts.some(
       (item) => item.id === recipient.id || item.email?.toLowerCase() === normalizedEmail
     );
-
-    const now = new Date();
-    const msg: Message = {
-      id: Date.now().toString(),
-      from: "me",
-      text: trimmedMessage,
-      time: formatTime(now),
-      date: formatDate(now),
-      subject: trimmedSubject || undefined,
-    };
 
     const nextContact: Contact = {
       ...recipient,
@@ -388,10 +371,11 @@ export default function Inbox({
     };
 
     setContacts((prev) => [nextContact, ...prev.filter((item) => item.id !== nextContact.id)]);
-    setMessages((prev) => ({
-      ...prev,
-      [nextContact.id]: [...(prev[nextContact.id] ?? []), msg],
-    }));
+    try {
+      sendBackendMessage(nextContact, trimmedMessage);
+    } catch (sendError) {
+      return sendError instanceof Error ? sendError.message : "Message could not be sent.";
+    }
     if (onActiveContactChange) onActiveContactChange(nextContact.id);
     else setLocalActiveId(nextContact.id);
     if (nextContact.requestDirection === "outgoing") setInboxFilter("pending");
@@ -400,7 +384,28 @@ export default function Inbox({
     return null;
   };
 
-  if (viewingProfile) {
+  if (!contact) {
+    return (
+      <div
+        className="flex h-screen min-h-0 flex-col overflow-hidden"
+        style={{ background: "#f5f6f4", padding: "24px 28px" }}
+      >
+        <h2 className="text-[1.2rem] font-bold" style={{ color: TEXT }}>
+          Inbox
+        </h2>
+        <p className="mt-2 text-[12px]" style={{ color: MUTED }}>
+          No conversations yet. Open a real user from Network to start messaging.
+        </p>
+        {messagingError && (
+          <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
+            {messagingError}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (viewingProfile && contactProfile) {
     return (
       <NetworkProfileDetailScreen
         key={contactProfile.id}
@@ -430,6 +435,11 @@ export default function Inbox({
             Manage founder and developer conversations in one place.
           </p>
         </div>
+        {messagingError && (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
+            {messagingError}
+          </div>
+        )}
         <motion.button
           type="button"
           onClick={() => {

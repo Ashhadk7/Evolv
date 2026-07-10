@@ -55,6 +55,7 @@ export interface FounderContactProfile {
 // the two names are kept as aliases so neither role has to change its imports.
 export interface NetworkMessageTarget {
   id: string;
+  recipientId?: string;
   name: string;
   role: string;
   match: number;

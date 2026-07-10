@@ -82,18 +82,9 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
       const savedProfile = storedProfile
         ? (JSON.parse(storedProfile) as StoredFounderRecord)
         : null;
-      const savedUsers = JSON.parse(
-        localStorage.getItem("evolv_users") ?? "[]"
-      ) as StoredFounderRecord[];
-      const matchingUser = savedUsers.find(
-        (user) =>
-          user.role === "founder" &&
-          (!savedProfile?.email || user.email?.toLowerCase() === savedProfile.email.toLowerCase())
-      );
 
       const nextProfile = mergeFounderProfiles(
         DEFAULT_FOUNDER_PROFILE,
-        matchingUser?.profile,
         savedProfile
       );
       set({ profile: nextProfile });
@@ -112,28 +103,6 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
     set({ profile: nextProfile });
     try {
       localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(nextProfile));
-
-      if (nextProfile.email) {
-        const savedUsers = JSON.parse(
-          localStorage.getItem("evolv_users") ?? "[]"
-        ) as StoredFounderRecord[];
-        const updatedUsers = savedUsers.map((user) => {
-          const sameFounder =
-            user.role === "founder" &&
-            user.email?.toLowerCase() === nextProfile.email?.toLowerCase();
-
-          return sameFounder
-            ? {
-                ...user,
-                firstName: nextProfile.firstName,
-                lastName: nextProfile.lastName,
-                email: nextProfile.email,
-                profile: { ...(user.profile ?? {}), ...nextProfile },
-              }
-            : user;
-        });
-        localStorage.setItem("evolv_users", JSON.stringify(updatedUsers));
-      }
     } catch {
       /* ignore */
     }

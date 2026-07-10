@@ -105,6 +105,12 @@ export function getAccountErrors(
     errors.confirmEmail = "Confirm email must match email.";
   if (!trimmed.password) errors.password = "Password is required.";
   else if (trimmed.password.length < 8) errors.password = "Password must be at least 8 characters.";
+  else if (
+    !/[a-z]/.test(trimmed.password) ||
+    !/[A-Z]/.test(trimmed.password) ||
+    !/\d/.test(trimmed.password)
+  )
+    errors.password = "Password must include uppercase, lowercase, and number characters.";
   if (!trimmed.confirmPassword) errors.confirmPassword = "Confirm password is required.";
   else if (trimmed.password && trimmed.password !== trimmed.confirmPassword)
     errors.confirmPassword = "Confirm password must match password.";

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { FounderContactProfile } from "@/features/network/types";
-import { NETWORK_PEOPLE as DEV_PEOPLE } from "@/features/network/lib/developer-network-constants";
-import { NETWORK_PEOPLE as FOUNDER_PEOPLE } from "@/features/network/lib/founder-network-constants";
+import type { FounderContactProfile, NetworkMessageTarget } from "@/features/network/types";
 import {
   getInitialNetworkState as getInitialDevState,
   saveStoredState as saveDevState,
@@ -13,10 +11,11 @@ import {
   saveStoredState as saveFounderState,
 } from "@/features/network/lib/founder-network-storage";
 import type { StoredNetworkState } from "@/features/network/types";
+import { fetchNetworkPeople } from "@/features/network/services/network-users";
 
 interface UseNetworkProps {
   role: "developer" | "founder";
-  onMessage?: (contact: any, initialNote?: string) => void;
+  onMessage?: (contact: NetworkMessageTarget, initialNote?: string) => void;
   onPendingCountChange?: (count: number) => void;
   profileComplete: boolean;
   onRequireProfile?: (afterComplete?: () => void) => void;
@@ -29,10 +28,9 @@ export function useNetwork({
   profileComplete,
   onRequireProfile,
 }: UseNetworkProps) {
-  // Select constants and storage loaders based on the role
-  const people = useMemo(() => {
-    return role === "developer" ? DEV_PEOPLE : FOUNDER_PEOPLE;
-  }, [role]);
+  const [people, setPeople] = useState<FounderContactProfile[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(true);
+  const [peopleError, setPeopleError] = useState("");
 
   const storageLoad = useMemo(() => {
     return role === "developer" ? getInitialDevState : getInitialFounderState;
@@ -52,6 +50,27 @@ export function useNetwork({
 
   const { connected, pendingIds, ignoredIds, outgoingIds, requestNotes } = networkState;
   const outgoingSet = useMemo(() => new Set(outgoingIds), [outgoingIds]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchNetworkPeople(role)
+      .then((items) => {
+        if (active) setPeople(items);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setPeople([]);
+        setPeopleError(error instanceof Error ? error.message : "Users could not be loaded.");
+      })
+      .finally(() => {
+        if (active) setPeopleLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [role]);
 
   // Save stored state on changes
   useEffect(() => {
@@ -189,6 +208,7 @@ export function useNetwork({
   const openInbox = (person: FounderContactProfile, initialNote?: string) => {
     const target = {
       id: person.id,
+      recipientId: person.id,
       name: person.name,
       role: person.role,
       personType: person.type,
@@ -231,6 +251,8 @@ export function useNetwork({
     setSearchQuery,
     roleFilter,
     setRoleFilter,
+    peopleLoading,
+    peopleError,
     selectedPerson,
     setSelectedPerson,
     requestModalPerson,

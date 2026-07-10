@@ -9,15 +9,30 @@ from httpx import HTTPError
 from supabase import Client, create_client
 
 try:
-    from gotrue.errors import AuthApiError
+    from gotrue.errors import AuthApiError as GoTrueAuthApiError
 except ModuleNotFoundError:
-    from supabase_auth.errors import AuthApiError
+    GoTrueAuthApiError = None
+
+try:
+    from supabase_auth.errors import AuthApiError as SupabaseAuthApiError
+except ModuleNotFoundError:
+    SupabaseAuthApiError = None
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
-from app.services.exceptions import AuthProviderError, InvalidCredentialsError, InvalidTokenError
+from app.services.exceptions import (
+    AuthProviderError,
+    DuplicateEmailError,
+    InvalidCredentialsError,
+    InvalidTokenError,
+)
 
-SUPABASE_CLIENT_ERRORS = (AuthApiError, HTTPError)
+SUPABASE_AUTH_ERRORS = tuple(
+    error_type
+    for error_type in (GoTrueAuthApiError, SupabaseAuthApiError)
+    if error_type is not None
+)
+SUPABASE_CLIENT_ERRORS = (*SUPABASE_AUTH_ERRORS, HTTPError)
 logger = logging.getLogger(__name__)
 
 
@@ -67,10 +82,11 @@ class SupabaseAuthClient:
                 }
             )
         except SUPABASE_CLIENT_ERRORS as exc:
-            raise AuthProviderError(
-                "Supabase Auth could not create this user. If this email already exists in "
-                "Supabase Auth, delete it from Authentication > Users or test with a new email."
-            ) from exc
+            if self._is_duplicate_email_error(exc):
+                raise DuplicateEmailError(
+                    "This email is already registered in Supabase Auth."
+                ) from exc
+            raise AuthProviderError("Supabase Auth could not create this user.") from exc
 
         return self._created_user_from_response(response)
 
@@ -184,3 +200,10 @@ class SupabaseAuthClient:
         if isinstance(source, dict):
             return source.get(key)
         return getattr(source, key, None)
+
+    @staticmethod
+    def _is_duplicate_email_error(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "email" in message and (
+            "already been registered" in message or "already registered" in message
+        )

@@ -39,14 +39,23 @@ class AuthService:
         self._email_sender = email_sender
 
     def start_signup(self, db: Session, signup: SignupRequest) -> SignupStartResponse:
-        existing_user = users_repository.get_user_by_email(db, str(signup.email))
+        try:
+            existing_user = users_repository.get_user_by_email(db, str(signup.email))
+        except SQLAlchemyError as exc:
+            db.rollback()
+            raise ProfilePersistenceError("Signup data could not be checked.") from exc
+
         if existing_user is not None and existing_user.email_verified:
             raise DuplicateEmailError("A user with this email already exists.")
 
         if existing_user is not None:
-            self._auth_client.delete_user(existing_user.id)
-            users_repository.delete_user(db, existing_user)
-            db.flush()
+            try:
+                self._auth_client.delete_user(existing_user.id)
+                users_repository.delete_user(db, existing_user)
+                db.flush()
+            except SQLAlchemyError as exc:
+                db.rollback()
+                raise ProfilePersistenceError("Existing signup data could not be cleared.") from exc
 
         auth_user = self._auth_client.create_signup_user(signup)
         otp_code = self._generate_otp()

@@ -225,6 +225,10 @@ export function SignUpForm() {
   const finish = async (skip = false) => {
     setError("");
     if (!role) return;
+    if (!validateAccount()) {
+      setStep(1);
+      return;
+    }
     if (role === "founder") {
       const founderDegreeName =
         founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
@@ -269,6 +273,8 @@ export function SignUpForm() {
 
   const startBackendSignup = async (profileComplete: boolean) => {
     if (!role) return;
+    setError("");
+    setOtpCode("");
     setIsSubmitting(true);
     try {
       const response = await signup(buildSignupPayload(role));
@@ -276,7 +282,7 @@ export function SignUpForm() {
       setOtpNotice(
         response.debug_otp ? `${response.message} Code: ${response.debug_otp}` : response.message
       );
-      setStep(3);
+      setStep(2);
     } finally {
       setIsSubmitting(false);
     }
@@ -400,7 +406,15 @@ export function SignUpForm() {
 
   const goNext = () => {
     if (step === 0 && validateRole()) setStep(1);
-    if (step === 1 && validateAccount()) setStep(2);
+    if (step === 1 && validateAccount()) {
+      startBackendSignup(false).catch((signupError) => {
+        setError(
+          signupError instanceof Error
+            ? signupError.message
+            : "Something went wrong while creating your account."
+        );
+      });
+    }
   };
 
   return (
@@ -456,10 +470,10 @@ export function SignUpForm() {
                 : step === 1
                   ? "Create your login"
                   : step === 2
-                    ? role === "founder"
+                    ? "Verify your email"
+                    : role === "founder"
                       ? "Shape your founder profile"
-                      : "Build your developer profile"
-                    : "Verify your email"}
+                      : "Build your developer profile"}
             </h1>
             <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "rgba(15,28,24,0.5)" }}>
               {step === 0
@@ -467,10 +481,10 @@ export function SignUpForm() {
                 : step === 1
                   ? "Use an email you can keep tied to your venture or professional profile."
                   : step === 2
-                    ? role === "founder"
+                    ? "Enter the 6 digit code we sent to your email to finish creating your account."
+                    : role === "founder"
                       ? "This is what developers see when they discover your project. You can skip and come back."
-                      : "Complete this now to appear in founder searches and apply to blueprint-backed projects."
-                    : "Enter the 6 digit code we sent to your email to finish creating your account."}
+                      : "Complete this now to appear in founder searches and apply to blueprint-backed projects."}
             </p>
           </div>
 
@@ -511,7 +525,7 @@ export function SignUpForm() {
                 accountErrorFor={accountErrorFor}
               />
             )}
-            {step === 2 && role === "founder" && (
+            {step === 4 && role === "founder" && (
               <FounderProfileStep
                 founder={founder}
                 degreeOptions={founderDegreeOptions}
@@ -520,7 +534,7 @@ export function SignUpForm() {
                 onDomainToggle={toggleFounderDomain}
               />
             )}
-            {step === 2 && role === "developer" && (
+            {step === 4 && role === "developer" && (
               <DeveloperProfileStep
                 developer={developer}
                 degreeOptions={developerDegreeOptions}
@@ -529,7 +543,7 @@ export function SignUpForm() {
                 onSkillToggle={toggleSkill}
               />
             )}
-            {step === 3 && (
+            {step === 2 && (
               <motion.div
                 key="verify-email"
                 initial={{ opacity: 0, x: 20 }}
@@ -579,7 +593,7 @@ export function SignUpForm() {
       >
         <div className="mx-auto w-full max-w-[560px]">
           <AnimatePresence>
-            {step === 2 && (
+            {step === 4 && (
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -605,7 +619,7 @@ export function SignUpForm() {
           </AnimatePresence>
 
           <AnimatePresence>
-            {step >= 2 && error && (
+            {step === 4 && error && !visibleError && (
               <motion.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -629,7 +643,7 @@ export function SignUpForm() {
             </button>
 
             <div className="flex items-center gap-3">
-              {step === 2 && (
+              {step === 4 && (
                 <button
                   type="button"
                   onClick={() => finish(true)}
@@ -644,7 +658,7 @@ export function SignUpForm() {
                 whileTap={{ scale: 0.988 }}
                 type="button"
                 onClick={
-                  step === 3 ? verifyEmailAndSignIn : step < 2 ? goNext : () => finish(false)
+                  step === 2 ? verifyEmailAndSignIn : step < 2 ? goNext : () => finish(false)
                 }
                 disabled={isSubmitting}
                 className="flex h-10 items-center gap-2 rounded-xl px-6 text-[13px] font-semibold transition-all"
@@ -657,12 +671,12 @@ export function SignUpForm() {
               >
                 {isSubmitting
                   ? "Please wait..."
-                  : step === 3
+                  : step === 2
                     ? "Verify email"
                     : step < 2
                       ? "Continue"
                       : "Complete profile"}
-                {step < 2 || step === 3 ? (
+                {step < 2 || step === 2 ? (
                   <ArrowRight size={14} weight="bold" />
                 ) : role === "founder" ? (
                   <RocketLaunch size={14} weight="bold" />

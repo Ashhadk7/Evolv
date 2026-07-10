@@ -1,8 +1,7 @@
 import type { StoredNetworkState } from "@/features/network/types";
 
-// Shared localStorage read/write logic for the founder and developer network
-// tabs. The two roles differ only in storage key, initial connection state,
-// and initial pending-request ids — all passed in as config.
+// Shared localStorage read/write logic for founder and developer network tabs.
+// Real people come from the backend; this only stores local UI relationship state.
 export function createNetworkStorage(config: {
   storageKey: string;
   initialConnected: Record<string, boolean>;

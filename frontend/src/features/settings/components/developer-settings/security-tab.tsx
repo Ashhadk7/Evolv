@@ -2,6 +2,7 @@
 
 import type { PasswordData } from "./developer-settings-types";
 import styles from "./developer-settings.module.css";
+import { PhoneVerificationCard } from "../phone-verification-card";
 
 export function SecurityTab({
   passwordData,
@@ -56,6 +57,7 @@ export function SecurityTab({
           Use at least 8 characters, including uppercase, lowercase, numbers, and symbols.
         </span>
       </div>
+      <PhoneVerificationCard />
       <div className={styles.sectionDivider}>Two-Factor Authentication</div>
       <div className={styles.twoFARow}>
         <div>

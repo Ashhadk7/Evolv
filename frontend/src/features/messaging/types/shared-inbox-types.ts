@@ -1,6 +1,5 @@
-// Inbox types shared verbatim (or as a strict superset) between the founder
-// and developer inboxes. Each role's own types file re-exports these under
-// its existing names so no call site has to change.
+// Inbox types shared between founder and developer inboxes. Each role's own
+// types file re-exports these under its existing names so call sites stay stable.
 export type PersonType = "Founder" | "Developer";
 export type InboxFilter = "general" | "unread" | "requests" | "pending";
 export type RequestStatus = "pending" | "accepted" | "rejected";
@@ -8,6 +7,7 @@ export type RequestDirection = "incoming" | "outgoing";
 
 export interface Message {
   id: string;
+  conversationId?: string;
   from: "me" | "them";
   text: string;
   time: string;
@@ -17,6 +17,7 @@ export interface Message {
 
 export interface Contact {
   id: string;
+  recipientId?: string;
   name: string;
   role: string;
   personType: PersonType;
@@ -33,9 +34,10 @@ export interface Contact {
   requestDirection?: RequestDirection;
 }
 
-// Contact passed from Network → Inbox when starting a conversation.
+// Contact passed from Network to Inbox when starting a conversation.
 export interface InboxLaunchContact {
   id: string;
+  recipientId?: string;
   name: string;
   role: string;
   match?: number;
@@ -57,9 +59,7 @@ export interface CurrentInboxUser {
   avatarUrl?: string;
 }
 
-// Superset of the founder and developer `profile` shapes stored under
-// `evolv_users` / `evolv_user` — every field is optional either way, so a
-// shared superset is safe for both roles' `readStoredUsers`/`contactFromStoredUser`.
+// Superset of the founder and developer profile shapes stored for the signed-in user.
 export interface StoredProfile {
   firstName?: string;
   lastName?: string;

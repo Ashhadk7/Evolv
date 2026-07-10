@@ -4,12 +4,8 @@ const BRAND_INK = "#0f1c18";
 
 type Role = "founder" | "developer";
 
-export function SignupProgress({ step, role }: { step: number; role: Role | "" }) {
-  const labels = [
-    "Role",
-    "Account",
-    role === "developer" ? "Developer profile" : "Founder profile",
-  ];
+export function SignupProgress({ step }: { step: number; role: Role | "" }) {
+  const labels = ["Role", "Account", "Verify email"];
   return (
     <div className="mb-3 grid grid-cols-3 gap-2">
       {labels.map((label, index) => {
