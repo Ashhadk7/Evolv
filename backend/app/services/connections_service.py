@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session
 from app.models.connection import Connection, ConnectionStatus
 from app.repositories import connections as connections_repo
 from app.repositories import users as users_repo
-from app.schemas.connections import ConnectionCreate, ConnectionUpdate
+from app.schemas.connections import ConnectionCreate, ConnectionUpdate, ConnectionResponse, ConnectionUserSummary
 from app.services.exceptions import ConflictError, NotFoundError
 
 
-def _build_user_summary(user) -> dict:
+def _build_user_summary(user) -> ConnectionUserSummary:
     job_title = None
     company = None
 
@@ -24,22 +24,33 @@ def _build_user_summary(user) -> dict:
     raw_role = user.role.value if hasattr(user.role, "value") else str(user.role)
     mapped_role = "Developer" if raw_role == "developer" else "Founder" if raw_role == "founder" else raw_role.capitalize()
 
-    return {
-        "id": user.id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "avatar_url": user.avatar_url,
-        "role": mapped_role,
-        "job_title": job_title,
-        "company": company,
-    }
+    return ConnectionUserSummary(
+        id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        avatar_url=user.avatar_url,
+        role=mapped_role,
+        job_title=job_title,
+        company=company,
+    )
+
+
+def _build_connection_response(conn: Connection, other_user) -> ConnectionResponse:
+    return ConnectionResponse(
+        id=conn.id,
+        status=conn.status,
+        note=conn.note,
+        created_at=conn.created_at,
+        updated_at=conn.updated_at,
+        user=_build_user_summary(other_user),
+    )
 
 
 def send_connection_request(
     db: Session,
     requester_id: UUID,
     payload: ConnectionCreate,
-) -> Connection:
+) -> ConnectionResponse:
     if requester_id == payload.receiver_id:
         raise ConflictError("You cannot connect to yourself.")
 
@@ -56,12 +67,13 @@ def send_connection_request(
         else:
             connections_repo.delete_connection(db, existing)
 
-    return connections_repo.create_connection(
+    conn = connections_repo.create_connection(
         db,
         requester_id=requester_id,
         receiver_id=payload.receiver_id,
         note=payload.note,
     )
+    return _build_connection_response(conn, receiver)
 
 
 def update_connection_status(
@@ -69,7 +81,7 @@ def update_connection_status(
     user_id: UUID,
     connection_id: UUID,
     payload: ConnectionUpdate,
-) -> Connection:
+) -> ConnectionResponse:
     connection = connections_repo.get_connection_by_id(db, connection_id)
     if connection is None:
         raise NotFoundError("Connection request not found.")
@@ -82,7 +94,9 @@ def update_connection_status(
 
     connection.status = payload.status
     db.flush()
-    return connection
+    
+    other_user = connection.requester if connection.receiver_id == user_id else connection.receiver
+    return _build_connection_response(connection, other_user)
 
 
 def remove_connection(db: Session, user_id: UUID, connection_id: UUID) -> None:
@@ -96,47 +110,26 @@ def remove_connection(db: Session, user_id: UUID, connection_id: UUID) -> None:
     connections_repo.delete_connection(db, connection)
 
 
-def list_my_connections(db: Session, user_id: UUID) -> list[dict]:
+def list_my_connections(db: Session, user_id: UUID) -> list[ConnectionResponse]:
     connections = connections_repo.list_accepted_connections(db, user_id)
     results = []
     for conn in connections:
         other_user = conn.receiver if conn.requester_id == user_id else conn.requester
-        results.append({
-            "id": conn.id,
-            "status": conn.status,
-            "note": conn.note,
-            "created_at": conn.created_at,
-            "updated_at": conn.updated_at,
-            "user": _build_user_summary(other_user),
-        })
+        results.append(_build_connection_response(conn, other_user))
     return results
 
 
-def list_incoming_requests(db: Session, user_id: UUID) -> list[dict]:
+def list_incoming_requests(db: Session, user_id: UUID) -> list[ConnectionResponse]:
     connections = connections_repo.list_incoming_requests(db, user_id)
     results = []
     for conn in connections:
-        results.append({
-            "id": conn.id,
-            "status": conn.status,
-            "note": conn.note,
-            "created_at": conn.created_at,
-            "updated_at": conn.updated_at,
-            "user": _build_user_summary(conn.requester),
-        })
+        results.append(_build_connection_response(conn, conn.requester))
     return results
 
 
-def list_outgoing_requests(db: Session, user_id: UUID) -> list[dict]:
+def list_outgoing_requests(db: Session, user_id: UUID) -> list[ConnectionResponse]:
     connections = connections_repo.list_outgoing_requests(db, user_id)
     results = []
     for conn in connections:
-        results.append({
-            "id": conn.id,
-            "status": conn.status,
-            "note": conn.note,
-            "created_at": conn.created_at,
-            "updated_at": conn.updated_at,
-            "user": _build_user_summary(conn.receiver),
-        })
+        results.append(_build_connection_response(conn, conn.receiver))
     return results
