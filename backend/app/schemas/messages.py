@@ -22,6 +22,12 @@ class MessageParticipant(BaseModel):
     phone_verified: bool
 
 
+class MessageParticipantLookupResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    participant: MessageParticipant
+
+
 class MessageResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -50,6 +56,20 @@ class ConversationListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[ConversationSummary]
+
+
+class InboxResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conversations: list[ConversationSummary]
+    requests: list[ConversationSummary]
+    pending: list[ConversationSummary]
+
+
+class PresenceResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    online_user_ids: list[UUID]
 
 
 class MessageListResponse(BaseModel):

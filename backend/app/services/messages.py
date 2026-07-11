@@ -11,16 +11,42 @@ from app.models.messaging import ConnectionStatus, Message, MessageConnection
 from app.models.user import User, UserRole
 from app.repositories import messages as messages_repository
 from app.repositories import users as users_repository
+from app.repositories import connections as connections_repository
+from app.models.connection import ConnectionStatus as NetworkConnectionStatus
 from app.schemas.messages import (
     ConversationListResponse,
     ConversationSummary,
+    InboxResponse,
     MarkReadResponse,
     MessageListResponse,
     MessageParticipant,
+    MessageParticipantLookupResponse,
     MessageResponse,
     RequestActionResponse,
     SendMessageRequest,
 )
+
+
+def list_inbox(db: Session, current_user: User) -> InboxResponse:
+    ensure_user_can_use_messaging(current_user)
+    conversations = messages_repository.list_conversations_for_user(db, current_user.id)
+    requests = messages_repository.list_incoming_requests(db, current_user.id)
+    pending = messages_repository.list_outgoing_pending(db, current_user.id)
+    return InboxResponse(
+        conversations=build_conversation_summaries(db, conversations, current_user),
+        requests=build_conversation_summaries(db, requests, current_user),
+        pending=build_conversation_summaries(db, pending, current_user),
+    )
+
+
+def find_participant(
+    db: Session, *, email: str, current_user: User
+) -> MessageParticipantLookupResponse:
+    ensure_user_can_use_messaging(current_user)
+    participant = users_repository.get_user_by_email(db, email.strip().lower())
+    if participant is None or participant.id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evolv member not found.")
+    return MessageParticipantLookupResponse(participant=build_participant(participant))
 
 
 def send_message(
@@ -140,6 +166,19 @@ def accept_request(
 
     try:
         messages_repository.accept_connection(connection)
+        network_connection = connections_repository.get_active_connection(
+            db,
+            connection.requester_id,
+            connection.addressee_id,
+        )
+        if network_connection is None:
+            network_connection = connections_repository.create_connection(
+                db,
+                requester_id=connection.requester_id,
+                receiver_id=connection.addressee_id,
+                note=None,
+            )
+        network_connection.status = NetworkConnectionStatus.ACCEPTED
         db.commit()
         db.refresh(connection)
     except SQLAlchemyError as exc:
@@ -247,6 +286,7 @@ def ensure_can_start_messaging(current_user: User, recipient: User) -> None:
         )
 
     ensure_user_can_use_messaging(current_user)
+    ensure_user_can_use_messaging(recipient, subject="Recipient")
 
 
 def ensure_user_can_use_messaging(user: User, *, subject: str = "User") -> None:
@@ -260,10 +300,11 @@ def ensure_user_can_use_messaging(user: User, *, subject: str = "User") -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"{subject} phone number must be verified before messaging.",
         )
-    if get_profile_for_user(user) is None:
+    profile = get_profile_for_user(user)
+    if profile is None or not bool(getattr(profile, "profile_complete", False)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"{subject} profile must be created before messaging.",
+            detail=f"{subject} profile must be complete before messaging.",
         )
 
 

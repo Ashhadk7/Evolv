@@ -23,6 +23,13 @@ class MessageWebSocketManager:
     async def connect(self, user_id: UUID, websocket: WebSocket) -> None:
         await websocket.accept()
         self._connections.setdefault(user_id, set()).add(websocket)
+        await websocket.send_json(
+            {
+                "event": "presence.snapshot",
+                "online_user_ids": [str(item) for item in self.online_user_ids],
+            }
+        )
+        await self.broadcast_presence(user_id, True, exclude=websocket)
 
     def disconnect(self, user_id: UUID, websocket: WebSocket) -> None:
         sockets = self._connections.get(user_id)
@@ -33,12 +40,39 @@ class MessageWebSocketManager:
         if not sockets:
             del self._connections[user_id]
 
+    @property
+    def online_user_ids(self) -> list[UUID]:
+        return list(self._connections)
+
+    async def broadcast_presence(
+        self,
+        user_id: UUID,
+        online: bool,
+        *,
+        exclude: WebSocket | None = None,
+    ) -> None:
+        payload = {"event": "presence.changed", "user_id": str(user_id), "online": online}
+        for connected_user_id, sockets in list(self._connections.items()):
+            for socket in sockets.copy():
+                if socket is exclude:
+                    continue
+                if socket.client_state != WebSocketState.CONNECTED:
+                    self.disconnect(connected_user_id, socket)
+                    continue
+                try:
+                    await socket.send_json(payload)
+                except (RuntimeError, WebSocketDisconnect):
+                    self.disconnect(connected_user_id, socket)
+
     async def send_to_user(self, user_id: UUID, payload: dict[str, object]) -> None:
         sockets = self._connections.get(user_id, set()).copy()
         for websocket in sockets:
-            if websocket.client_state == WebSocketState.CONNECTED:
+            if websocket.client_state != WebSocketState.CONNECTED:
+                self.disconnect(user_id, websocket)
+                continue
+            try:
                 await websocket.send_json(payload)
-            else:
+            except (RuntimeError, WebSocketDisconnect):
                 self.disconnect(user_id, websocket)
 
 
@@ -60,8 +94,11 @@ async def handle_messages_websocket(websocket: WebSocket) -> None:
             payload = await websocket.receive_json()
             await handle_websocket_message(websocket, db, current_user, payload)
     except WebSocketDisconnect:
-        message_websocket_manager.disconnect(current_user.id, websocket)
+        pass
     finally:
+        message_websocket_manager.disconnect(current_user.id, websocket)
+        if current_user.id not in message_websocket_manager.online_user_ids:
+            await message_websocket_manager.broadcast_presence(current_user.id, False)
         db.close()
 
 

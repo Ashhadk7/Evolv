@@ -4,9 +4,10 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.messaging import ConnectionStatus, Message, MessageConnection
+from app.models.user import User
 
 
 def get_connection_by_id(db: Session, connection_id: UUID) -> MessageConnection | None:
@@ -100,6 +101,12 @@ def list_conversations_for_user(db: Session, user_id: UUID) -> list[MessageConne
     return list(
         db.scalars(
             select(MessageConnection)
+            .options(
+                selectinload(MessageConnection.requester).selectinload(User.founder_profile),
+                selectinload(MessageConnection.requester).selectinload(User.developer_profile),
+                selectinload(MessageConnection.addressee).selectinload(User.founder_profile),
+                selectinload(MessageConnection.addressee).selectinload(User.developer_profile),
+            )
             .where(
                 MessageConnection.status == ConnectionStatus.ACCEPTED,
                 or_(
@@ -116,6 +123,12 @@ def list_incoming_requests(db: Session, user_id: UUID) -> list[MessageConnection
     return list(
         db.scalars(
             select(MessageConnection)
+            .options(
+                selectinload(MessageConnection.requester).selectinload(User.founder_profile),
+                selectinload(MessageConnection.requester).selectinload(User.developer_profile),
+                selectinload(MessageConnection.addressee).selectinload(User.founder_profile),
+                selectinload(MessageConnection.addressee).selectinload(User.developer_profile),
+            )
             .where(
                 MessageConnection.status == ConnectionStatus.PENDING,
                 MessageConnection.addressee_id == user_id,
@@ -129,6 +142,12 @@ def list_outgoing_pending(db: Session, user_id: UUID) -> list[MessageConnection]
     return list(
         db.scalars(
             select(MessageConnection)
+            .options(
+                selectinload(MessageConnection.requester).selectinload(User.founder_profile),
+                selectinload(MessageConnection.requester).selectinload(User.developer_profile),
+                selectinload(MessageConnection.addressee).selectinload(User.founder_profile),
+                selectinload(MessageConnection.addressee).selectinload(User.developer_profile),
+            )
             .where(
                 MessageConnection.status == ConnectionStatus.PENDING,
                 MessageConnection.requester_id == user_id,
@@ -145,15 +164,16 @@ def list_messages(
     limit: int,
     offset: int,
 ) -> list[Message]:
-    return list(
+    newest_first = list(
         db.scalars(
             select(Message)
             .where(Message.connection_id == connection_id)
-            .order_by(Message.created_at.asc())
+            .order_by(Message.created_at.desc())
             .offset(offset)
             .limit(limit)
         ).all()
     )
+    return list(reversed(newest_first))
 
 
 def get_last_message(db: Session, connection_id: UUID) -> Message | None:

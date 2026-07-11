@@ -429,3 +429,25 @@ mypy app
 alembic revision --autogenerate -m "describe change"
 alembic upgrade head
 ```
+# Google Calendar and Meet setup
+
+The chat Meet button uses user-authorized Google Calendar OAuth; an API key alone is not
+sufficient because the signed-in Evolv user must become the event organizer.
+
+1. Create or select a project in Google Cloud Console.
+2. Enable the Google Calendar API.
+3. Configure the OAuth consent screen and add test users while the app is in testing mode.
+4. Create an OAuth client with application type **Web application**.
+5. Add `http://localhost:8000/api/v1/calendar/google/callback` as an authorized redirect URI.
+6. Add the following backend environment values:
+
+```env
+GOOGLE_CALENDAR_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+GOOGLE_CALENDAR_CLIENT_SECRET=your-web-client-secret
+GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:8000/api/v1/calendar/google/callback
+GOOGLE_CALENDAR_FRONTEND_RETURN_URL=http://localhost:3000
+```
+
+The frontend return URL must exactly match the frontend origin used in the browser. Run
+`alembic upgrade head` after pulling the integration so the encrypted per-user OAuth credential
+table is created.

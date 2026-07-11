@@ -20,6 +20,7 @@ DEVELOPER_PROFILE_FIELDS = (
     "github",
     "linkedin",
     "portfolio_link",
+    "skills",
     "profile_complete",
 )
 PROFILE_EXCLUDE = {"educations", "certifications"}

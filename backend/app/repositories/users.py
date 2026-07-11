@@ -2,9 +2,10 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, or_, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from app.models.user import User, UserRole
+from app.models.developer_review import DeveloperReview
+from app.models.user import DeveloperProfile, User, UserRole
 from app.schemas.auth import SignupRequest
 
 
@@ -15,6 +16,22 @@ def get_user_by_email(db: Session, email: str) -> User | None:
 
 def get_user_by_id(db: Session, user_id: UUID) -> User | None:
     return db.get(User, user_id)
+
+
+def get_user_with_public_profile_by_id(db: Session, user_id: UUID) -> User | None:
+    statement = (
+        select(User)
+        .options(
+            selectinload(User.founder_profile),
+            selectinload(User.developer_profile)
+            .selectinload(DeveloperProfile.reviews)
+            .selectinload(DeveloperReview.reviewer),
+            selectinload(User.educations),
+            selectinload(User.certifications),
+        )
+        .where(User.id == user_id)
+    )
+    return db.scalar(statement)
 
 
 def create_user(
@@ -113,7 +130,12 @@ def list_users(
 
     count_statement = select(func.count()).select_from(User).where(*filters)
     users_statement = (
-        select(User).where(*filters).order_by(User.created_at.desc()).offset(offset).limit(limit)
+        select(User)
+        .options(selectinload(User.founder_profile), selectinload(User.developer_profile))
+        .where(*filters)
+        .order_by(User.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
 
     total = db.scalar(count_statement) or 0

@@ -9,6 +9,8 @@ from uuid import UUID, uuid4
 if TYPE_CHECKING:
     from app.models.connection import Connection
     from app.models.certification import Certification
+    from app.models.developer_review import DeveloperReview
+    from app.models.google_calendar import GoogleCalendarCredential
 
 from sqlalchemy import (
     Boolean,
@@ -16,6 +18,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Numeric,
+    JSON,
     SmallInteger,
     String,
     Text,
@@ -111,6 +114,34 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    google_calendar_credential: Mapped[GoogleCalendarCredential | None] = relationship(
+        "GoogleCalendarCredential",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def profile_title(self) -> str | None:
+        if self.role == UserRole.FOUNDER:
+            return self.founder_profile.headline if self.founder_profile else None
+        return self.developer_profile.job_title if self.developer_profile else None
+
+    @property
+    def profile_bio(self) -> str | None:
+        profile = self.founder_profile if self.role == UserRole.FOUNDER else self.developer_profile
+        return profile.bio if profile else None
+
+    @property
+    def profile_complete(self) -> bool:
+        profile = self.founder_profile if self.role == UserRole.FOUNDER else self.developer_profile
+        return bool(profile and profile.profile_complete)
+
+    @property
+    def discovery_tags(self) -> list[str]:
+        if self.role == UserRole.FOUNDER:
+            return self.founder_profile.domains if self.founder_profile else []
+        return self.developer_profile.skills if self.developer_profile else []
 
 
 class FounderProfile(Base):
@@ -127,6 +158,7 @@ class FounderProfile(Base):
     linkedin: Mapped[str | None] = mapped_column(String)
     venture_stage: Mapped[str | None] = mapped_column(String)
     primary_goal: Mapped[str] = mapped_column(String, nullable=False, default="not_selected")
+    domains: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     profile_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     stripe_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
@@ -154,10 +186,16 @@ class DeveloperProfile(Base):
     github: Mapped[str | None] = mapped_column(String)
     linkedin: Mapped[str | None] = mapped_column(String)
     portfolio_link: Mapped[str | None] = mapped_column(String)
+    skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     rating_avg: Mapped[Decimal] = mapped_column(Numeric, nullable=False, default=0)
     profile_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     user: Mapped[User] = relationship(back_populates="developer_profile")
+    reviews: Mapped[list[DeveloperReview]] = relationship(
+        "DeveloperReview",
+        back_populates="developer",
+        cascade="all, delete-orphan",
+    )
     applications: Mapped[list[Application]] = relationship(
         back_populates="developer",
         cascade="all, delete-orphan",

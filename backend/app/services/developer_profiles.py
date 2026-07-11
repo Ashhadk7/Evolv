@@ -15,6 +15,8 @@ from app.schemas.developer_profiles import (
 from app.services.profile_helpers import (
     commit_profile_change,
     ensure_user_role,
+    get_certification_responses,
+    get_developer_review_responses,
     get_education_responses,
 )
 
@@ -38,6 +40,7 @@ def create_profile(
         user_id=current_user.id,
         payload=payload,
     )
+    ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Developer profile could not be created.")
     db.refresh(profile)
     return build_response(db, profile)
@@ -54,6 +57,7 @@ def update_profile(
     ensure_user_role(current_user, UserRole.DEVELOPER, "developer")
     profile = get_profile_or_404(db, current_user.id)
     developer_profiles_repository.update_developer_profile(db, profile=profile, payload=payload)
+    ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Developer profile could not be updated.")
     db.refresh(profile)
     return build_response(db, profile)
@@ -88,7 +92,40 @@ def build_response(db: Session, profile: DeveloperProfile) -> DeveloperProfileRe
         github=profile.github,
         linkedin=profile.linkedin,
         portfolio_link=profile.portfolio_link,
+        skills=profile.skills,
         rating_avg=float(profile.rating_avg or 0),
         profile_complete=profile.profile_complete,
         educations=get_education_responses(db, profile.user_id),
+        certifications=get_certification_responses(db, profile.user_id),
+        reviews=get_developer_review_responses(db, profile.user_id),
     )
+
+
+def ensure_complete_profile_fields(
+    db: Session,
+    profile: DeveloperProfile,
+    submitted_educations: list[object] | None,
+) -> None:
+    if not profile.profile_complete:
+        return
+    missing: list[str] = []
+    if not profile.job_title or not profile.job_title.strip():
+        missing.append("professional role")
+    if not profile.bio or not profile.bio.strip():
+        missing.append("bio")
+    if not profile.skills:
+        missing.append("skills")
+    if not profile.github or not profile.github.strip():
+        missing.append("GitHub")
+    if not profile.linkedin or not profile.linkedin.strip():
+        missing.append("LinkedIn")
+    educations = submitted_educations
+    if educations is None:
+        educations = get_education_responses(db, profile.user_id)
+    if not educations:
+        missing.append("education")
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Complete these required developer fields: {', '.join(missing)}.",
+        )

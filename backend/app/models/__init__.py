@@ -9,6 +9,8 @@ from app.models.blueprint import (
     VersionState,
 )
 from app.models.messaging import Message, MessageConnection
+from app.models.google_calendar import GoogleCalendarCredential
+from app.models.developer_review import DeveloperReview
 from app.models.skill import (
     DeveloperTag,
     Domain,
@@ -31,8 +33,10 @@ __all__ = [
     "SavedBlueprint",
     "ConnectionStatus",
     "DeveloperProfile",
+    "DeveloperReview",
     "Education",
     "FounderProfile",
+    "GoogleCalendarCredential",
     "Message",
     "MessageConnection",
     "Skill",

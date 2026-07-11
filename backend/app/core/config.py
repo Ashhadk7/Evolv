@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     SMTP_TIMEOUT_SECONDS: int = 20
     SECRET_KEY: str = Field(min_length=8)
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    GOOGLE_CALENDAR_CLIENT_ID: str | None = None
+    GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr | None = None
+    GOOGLE_CALENDAR_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/google/callback"
+    GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str = "http://localhost:3000"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

@@ -8,8 +8,11 @@ from fastapi import APIRouter, Query, WebSocket
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.messages import (
     ConversationListResponse,
+    InboxResponse,
     MarkReadResponse,
+    MessageParticipantLookupResponse,
     MessageListResponse,
+    PresenceResponse,
     RequestActionResponse,
 )
 from app.services import message_websocket as message_websocket_service
@@ -19,6 +22,27 @@ router = APIRouter()
 
 LimitQuery = Annotated[int, Query(ge=1, le=100)]
 OffsetQuery = Annotated[int, Query(ge=0)]
+
+
+@router.get("/inbox", response_model=InboxResponse)
+def get_inbox(db: DbSession, current_user: CurrentUser) -> InboxResponse:
+    return message_service.list_inbox(db, current_user)
+
+
+@router.get("/presence", response_model=PresenceResponse)
+def get_presence(current_user: CurrentUser) -> PresenceResponse:
+    return PresenceResponse(
+        online_user_ids=message_websocket_service.message_websocket_manager.online_user_ids
+    )
+
+
+@router.get("/participants/lookup", response_model=MessageParticipantLookupResponse)
+def find_participant(
+    email: Annotated[str, Query(min_length=3, max_length=320)],
+    db: DbSession,
+    current_user: CurrentUser,
+) -> MessageParticipantLookupResponse:
+    return message_service.find_participant(db, email=email, current_user=current_user)
 
 
 @router.get("/conversations", response_model=ConversationListResponse)

@@ -16,6 +16,7 @@ class FounderProfileBase(BaseModel):
     linkedin: str | None = Field(None, max_length=255)
     venture_stage: str | None = Field(None, max_length=100)
     primary_goal: str | None = Field(None, max_length=100)
+    domains: list[str] = Field(default_factory=list, max_length=50)
     profile_complete: bool = False
 
 
@@ -32,6 +33,7 @@ class FounderProfileUpdate(BaseModel):
     linkedin: str | None = Field(None, max_length=255)
     venture_stage: str | None = Field(None, max_length=100)
     primary_goal: str | None = Field(None, max_length=100)
+    domains: list[str] | None = Field(None, max_length=50)
     profile_complete: bool | None = None
     educations: list[EducationCreate] | None = Field(None, max_length=20)
 

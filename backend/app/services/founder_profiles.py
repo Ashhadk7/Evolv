@@ -34,6 +34,7 @@ def create_profile(
         user_id=current_user.id,
         payload=payload,
     )
+    ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Founder profile could not be created.")
     db.refresh(profile)
     return build_response(db, profile)
@@ -50,6 +51,7 @@ def update_profile(
     ensure_user_role(current_user, UserRole.FOUNDER, "founder")
     profile = get_profile_or_404(db, current_user.id)
     founder_profiles_repository.update_founder_profile(db, profile=profile, payload=payload)
+    ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Founder profile could not be updated.")
     db.refresh(profile)
     return build_response(db, profile)
@@ -81,7 +83,36 @@ def build_response(db: Session, profile: FounderProfile) -> FounderProfileRespon
         linkedin=profile.linkedin,
         venture_stage=profile.venture_stage,
         primary_goal=profile.primary_goal,
+        domains=profile.domains,
         profile_complete=profile.profile_complete,
         stripe_connected=profile.stripe_connected,
         educations=get_education_responses(db, profile.user_id),
     )
+
+
+def ensure_complete_profile_fields(
+    db: Session,
+    profile: FounderProfile,
+    submitted_educations: list[object] | None,
+) -> None:
+    if not profile.profile_complete:
+        return
+    missing: list[str] = []
+    if not profile.headline or not profile.headline.strip():
+        missing.append("headline")
+    if not profile.bio or not profile.bio.strip():
+        missing.append("bio")
+    if not profile.linkedin or not profile.linkedin.strip():
+        missing.append("LinkedIn")
+    if not profile.domains:
+        missing.append("domains")
+    educations = submitted_educations
+    if educations is None:
+        educations = get_education_responses(db, profile.user_id)
+    if not educations:
+        missing.append("education")
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Complete these required founder fields: {', '.join(missing)}.",
+        )

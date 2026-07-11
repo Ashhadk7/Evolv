@@ -16,6 +16,7 @@ FOUNDER_PROFILE_FIELDS = (
     "linkedin",
     "venture_stage",
     "primary_goal",
+    "domains",
     "profile_complete",
 )
 FOUNDER_DEFAULTS = {"primary_goal": "not_selected"}

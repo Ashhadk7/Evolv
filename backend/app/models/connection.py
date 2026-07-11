@@ -24,7 +24,7 @@ class ConnectionStatus(str, Enum):
 
 connection_status_enum = SqlEnum(
     ConnectionStatus,
-    name="connection_status",
+    name="network_connection_status",
     native_enum=True,
     values_callable=lambda statuses: [s.value for s in statuses],
 )

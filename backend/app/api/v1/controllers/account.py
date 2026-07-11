@@ -3,7 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import AccountServiceDep, CurrentUser, DbSession
-from app.schemas.account import ChangePasswordRequest, DeleteAccountRequest, MessageResponse
+from app.schemas.account import (
+    AccountProfileResponse,
+    AccountProfileUpdate,
+    ChangePasswordRequest,
+    DeleteAccountRequest,
+    MessageResponse,
+)
 from app.services.exceptions import (
     AuthProviderError,
     InvalidCredentialsError,
@@ -11,6 +17,27 @@ from app.services.exceptions import (
 )
 
 router = APIRouter()
+
+
+@router.get("", response_model=AccountProfileResponse)
+def get_account(current_user: CurrentUser) -> AccountProfileResponse:
+    return AccountProfileResponse.model_validate(current_user)
+
+
+@router.patch("", response_model=AccountProfileResponse)
+def update_account(
+    payload: AccountProfileUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> AccountProfileResponse:
+    updates = payload.model_dump(exclude_unset=True)
+    if "phone" in updates and updates["phone"] != current_user.phone:
+        current_user.phone_verified = False
+    for field, value in updates.items():
+        setattr(current_user, field, value.strip() if isinstance(value, str) else value)
+    db.commit()
+    db.refresh(current_user)
+    return AccountProfileResponse.model_validate(current_user)
 
 
 @router.patch("/password", response_model=MessageResponse)
