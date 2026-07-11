@@ -174,12 +174,12 @@ export function ProfileTabEdit({
               />
             </div>
             <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-              <label>Professional Summary</label>
+              <label>Professional Summary *</label>
               <textarea
                 rows={4}
                 value={profile.bio}
                 onChange={(e) => onChangeField("bio", e.target.value)}
-                placeholder="Optional, but helps founders understand how you work."
+                placeholder="Tell founders how you work and what you build."
               />
             </div>
           </div>

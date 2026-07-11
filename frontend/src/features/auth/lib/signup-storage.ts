@@ -4,8 +4,10 @@ import type {
   FounderSignupProfile,
   Role,
   SignupAccount,
-  StoredSignupUser,
 } from "../components/signup/types";
+import { saveFounderProfile, saveDeveloperProfile } from "@/features/profiles/profile-api";
+import type { FounderProfile } from "@/features/founder-dashboard/types";
+import type { DeveloperProfile } from "@/features/developer-dashboard/profile-utils";
 
 type PersistSignupAccountInput = {
   role: Role | "";
@@ -15,7 +17,7 @@ type PersistSignupAccountInput = {
   profileComplete: boolean;
 };
 
-export function persistSignupAccount({
+export async function persistSignupAccount({
   role,
   account,
   founder,
@@ -31,13 +33,6 @@ export function persistSignupAccount({
     stateProvince: account.stateProvince,
     city: account.city,
     dob: account.dob,
-  };
-  const base = {
-    firstName: account.firstName,
-    lastName: account.lastName,
-    email: account.email,
-    role,
-    ...accountLocation,
   };
   const founderDegreeName =
     founder.degreeName === "Other" ? founder.customDegreeName : founder.degreeName;
@@ -102,16 +97,10 @@ export function persistSignupAccount({
           firstTime: !profileComplete,
         };
 
-  const users = JSON.parse(localStorage.getItem("evolv_users") ?? "[]") as StoredSignupUser[];
-  const filtered = users.filter(
-    (user) => user.email?.toLowerCase() !== account.email.toLowerCase()
-  );
-  localStorage.setItem("evolv_users", JSON.stringify([...filtered, { ...base, profile }]));
-
   if (role === "founder") {
-    localStorage.setItem("evolv_founder_profile", JSON.stringify(profile));
+    await saveFounderProfile({ ...profile, gender: "", description: "" } as FounderProfile);
     return "/founder/dashboard" as const;
   }
-  localStorage.setItem("evolv_user", JSON.stringify(profile));
+  await saveDeveloperProfile(profile as DeveloperProfile);
   return "/developer/dashboard" as const;
 }

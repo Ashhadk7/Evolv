@@ -17,7 +17,6 @@ import {
   formatFounderEducations,
 } from "@/features/founder-dashboard/profile-utils";
 import {
-  defaultProfile,
   defaultNotifications,
   getProfileName,
   getProfileInitials,
@@ -33,6 +32,7 @@ import { PaymentTab } from "./payment-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { SecurityTab } from "./security-tab";
 import { PreferencesTab } from "./preferences-tab";
+import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "profile", label: "Profile", icon: "user" },
@@ -54,7 +54,9 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
 };
 
 const Settings = () => {
-  const [profile, setProfile] = useState(defaultProfile);
+  const dashboardProfile = useDeveloperDashboardStore((state) => state.profile);
+  const completeProfile = useDeveloperDashboardStore((state) => state.completeProfile);
+  const [profile, setProfile] = useState(() => hydrateDeveloperProfile(dashboardProfile));
   const [notifications, setNotifications] = useState(defaultNotifications);
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [editing, setEditing] = useState(false);
@@ -72,16 +74,8 @@ const Settings = () => {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("evolv_user");
-      if (raw) {
-        const user = JSON.parse(raw);
-        queueMicrotask(() => setProfile(hydrateDeveloperProfile(user)));
-      }
-    } catch {
-      /* ignore malformed storage */
-    }
-  }, []);
+    queueMicrotask(() => setProfile(hydrateDeveloperProfile(dashboardProfile)));
+  }, [dashboardProfile]);
 
   const profileTags = Array.isArray(profile.tags) ? profile.tags : [];
   const skillEntries = getDeveloperSkillEntries(profile);
@@ -129,10 +123,9 @@ const Settings = () => {
     },
   ];
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaved(false);
     try {
-      const raw = localStorage.getItem("evolv_user");
-      const currentUser = raw ? JSON.parse(raw) : {};
       const parts = profile.name.trim().split(" ");
       const firstName = parts[0] || "";
       const lastName = parts.slice(1).join(" ") || "";
@@ -144,23 +137,18 @@ const Settings = () => {
         role: profile.role,
         education: formatFounderEducations(profile.educations || []),
       });
-      localStorage.setItem("evolv_user", JSON.stringify({ ...currentUser, ...normalized }));
-      setProfile((current) => ({ ...current, ...normalized, name: profile.name }));
+      await completeProfile(normalized);
+      setProfile(hydrateDeveloperProfile({ ...normalized, name: profile.name }));
+      setSaved(true);
+      setEditing(false);
+      setTimeout(() => setSaved(false), 2000);
     } catch {
-      /* ignore malformed storage */
+      setSaved(false);
     }
-    setSaved(true);
-    setEditing(false);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   const cancelEditing = () => {
-    try {
-      const raw = localStorage.getItem("evolv_user");
-      if (raw) setProfile(hydrateDeveloperProfile(JSON.parse(raw)));
-    } catch {
-      /* ignore malformed storage */
-    }
+    setProfile(hydrateDeveloperProfile(dashboardProfile));
     setEditing(false);
   };
 
@@ -365,7 +353,7 @@ const Settings = () => {
                     onCertificationImage={handleCertificationImage}
                     saved={saved}
                     onCancel={cancelEditing}
-                    onSave={handleSave}
+                    onSave={() => void handleSave()}
                   />
                 ) : (
                   <ProfileTabView
@@ -403,7 +391,7 @@ const Settings = () => {
                     setNotifications({ ...notifications, [key]: !notifications[key] })
                   }
                   saved={saved}
-                  onSave={handleSave}
+                  onSave={() => void handleSave()}
                 />
               )}
 
@@ -418,7 +406,7 @@ const Settings = () => {
                     setProfile({ ...profile, experienceYears: value })
                   }
                   saved={saved}
-                  onSave={handleSave}
+                  onSave={() => void handleSave()}
                 />
               )}
             </div>

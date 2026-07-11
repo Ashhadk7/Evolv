@@ -9,6 +9,9 @@ import {
 } from "@/features/developer-dashboard/profile-utils";
 import type { DeveloperInboxLaunchContact } from "@/features/messaging/types/developer-inbox-types";
 import { DEFAULT_DEVELOPER_PROFILE } from "./profile";
+import { ApiError } from "@/lib/api";
+import { getSession } from "@/features/auth/lib/session";
+import { loadDeveloperProfile, saveDeveloperProfile } from "@/features/profiles/profile-api";
 
 interface DeveloperDashboardState {
   profile: DeveloperProfile;
@@ -20,8 +23,8 @@ interface DeveloperDashboardState {
   networkInboxContacts: DeveloperInboxLaunchContact[];
   pendingProtectedAction: (() => void) | null;
 
-  loadData: () => void;
-  completeProfile: (updatedProfile?: DeveloperProfile) => void;
+  loadData: () => Promise<void>;
+  completeProfile: (updatedProfile?: DeveloperProfile) => Promise<void>;
   setShowOnboarding: (v: boolean) => void;
   setProfilePromptDismissed: (v: boolean) => void;
   setInboxActiveContactId: (id: string) => void;
@@ -39,43 +42,22 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
   networkInboxContacts: [],
   pendingProtectedAction: null,
 
-  loadData: () => {
+  loadData: async () => {
     try {
-      const raw = localStorage.getItem("evolv_user");
-      if (raw) {
-        const user = JSON.parse(raw);
-        set({
-          profile: normalizeDeveloperProfileForSave({ ...DEFAULT_DEVELOPER_PROFILE, ...user }),
-          userName: [user.firstName, user.lastName].filter(Boolean).join(" "),
-        });
-      } else {
-        const defaultUser = {
-          ...DEFAULT_DEVELOPER_PROFILE,
-          firstTime: false,
-          profileComplete: false,
-        };
-        localStorage.setItem("evolv_user", JSON.stringify(defaultUser));
-        set({ profile: defaultUser, userName: "" });
+      const profile = await loadDeveloperProfile();
+      set({ profile, userName: [profile.firstName, profile.lastName].filter(Boolean).join(" ") });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        const user = getSession()?.user;
+        set({ profile: { ...DEFAULT_DEVELOPER_PROFILE, firstName: user?.firstName ?? "", lastName: user?.lastName ?? "", email: user?.email ?? "" }, userName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") });
       }
-    } catch {
-      /* ignore */
     }
     set({ dataLoaded: true });
   },
 
-  completeProfile: (updatedProfile) => {
+  completeProfile: async (updatedProfile) => {
     const nextProfile = normalizeDeveloperProfileForSave(updatedProfile ?? get().profile);
-    try {
-      const raw = localStorage.getItem("evolv_user");
-      const existing = raw ? JSON.parse(raw) : {};
-      localStorage.setItem(
-        "evolv_user",
-        JSON.stringify({ ...existing, ...nextProfile, profileComplete: true, firstTime: false })
-      );
-    } catch {
-      /* ignore */
-    }
-    set({ profile: { ...nextProfile, profileComplete: true, firstTime: false } });
+    set({ profile: await saveDeveloperProfile({ ...nextProfile, firstTime: false }) });
   },
 
   setShowOnboarding: (v) => set({ showOnboarding: v }),

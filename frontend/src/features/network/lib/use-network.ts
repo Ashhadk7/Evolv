@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { FounderContactProfile } from "@/features/network/types";
-import { NETWORK_PEOPLE as DEV_PEOPLE } from "@/features/network/lib/developer-network-constants";
-import { NETWORK_PEOPLE as FOUNDER_PEOPLE } from "@/features/network/lib/founder-network-constants";
+import type { FounderContactProfile, NetworkMessageTarget } from "@/features/network/types";
+import {
+  connectionApi,
+  loadNetworkConnections,
+  loadNetworkPeople,
+} from "@/features/network/lib/network-api";
 import {
   getInitialNetworkState as getInitialDevState,
   saveStoredState as saveDevState,
@@ -16,7 +19,7 @@ import type { StoredNetworkState } from "@/features/network/types";
 
 interface UseNetworkProps {
   role: "developer" | "founder";
-  onMessage?: (contact: any, initialNote?: string) => void;
+  onMessage?: (contact: NetworkMessageTarget, initialNote?: string) => void;
   onPendingCountChange?: (count: number) => void;
   profileComplete: boolean;
   onRequireProfile?: (afterComplete?: () => void) => void;
@@ -30,9 +33,16 @@ export function useNetwork({
   onRequireProfile,
 }: UseNetworkProps) {
   // Select constants and storage loaders based on the role
-  const people = useMemo(() => {
-    return role === "developer" ? DEV_PEOPLE : FOUNDER_PEOPLE;
-  }, [role]);
+  const [people, setPeople] = useState<FounderContactProfile[]>([]);
+  const [connectionIdByUser, setConnectionIdByUser] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    void loadNetworkPeople()
+      .then((items) => { if (active) setPeople(items); })
+      .catch(() => { if (active) setPeople([]); });
+    return () => { active = false; };
+  }, []);
 
   const storageLoad = useMemo(() => {
     return role === "developer" ? getInitialDevState : getInitialFounderState;
@@ -52,6 +62,34 @@ export function useNetwork({
 
   const { connected, pendingIds, ignoredIds, outgoingIds, requestNotes } = networkState;
   const outgoingSet = useMemo(() => new Set(outgoingIds), [outgoingIds]);
+
+  const refreshConnections = async () => {
+    const state = await loadNetworkConnections();
+    setConnectionIdByUser(state.connectionIdByUser);
+    setNetworkState((previous) => ({
+      ...previous,
+      connected: Object.fromEntries(state.connectedIds.map((id) => [id, true])),
+      pendingIds: state.incomingIds,
+      outgoingIds: state.outgoingIds,
+      requestNotes: state.requestNotes,
+    }));
+  };
+
+  useEffect(() => {
+    let active = true;
+    void loadNetworkConnections().then((state) => {
+      if (!active) return;
+      setConnectionIdByUser(state.connectionIdByUser);
+      setNetworkState((previous) => ({
+        ...previous,
+        connected: Object.fromEntries(state.connectedIds.map((id) => [id, true])),
+        pendingIds: state.incomingIds,
+        outgoingIds: state.outgoingIds,
+        requestNotes: state.requestNotes,
+      }));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   // Save stored state on changes
   useEffect(() => {
@@ -134,21 +172,15 @@ export function useNetwork({
 
   const handleAcceptRequest = (id: string) => {
     if (requireProfileBeforeAction(() => handleAcceptRequest(id))) return;
-    setNetworkState((prev) => ({
-      ...prev,
-      connected: { ...prev.connected, [id]: true },
-      pendingIds: prev.pendingIds.filter((pendingId) => pendingId !== id),
-      ignoredIds: prev.ignoredIds.filter((ignoredId) => ignoredId !== id),
-      outgoingIds: prev.outgoingIds.filter((outgoingId) => outgoingId !== id),
-    }));
+    const connectionId = connectionIdByUser[id];
+    if (!connectionId) return;
+    void connectionApi.respond(connectionId, "accepted").then(refreshConnections);
   };
 
   const handleIgnoreRequest = (id: string) => {
-    setNetworkState((prev) => ({
-      ...prev,
-      pendingIds: prev.pendingIds.filter((pendingId) => pendingId !== id),
-      ignoredIds: [...prev.ignoredIds, id],
-    }));
+    const connectionId = connectionIdByUser[id];
+    if (!connectionId) return;
+    void connectionApi.respond(connectionId, "ignored").then(refreshConnections);
   };
 
   const handleDismissSuggestion = (id: string) => {
@@ -164,10 +196,8 @@ export function useNetwork({
     const isCurrentlyRequested = outgoingSet.has(person.id);
 
     if (isCurrentlyConnected) {
-      setNetworkState((prev) => ({
-        ...prev,
-        connected: { ...prev.connected, [person.id]: false },
-      }));
+      const connectionId = connectionIdByUser[person.id];
+      if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections);
     } else if (isCurrentlyRequested) {
       setNetworkState((prev) => ({
         ...prev,
@@ -179,11 +209,7 @@ export function useNetwork({
   };
 
   const markOutgoingRequest = (person: FounderContactProfile, note?: string) => {
-    setNetworkState((prev) => ({
-      ...prev,
-      outgoingIds: [...prev.outgoingIds, person.id],
-      requestNotes: { ...prev.requestNotes, [person.id]: note ?? "" },
-    }));
+    void connectionApi.send(person.id, note).then(refreshConnections);
   };
 
   const openInbox = (person: FounderContactProfile, initialNote?: string) => {

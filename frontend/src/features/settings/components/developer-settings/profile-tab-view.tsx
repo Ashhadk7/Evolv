@@ -80,6 +80,10 @@ export function ProfileTabView({
               {profile.bio ||
                 "Add a short professional summary so founders can understand how you work."}
             </p>
+            <p className={styles.profileLocation}>
+              <i className="fas fa-envelope" /> {profile.email}
+              {profile.phone && <><span> · </span><i className="fas fa-phone" /> {profile.phone}</>}
+            </p>
             {profileTags.length > 0 && (
               <div className={styles.profileTagRow}>
                 {profileTags.map((tag) => (

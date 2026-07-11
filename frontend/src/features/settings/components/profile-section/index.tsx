@@ -26,12 +26,14 @@ export function ProfileSection({
   startEditingSignal = 0,
 }: {
   profile: FounderProfile;
-  onSave: (p: FounderProfile) => void;
+  onSave: (p: FounderProfile) => Promise<void>;
   startEditingSignal?: number;
 }) {
   const [local, setLocal] = useState<FounderProfile>(profile);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const safeDomains = Array.isArray(local.domains) ? local.domains : [];
@@ -105,17 +107,25 @@ export function ProfileSection({
       };
     });
 
-  const handleSave = () => {
-    onSave(
-      normalizeFounderProfileForSave({
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onSave(
+        normalizeFounderProfileForSave({
         ...local,
         domains: safeDomains,
         educations: safeEducations,
-      }) as FounderProfile
-    );
-    setEditing(false);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2200);
+        }) as FounderProfile
+      );
+      setEditing(false);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2200);
+    } catch {
+      setSaveError("We could not save your profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleEducationsChange = (next: FounderEducation[]) => {
@@ -194,7 +204,9 @@ export function ProfileSection({
             onEducationsChange={handleEducationsChange}
             onPhotoUpload={handlePhotoUpload}
             onCancel={handleCancel}
-            onSave={handleSave}
+            onSave={() => void handleSave()}
+            saving={saving}
+            saveError={saveError}
           />
         )}
       </AnimatePresence>

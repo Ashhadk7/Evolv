@@ -17,6 +17,7 @@ export interface Message {
 
 export interface Contact {
   id: string;
+  participantId?: string;
   name: string;
   role: string;
   personType: PersonType;

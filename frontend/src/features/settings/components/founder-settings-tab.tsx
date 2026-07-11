@@ -24,7 +24,7 @@ export type SettingsSection = "profile" | "payment" | "notifications" | "securit
 
 interface Props {
   profile: FounderProfile;
-  onProfileSave: (p: FounderProfile) => void;
+  onProfileSave: (p: FounderProfile) => Promise<void>;
   section?: SettingsSection;
   onSectionChange?: (section: SettingsSection) => void;
   editSignal?: number;

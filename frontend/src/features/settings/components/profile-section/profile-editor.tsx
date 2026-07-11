@@ -31,6 +31,8 @@ export function ProfileEditor({
   onPhotoUpload,
   onCancel,
   onSave,
+  saving,
+  saveError,
 }: {
   local: FounderProfile;
   fullName: string;
@@ -44,6 +46,8 @@ export function ProfileEditor({
   onPhotoUpload: (file?: File) => void;
   onCancel: () => void;
   onSave: () => void;
+  saving: boolean;
+  saveError: string;
 }) {
   return (
     <motion.div
@@ -184,7 +188,6 @@ export function ProfileEditor({
               value={local.linkedin}
               onChange={(v) => onFieldChange("linkedin", v)}
               placeholder="https://linkedin.com/in/yourname"
-              optional
             />
             <Field
               label="Phone Number"
@@ -234,6 +237,7 @@ export function ProfileEditor({
       <motion.button
         type="button"
         onClick={onSave}
+        disabled={saving}
         whileHover={{ y: -2, boxShadow: "0 10px 26px rgba(26,49,44,0.22)" }}
         whileTap={{ scale: 0.98 }}
         transition={{ type: "spring", stiffness: 400, damping: 24 }}
@@ -241,8 +245,13 @@ export function ProfileEditor({
         style={{ marginBottom: 35 }}
       >
         <Check size={15} weight="bold" />
-        Save Changes
+        {saving ? "Saving..." : "Save Changes"}
       </motion.button>
+      {saveError && (
+        <p className="-mt-7 text-center text-[12px] font-semibold" style={{ color: TEXT_MUTED }}>
+          {saveError}
+        </p>
+      )}
     </motion.div>
   );
 }

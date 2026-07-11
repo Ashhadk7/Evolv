@@ -17,7 +17,7 @@ export function PendingBanner({ sentOutgoingIntro }: { sentOutgoingIntro: boolea
       </span>
       <div>
         <div className="text-[13px] font-extrabold" style={{ color: TEXT }}>
-          Requested
+          Pending
         </div>
         <p className="mt-0.5 max-w-[680px] text-[12px] leading-5" style={{ color: MUTED }}>
           {sentOutgoingIntro

@@ -68,11 +68,11 @@ export function useFounderNavigation() {
     s.setShowOnboarding(true);
   };
 
-  const handleOnboardingComplete = (p: FounderProfile) => {
+  const handleOnboardingComplete = async (p: FounderProfile) => {
     const s = useFounderDashboardStore.getState();
     const pendingAction = s.pendingProtectedAction;
     s.setPendingProtectedAction(null);
-    s.saveProfile(p);
+    await s.saveProfile(p);
     s.setShowOnboarding(false);
     s.setProfilePromptDismissed(true);
     if (pendingAction) {

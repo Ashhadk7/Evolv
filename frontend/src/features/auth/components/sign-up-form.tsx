@@ -280,28 +280,31 @@ export function SignUpForm() {
         founder.bio &&
         founder.domains.length &&
         founder.educationLevel &&
-        founderDegreeName
+        founderDegreeName &&
+        founder.linkedin
       );
     }
+    const developerDegreeName =
+      developer.degreeName === "Other" ? developer.customDegreeName : developer.degreeName;
     return Boolean(
-      developer.jobTitle ||
-      developer.experience ||
-      developer.educationLevel ||
-      developer.degreeName ||
-      developer.bio ||
-      developer.github ||
-      developer.linkedIn ||
-      developer.skills.length
+      developer.jobTitle &&
+      developer.bio &&
+      developer.educationLevel &&
+      developerDegreeName &&
+      developer.skills.length &&
+      developer.github &&
+      developer.linkedIn
     );
   };
 
   // Step 2 (profile) finish: the user is already signed in — persist the profile
   // details and redirect to their dashboard.
-  const finish = (skip = false) => {
+  const finish = async (skip = false) => {
     setError("");
     if (!role) return;
     try {
-      const redirectPath = persistSignupAccount({
+      setIsSubmitting(true);
+      const redirectPath = await persistSignupAccount({
         role,
         account,
         founder,
@@ -311,6 +314,8 @@ export function SignUpForm() {
       router.push(redirectPath);
     } catch {
       setError("Something went wrong while saving your profile.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -522,7 +527,7 @@ export function SignUpForm() {
               {step === 2 && (
                 <button
                   type="button"
-                  onClick={() => finish(true)}
+                  onClick={() => void finish(true)}
                   disabled={isSubmitting}
                   className="h-10 rounded-xl border bg-white px-5 text-[13px] font-bold transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ borderColor: "rgba(15,28,24,0.12)", color: BRAND_MID }}
@@ -534,7 +539,7 @@ export function SignUpForm() {
                 whileHover={{ scale: 1.012 }}
                 whileTap={{ scale: 0.988 }}
                 type="button"
-                onClick={step < 2 ? goNext : () => finish(false)}
+                onClick={step < 2 ? goNext : () => void finish(false)}
                 disabled={isSubmitting}
                 className="flex h-10 items-center gap-2 rounded-xl px-6 text-[13px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-60"
                 style={{

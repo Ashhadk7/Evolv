@@ -12,6 +12,7 @@ export function ConversationListPanel({
   visibleContacts,
   activeId,
   onSelectContact,
+  loading = false,
 }: {
   inboxTabs: { id: InboxFilter; label: string; count: number }[];
   inboxFilter: InboxFilter;
@@ -19,6 +20,7 @@ export function ConversationListPanel({
   visibleContacts: Contact[];
   activeId: string;
   onSelectContact: (id: string) => void;
+  loading?: boolean;
 }) {
   return (
     <section
@@ -73,7 +75,13 @@ export function ConversationListPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {visibleContacts.length === 0 && (
+        {loading && (
+          <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 px-6 text-center text-[12px]" style={{ color: MUTED }}>
+            <span>Please wait while we load your chats</span>
+            <span className="h-1.5 w-36 animate-pulse rounded-full" style={{ background: MID }} />
+          </div>
+        )}
+        {!loading && visibleContacts.length === 0 && (
           <div
             className="flex h-full min-h-[220px] items-center justify-center px-6 text-center text-[12px]"
             style={{ color: MUTED }}
@@ -87,7 +95,7 @@ export function ConversationListPanel({
                   : "No conversations yet."}
           </div>
         )}
-        {visibleContacts.map((item) => (
+        {!loading && visibleContacts.map((item) => (
           <ConversationListItem
             key={item.id}
             item={item}

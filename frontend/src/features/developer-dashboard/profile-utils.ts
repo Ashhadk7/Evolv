@@ -23,6 +23,10 @@ export interface DeveloperProfile {
   firstName?: string;
   lastName?: string;
   email?: string;
+  phone?: string;
+  country?: string;
+  city?: string;
+  location?: string;
   avatarUrl?: string;
   photo?: string;
   jobTitle?: string;
@@ -150,6 +154,7 @@ export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
   const missing: string[] = [];
 
   if (!getDeveloperRole(profile)) missing.push("professional role");
+  if (!profile.bio?.trim()) missing.push("professional bio");
   if (!getDeveloperEducationSummary(profile)) missing.push("education");
   if (!getDeveloperSkillEntries(profile).some((entry) => entry.name?.trim()))
     missing.push("skills and tech stack");

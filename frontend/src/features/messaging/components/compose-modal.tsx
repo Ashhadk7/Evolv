@@ -10,15 +10,18 @@ export function ComposeModal({
   onSend,
 }: {
   onClose: () => void;
-  onSend: (data: { email: string; subject: string; message: string }) => string | null;
+  onSend: (data: { email: string; subject: string; message: string }) => string | null | Promise<string | null>;
 }) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     setError("");
-    const nextError = onSend({ email, subject: "", message });
+    setSending(true);
+    const nextError = await onSend({ email, subject: "", message });
+    setSending(false);
     if (nextError) {
       setError(nextError);
       return;
@@ -126,13 +129,14 @@ export function ComposeModal({
             </button>
             <motion.button
               type="button"
-              onClick={submit}
+              onClick={() => void submit()}
+              disabled={sending}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
               className="bp-gradient-btn flex h-12 items-center gap-2 rounded-xl px-7 text-[14px] font-extrabold"
             >
               <PaperPlaneTilt size={15} weight="fill" />
-              Send Message
+              {sending ? "Sending..." : "Send Message"}
             </motion.button>
           </div>
         </div>

@@ -19,7 +19,7 @@ export function ConversationListItem({
       ? "Rejected"
       : "Request"
     : isOutgoingPending(item)
-      ? "Requested"
+      ? "Pending"
       : item.personType;
 
   return (

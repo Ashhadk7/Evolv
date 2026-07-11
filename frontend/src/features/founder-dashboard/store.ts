@@ -14,12 +14,13 @@ import type { Blueprint } from "@/features/blueprints/types";
 import type { SettingsSection } from "@/features/settings/components/founder-settings-tab";
 import type { InboxLaunchContact } from "@/features/messaging/types/inbox-types";
 import { normalizeFounderProfileForSave } from "@/features/founder-dashboard/profile-utils";
+import { ApiError } from "@/lib/api";
+import { loadFounderProfile, saveFounderProfile } from "@/features/profiles/profile-api";
+import { getSession } from "@/features/auth/lib/session";
 import {
   DEFAULT_FOUNDER_PROFILE,
   STORAGE_KEY_BLUEPRINTS,
-  STORAGE_KEY_PROFILE,
   mergeFounderProfiles,
-  type StoredFounderRecord,
 } from "./profile";
 
 interface FounderDashboardState {
@@ -43,8 +44,8 @@ interface FounderDashboardState {
   pendingProtectedAction: (() => void) | null;
 
   // ── actions (data + persistence) ──
-  loadData: () => void;
-  saveProfile: (p: FounderProfile) => void;
+  loadData: () => Promise<void>;
+  saveProfile: (p: FounderProfile) => Promise<void>;
   saveBlueprints: (bps: Blueprint[]) => void;
   // ── granular setters ──
   setOpenBlueprintId: (id: string | null) => void;
@@ -76,67 +77,24 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   pendingProtectedTab: null,
   pendingProtectedAction: null,
 
-  loadData: () => {
+  loadData: async () => {
     try {
-      const storedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
-      const savedProfile = storedProfile
-        ? (JSON.parse(storedProfile) as StoredFounderRecord)
-        : null;
-      const savedUsers = JSON.parse(
-        localStorage.getItem("evolv_users") ?? "[]"
-      ) as StoredFounderRecord[];
-      const matchingUser = savedUsers.find(
-        (user) =>
-          user.role === "founder" &&
-          (!savedProfile?.email || user.email?.toLowerCase() === savedProfile.email.toLowerCase())
-      );
-
-      const nextProfile = mergeFounderProfiles(
-        DEFAULT_FOUNDER_PROFILE,
-        matchingUser?.profile,
-        savedProfile
-      );
-      set({ profile: nextProfile });
-      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(nextProfile));
+      set({ profile: mergeFounderProfiles(DEFAULT_FOUNDER_PROFILE, await loadFounderProfile()) });
 
       const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
       if (storedBlueprints) set({ blueprints: JSON.parse(storedBlueprints) as Blueprint[] });
-    } catch {
-      /* ignore */
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        const user = getSession()?.user;
+        set({ profile: { ...DEFAULT_FOUNDER_PROFILE, firstName: user?.firstName ?? "", lastName: user?.lastName ?? "", email: user?.email ?? "" } });
+      }
     }
     set({ dataLoaded: true });
   },
 
-  saveProfile: (p) => {
+  saveProfile: async (p) => {
     const nextProfile = normalizeFounderProfileForSave(p) as FounderProfile;
-    set({ profile: nextProfile });
-    try {
-      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(nextProfile));
-
-      if (nextProfile.email) {
-        const savedUsers = JSON.parse(
-          localStorage.getItem("evolv_users") ?? "[]"
-        ) as StoredFounderRecord[];
-        const updatedUsers = savedUsers.map((user) => {
-          const sameFounder =
-            user.role === "founder" &&
-            user.email?.toLowerCase() === nextProfile.email?.toLowerCase();
-
-          return sameFounder
-            ? {
-                ...user,
-                firstName: nextProfile.firstName,
-                lastName: nextProfile.lastName,
-                email: nextProfile.email,
-                profile: { ...(user.profile ?? {}), ...nextProfile },
-              }
-            : user;
-        });
-        localStorage.setItem("evolv_users", JSON.stringify(updatedUsers));
-      }
-    } catch {
-      /* ignore */
-    }
+    set({ profile: await saveFounderProfile(nextProfile) });
   },
 
   saveBlueprints: (bps) => {

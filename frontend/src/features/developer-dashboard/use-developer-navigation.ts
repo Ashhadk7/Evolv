@@ -42,10 +42,10 @@ export function useDeveloperNavigation() {
     s.setShowOnboarding(true);
   };
 
-  const handleOnboardingComplete = (updatedProfile?: DeveloperProfile) => {
+  const handleOnboardingComplete = async (updatedProfile?: DeveloperProfile) => {
     const s = useDeveloperDashboardStore.getState();
     const pendingAction = s.pendingProtectedAction;
-    s.completeProfile(updatedProfile);
+    await s.completeProfile(updatedProfile);
     s.setShowOnboarding(false);
     s.setProfilePromptDismissed(true);
     s.setPendingProtectedAction(null);

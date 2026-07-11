@@ -229,6 +229,7 @@ export function getMissingFounderProfileFields(profile: FounderProfileShape) {
   if (!profile.bio?.trim()) missing.push("short bio");
   if (!domains.length) missing.push("domains of interest");
   if (!getFounderEducationSummary(profile)) missing.push("education");
+  if (!profile.linkedin?.trim()) missing.push("LinkedIn");
 
   return missing;
 }

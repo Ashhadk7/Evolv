@@ -136,7 +136,7 @@ export const getExternalUrl = (value: string) => {
 };
 
 export const hydrateDeveloperProfile = (
-  user: Partial<DeveloperSettingsProfile> = {}
+  user: Partial<DeveloperProfile> & { name?: string; location?: string } = {}
 ): DeveloperSettingsProfile => {
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
   const hydrated: DeveloperSettingsProfile = {

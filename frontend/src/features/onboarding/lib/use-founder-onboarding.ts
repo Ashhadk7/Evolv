@@ -70,7 +70,7 @@ export function useFounderOnboarding({
     const missing = getMissingFounderProfileFields(normalized);
     if (missing.length) {
       setError(
-        "Please fill founder headline, short bio, domains of interest, and education before sending messages or connection requests."
+        `Please fill ${missing.join(", ")} before sending messages or connection requests.`
       );
       return;
     }
