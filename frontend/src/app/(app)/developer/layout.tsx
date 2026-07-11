@@ -15,6 +15,7 @@ import {
 } from "@/features/developer-dashboard/profile-utils";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { useDeveloperNavigation } from "@/features/developer-dashboard/use-developer-navigation";
+import { MessagingPresence } from "@/features/messaging/components/messaging-presence";
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -43,6 +44,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard requiredRole="developer">
     <div className="flex min-h-screen bg-[#f5f6f4]">
+      <MessagingPresence enabled={profileComplete} />
       {!isSettings && (
         <DashboardSidebar
           sections={developerNav}

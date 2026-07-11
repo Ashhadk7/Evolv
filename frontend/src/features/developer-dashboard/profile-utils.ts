@@ -19,6 +19,14 @@ export interface DeveloperCertification {
   image?: string;
 }
 
+export interface DeveloperProfileReview {
+  id: string;
+  reviewer: string;
+  rating: number;
+  date: string;
+  comment: string;
+}
+
 export interface DeveloperProfile {
   firstName?: string;
   lastName?: string;
@@ -48,6 +56,8 @@ export interface DeveloperProfile {
   linkedIn?: string;
   portfolioLink?: string;
   certifications?: Array<string | DeveloperCertification>;
+  rating?: number;
+  reviews?: DeveloperProfileReview[];
   profileComplete?: boolean;
   firstTime?: boolean;
 }

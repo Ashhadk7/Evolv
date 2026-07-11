@@ -7,6 +7,7 @@ import { Logo } from "@/features/auth/components/logo";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
 import type { AppNotif } from "@/features/notifications/types";
 import type { BadgeKey, NavSection } from "@/config/navigation";
+import { clearAllUserData } from "@/features/auth/lib/session";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ONE sidebar for every dashboard. Founder / Developer differ only by the props
@@ -124,12 +125,7 @@ export function DashboardSidebar({
       onLogout();
       return;
     }
-    try {
-      localStorage.removeItem("evolv_developer_profile");
-      localStorage.removeItem("evolv_user");
-    } catch {
-      /* ignore */
-    }
+    clearAllUserData();
     window.location.href = "/sign-in";
   };
 

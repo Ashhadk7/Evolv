@@ -72,25 +72,8 @@ export const defaultProfile: DeveloperSettingsProfile = {
   linkedin: "",
   portfolioLink: "",
   certifications: [],
-  rating: 5,
-  reviews: [
-    {
-      id: "review-1",
-      reviewer: "Asad Ahmed",
-      rating: 5,
-      date: "Jun 2026",
-      comment:
-        "Clear communication, thoughtful engineering decisions, and strong ownership from scope to delivery.",
-    },
-    {
-      id: "review-2",
-      reviewer: "Priya Sharma",
-      rating: 5,
-      date: "May 2026",
-      comment:
-        "Great collaborator for early-stage product work. Shipped fast without losing sight of maintainability.",
-    },
-  ],
+  rating: 0,
+  reviews: [],
 };
 
 export type DeveloperNotificationPrefs = {

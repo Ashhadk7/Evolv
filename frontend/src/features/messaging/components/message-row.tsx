@@ -26,9 +26,45 @@ interface CurrentMessagingUser {
   avatarUrl?: string;
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s<>"']+)/gi;
+const TRAILING_PUNCTUATION_PATTERN = /[.,!?;:)]+$/;
+
 function getCurrentUserName(currentUser?: CurrentMessagingUser) {
   const fullName = [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ").trim();
   return fullName || currentUser?.email || "You";
+}
+
+function LinkifiedMessage({ text, mine }: { text: string; mine: boolean }) {
+  const parts = text.split(URL_PATTERN);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (!part.match(URL_PATTERN)) {
+          return part;
+        }
+
+        const trailingPunctuation = part.match(TRAILING_PUNCTUATION_PATTERN)?.[0] ?? "";
+        const href = trailingPunctuation ? part.slice(0, -trailingPunctuation.length) : part;
+
+        return (
+          <span key={`${href}-${index}`}>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`break-all font-bold underline underline-offset-2 ${
+                mine ? "text-[#b9f5d4] hover:text-white" : "text-[#2f6f62] hover:text-[#1a2e26]"
+              }`}
+            >
+              {href}
+            </a>
+            {trailingPunctuation}
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 export function MessageRow({
@@ -92,7 +128,9 @@ export function MessageRow({
                 }
           }
         >
-          <p className="whitespace-pre-wrap">{msg.text}</p>
+          <p className="whitespace-pre-wrap break-words">
+            <LinkifiedMessage text={msg.text} mine={mine} />
+          </p>
         </div>
       </div>
 

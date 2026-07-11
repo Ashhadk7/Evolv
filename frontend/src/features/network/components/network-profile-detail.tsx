@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -15,24 +15,29 @@ import {
   UserPlus,
   Users,
 } from "@phosphor-icons/react";
-import type { FounderContactProfile, NetworkReview } from "@/features/network/types";
+import type { FounderContactProfile } from "@/features/network/types";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { SkillPill } from "@/components/shared/skill-pill";
 import { TypeBadge } from "@/components/shared/type-badge";
-import { loadStoredReviews, saveStoredReviews } from "@/features/network/lib/profile-reviews-storage";
+import { getApiErrorMessage } from "@/lib/api";
+import {
+  loadNetworkProfile,
+  saveDeveloperReview,
+} from "@/features/network/lib/network-api";
 import { ProfileAvatar } from "./profile-avatar";
 import { DetailTile } from "./profile-detail-tile";
 import { DeveloperPublicProfileSections } from "./developer-public-profile-sections";
 import { FounderPublicProfileSections } from "./founder-public-profile-sections";
 
 export function NetworkProfileDetailScreen({
-  profile,
+  profile: initialProfile,
   connected,
   pending = false,
   backLabel = "Back",
   connectionLabel,
   connectionDisabled = false,
   messageLabel = "Message",
+  surface = "page",
   onBack,
   onAccept,
   onIgnore,
@@ -48,6 +53,7 @@ export function NetworkProfileDetailScreen({
   connectionLabel?: string;
   connectionDisabled?: boolean;
   messageLabel?: string;
+  surface?: "page" | "inbox";
   onBack: () => void;
   onAccept?: (id: string) => void;
   onIgnore?: (id: string) => void;
@@ -56,18 +62,40 @@ export function NetworkProfileDetailScreen({
   profileComplete?: boolean;
   onRequireProfile?: (afterComplete?: () => void) => void;
 }) {
+  const isInboxSurface = surface === "inbox";
+  const [profileDetails, setProfileDetails] = useState<FounderContactProfile | null>(null);
+  const [profileError, setProfileError] = useState<{ id: string; message: string } | null>(null);
+  const [savingReview, setSavingReview] = useState(false);
+  const profile = profileDetails?.id === initialProfile.id ? profileDetails : initialProfile;
+  const activeProfileError = profileError?.id === initialProfile.id ? profileError.message : "";
+  const loadingProfile = profileDetails?.id !== initialProfile.id && !activeProfileError;
   const isDeveloper = profile.type === "Developer";
-  const [customReviews, setCustomReviews] = useState<NetworkReview[]>(() =>
-    loadStoredReviews(profile.id)
-  );
 
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
 
+  useEffect(() => {
+    let active = true;
+    void loadNetworkProfile(initialProfile.id)
+      .then((details) => {
+        if (active) {
+          setProfileDetails({ ...details, online: initialProfile.online });
+          setProfileError(null);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setProfileError({ id: initialProfile.id, message: getApiErrorMessage(error) });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialProfile.id, initialProfile.online]);
+
   const allReviews = useMemo(() => {
-    const initial = profile.reviews ?? [];
-    return [...customReviews, ...initial];
-  }, [profile.reviews, customReviews]);
+    return profile.reviews ?? [];
+  }, [profile.reviews]);
 
   const displayRating = useMemo(() => {
     if (allReviews.length === 0) return profile.rating ?? 0;
@@ -104,21 +132,21 @@ export function NetworkProfileDetailScreen({
     }
   };
 
-  const handleAddReview = () => {
+  const handleAddReview = async () => {
     const trimmed = reviewText.trim();
-    if (!trimmed) return;
-    const newReview: NetworkReview = {
-      id: Math.random().toString(),
-      reviewer: "You",
-      rating: reviewRating,
-      comment: trimmed,
-      date: "Just now",
-    };
-    const updated = [newReview, ...customReviews];
-    setCustomReviews(updated);
-    saveStoredReviews(profile.id, updated);
-    setReviewText("");
-    setReviewRating(5);
+    if (!trimmed || savingReview) return;
+    setSavingReview(true);
+    try {
+      await saveDeveloperReview(profile.id, { rating: reviewRating, comment: trimmed });
+      const updatedProfile = await loadNetworkProfile(profile.id);
+      setProfileDetails({ ...updatedProfile, online: profile.online });
+      setReviewText("");
+      setReviewRating(5);
+    } catch (error) {
+      setProfileError({ id: profile.id, message: getApiErrorMessage(error) });
+    } finally {
+      setSavingReview(false);
+    }
   };
 
   return (
@@ -126,7 +154,9 @@ export function NetworkProfileDetailScreen({
       initial={{ opacity: 0, x: 24 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 18 }}
-      className="h-full overflow-y-auto bg-[#f5f6f4] py-6 px-[28px]"
+      className={`h-full overflow-y-auto overflow-x-hidden ${
+        isInboxSurface ? "bg-white px-7 py-6" : "bg-[#f5f6f4] py-6 px-[28px]"
+      }`}
     >
       <div className="mb-5 flex min-w-0 items-center gap-3">
         <button
@@ -139,16 +169,35 @@ export function NetworkProfileDetailScreen({
         <div className="truncate text-[12px] font-semibold text-[#7a9e8e]">
           {profile.type} profile
         </div>
+        {loadingProfile && (
+          <div className="ml-auto text-[11px] font-semibold text-[#7a9e8e]">
+            Loading latest profile...
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_320px]">
+      {activeProfileError && (
+        <div className="mb-4 rounded-xl border border-[#dce9e2] bg-[#f4f8f6] px-4 py-2 text-[12px] font-semibold text-[#365f52]">
+          {activeProfileError}
+        </div>
+      )}
+
+      <div
+        className={`grid grid-cols-1 items-start gap-4 ${
+          isInboxSurface ? "max-w-none" : "xl:grid-cols-[1fr_320px]"
+        }`}
+      >
         <div className="space-y-4">
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="overflow-hidden rounded-2xl bg-white border border-[#e8ede9]"
           >
-            <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start border-b border-[#eaf0eb]">
+            <div
+              className={`flex flex-col gap-4 p-5 border-b border-[#eaf0eb] ${
+                isInboxSurface ? "lg:flex-row lg:items-start" : "md:flex-row md:items-start"
+              }`}
+            >
               <ProfileAvatar profile={profile} size={72} />
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -161,7 +210,7 @@ export function NetworkProfileDetailScreen({
                   <TypeBadge type={profile.type} />
                 </div>
                 <div className="text-[13px] text-[#6b8e7e]">
-                  {profile.role} at {profile.company}
+                  {profile.company ? `${profile.role} at ${profile.company}` : profile.role}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-[#6b8e7e]">
                   <span className="flex items-center gap-1">
@@ -184,7 +233,11 @@ export function NetworkProfileDetailScreen({
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:ml-auto">
+              <div
+                className={`flex items-center gap-2 ${
+                  isInboxSurface ? "lg:ml-auto" : "md:ml-auto"
+                }`}
+              >
                 {canManagePending && (
                   <>
                     <button
@@ -237,7 +290,15 @@ export function NetworkProfileDetailScreen({
             </div>
 
             <div
-              className={`grid grid-cols-1 gap-3 p-5 ${isDeveloper ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+              className={`grid grid-cols-1 gap-3 p-5 ${
+                isDeveloper
+                  ? isInboxSurface
+                    ? "md:grid-cols-2"
+                    : "lg:grid-cols-4"
+                  : isInboxSurface
+                    ? "md:grid-cols-2"
+                    : "lg:grid-cols-3"
+              }`}
             >
               <DetailTile label="Match" value={`${profile.match}%`} />
               {isDeveloper && (
@@ -344,11 +405,11 @@ export function NetworkProfileDetailScreen({
                   <div className="mt-2 flex justify-end">
                     <button
                       type="button"
-                      disabled={!reviewText.trim()}
+                      disabled={!reviewText.trim() || savingReview}
                       onClick={handleAddReview}
                       className="bp-gradient-btn rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-opacity disabled:opacity-40"
                     >
-                      Submit review
+                      {savingReview ? "Saving..." : "Submit review"}
                     </button>
                   </div>
                 </div>
@@ -381,7 +442,7 @@ export function NetworkProfileDetailScreen({
           )}
         </div>
 
-        <div className="space-y-4 xl:sticky xl:top-6">
+        <div className={`space-y-4 ${isInboxSurface ? "" : "xl:sticky xl:top-6"}`}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

@@ -13,6 +13,13 @@ export interface Session {
 }
 
 const SESSION_KEY = "evolv_session";
+export const SESSION_CLEARED_EVENT = "evolv:session-cleared";
+
+function notifySessionCleared(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SESSION_CLEARED_EVENT));
+  }
+}
 
 function storage(remember: boolean): Storage {
   return remember ? localStorage : sessionStorage;
@@ -39,11 +46,16 @@ export function getAccessToken(): string | null {
 export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
+  notifySessionCleared();
 }
 
 const LEGACY_PROFILE_KEYS = [
   "evolv_user",
   "evolv_users",
+  "evolv_developer_profile",
+  "evolv_developer_network_state",
+  "evolv_founder_network_state",
+  "evolv_founder_network_reviews",
   "evolv_founder_profile",
   "evolv_founder_blueprints",
 ];

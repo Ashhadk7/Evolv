@@ -6,6 +6,7 @@ export interface ApiMessage { id: string; conversation_id: string; sender_id: st
 export interface Conversation { id: string; status: "pending" | "accepted" | "declined"; participant: Participant; last_message: ApiMessage | null; unread_count: number; created_at: string; updated_at: string }
 
 export const messagingApi = {
+  inbox: () => apiFetch<{ conversations: Conversation[]; requests: Conversation[]; pending: Conversation[] }>("/messages/inbox", { auth: true }),
   conversations: () => apiFetch<{ items: Conversation[] }>("/messages/conversations", { auth: true }),
   requests: () => apiFetch<{ items: Conversation[] }>("/messages/requests", { auth: true }),
   pending: () => apiFetch<{ items: Conversation[] }>("/messages/pending", { auth: true }),
@@ -14,6 +15,12 @@ export const messagingApi = {
   accept: (id: string) => apiFetch(`/messages/requests/${id}/accept`, { method: "POST", auth: true }),
   decline: (id: string) => apiFetch(`/messages/requests/${id}/decline`, { method: "POST", auth: true }),
   lookup: (email: string) => apiFetch<{ participant: Participant }>(`/messages/participants/lookup?email=${encodeURIComponent(email)}`, { auth: true }),
+};
+
+export const calendarApi = {
+  status: () => apiFetch<{ configured: boolean; connected: boolean }>("/calendar/google/status", { auth: true }),
+  authorize: () => apiFetch<{ authorization_url: string }>("/calendar/google/authorize", { auth: true }),
+  createMeet: (participantId: string) => apiFetch<{ meet_url: string; event_url: string | null }>("/calendar/google/meet", { method: "POST", auth: true, body: { participant_id: participantId, duration_minutes: 30 } }),
 };
 
 export function createMessagingSocket(): WebSocket {

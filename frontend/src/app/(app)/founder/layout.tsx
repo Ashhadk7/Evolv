@@ -14,6 +14,7 @@ import {
 } from "@/features/founder-dashboard/profile-utils";
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-navigation";
+import { MessagingPresence } from "@/features/messaging/components/messaging-presence";
 
 export default function FounderLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -51,6 +52,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
   return (
     <AuthGuard requiredRole="founder">
     <div className="founder-shell flex h-screen overflow-hidden bg-[#f5f6f4]">
+      <MessagingPresence enabled={profileComplete} />
       <style
         dangerouslySetInnerHTML={{
           __html: `.founder-shell button:not(:disabled){cursor:pointer}.founder-shell button:disabled{cursor:not-allowed}`,

@@ -17,6 +17,7 @@ export function MessageComposer({
   placeholder,
   onSend,
   onMeetInvite,
+  meetLoading = false,
 }: {
   senderName: string;
   senderInitials: string;
@@ -28,6 +29,7 @@ export function MessageComposer({
   placeholder: string;
   onSend: () => void;
   onMeetInvite: () => void;
+  meetLoading?: boolean;
 }) {
   return (
     <div
@@ -45,7 +47,7 @@ export function MessageComposer({
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={onKeyDown}
-        disabled={locked}
+        disabled={locked || meetLoading}
         placeholder={placeholder}
         className="h-11 flex-1 rounded-xl px-4 text-[13px] outline-none"
         style={{
@@ -65,7 +67,7 @@ export function MessageComposer({
         className="flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#d4e4db] px-3 text-[12.5px] font-bold transition-colors hover:bg-[#f5f7f5]"
         style={{ color: "#1a2e26" }}
       >
-        <VideoCamera size={14} weight="bold" /> Meet
+        <VideoCamera size={14} weight="bold" /> {meetLoading ? "Creating..." : "Meet"}
       </motion.button>
 
       <motion.button

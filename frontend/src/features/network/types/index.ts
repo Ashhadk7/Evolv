@@ -24,6 +24,7 @@ export interface FounderContactProfile {
   type: NetworkType;
   initials: string;
   avatarColor: string;
+  avatarUrl?: string;
   skills: string[];
   domains?: string[];
   tags?: string[];

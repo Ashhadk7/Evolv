@@ -8,6 +8,7 @@ import { isFounderProfileComplete } from "@/features/founder-dashboard/profile-u
 import type { FounderProfile } from "./types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
 import { useFounderDashboardStore } from "./store";
+import { clearAllUserData } from "@/features/auth/lib/session";
 import { STORAGE_KEY_BLUEPRINTS, STORAGE_KEY_PROFILE } from "./profile";
 
 function cleanupSetupParam() {
@@ -101,6 +102,7 @@ export function useFounderNavigation() {
     } catch {
       /* ignore */
     }
+    clearAllUserData();
     window.location.href = "/sign-in";
   };
 
