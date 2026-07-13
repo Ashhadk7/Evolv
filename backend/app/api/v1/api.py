@@ -13,6 +13,7 @@ from app.api.v1.controllers import (
     health,
     me,
     messages,
+    notifications,
     phone,
     skills,
     tags,
@@ -40,3 +41,4 @@ api_router.include_router(applications.router, prefix="/applications", tags=["ap
 api_router.include_router(me.router, prefix="/me", tags=["me"])
 api_router.include_router(connections.router, prefix="/connections", tags=["connections"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])

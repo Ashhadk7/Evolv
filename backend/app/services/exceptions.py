@@ -27,6 +27,9 @@ class ErrorCode(StrEnum):
     SAVED_BLUEPRINT_NOT_FOUND = "saved_blueprint_not_found"
     APPLICATION_ACCESS_DENIED = "application_access_denied"
     APPLICATION_PERSISTENCE = "application_persistence"
+    NOTIFICATION_NOT_FOUND = "notification_not_found"
+    NOTIFICATION_ACCESS_DENIED = "notification_access_denied"
+    NOTIFICATION_PERSISTENCE = "notification_persistence"
 
 
 class AppError(Exception):
@@ -175,6 +178,27 @@ class ApplicationPersistenceError(AppError):
 
     def __init__(self, message: str = "Application data could not be saved.") -> None:
         super().__init__(ErrorCode.APPLICATION_PERSISTENCE, message)
+
+
+class NotificationNotFoundError(AppError):
+    """The requested notification does not exist."""
+
+    def __init__(self, message: str = "Notification not found.") -> None:
+        super().__init__(ErrorCode.NOTIFICATION_NOT_FOUND, message)
+
+
+class NotificationAccessDeniedError(AppError):
+    """The current user is not allowed to view or modify this notification."""
+
+    def __init__(self, message: str = "You do not have access to this notification.") -> None:
+        super().__init__(ErrorCode.NOTIFICATION_ACCESS_DENIED, message)
+
+
+class NotificationPersistenceError(AppError):
+    """Notification data could not be saved due to a database error."""
+
+    def __init__(self, message: str = "Notification data could not be saved.") -> None:
+        super().__init__(ErrorCode.NOTIFICATION_PERSISTENCE, message)
 
 
 class NotFoundError(Exception):
