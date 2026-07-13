@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = Field(min_length=1)
     SUPABASE_SERVICE_ROLE_KEY: SecretStr
     SUPABASE_ANON_KEY: SecretStr
-    FIREBASE_CREDENTIALS_JSON: SecretStr
     SIGNUP_OTP_EXPIRE_MINUTES: int = 5
     SIGNUP_OTP_RETURN_DEBUG: bool = False
     EMAIL_FROM_EMAIL: str = Field(min_length=1)
@@ -38,6 +37,11 @@ class Settings(BaseSettings):
     SMTP_TIMEOUT_SECONDS: int = 20
     SECRET_KEY: str = Field(min_length=8)
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    TWILIO_ACCOUNT_SID: str | None = None
+    TWILIO_AUTH_TOKEN: SecretStr | None = None
+    TWILIO_VERIFY_SERVICE_SID: str | None = None
+    TWILIO_VERIFY_CHANNEL: str = "sms"
+    TWILIO_TIMEOUT_SECONDS: int = 20
     GOOGLE_CALENDAR_CLIENT_ID: str | None = None
     GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr | None = None
     GOOGLE_CALENDAR_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/google/callback"
@@ -77,7 +81,6 @@ class Settings(BaseSettings):
     @field_validator(
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_ANON_KEY",
-        "FIREBASE_CREDENTIALS_JSON",
         "SMTP_PASSWORD",
     )
     @classmethod

@@ -55,9 +55,13 @@ DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@YOUR_HOST:5432/postgres
 SUPABASE_URL=https://rwhyjahpxivjchowalsc.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 SUPABASE_ANON_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
-FIREBASE_CREDENTIALS_JSON=YOUR_FIREBASE_SERVICE_ACCOUNT_JSON_AS_ONE_LINE
 SIGNUP_OTP_EXPIRE_MINUTES=5
 SIGNUP_OTP_RETURN_DEBUG=false
+TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+TWILIO_VERIFY_SERVICE_SID=YOUR_TWILIO_VERIFY_SERVICE_SID
+TWILIO_VERIFY_CHANNEL=sms
+TWILIO_TIMEOUT_SECONDS=20
 
 EMAIL_FROM_EMAIL=evolvv.aii@gmail.com
 EMAIL_FROM_NAME="Evolv AI"
@@ -83,8 +87,8 @@ Run migrations before testing signup:
 alembic upgrade head
 ```
 
-In Supabase, make sure Email Auth is enabled. Do not add Firebase, Clerk, Auth0,
-or any other Third-Party Auth provider for this email OTP flow.
+In Supabase, make sure Email Auth is enabled. Do not add any Third-Party Auth
+provider for this email OTP flow.
 
 The backend generates its own 6-digit verification code, stores only a hash on
 the `users` row, and sends the code by SMTP. For Gmail testing, `SMTP_PASSWORD`
@@ -235,18 +239,28 @@ expose phone, DOB, gender, or full location details.
 ## Phone Verification
 
 Phone verification is optional after signin. It does not block signup or signin.
-The settings page should use Firebase client-side phone auth to send the SMS OTP,
-then send the Firebase ID token to this backend after the user enters the correct
-SMS code.
+The settings page asks this backend to send and verify an SMS code through
+Twilio Verify. Twilio credentials stay server-side.
 
-Firebase client flow:
+Add these values to `.env` before testing phone verification:
 
-1. User opens settings and clicks verify phone.
-2. Frontend calls Firebase `signInWithPhoneNumber(...)` with the phone number.
-3. Firebase sends the SMS OTP.
-4. User enters the OTP in the frontend.
-5. Frontend calls `confirmationResult.confirm(code)`.
-6. Frontend calls `result.user.getIdToken()` and sends that token to the backend.
+```env
+TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+TWILIO_VERIFY_SERVICE_SID=YOUR_TWILIO_VERIFY_SERVICE_SID
+TWILIO_VERIFY_CHANNEL=sms
+```
+
+Client flow:
+
+1. User opens Settings > Security.
+2. Frontend shows the phone stored on `public.users.phone`.
+3. If the user changes the phone number, the backend saves that number and marks
+   `public.users.phone_verified=false` when the SMS code is sent.
+4. Twilio Verify sends the 6-digit SMS code.
+5. User enters the OTP in the frontend.
+6. Backend checks the code with Twilio Verify and marks
+   `public.users.phone_verified=true` on success.
 
 Backend status:
 
@@ -255,7 +269,33 @@ GET http://localhost:8000/api/v1/phone/status
 Authorization: Bearer YOUR_SUPABASE_ACCESS_TOKEN
 ```
 
-Backend verify:
+Send SMS OTP:
+
+```text
+POST http://localhost:8000/api/v1/phone/send-otp
+Authorization: Bearer YOUR_SUPABASE_ACCESS_TOKEN
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "phone": "+923001234567"
+}
+```
+
+Response:
+
+```json
+{
+  "phone": "+923001234567",
+  "phone_verified": false,
+  "message": "Verification code sent."
+}
+```
+
+Verify SMS OTP:
 
 ```text
 POST http://localhost:8000/api/v1/phone/verify
@@ -267,7 +307,8 @@ Body:
 
 ```json
 {
-  "firebase_id_token": "FIREBASE_ID_TOKEN_FROM_FRONTEND"
+  "phone": "+923001234567",
+  "otp": "123456"
 }
 ```
 
@@ -280,10 +321,6 @@ Response:
   "message": "Phone number verified successfully."
 }
 ```
-
-The backend verifies the Firebase ID token with Firebase Admin SDK, reads the
-verified `phone_number` claim, and updates `public.users.phone` plus
-`public.users.phone_verified`.
 
 ## Founder Profile
 

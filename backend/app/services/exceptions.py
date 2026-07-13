@@ -74,6 +74,10 @@ class PhoneVerificationError(SignupError):
     pass
 
 
+class PhoneDeliveryError(SignupError):
+    pass
+
+
 class AuthUserMismatchError(SignupError):
     pass
 
