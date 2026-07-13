@@ -1,6 +1,8 @@
 "use client";
 
+import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { useChangePassword } from "@/features/settings/lib/use-change-password";
+import { usePhoneVerification } from "@/features/settings/lib/use-phone-verification";
 import styles from "./developer-settings.module.css";
 
 export function SecurityTab() {
@@ -21,6 +23,8 @@ export function SecurityTab() {
     saved,
     isSubmitting,
   } = useChangePassword();
+  const refreshDeveloperProfile = useDeveloperDashboardStore((state) => state.loadData);
+  const phoneVerification = usePhoneVerification({ onSynced: refreshDeveloperProfile });
 
   return (
     <div className={styles.card}>
@@ -128,20 +132,116 @@ export function SecurityTab() {
           Use at least 8 characters, including uppercase, lowercase, numbers, and symbols.
         </span>
       </div>
-      <div className={styles.sectionDivider}>Two-Factor Authentication</div>
-      <div className={styles.twoFARow}>
-        <div>
+
+      <div className={styles.sectionDivider}>Phone Verification</div>
+      <div className={styles.phoneVerifyPanel}>
+        <div className={styles.phoneVerifyHeader}>
           <div className={styles.twoFALabel}>
-            <i className="fas fa-mobile-alt" style={{ color: "#5BC8A0" }} /> Authenticator App
+            <i className="fas fa-mobile-alt" style={{ color: "#5BC8A0" }} /> Phone Number
           </div>
-          <div className={styles.twoFASub}>
-            Use Google Authenticator or Authy to generate one-time codes
-          </div>
+          <span
+            className={`${styles.phoneVerifyStatus} ${
+              phoneVerification.isVerifiedForCurrentPhone
+                ? styles.phoneVerifyStatusOk
+                : styles.phoneVerifyStatusWarn
+            }`}
+          >
+            {phoneVerification.isVerifiedForCurrentPhone ? "Verified" : "Not verified"}
+          </span>
         </div>
-        <button className={styles.enableBtn}>
-          <i className="fas fa-plus" /> Enable
-        </button>
+
+        {phoneVerification.error && (
+          <p role="alert" className={styles.phoneVerifyError}>
+            {phoneVerification.error}
+          </p>
+        )}
+
+        {phoneVerification.notice && (
+          <p role="status" className={styles.phoneVerifyNotice}>
+            {phoneVerification.notice}
+          </p>
+        )}
+
+        <div className={styles.phoneVerifyGrid}>
+          <div className={styles.formGroup}>
+            <label>Phone Number</label>
+            <input
+              type="tel"
+              value={phoneVerification.phone}
+              onChange={(e) => phoneVerification.setPhone(e.target.value)}
+              placeholder="+923001234567"
+              disabled={phoneVerification.isLoading}
+            />
+          </div>
+          <button
+            type="button"
+            className={styles.enableBtn}
+            onClick={() => void phoneVerification.sendOtp()}
+            disabled={
+              phoneVerification.isLoading ||
+              phoneVerification.isSending ||
+              phoneVerification.cooldown > 0 ||
+              !phoneVerification.phoneNeedsVerification
+            }
+          >
+            {phoneVerification.isVerifiedForCurrentPhone ? (
+              <>
+                <i className="fas fa-check" /> Verified
+              </>
+            ) : phoneVerification.isSending ? (
+              <>
+                <i className="fas fa-paper-plane" /> Sending...
+              </>
+            ) : phoneVerification.cooldown > 0 ? (
+              <>Resend in {phoneVerification.cooldown}s</>
+            ) : (
+              <>
+                <i className="fas fa-paper-plane" /> Send OTP
+              </>
+            )}
+          </button>
+        </div>
+
+        {phoneVerification.otpSent && (
+          <div className={styles.phoneVerifyGrid}>
+            <div className={styles.formGroup}>
+              <div className={styles.phoneVerifyCodeHeader}>
+                <label>Verification Code</label>
+                <span
+                  className={`${styles.phoneVerifyTimer} ${
+                    phoneVerification.otpExpired ? styles.phoneVerifyTimerExpired : ""
+                  }`}
+                >
+                  {phoneVerification.otpExpiresLabel}
+                </span>
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={phoneVerification.otp}
+                onChange={(e) => phoneVerification.setOtp(e.target.value)}
+                className="text-center font-mono tracking-widest"
+              />
+            </div>
+            <button
+              type="button"
+              className={styles.saveBtn}
+              onClick={() => void phoneVerification.verifyOtp()}
+              disabled={
+                phoneVerification.isVerifying ||
+                phoneVerification.otpExpired ||
+                phoneVerification.otp.length !== 6
+              }
+            >
+              <i className="fas fa-check" />
+              {phoneVerification.isVerifying ? "Verifying..." : "Verify"}
+            </button>
+          </div>
+        )}
       </div>
+
       <div className={styles.cardFooter}>
         <button
           className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""}`}
