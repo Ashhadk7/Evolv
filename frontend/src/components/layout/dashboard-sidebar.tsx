@@ -6,6 +6,11 @@ import { ClientIcon as Icon } from "@/components/ui/client-icon";
 import { Logo } from "@/features/auth/components/logo";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
 import type { AppNotif } from "@/features/notifications/types";
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/features/notifications/notifications-api";
 import type { BadgeKey, NavSection } from "@/config/navigation";
 import { clearAllUserData } from "@/features/auth/lib/session";
 
@@ -77,11 +82,42 @@ export function DashboardSidebar({
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Fetch real notifications from API; fall back to initialNotifs on error.
+  useEffect(() => {
+    fetchNotifications()
+      .then((items) => setNotifs(items))
+      .catch(() => {
+        /* keep initialNotifs as fallback */
+      });
+  }, []);
+
   const unreadCount = notifs.filter((n) => !n.read).length;
 
-  const markAllRead = () => setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markRead = (id: string) =>
+  const markAllRead = () => {
+    // Optimistic update
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    markAllNotificationsRead().catch(() => {
+      // Revert on failure by re-fetching
+      fetchNotifications()
+        .then((items) => setNotifs(items))
+        .catch(() => {
+          /* ignore */
+        });
+    });
+  };
+
+  const markRead = (id: string) => {
+    // Optimistic update
     setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    markNotificationRead(id).catch(() => {
+      // Revert on failure by re-fetching
+      fetchNotifications()
+        .then((items) => setNotifs(items))
+        .catch(() => {
+          /* ignore */
+        });
+    });
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

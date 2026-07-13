@@ -7,7 +7,6 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
 import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wizard";
 import { founderNav } from "@/config/navigation";
-import { founderNotifs } from "@/features/notifications/data";
 import {
   getMissingFounderProfileFields,
   isFounderProfileComplete,
@@ -66,7 +65,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
           onNavigate={(id) => nav.navigateFounder(id)}
           roleLabel="Founder"
           profile={profile}
-          initialNotifs={founderNotifs}
+          initialNotifs={[]}
           inboxCount={3}
           networkCount={networkRequestCount}
           onOpenProfile={nav.handleOpenProfile}
