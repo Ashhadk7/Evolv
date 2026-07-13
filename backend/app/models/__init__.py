@@ -10,6 +10,7 @@ from app.models.blueprint import (
 )
 from app.models.messaging import Message, MessageConnection
 from app.models.google_calendar import GoogleCalendarCredential
+from app.models.notification import Notification, NotifType
 from app.models.developer_review import DeveloperReview
 from app.models.skill import (
     DeveloperTag,
@@ -26,6 +27,8 @@ from app.models.connection import Connection, ConnectionStatus
 from app.models.certification import Certification
 
 __all__ = [
+    "Notification",
+    "NotifType",
     "Blueprint",
     "BlueprintVersion",
     "BlueprintVisibility",

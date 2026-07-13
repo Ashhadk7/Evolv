@@ -8,7 +8,6 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
 import { DevOnboardingModal } from "@/features/onboarding/components/developer-onboarding-modal";
 import { developerNav } from "@/config/navigation";
-import { developerNotifs } from "@/features/notifications/data";
 import {
   getMissingDeveloperProfileFields,
   isDeveloperProfileComplete,
@@ -56,7 +55,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
             lastName: profile.lastName,
             avatarUrl: profile.avatarUrl,
           }}
-          initialNotifs={developerNotifs}
+          initialNotifs={[]}
           inboxCount={3}
           networkCount={0}
           navPillId="dev-nav-pill"
