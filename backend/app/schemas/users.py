@@ -27,6 +27,7 @@ class UserSummary(BaseModel):
     profile_title: str | None = None
     profile_bio: str | None = None
     profile_complete: bool
+    rating_avg: float | None = None
     discovery_tags: list[str]
     created_at: datetime
 

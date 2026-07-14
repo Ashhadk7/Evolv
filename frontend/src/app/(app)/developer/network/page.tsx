@@ -6,7 +6,7 @@ import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store
 import { useDeveloperNavigation } from "@/features/developer-dashboard/use-developer-navigation";
 
 export default function DevNetworkPage() {
-  const { profile } = useDeveloperDashboardStore();
+  const { profile, setNetworkRequestCount } = useDeveloperDashboardStore();
   const nav = useDeveloperNavigation();
   const profileComplete = isDeveloperProfileComplete(profile);
 
@@ -14,6 +14,7 @@ export default function DevNetworkPage() {
     <Network
       onNavigate={nav.navigateDeveloper}
       onMessage={nav.handleOpenNetworkMessage}
+      onPendingCountChange={setNetworkRequestCount}
       profileComplete={profileComplete}
       onRequireProfile={nav.requireDeveloperProfile}
     />

@@ -25,6 +25,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     profile,
     dataLoaded,
     userName,
+    networkRequestCount,
     showOnboarding,
     profilePromptDismissed,
     loadData,
@@ -56,8 +57,8 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
             avatarUrl: profile.avatarUrl,
           }}
           initialNotifs={[]}
-          inboxCount={3}
-          networkCount={0}
+          inboxCount={0}
+          networkCount={networkRequestCount}
           navPillId="dev-nav-pill"
           sticky
           avatarFallback="D"

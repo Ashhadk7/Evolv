@@ -21,6 +21,7 @@ interface DeveloperDashboardState {
   profilePromptDismissed: boolean;
   inboxActiveContactId: string;
   networkInboxContacts: DeveloperInboxLaunchContact[];
+  networkRequestCount: number;
   pendingProtectedAction: (() => void) | null;
 
   loadData: () => Promise<void>;
@@ -29,6 +30,7 @@ interface DeveloperDashboardState {
   setProfilePromptDismissed: (v: boolean) => void;
   setInboxActiveContactId: (id: string) => void;
   addNetworkInboxContact: (contact: DeveloperInboxLaunchContact) => void;
+  setNetworkRequestCount: (n: number) => void;
   setPendingProtectedAction: (fn: (() => void) | null) => void;
 }
 
@@ -40,6 +42,7 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
   profilePromptDismissed: false,
   inboxActiveContactId: "asad",
   networkInboxContacts: [],
+  networkRequestCount: 0,
   pendingProtectedAction: null,
 
   loadData: async () => {
@@ -68,5 +71,6 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
       networkInboxContacts: [contact, ...s.networkInboxContacts.filter((c) => c.id !== contact.id)],
       inboxActiveContactId: contact.id,
     })),
+  setNetworkRequestCount: (n) => set({ networkRequestCount: n }),
   setPendingProtectedAction: (fn) => set({ pendingProtectedAction: fn }),
 }));

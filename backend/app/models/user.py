@@ -138,6 +138,12 @@ class User(Base):
         return bool(profile and profile.profile_complete)
 
     @property
+    def rating_avg(self) -> float | None:
+        if self.role == UserRole.DEVELOPER and self.developer_profile is not None:
+            return float(self.developer_profile.rating_avg or 0)
+        return None
+
+    @property
     def discovery_tags(self) -> list[str]:
         if self.role == UserRole.FOUNDER:
             return self.founder_profile.domains if self.founder_profile else []
