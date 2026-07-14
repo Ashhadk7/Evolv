@@ -33,6 +33,7 @@ export function InputField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          suppressHydrationWarning
           className="h-11 w-full rounded-xl border bg-white px-4 text-[14px] transition outline-none placeholder:text-[#0f1c18]/30 focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/18"
           style={{ borderColor: "rgba(15,28,24,0.11)", color: BRAND_INK }}
         />

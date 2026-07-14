@@ -53,7 +53,7 @@ def upsert_review(
             comment=comment,
         )
         db.add(review)
-        db.flush()  # write new row before AVG query so it is included in the recalculation
+        db.flush()
     else:
         review.rating = rating
         review.comment = comment
