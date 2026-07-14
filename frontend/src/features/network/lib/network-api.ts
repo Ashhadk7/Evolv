@@ -7,7 +7,7 @@ import type { FounderEducation } from "@/features/founder-dashboard/profile-util
 interface WireEducation { id: string; level: string; degree: string | null; custom_degree: string | null; school: string }
 interface WireCertification { id: string; name: string; issuer: string; issue_date?: string | null; credential_id?: string | null; credential_url?: string | null }
 interface WireReview { id: string; reviewer_name: string; rating: number; comment: string; created_at: string; updated_at: string }
-interface UserSummary { id: string; email: string; role: "founder" | "developer"; first_name: string; last_name: string; city: string | null; country: string | null; avatar_url: string | null; phone_verified: boolean; profile_title: string | null; profile_bio: string | null; profile_complete: boolean; discovery_tags: string[] }
+interface UserSummary { id: string; email: string; role: "founder" | "developer"; first_name: string; last_name: string; city: string | null; country: string | null; avatar_url: string | null; phone_verified: boolean; profile_title: string | null; profile_bio: string | null; profile_complete: boolean; rating_avg: number | null; discovery_tags: string[] }
 interface PublicFounderProfile { headline: string | null; bio: string | null; description: string | null; linkedin: string | null; venture_stage: string | null; primary_goal: string | null; domains: string[]; profile_complete: boolean; educations: WireEducation[] }
 interface PublicDeveloperProfile { job_title: string | null; bio: string | null; experience_years: number | null; availability: boolean; open_to_remote: boolean; preferred_budget: string | null; github: string | null; linkedin: string | null; portfolio_link: string | null; skills: string[]; rating_avg: number; profile_complete: boolean; educations: WireEducation[]; certifications: WireCertification[]; reviews: WireReview[] }
 interface PublicUserProfile extends UserSummary { founder_profile: PublicFounderProfile | null; developer_profile: PublicDeveloperProfile | null }
@@ -140,7 +140,7 @@ function personFromUser(user: UserSummary | PublicUserProfile): FounderContactPr
     certifications: certificationFromWire(developerProfile?.certifications ?? []),
     highlights: [founderProfile?.primary_goal, founderProfile?.venture_stage, ...skills]
       .filter((item): item is string => Boolean(item)),
-    rating: developerProfile ? Number(developerProfile.rating_avg) || 0 : undefined,
+    rating: developerProfile ? Number(developerProfile.rating_avg) || 0 : (isDeveloper ? Number(user.rating_avg) || 0 : undefined),
     reviews: developerProfile ? reviewFromWire(developerProfile.reviews) : undefined,
     online: false,
   };

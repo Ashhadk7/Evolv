@@ -53,6 +53,7 @@ def upsert_review(
             comment=comment,
         )
         db.add(review)
+        db.flush()
     else:
         review.rating = rating
         review.comment = comment

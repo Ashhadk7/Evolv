@@ -66,7 +66,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
           roleLabel="Founder"
           profile={profile}
           initialNotifs={[]}
-          inboxCount={3}
+          inboxCount={0}
           networkCount={networkRequestCount}
           onOpenProfile={nav.handleOpenProfile}
           onLogout={nav.handleLogout}

@@ -67,7 +67,7 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   dataLoaded: false,
   openBlueprintId: null,
   triggerForge: false,
-  networkRequestCount: 3,
+  networkRequestCount: 0,
   inboxActiveContactId: "sarah",
   networkInboxContacts: [],
   settingsSection: "profile",
