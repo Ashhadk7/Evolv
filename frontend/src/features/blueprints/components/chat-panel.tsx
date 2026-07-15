@@ -50,39 +50,17 @@ export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: str
       }),
     });
 
-    if (!response.ok || !response.body) {
-      setTyping(false);
+    setTyping(false);
+
+    if (!response.ok) {
       setMsgs((m) => [...m, { from: "ai", text: "Something went wrong. Please try again." }]);
       return;
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let firstToken = true;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      for (const line of chunk.split("\n")) {
-        const data = line.startsWith("data: ") ? line.slice(6) : null;
-        if (!data || data === "[DONE]") continue;
-        if (firstToken) {
-          setTyping(false);
-          setMsgs((m) => [...m, { from: "ai", text: data }]);
-          firstToken = false;
-        } else {
-          setMsgs((m) => {
-            const updated = [...m];
-            updated[updated.length - 1] = { from: "ai", text: updated[updated.length - 1].text + data };
-            return updated;
-          });
-        }
-      }
-    }
-
-    if (firstToken) {
-      setTyping(false);
+    const data = await response.json();
+    if (data && data.content) {
+      setMsgs((m) => [...m, { from: "ai", text: data.content }]);
+    } else {
       setMsgs((m) => [...m, { from: "ai", text: "No response received. Please try again." }]);
     }
   };

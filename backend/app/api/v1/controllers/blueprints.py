@@ -1,9 +1,6 @@
 from uuid import UUID
-from typing import Any
 
 from fastapi import APIRouter, Query, status, HTTPException
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.applications import SavedBlueprintResponse
@@ -14,6 +11,8 @@ from app.schemas.blueprints import (
     BlueprintUpdate,
     BlueprintVersionCreate,
     BlueprintVersionResponse,
+    ChatRequest,
+    ChatResponse,
 )
 from app.services import application_service, blueprint_service, chat_service
 
@@ -116,27 +115,15 @@ def unsave_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUse
     application_service.unsave_blueprint(db, current_user, blueprint_id)
 
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
-    blueprint: dict[str, Any] | None = None
-
-
-@router.post("/{blueprint_id}/chat")
-async def blueprint_chat(
+@router.post("/{blueprint_id}/chat", response_model=ChatResponse)
+def blueprint_chat(
     blueprint_id: str,
     payload: ChatRequest,
     db: DbSession,
     current_user: CurrentUser,
-) -> StreamingResponse:
+) -> ChatResponse:
     try:
-        stream = await chat_service.stream_blueprint_chat(
-            blueprint_id=blueprint_id,
-            db=db,
+        reply = chat_service.get_chat_response(
             messages=[m.model_dump() for m in payload.messages],
             blueprint_data=payload.blueprint,
         )
@@ -146,16 +133,4 @@ async def blueprint_chat(
             detail=str(exc),
         ) from exc
 
-    async def event_generator():
-        async for token in stream:
-            yield f"data: {token}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    return ChatResponse(content=reply)

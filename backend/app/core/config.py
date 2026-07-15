@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     TWILIO_VERIFY_CHANNEL: str = "sms"
     TWILIO_TIMEOUT_SECONDS: int = 20
     GROQ_API_KEY: SecretStr | None = None
+    CHAT_MODEL_NAME: str = "llama-3.3-70b-versatile"
     GOOGLE_CALENDAR_CLIENT_ID: str | None = None
     GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr | None = None
     GOOGLE_CALENDAR_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/google/callback"
