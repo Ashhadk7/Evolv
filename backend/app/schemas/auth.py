@@ -37,12 +37,12 @@ class SignupRequest(BaseModel):
     password: SecretStr = Field(min_length=8, max_length=128)
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
-    phone: str | None = Field(None, max_length=50)
-    country: str | None = Field(None, max_length=100)
-    country_code: str | None = Field(None, max_length=10)
-    state_province: str | None = Field(None, max_length=100)
-    city: str | None = Field(None, max_length=100)
-    dob: date | None = None
+    phone: str = Field(max_length=50)
+    country: str = Field(max_length=100)
+    country_code: str = Field(max_length=10)
+    state_province: str = Field(max_length=100)
+    city: str = Field(max_length=100)
+    dob: date
     gender: str | None = Field(None, max_length=50)
     avatar_url: HttpUrl | None = None
     terms_accepted: bool
@@ -66,9 +66,7 @@ class SignupRequest(BaseModel):
 
     @field_validator("first_name", "last_name")
     @classmethod
-    def require_non_empty_name(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
+    def require_non_empty_name(cls, value: str) -> str:
         if not value:
             raise ValueError("Name fields cannot be blank.")
         return value

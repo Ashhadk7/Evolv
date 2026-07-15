@@ -37,12 +37,12 @@ class Settings(BaseSettings):
     SMTP_TIMEOUT_SECONDS: int = 20
     SECRET_KEY: str = Field(min_length=8)
     ALLOWED_ORIGINS: list[str] = Field(min_length=1)
-    TWILIO_ACCOUNT_SID: str
+    TWILIO_ACCOUNT_SID: str = Field(min_length=1)
     TWILIO_AUTH_TOKEN: SecretStr
-    TWILIO_VERIFY_SERVICE_SID: str
+    TWILIO_VERIFY_SERVICE_SID: str = Field(min_length=1)
     TWILIO_VERIFY_CHANNEL: str = Field(min_length=1)
     TWILIO_TIMEOUT_SECONDS: int = Field(ge=1, le=120)
-    GOOGLE_CALENDAR_CLIENT_ID: str
+    GOOGLE_CALENDAR_CLIENT_ID: str = Field(min_length=1)
     GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr
     GOOGLE_CALENDAR_REDIRECT_URI: str = Field(min_length=1)
     GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str = Field(min_length=1)
@@ -77,7 +77,10 @@ class Settings(BaseSettings):
         "SMTP_HOST",
         "SMTP_USERNAME",
         "SECRET_KEY",
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_VERIFY_SERVICE_SID",
         "TWILIO_VERIFY_CHANNEL",
+        "GOOGLE_CALENDAR_CLIENT_ID",
         "GOOGLE_CALENDAR_REDIRECT_URI",
         "GOOGLE_CALENDAR_FRONTEND_RETURN_URL",
         "GROQ_API_BASE_URL",
@@ -95,6 +98,8 @@ class Settings(BaseSettings):
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_ANON_KEY",
         "SMTP_PASSWORD",
+        "TWILIO_AUTH_TOKEN",
+        "GOOGLE_CALENDAR_CLIENT_SECRET",
         "GROQ_API_KEY",
         "TAVILY_API_KEY",
     )

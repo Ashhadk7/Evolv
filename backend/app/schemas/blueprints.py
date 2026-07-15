@@ -15,8 +15,8 @@ class BlueprintVersionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     industry: str = Field(min_length=1, max_length=255)
     idea_desc: str = Field(min_length=1)
-    differentiator: str | None = None
-    ai_recommend: str | None = None
+    differentiator: str = Field(min_length=1)
+    ai_recommend: str = Field(min_length=1)
     viability: int = Field(ge=0, le=100)
     market_potential: int = Field(ge=0, le=100)
     developer_demand: LevelRating
@@ -32,12 +32,12 @@ class BlueprintVersionResponse(BaseModel):
     name: str
     industry: str
     idea_desc: str
-    differentiator: str | None = None
-    ai_recommend: str | None = None
+    differentiator: str | None
+    ai_recommend: str | None
     viability: int
     market_potential: int
     developer_demand: LevelRating
-    content_json: dict[str, Any] | None = None
+    content_json: dict[str, Any] | None
     generated_at: datetime
 
 
@@ -79,7 +79,7 @@ class BlueprintResponse(BaseModel):
     visibility: BlueprintVisibility
     created_at: datetime
     updated_at: datetime
-    current_version: BlueprintVersionResponse | None = None
+    current_version: BlueprintVersionResponse | None
 
 
 class BlueprintListResponse(BaseModel):
