@@ -69,6 +69,7 @@ _BLUEPRINT_VERSION_FIELDS = (
     "market_potential",
     "funding_readiness",
     "developer_demand",
+    "content_json",
 )
 
 
@@ -95,6 +96,31 @@ def create_version(
         market_potential=content.market_potential,
         funding_readiness=content.funding_readiness,
         developer_demand=content.developer_demand,
+        content_json=content.content_json,
+    )
+    db.add(version)
+    db.flush()
+    return version
+
+
+def clone_version(
+    db: Session,
+    source: BlueprintVersion,
+    state: VersionState,
+) -> BlueprintVersion:
+    version = BlueprintVersion(
+        blueprint_id=source.blueprint_id,
+        state=state,
+        name=source.name,
+        industry=source.industry,
+        idea_desc=source.idea_desc,
+        differentiator=source.differentiator,
+        ai_recommend=source.ai_recommend,
+        viability=source.viability,
+        market_potential=source.market_potential,
+        funding_readiness=source.funding_readiness,
+        developer_demand=source.developer_demand,
+        content_json=source.content_json,
     )
     db.add(version)
     db.flush()

@@ -1,5 +1,26 @@
 import type { ProjectState } from "./blueprint-content";
 
+export interface BlueprintAgentOutputs {
+  positioning?: Record<string, unknown>;
+  market?: Record<string, unknown>;
+  competitor?: Record<string, unknown>;
+  persona?: Record<string, unknown>;
+}
+
+export interface BlueprintIntake {
+  idea?: string;
+  industry?: string;
+  target_customer?: string;
+  problem?: string;
+  solution?: string;
+  stage?: string;
+  budget?: string;
+  timeline?: string;
+  region?: string;
+  monetization?: string;
+  constraints?: string;
+}
+
 // The startup Blueprint domain entity. Extracted from WorkspaceTab so it can be
 // shared (founder workspace/projects + developer projects) without importing the
 // large workspace component. `Blueprint` and `ProjectState` reference each other,
@@ -37,5 +58,8 @@ export interface Blueprint {
     hosting?: string;
   };
   cost: { timeline: string; team: string; hosting: string; budget: string };
+  contentJson?: Record<string, unknown> | null;
+  agentOutputs?: BlueprintAgentOutputs;
+  intake?: BlueprintIntake;
   project?: ProjectState;
 }

@@ -165,11 +165,10 @@ export const WORKSPACE_STAGES = ["All Stages", "Published", "Draft"];
 export const WORKSPACE_SORT_OPTIONS = ["Viability", "Recent", "Impressions", "Market Potential"];
 
 export const FORGE_AGENTS = [
-  { label: "Market Analysis Agent", desc: "Analysing market size & growth..." },
-  { label: "Competitor Scout Agent", desc: "Mapping direct & indirect competitors..." },
-  { label: "Feature Architect Agent", desc: "Generating MVP feature scope..." },
-  { label: "Tech Stack Agent", desc: "Evaluating optimal tech architecture..." },
-  { label: "Financial Modeler Agent", desc: "Modelling costs & runway..." },
+  { label: "Positioning Agent", desc: "Shaping the venture mission and differentiator..." },
+  { label: "Market Agent", desc: "Researching market size, growth, and demand signals..." },
+  { label: "Competitor Agent", desc: "Mapping direct and adjacent competitors..." },
+  { label: "Persona Agent", desc: "Building customer, buyer, and gatekeeper personas..." },
 ];
 
 export const WORKSPACE_INSIGHTS = [

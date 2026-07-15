@@ -3,8 +3,10 @@
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
+import { generateBlueprint } from "@/features/blueprints/blueprints-api";
 import type { Blueprint } from "@/features/blueprints/types";
 import { FORGE_AGENTS, WORKSPACE_INDUSTRIES } from "@/features/workspace/data/workspace-data";
+import { getApiErrorMessage } from "@/lib/api";
 
 interface ForgeModalProps {
   onClose: () => void;
@@ -15,68 +17,78 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
   const [phase, setPhase] = useState<"input" | "generating" | "done">("input");
   const [idea, setIdea] = useState("");
   const [industry, setIndustry] = useState("");
+  const [targetCustomer, setTargetCustomer] = useState("");
+  const [problem, setProblem] = useState("");
+  const [solution, setSolution] = useState("");
+  const [stage, setStage] = useState("");
+  const [budget, setBudget] = useState("");
+  const [timeline, setTimeline] = useState("");
+  const [region, setRegion] = useState("");
+  const [monetization, setMonetization] = useState("");
+  const [constraints, setConstraints] = useState("");
+  const [generatedBlueprint, setGeneratedBlueprint] = useState<Blueprint | null>(null);
+  const [generationError, setGenerationError] = useState("");
   const [agentIndex, setAgentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const startGeneration = () => {
+  const startGeneration = async () => {
     if (!idea.trim() || !industry) return;
+    setGenerationError("");
+    setGeneratedBlueprint(null);
     setPhase("generating");
     setAgentIndex(0);
     setProgress(0);
+
     let tick = 0;
     intervalRef.current = setInterval(() => {
-      tick++;
-      setProgress(Math.min(tick * 4, 100));
-      setAgentIndex(Math.min(Math.floor(tick / 5), FORGE_AGENTS.length - 1));
-      if (tick >= 25) {
-        clearInterval(intervalRef.current!);
-        setPhase("done");
+      tick += 1;
+      setProgress((current) => Math.min(current + 2, 92));
+      setAgentIndex(tick % FORGE_AGENTS.length);
+    }, 900);
+
+    try {
+      const blueprint = await generateBlueprint({
+        idea,
+        industry,
+        target_customer: targetCustomer,
+        problem,
+        solution,
+        stage,
+        budget,
+        timeline,
+        region,
+        monetization,
+        constraints,
+      });
+      setGeneratedBlueprint(blueprint);
+      setAgentIndex(FORGE_AGENTS.length - 1);
+      setProgress(100);
+      setPhase("done");
+    } catch (error) {
+      setGenerationError(getApiErrorMessage(error));
+      setPhase("input");
+    } finally {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-    }, 200);
+    }
   };
 
   const handleAccept = () => {
-    const bp: Blueprint = {
-      id: `bp_${Date.now()}`,
-      name: idea.slice(0, 28) || "My Blueprint",
-      industry,
-      ideaDesc: idea,
-      isPublic: false,
-      status: "DRAFT",
-      viability: 68 + Math.floor(Math.random() * 20),
-      fundingReadiness: "Medium",
-      investorInterest: 2,
-      marketPotential: 62 + Math.floor(Math.random() * 20),
-      developerDemand: "Medium",
-      devMatches: 3,
-      views: 0,
-      investorViews: 0,
-      interested: 0,
-      wordCount: idea.split(" ").length,
-      updatedAt: "Just now",
-      aiRecommend: "Review your blueprint and add more detail",
-      market: { size: "$500M", cagr: "22%", barriers: "Moderate", score: 70 },
-      competitors: [
-        { name: "Incumbent A", type: "Direct" },
-        { name: "Incumbent B", type: "Indirect" },
-      ],
-      differentiator: "AI-first approach with lower cost of entry",
-      features: ["Core MVP", "User onboarding", "Analytics", "API"],
-      techStack: { frontend: "React", backend: "Node.js", ai: "OpenAI APIs", db: "PostgreSQL" },
-      cost: { timeline: "5 months", team: "2-3 devs", hosting: "$600/mo", budget: "$80K" },
-    };
-    onCreated(bp);
+    if (!generatedBlueprint) return;
+    onCreated(generatedBlueprint);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,22,18,0.75)] backdrop-blur-[6px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,22,18,0.75)] p-4 backdrop-blur-[6px]">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 26 }}
-        className="w-[520px] overflow-hidden rounded-[20px] border border-[#d8e8e0] bg-white shadow-[0_32px_80px_rgba(26,49,44,0.22)]"
+        className="max-h-[88vh] w-[720px] overflow-hidden rounded-[20px] border border-[#d8e8e0] bg-white shadow-[0_32px_80px_rgba(26,49,44,0.22)]"
       >
         <div className="flex items-center justify-between border-b border-[#eaf0eb] px-6 py-[18px]">
           <div className="flex items-center gap-2.5">
@@ -93,7 +105,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
           </button>
         </div>
 
-        <div className="px-6 pt-5 pb-6">
+        <div className="max-h-[calc(88vh-72px)] overflow-y-auto px-6 pt-5 pb-6">
           <AnimatePresence mode="wait">
             {phase === "input" && (
               <motion.div
@@ -103,17 +115,24 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                 exit={{ opacity: 0 }}
                 className="flex flex-col gap-[18px]"
               >
+                {generationError && (
+                  <div className="rounded-xl border border-[#f1d3c7] bg-[#fff6f2] px-3.5 py-3 text-[12.5px] leading-[1.45] text-[#9b4a2f]">
+                    {generationError}
+                  </div>
+                )}
+
                 <div>
                   <label className="mb-2 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
                     Describe your startup idea
                   </label>
                   <textarea
                     value={idea}
-                    onChange={(e) => setIdea(e.target.value)}
-                    placeholder="e.g. An AI platform that helps small restaurants optimise their menu pricing dynamically..."
+                    onChange={(event) => setIdea(event.target.value)}
+                    placeholder="e.g. An AI platform that helps small restaurants optimise menu pricing dynamically..."
                     className="min-h-[110px] w-full resize-none rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-4 py-[13px] font-[inherit] text-[13px] leading-[1.6] text-[#1a2e26] outline-none"
                   />
                 </div>
+
                 <div>
                   <label className="mb-2.5 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
                     Select industry
@@ -134,6 +153,70 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     ))}
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                  <Field
+                    label="Target customer"
+                    value={targetCustomer}
+                    onChange={setTargetCustomer}
+                    placeholder="small clinics, founders, restaurant owners"
+                  />
+                  <Field
+                    label="Stage"
+                    value={stage}
+                    onChange={setStage}
+                    placeholder="Idea, validation, MVP, launched"
+                  />
+                  <Field
+                    label="Estimated budget"
+                    value={budget}
+                    onChange={setBudget}
+                    placeholder="$5K, $25K, PKR 2M"
+                  />
+                  <Field
+                    label="Timeline"
+                    value={timeline}
+                    onChange={setTimeline}
+                    placeholder="8 weeks, 3 months"
+                  />
+                  <Field
+                    label="Region"
+                    value={region}
+                    onChange={setRegion}
+                    placeholder="Pakistan, US, global"
+                  />
+                  <Field
+                    label="Monetization"
+                    value={monetization}
+                    onChange={setMonetization}
+                    placeholder="Subscription, commission, freemium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                  <LongField
+                    label="Problem"
+                    value={problem}
+                    onChange={setProblem}
+                    placeholder="What painful workflow or need are you solving?"
+                  />
+                  <LongField
+                    label="Proposed solution"
+                    value={solution}
+                    onChange={setSolution}
+                    placeholder="How do you think the product should solve it?"
+                  />
+                </div>
+
+                <div>
+                  <LongField
+                    label="Constraints"
+                    value={constraints}
+                    onChange={setConstraints}
+                    placeholder="Must-haves, limits, compliance, integrations"
+                  />
+                </div>
+
                 <motion.button
                   onClick={startGeneration}
                   disabled={!idea.trim() || !industry}
@@ -158,16 +241,16 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                   <div className="mb-1 text-sm font-bold text-[#1a2e26]">
                     Generating your blueprint...
                   </div>
-                  <div className="text-xs text-[#7a9e8e]">5 AI agents are working on your idea</div>
+                  <div className="text-xs text-[#7a9e8e]">4 AI agents are working on your idea</div>
                 </div>
                 <div className="mb-6 flex flex-col gap-3.5">
-                  {FORGE_AGENTS.map((agent, i) => {
-                    const done = i < agentIndex;
-                    const active = i === agentIndex;
+                  {FORGE_AGENTS.map((agent, index) => {
+                    const done = progress === 100 || index < agentIndex;
+                    const active = progress !== 100 && index === agentIndex;
                     return (
                       <div key={agent.label} className="flex items-center gap-3">
                         <div
-                          className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                          className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
                             done
                               ? "bg-[#dcf0e6] text-[#1d6e47]"
                               : active
@@ -175,12 +258,16 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                                 : "bg-[#f0f5f2] text-[#9ab4a4]"
                           }`}
                         >
-                          {done ? "✓" : i + 1}
+                          {done ? "OK" : index + 1}
                         </div>
                         <div>
                           <div
                             className={`text-xs font-semibold ${
-                              done ? "text-[#9ab4a4]" : active ? "text-[#1a2e26]" : "text-[#b0c0b8]"
+                              done
+                                ? "text-[#9ab4a4]"
+                                : active
+                                  ? "text-[#1a2e26]"
+                                  : "text-[#b0c0b8]"
                             }`}
                           >
                             {agent.label}
@@ -218,18 +305,18 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                 exit={{ opacity: 0 }}
                 className="py-8 text-center"
               >
-                <div className="mb-4 text-4xl">✦</div>
                 <div className="mb-1.5 text-base font-extrabold text-[#1a2e26]">
                   Blueprint ready
                 </div>
                 <div className="mb-7 text-[13px] text-[#7a9e8e]">
-                  All 5 agents completed analysis successfully.
+                  All 4 agents completed analysis successfully.
                 </div>
                 <motion.button
                   onClick={handleAccept}
+                  disabled={!generatedBlueprint}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className="bp-primary-btn"
+                  className="bp-primary-btn disabled:opacity-40"
                 >
                   <CheckCircle size={15} weight="fill" /> View Blueprint
                 </motion.button>
@@ -238,6 +325,58 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
           </AnimatePresence>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
+        {label}
+      </label>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-11 w-full rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-3.5 font-[inherit] text-[13px] text-[#1a2e26] outline-none"
+      />
+    </div>
+  );
+}
+
+function LongField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
+        {label}
+      </label>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="min-h-[86px] w-full resize-none rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-3.5 py-3 font-[inherit] text-[13px] leading-[1.5] text-[#1a2e26] outline-none"
+      />
     </div>
   );
 }

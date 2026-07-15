@@ -18,6 +18,8 @@ class ErrorCode(StrEnum):
     BLUEPRINT_ACCESS_DENIED = "blueprint_access_denied"
     BLUEPRINT_PERSISTENCE = "blueprint_persistence"
     BLUEPRINT_VERSION_NOT_FOUND = "blueprint_version_not_found"
+    BLUEPRINT_AGENT_INPUT = "blueprint_agent_input"
+    BLUEPRINT_GENERATION = "blueprint_generation"
     FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
     NO_PENDING_VERSION = "no_pending_version"
     DEVELOPER_PROFILE_REQUIRED = "developer_profile_required"
@@ -124,6 +126,20 @@ class BlueprintPersistenceError(AppError):
 
     def __init__(self, message: str = "Blueprint data could not be saved.") -> None:
         super().__init__(ErrorCode.BLUEPRINT_PERSISTENCE, message)
+
+
+class BlueprintAgentInputError(AppError):
+    """A blueprint agent could not run because required inputs are missing."""
+
+    def __init__(self, message: str = "Blueprint agent input is incomplete.") -> None:
+        super().__init__(ErrorCode.BLUEPRINT_AGENT_INPUT, message)
+
+
+class BlueprintGenerationError(AppError):
+    """An AI or enrichment provider could not produce a usable agent output."""
+
+    def __init__(self, message: str = "Blueprint generation could not be completed.") -> None:
+        super().__init__(ErrorCode.BLUEPRINT_GENERATION, message)
 
 
 class NoPendingVersionError(AppError):

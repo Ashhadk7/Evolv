@@ -57,7 +57,7 @@ export function getApiErrorMessage(
   if (err instanceof ApiError) {
     const specific = override?.(err);
     if (specific) return specific;
-    if (err.status === 502 || err.code === "network_error") return UNREACHABLE_ERROR;
+    if (err.status === 0 || err.code === "network_error") return UNREACHABLE_ERROR;
     return err.detail;
   }
   if (err instanceof Error && err.message) return err.message;

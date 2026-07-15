@@ -36,6 +36,7 @@ class BlueprintVersionCreate(BaseModel):
     market_potential: int = Field(ge=0, le=100)
     funding_readiness: LevelRating
     developer_demand: LevelRating
+    content_json: dict[str, Any] | None = None
 
     @field_validator(
         "name", "industry", "idea_desc", "differentiator", "ai_recommend", mode="before"
@@ -62,6 +63,7 @@ class BlueprintVersionResponse(BaseModel):
     market_potential: int
     funding_readiness: LevelRating
     developer_demand: LevelRating
+    content_json: dict[str, Any] | None = None
     generated_at: datetime
 
     @field_validator("state", "funding_readiness", "developer_demand", mode="before")
@@ -77,6 +79,44 @@ class BlueprintCreate(BaseModel):
 
     visibility: BlueprintVisibility = BlueprintVisibility.PRIVATE
     initial_version: BlueprintVersionCreate
+
+
+class BlueprintGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    idea: str = Field(min_length=20, max_length=2500)
+    industry: str = Field(min_length=1, max_length=255)
+    target_customer: str | None = Field(default=None, max_length=500)
+    problem: str | None = Field(default=None, max_length=800)
+    solution: str | None = Field(default=None, max_length=800)
+    stage: str | None = Field(default=None, max_length=120)
+    budget: str | None = Field(default=None, max_length=80)
+    timeline: str | None = Field(default=None, max_length=120)
+    region: str | None = Field(default=None, max_length=120)
+    monetization: str | None = Field(default=None, max_length=500)
+    constraints: str | None = Field(default=None, max_length=800)
+    visibility: BlueprintVisibility = BlueprintVisibility.PRIVATE
+
+    @field_validator(
+        "idea",
+        "industry",
+        "target_customer",
+        "problem",
+        "solution",
+        "stage",
+        "budget",
+        "timeline",
+        "region",
+        "monetization",
+        "constraints",
+        mode="before",
+    )
+    @classmethod
+    def strip_text(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
 
 
 class BlueprintUpdate(BaseModel):
@@ -111,3 +151,71 @@ class BlueprintListResponse(BaseModel):
     limit: int
     offset: int
     items: list[BlueprintResponse]
+
+
+class BlueprintPositioningResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blueprint_id: UUID
+    version_id: UUID
+    version_state: VersionState
+    positioning: dict[str, Any]
+    content_json: dict[str, Any]
+
+    @field_validator("version_state", mode="before")
+    @classmethod
+    def normalize_version_state(cls, value: Any) -> Any:
+        if isinstance(value, Enum):
+            return value.value
+        return value
+
+
+class BlueprintMarketResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blueprint_id: UUID
+    version_id: UUID
+    version_state: VersionState
+    market: dict[str, Any]
+    content_json: dict[str, Any]
+
+    @field_validator("version_state", mode="before")
+    @classmethod
+    def normalize_version_state(cls, value: Any) -> Any:
+        if isinstance(value, Enum):
+            return value.value
+        return value
+
+
+class BlueprintCompetitorResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blueprint_id: UUID
+    version_id: UUID
+    version_state: VersionState
+    competitor: dict[str, Any]
+    content_json: dict[str, Any]
+
+    @field_validator("version_state", mode="before")
+    @classmethod
+    def normalize_version_state(cls, value: Any) -> Any:
+        if isinstance(value, Enum):
+            return value.value
+        return value
+
+
+class BlueprintPersonaResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blueprint_id: UUID
+    version_id: UUID
+    version_state: VersionState
+    persona: dict[str, Any]
+    content_json: dict[str, Any]
+
+    @field_validator("version_state", mode="before")
+    @classmethod
+    def normalize_version_state(cls, value: Any) -> Any:
+        if isinstance(value, Enum):
+            return value.value
+        return value

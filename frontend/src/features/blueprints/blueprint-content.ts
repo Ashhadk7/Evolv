@@ -177,6 +177,37 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
+}
+
+function recordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(asRecord(item)))
+    : [];
+}
+
+function agentRecord(bp: Blueprint, key: keyof NonNullable<Blueprint["agentOutputs"]>) {
+  return asRecord(bp.agentOutputs?.[key]);
+}
+
+function sentenceList(value: unknown, fallback: string): string {
+  const items = stringArray(value);
+  return items.length ? items.join("; ") : fallback;
+}
+
 function parseMarketMoney(s: string): number {
   const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kKmMbB])?/);
   if (!m) return 500000000;
@@ -209,6 +240,18 @@ function barrierMultiplier(barriers: string): number {
 }
 
 function derivePersonas(bp: Blueprint): Persona[] {
+  const personaAgent = agentRecord(bp, "persona");
+  const generatedPersonas = recordArray(personaAgent?.personas);
+  if (generatedPersonas.length) {
+    return generatedPersonas.slice(0, 3).map((persona) => ({
+      name: stringValue(persona.name, "Generated persona"),
+      segment: (stringValue(persona.segment, "Primary user") as Persona["segment"]),
+      about: stringValue(persona.context, stringValue(persona.role, "Core customer segment")),
+      goals: sentenceList(persona.goals, "Achieve the core outcome faster."),
+      pains: sentenceList(persona.pains, "Current workflows are slow or unreliable."),
+    }));
+  }
+
   const ind = bp.industry.toLowerCase();
   if (ind.includes("health"))
     return [
@@ -275,9 +318,17 @@ function deriveViability(bp: Blueprint): Viability {
 }
 
 function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
+  const marketAgent = agentRecord(bp, "market");
   const cagrNum = parseFloat(bp.market.cagr) || 20;
+  const agentDemandLevel = stringValue(marketAgent?.demandLevel);
   const demandLevel: MarketAnalysis["demandLevel"] =
-    bp.market.score >= 75 ? "High" : bp.market.score >= 60 ? "Medium" : "Low";
+    agentDemandLevel === "High" || agentDemandLevel === "Medium" || agentDemandLevel === "Low"
+      ? agentDemandLevel
+      : bp.market.score >= 75
+        ? "High"
+        : bp.market.score >= 60
+          ? "Medium"
+          : "Low";
   const totalMarketValue = parseMarketMoney(bp.market.size);
   const barrierFactor = barrierMultiplier(bp.market.barriers);
   const reachablePct = clamp((bp.market.score / 100) * 0.22 * barrierFactor, 0.08, 0.22);
@@ -309,22 +360,45 @@ function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
     realisticCapture: fmtMarketMoney(realisticCaptureValue),
     cagr: bp.market.cagr,
     growth,
-    timing,
-    whyNow,
-    insight: `The broad category is ${bp.market.size}; the more useful first target is an estimated ${fmtMarketMoney(reachableMarketValue)} reachable wedge, with about ${fmtMarketMoney(realisticCaptureValue)} plausible 3-year capture if execution matches the current viability score.`,
-    demandSignals: [
-      `${demandLevel} market score (${bp.market.score}/100)`,
-      `${bp.market.cagr} category growth`,
-      `${bp.developerDemand} developer interest for building this kind of product`,
-      bp.competitors.length
-        ? "Comparable competitors validate buyer budget"
-        : "Clear whitespace, but fewer competitor proof points",
-    ],
-    headwinds: [bp.market.barriers, "Incumbent players already have distribution and buyer trust"],
+    timing: stringValue(marketAgent?.timing, timing),
+    whyNow: stringValue(marketAgent?.whyNow, whyNow),
+    insight: stringValue(
+      marketAgent?.insight,
+      `The broad category is ${bp.market.size}; the more useful first target is an estimated ${fmtMarketMoney(reachableMarketValue)} reachable wedge, with about ${fmtMarketMoney(realisticCaptureValue)} plausible 3-year capture if execution matches the current viability score.`
+    ),
+    demandSignals: stringArray(marketAgent?.demandSignals).length
+      ? stringArray(marketAgent?.demandSignals)
+      : [
+          `${demandLevel} market score (${bp.market.score}/100)`,
+          `${bp.market.cagr} category growth`,
+          `${bp.developerDemand} developer interest for building this kind of product`,
+          bp.competitors.length
+            ? "Comparable competitors validate buyer budget"
+            : "Clear whitespace, but fewer competitor proof points",
+        ],
+    headwinds: stringArray(marketAgent?.headwinds).length
+      ? stringArray(marketAgent?.headwinds)
+      : [bp.market.barriers, "Incumbent players already have distribution and buyer trust"],
   };
 }
 
 function deriveCompetitors(bp: Blueprint): CompetitorRow[] {
+  const competitorAgent = agentRecord(bp, "competitor");
+  const generatedCompetitors = recordArray(competitorAgent?.competitors);
+  if (generatedCompetitors.length) {
+    return generatedCompetitors.map((competitor) => ({
+      name: stringValue(competitor.name, "Competitor"),
+      pricing: stringValue(competitor.type, "Comparable player"),
+      strengths: stringArray(competitor.strengths).length
+        ? stringArray(competitor.strengths)
+        : [stringValue(competitor.positioning, "Established category presence")],
+      weaknesses: stringArray(competitor.weaknesses).length
+        ? stringArray(competitor.weaknesses)
+        : ["May not serve the first wedge deeply"],
+      gap: stringValue(competitor.gap, "Opportunity to serve a narrower customer segment better"),
+    }));
+  }
+
   const rows = bp.competitors.length
     ? bp.competitors
     : [{ name: "Established incumbent", type: "Direct" }];
