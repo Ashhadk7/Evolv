@@ -494,72 +494,37 @@ function deriveSimilarStartups(bp: Blueprint): SimilarStartup[] {
 }
 
 function deriveMvpPlan(bp: Blueprint, totalWeeks: number): MvpPlan {
+  const productAgent = agentRecord(bp, "product");
   return {
     mustHave: bp.features.slice(0, 2),
     shouldHave: bp.features.slice(2, 4),
     niceToHave: bp.features.slice(4),
     timelineWeeks: totalWeeks,
-    outOfScope: [
-      "Native mobile apps — ship web-first, evaluate mobile after MVP validation",
-      "Multi-language / localisation",
-      `Deep ${bp.industry} enterprise integrations beyond the first design partner`,
-    ],
+    outOfScope: stringArray(productAgent?.outOfScope),
   };
 }
 
-const STACK_OPTIONS: Record<StackLayerKey, string[]> = {
-  frontend: ["Next.js", "Remix", "SvelteKit", "Vue / Nuxt"],
-  backend: ["Node.js / Express", "FastAPI (Python)", "Go", "NestJS"],
-  database: ["PostgreSQL", "MySQL", "MongoDB", "PlanetScale"],
-  vectorDb: ["Pinecone", "FAISS", "Weaviate", "Qdrant", "pgvector"],
-  aiProvider: ["OpenAI", "Anthropic", "Groq", "Google Gemini"],
-  hosting: ["Vercel", "Railway", "Render", "AWS"],
-};
-
 function deriveTechStack(bp: Blueprint): TechStackModel {
-  const frontend = bp.techStack.frontend.split(",")[0].trim();
-  const backend = bp.techStack.backend.split(",")[0].trim();
-  const database = bp.techStack.db.split(",")[0].trim();
-  const vectorDb = "Pinecone";
-  const aiProvider = "OpenAI";
-  const hosting = "Vercel";
+  const techStackAgent = agentRecord(bp, "techStack");
+  const layers = asRecord(techStackAgent?.techStack);
   return {
-    frontend: {
-      chosen: frontend,
-      options: STACK_OPTIONS.frontend,
-      reasoning: `${frontend} gives the fastest path to a polished, responsive UI with a large hiring pool.`,
-      monthlyCost: "Included in hosting",
-    },
-    backend: {
-      chosen: backend,
-      options: STACK_OPTIONS.backend,
-      reasoning: `${backend} fits the ${bp.industry} domain logic and scales cleanly as usage grows.`,
-      monthlyCost: "Included in hosting",
-    },
-    database: {
-      chosen: database,
-      options: STACK_OPTIONS.database,
-      reasoning: `${database} handles relational data with strong consistency guarantees for this domain.`,
-      monthlyCost: "$15–60/mo (managed)",
-    },
-    vectorDb: {
-      chosen: vectorDb,
-      options: STACK_OPTIONS.vectorDb,
-      reasoning: `${vectorDb} is the fastest way to ship semantic search and retrieval without managing infra.`,
-      monthlyCost: "$0–70/mo (free tier available)",
-    },
-    aiProvider: {
-      chosen: aiProvider,
-      options: STACK_OPTIONS.aiProvider,
-      reasoning: `${aiProvider} gives the best balance of quality, latency, and cost for this use case.`,
-      monthlyCost: "$50–400/mo (usage-based)",
-    },
-    hosting: {
-      chosen: hosting,
-      options: STACK_OPTIONS.hosting,
-      reasoning: `${hosting} keeps deploys simple with zero-ops scaling for an early-stage team.`,
-      monthlyCost: bp.cost.hosting,
-    },
+    frontend: stackLayer(layers, "frontend"),
+    backend: stackLayer(layers, "backend"),
+    database: stackLayer(layers, "database"),
+    vectorDb: stackLayer(layers, "vectorDb"),
+    aiProvider: stackLayer(layers, "aiProvider"),
+    hosting: stackLayer(layers, "hosting"),
+  };
+}
+
+function stackLayer(layers: Record<string, unknown> | null, key: StackLayerKey): TechStackLayer {
+  const layer = asRecord(layers?.[key]);
+  const chosen = stringValue(layer?.chosen);
+  return {
+    chosen,
+    options: chosen ? [chosen] : [],
+    reasoning: stringValue(layer?.reasoning),
+    monthlyCost: stringValue(layer?.monthlyCost),
   };
 }
 
@@ -569,15 +534,13 @@ function deriveTechStack(bp: Blueprint): TechStackModel {
 const DIAGRAM_NODE_ORDER: {
   id: string;
   kind: ArchitectureNode["kind"];
-  layerKey: StackLayerKey | null;
-  fixedLabel?: string;
+  layerKey: StackLayerKey;
 }[] = [
   { id: "client", kind: "frontend", layerKey: "frontend" },
   { id: "api", kind: "backend", layerKey: "backend" },
   { id: "ai", kind: "ai", layerKey: "aiProvider" },
   { id: "vector", kind: "data", layerKey: "vectorDb" },
   { id: "db", kind: "data", layerKey: "database" },
-  { id: "payments", kind: "integration", layerKey: null, fixedLabel: "Payments — Stripe Connect" },
   { id: "hosting", kind: "infra", layerKey: "hosting" },
 ];
 const DIAGRAM_EDGES: ArchitectureEdge[] = [
@@ -585,7 +548,6 @@ const DIAGRAM_EDGES: ArchitectureEdge[] = [
   { from: "api", to: "ai" },
   { from: "ai", to: "vector" },
   { from: "api", to: "db" },
-  { from: "api", to: "payments" },
   { from: "client", to: "hosting" },
   { from: "api", to: "hosting" },
 ];
@@ -593,9 +555,9 @@ export function buildArchitecture(techStack: TechStackModel): {
   nodes: ArchitectureNode[];
   edges: ArchitectureEdge[];
 } {
-  const labelFor = (key: StackLayerKey, prefix: string) => `${prefix} — ${techStack[key].chosen}`;
+  const labelFor = (key: StackLayerKey, prefix: string) =>
+    techStack[key].chosen ? `${prefix} - ${techStack[key].chosen}` : prefix;
   const nodes: ArchitectureNode[] = DIAGRAM_NODE_ORDER.map((n) => {
-    if (!n.layerKey) return { id: n.id, kind: n.kind, label: n.fixedLabel! };
     const prefix =
       {
         client: "Client",

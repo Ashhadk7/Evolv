@@ -21,10 +21,13 @@ from app.services.exceptions import (
 from app.services.generation.agents.competitor import CompetitorOutput, run_competitor
 from app.services.generation.agents.market import MarketOutput, run_market
 from app.services.generation.agents.persona import PersonaOutput, run_persona
+from app.services.generation.agents.product import ProductOutput, run_product
+from app.services.generation.agents.strategy import StrategyOutput, run_strategy
+from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_stack
 from app.services.generation.client import AgentClientError
 from app.services.generation.enrichment import EnrichmentError
 
-CONTENT_SCHEMA_VERSION = 1
+CONTENT_SCHEMA_VERSION = 4
 
 
 async def generate_blueprint_from_intake(
@@ -39,6 +42,9 @@ async def generate_blueprint_from_intake(
         market = await run_market(agent_brief, payload.industry)
         competitor = await run_competitor(agent_brief, payload.industry)
         persona = await run_persona(agent_brief, payload.industry)
+        product = await run_product(agent_brief, competitor.positioning_angle)
+        tech_stack = await run_tech_stack(agent_brief, payload.industry, product.features)
+        strategy = await run_strategy(market, competitor, competitor.positioning_angle)
     except ValueError as exc:
         raise BlueprintAgentInputError(str(exc)) from exc
     except (AgentClientError, EnrichmentError, ValidationError) as exc:
@@ -53,6 +59,9 @@ async def generate_blueprint_from_intake(
             market=market,
             competitor=competitor,
             persona=persona,
+            product=product,
+            tech_stack=tech_stack,
+            strategy=strategy,
         )
         blueprints_repository.create_version(
             db, blueprint.id, VersionState.CURRENT, version_payload
@@ -82,6 +91,9 @@ def _build_blueprint_content_payload (
     market: MarketOutput,
     competitor: CompetitorOutput,
     persona: PersonaOutput,
+    product: ProductOutput,
+    tech_stack: TechStackOutput,
+    strategy: StrategyOutput,
 ) -> BlueprintVersionCreate:
     content_json = {
         "schemaVersion": CONTENT_SCHEMA_VERSION,
@@ -90,10 +102,20 @@ def _build_blueprint_content_payload (
             "market": market.model_dump(by_alias=True),
             "competitor": competitor.model_dump(by_alias=True),
             "persona": persona.model_dump(by_alias=True),
+            "product": product.model_dump(by_alias=True),
+            "techStack": tech_stack.model_dump(by_alias=True),
+            "strategy": strategy.model_dump(by_alias=True),
         },
         "generation": {
             "status": "completed",
-            "completedAgents": ["market", "competitor", "persona"],
+            "completedAgents": [
+                "market",
+                "competitor",
+                "persona",
+                "product",
+                "techStack",
+                "strategy",
+            ],
             "updatedAt": datetime.now(UTC).isoformat(),
         },
         "updatedAt": datetime.now(UTC).isoformat(),

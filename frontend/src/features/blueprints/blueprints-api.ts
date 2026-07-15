@@ -1,5 +1,15 @@
 import { apiFetch } from "@/lib/api";
-import type { Blueprint, BlueprintAgentOutputs, BlueprintIntake } from "./types";
+import type {
+  Blueprint,
+  BlueprintAgentOutputs,
+  BlueprintIntake,
+  BlueprintRiskSeverity,
+  BlueprintRole,
+  BlueprintStrategy,
+  BlueprintStrategyAddition,
+  BlueprintStrategyItem,
+  BlueprintStrategyRisk,
+} from "./types";
 
 type LevelRating = "High" | "Medium" | "Low";
 
@@ -74,7 +84,15 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
   const intake = asRecord(contentJson?.intake) as BlueprintIntake | undefined;
   const marketAgent = asRecord(agents?.market);
   const competitorAgent = asRecord(agents?.competitor);
+  const productAgent = asRecord(agents?.product);
+  const techStackAgent = asRecord(agents?.techStack);
+  const strategyAgent = asRecord(agents?.strategy);
+  const techStackLayers = asRecord(techStackAgent?.techStack);
+  const hostingLayer = asRecord(techStackLayers?.hosting);
   const competitors = arrayOfRecords(competitorAgent?.competitors);
+  const roles = arrayOfRecords(techStackAgent?.roles)
+    .map(roleFromRecord)
+    .filter((role) => role.role && role.skills);
 
   return {
     id: data.id,
@@ -107,24 +125,27 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
         }))
       : [{ name: "Comparable player", type: "Direct" }],
     differentiator: version.differentiator ?? "Focused AI-guided execution for early teams",
-    features: ["Founder intake", "Market evidence", "Competitor map", "Persona map"],
+    features: stringArray(productAgent?.features),
     techStack: {
-      frontend: "Next.js",
-      backend: "FastAPI",
-      ai: "Groq + Tavily",
-      db: "PostgreSQL",
-      aiProvider: "Groq",
-      hosting: "Vercel / Render",
+      frontend: layerChosen(techStackLayers, "frontend"),
+      backend: layerChosen(techStackLayers, "backend"),
+      ai: layerChosen(techStackLayers, "aiProvider"),
+      db: layerChosen(techStackLayers, "database"),
+      vectorDb: layerChosen(techStackLayers, "vectorDb"),
+      aiProvider: layerChosen(techStackLayers, "aiProvider"),
+      hosting: layerChosen(techStackLayers, "hosting"),
     },
     cost: {
       timeline: intake?.timeline || "To be estimated",
-      team: "2-3 builders",
-      hosting: "$100-500/mo",
+      team: roles.length ? `${roles.length} roles` : "",
+      hosting: stringValue(hostingLayer?.monthlyCost, ""),
       budget: intake?.budget || "To be estimated",
     },
     contentJson,
     agentOutputs: agents,
     intake,
+    roles,
+    strategy: strategyFromRecord(strategyAgent),
   };
 }
 
@@ -141,12 +162,76 @@ function arrayOfRecords(value: unknown): Record<string, unknown>[] {
     : [];
 }
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
+}
+
 function stringValue(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
 function numberValue(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function layerChosen(layers: Record<string, unknown> | undefined, key: string): string {
+  return stringValue(asRecord(layers?.[key])?.chosen, "");
+}
+
+function roleFromRecord(item: Record<string, unknown>): BlueprintRole {
+  return {
+    role: stringValue(item.role, ""),
+    count: numberValue(item.count, 1),
+    skills: stringValue(item.skills, ""),
+    lead: item.lead === true,
+  };
+}
+
+function strategyFromRecord(item: Record<string, unknown> | undefined): BlueprintStrategy {
+  return {
+    marketLacks: arrayOfRecords(item?.marketLacks)
+      .map(strategyItemFromRecord)
+      .filter((entry) => entry.title && entry.text),
+    recommendedAdditions: arrayOfRecords(item?.recommendedAdditions)
+      .map(strategyAdditionFromRecord)
+      .filter((entry) => entry.title && entry.text && entry.impact),
+    pathToComplete: stringArray(item?.pathToComplete),
+    risks: arrayOfRecords(item?.risks)
+      .map(strategyRiskFromRecord)
+      .filter((entry) => entry.risk && entry.mitigation),
+    gtmChannels: arrayOfRecords(item?.gtmChannels)
+      .map(strategyItemFromRecord)
+      .filter((entry) => entry.title && entry.text),
+    gtmSequence: stringArray(item?.gtmSequence),
+  };
+}
+
+function strategyItemFromRecord(item: Record<string, unknown>): BlueprintStrategyItem {
+  return {
+    title: stringValue(item.title, ""),
+    text: stringValue(item.text, ""),
+  };
+}
+
+function strategyAdditionFromRecord(item: Record<string, unknown>): BlueprintStrategyAddition {
+  return {
+    ...strategyItemFromRecord(item),
+    impact: stringValue(item.impact, ""),
+  };
+}
+
+function strategyRiskFromRecord(item: Record<string, unknown>): BlueprintStrategyRisk {
+  return {
+    risk: stringValue(item.risk, ""),
+    severity: severityValue(item.severity),
+    mitigation: stringValue(item.mitigation, ""),
+  };
+}
+
+function severityValue(value: unknown): BlueprintRiskSeverity {
+  return value === "High" || value === "Medium" || value === "Low" ? value : "Medium";
 }
 
 function timeAgo(value: string): string {

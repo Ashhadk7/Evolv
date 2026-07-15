@@ -1,10 +1,45 @@
 import type { ProjectState } from "./blueprint-content";
 
 export interface BlueprintAgentOutputs {
-  positioning?: Record<string, unknown>;
   market?: Record<string, unknown>;
   competitor?: Record<string, unknown>;
   persona?: Record<string, unknown>;
+  product?: Record<string, unknown>;
+  techStack?: Record<string, unknown>;
+  strategy?: Record<string, unknown>;
+}
+
+export interface BlueprintRole {
+  role: string;
+  count: number;
+  skills: string;
+  lead: boolean;
+}
+
+export type BlueprintRiskSeverity = "High" | "Medium" | "Low";
+
+export interface BlueprintStrategyItem {
+  title: string;
+  text: string;
+}
+
+export interface BlueprintStrategyAddition extends BlueprintStrategyItem {
+  impact: string;
+}
+
+export interface BlueprintStrategyRisk {
+  risk: string;
+  severity: BlueprintRiskSeverity;
+  mitigation: string;
+}
+
+export interface BlueprintStrategy {
+  marketLacks: BlueprintStrategyItem[];
+  recommendedAdditions: BlueprintStrategyAddition[];
+  pathToComplete: string[];
+  risks: BlueprintStrategyRisk[];
+  gtmChannels: BlueprintStrategyItem[];
+  gtmSequence: string[];
 }
 
 export interface BlueprintIntake {
@@ -57,6 +92,8 @@ export interface Blueprint {
     hosting?: string;
   };
   cost: { timeline: string; team: string; hosting: string; budget: string };
+  roles?: BlueprintRole[];
+  strategy?: BlueprintStrategy;
   contentJson?: Record<string, unknown> | null;
   agentOutputs?: BlueprintAgentOutputs;
   intake?: BlueprintIntake;
