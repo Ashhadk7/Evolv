@@ -144,6 +144,7 @@ export function SignInForm() {
             right={
               <button
                 type="button"
+                suppressHydrationWarning
                 onClick={() => setShowPassword((p) => !p)}
                 className="absolute top-1/2 right-3.5 -translate-y-1/2 transition-opacity hover:opacity-70"
                 style={{ color: "rgba(15,28,24,0.32)" }}

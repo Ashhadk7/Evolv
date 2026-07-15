@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChatCircleDots, PaperPlaneTilt, X } from "@phosphor-icons/react";
 import type { Blueprint } from "@/features/blueprints/types";
+import { getAccessToken } from "@/features/auth/lib/session";
 
-// Floating Blueprint AI assistant — feature-local, only used inside BlueprintDetail.
 type ChatMsg = { from: "ai" | "user"; text: string };
 
-export function ChatPanel({ bp }: { bp: Blueprint }) {
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+
+export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: string }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([
     {
@@ -24,22 +26,65 @@ export function ChatPanel({ bp }: { bp: Blueprint }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs, typing]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || typing) return;
+
+    const history = msgs.map((m) => ({ role: m.from === "ai" ? "assistant" : "user", content: m.text }));
+    const userMessage = { role: "user", content: text };
+
     setMsgs((m) => [...m, { from: "user", text }]);
     setInput("");
     setTyping(true);
-    const replies = [
-      `For ${bp.name}, I'd build the ${bp.techStack.frontend} client and ${bp.techStack.backend} API first — that unlocks the core flow and lets a developer demo value early.`,
-      `The biggest lever is the AI layer (${bp.techStack.ai}). Ship a thin inference pipeline behind a clean API, then iterate on accuracy once real data flows in.`,
-      `Budget-wise, front-load the must-have milestones. Payments release per approved milestone, so keep each phase independently shippable.`,
-    ];
-    const reply = replies[msgs.filter((m) => m.from === "user").length % replies.length];
-    window.setTimeout(() => {
+
+    const token = getAccessToken();
+    const response = await fetch(`${API_BASE}/blueprints/${blueprintId}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        messages: [...history, userMessage],
+        blueprint: bp,
+      }),
+    });
+
+    if (!response.ok || !response.body) {
       setTyping(false);
-      setMsgs((m) => [...m, { from: "ai", text: reply }]);
-    }, 1200);
+      setMsgs((m) => [...m, { from: "ai", text: "Something went wrong. Please try again." }]);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let firstToken = true;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      for (const line of chunk.split("\n")) {
+        const data = line.startsWith("data: ") ? line.slice(6) : null;
+        if (!data || data === "[DONE]") continue;
+        if (firstToken) {
+          setTyping(false);
+          setMsgs((m) => [...m, { from: "ai", text: data }]);
+          firstToken = false;
+        } else {
+          setMsgs((m) => {
+            const updated = [...m];
+            updated[updated.length - 1] = { from: "ai", text: updated[updated.length - 1].text + data };
+            return updated;
+          });
+        }
+      }
+    }
+
+    if (firstToken) {
+      setTyping(false);
+      setMsgs((m) => [...m, { from: "ai", text: "No response received. Please try again." }]);
+    }
   };
 
   return (
@@ -243,7 +288,7 @@ export function ChatPanel({ bp }: { bp: Blueprint }) {
               <motion.button
                 onClick={send}
                 whileTap={{ scale: 0.9 }}
-                className="bp-gradient-btn"
+                className="bp-gradient-icon-btn"
                 style={{
                   width: 38,
                   height: 38,
@@ -253,6 +298,7 @@ export function ChatPanel({ bp }: { bp: Blueprint }) {
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  padding: 0,
                 }}
               >
                 <PaperPlaneTilt size={16} weight="fill" className="text-bp-mint" />

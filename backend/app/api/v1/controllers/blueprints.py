@@ -1,6 +1,9 @@
 from uuid import UUID
+from typing import Any
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, status, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.applications import SavedBlueprintResponse
@@ -12,7 +15,7 @@ from app.schemas.blueprints import (
     BlueprintVersionCreate,
     BlueprintVersionResponse,
 )
-from app.services import application_service, blueprint_service
+from app.services import application_service, blueprint_service, chat_service
 
 router = APIRouter()
 
@@ -111,3 +114,48 @@ def save_blueprint(
 @router.delete("/{blueprint_id}/save", status_code=status.HTTP_204_NO_CONTENT)
 def unsave_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> None:
     application_service.unsave_blueprint(db, current_user, blueprint_id)
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    blueprint: dict[str, Any] | None = None
+
+
+@router.post("/{blueprint_id}/chat")
+async def blueprint_chat(
+    blueprint_id: str,
+    payload: ChatRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> StreamingResponse:
+    try:
+        stream = await chat_service.stream_blueprint_chat(
+            blueprint_id=blueprint_id,
+            db=db,
+            messages=[m.model_dump() for m in payload.messages],
+            blueprint_data=payload.blueprint,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    async def event_generator():
+        async for token in stream:
+            yield f"data: {token}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
