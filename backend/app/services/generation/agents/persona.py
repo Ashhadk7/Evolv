@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.services.generation.client import call_agent
+from app.services.generation.prompt_loader import load_prompt, render_prompt
 
 PersonaSegment = Literal["Primary user", "Economic buyer", "Gatekeeper"]
 ShortGoal = Annotated[str, Field(min_length=8, max_length=120)]
@@ -49,20 +50,12 @@ class PersonaOutput(BaseModel):
         expected = {"Primary user", "Economic buyer", "Gatekeeper"}
         actual = {persona.segment for persona in self.personas}
         if actual != expected:
-            raise ValueError("personas must include one Primary user, one Economic buyer, and one Gatekeeper.")
+            raise ValueError(
+                "personas must include one Primary user, one Economic buyer, and one Gatekeeper."
+            )
         if self.primary_persona not in actual:
             raise ValueError("primaryPersona must match one generated persona segment.")
         return self
-
-
-PERSONA_SYSTEM_PROMPT = """You are Evolv's Persona Agent.
-Create behavior-based customer personas for a startup blueprint.
-Return exactly three personas: Primary user, Economic buyer, and Gatekeeper.
-Do not use fake demographic stereotypes, real people, citations, or unverifiable claims.
-Focus on jobs, pains, buying triggers, objections, and reachable channels.
-The personas must help a founder make product, marketing, and sales decisions.
-Keep every sentence short enough for dashboard cards.
-Return JSON only."""
 
 
 async def run_persona(idea: str, industry: str) -> PersonaOutput:
@@ -73,18 +66,11 @@ async def run_persona(idea: str, industry: str) -> PersonaOutput:
     if not industry:
         raise ValueError("Persona agent requires an industry/domain.")
 
-    user_prompt = (
-        f"Idea: {idea}\n"
-        f"Industry: {industry}\n\n"
-        "Generate exactly three practical personas for this startup's first realistic wedge. "
-        "Each persona should be specific enough for founder-side product decisions but not tied to real people."
-    )
     return await call_agent(
         PersonaOutput,
-        PERSONA_SYSTEM_PROMPT,
-        user_prompt,
+        load_prompt("persona"),
+        render_prompt("persona_user", idea=idea, industry=industry),
         max_tokens=1200,
-        retries=1,
     )
 
 

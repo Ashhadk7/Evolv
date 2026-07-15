@@ -1,21 +1,17 @@
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.blueprint import VersionState
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.repositories import blueprints as blueprints_repository
-from app.schemas.blueprints import (
-    BlueprintGenerateRequest,
-    BlueprintVersionCreate,
-    LevelRating,
-)
+from app.schemas.blueprints import BlueprintGenerateRequest, BlueprintVersionCreate, LevelRating
 from app.services.exceptions import (
     BlueprintAgentInputError,
     BlueprintGenerationError,
@@ -25,10 +21,10 @@ from app.services.exceptions import (
 from app.services.generation.agents.competitor import CompetitorOutput, run_competitor
 from app.services.generation.agents.market import MarketOutput, run_market
 from app.services.generation.agents.persona import PersonaOutput, run_persona
-from app.services.generation.agents.positioning import PositioningOutput, run_positioning
 from app.services.generation.client import AgentClientError
 from app.services.generation.enrichment import EnrichmentError
-from app.services.generation.positioning_service import CONTENT_SCHEMA_VERSION
+
+CONTENT_SCHEMA_VERSION = 1
 
 
 async def generate_blueprint_from_intake(
@@ -39,26 +35,21 @@ async def generate_blueprint_from_intake(
     founder_id = _require_founder_profile(current_user)
     agent_brief = _build_agent_brief(payload)
 
-    positioning_task = asyncio.create_task(run_positioning(agent_brief, payload.industry))
-    persona_task = asyncio.create_task(run_persona(agent_brief, payload.industry))
     try:
         market = await run_market(agent_brief, payload.industry)
         competitor = await run_competitor(agent_brief, payload.industry)
-        positioning, persona = await asyncio.gather(positioning_task, persona_task)
+        persona = await run_persona(agent_brief, payload.industry)
     except ValueError as exc:
-        await _cancel_generation_tasks(positioning_task, persona_task)
         raise BlueprintAgentInputError(str(exc)) from exc
     except (AgentClientError, EnrichmentError, ValidationError) as exc:
-        await _cancel_generation_tasks(positioning_task, persona_task)
         raise BlueprintGenerationError(
-            "Blueprint generation could not complete. Check GROQ_API_KEY, TAVILY_API_KEY, and provider limits."
+            "Blueprint generation could not complete. Check provider keys and limits."
         ) from exc
 
     try:
         blueprint = blueprints_repository.create_blueprint(db, founder_id, payload.visibility)
-        version_payload = _build_version_payload(
+        version_payload = _build_blueprint_content_payload (
             payload=payload,
-            positioning=positioning,
             market=market,
             competitor=competitor,
             persona=persona,
@@ -71,28 +62,23 @@ async def generate_blueprint_from_intake(
         db.rollback()
         raise BlueprintPersistenceError("Generated blueprint could not be saved.") from exc
 
-    return blueprints_repository.get_blueprint_by_id(db, blueprint.id)
+    saved_blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint.id)
+    if saved_blueprint is None:
+        raise BlueprintPersistenceError("Generated blueprint could not be loaded.")
+    return saved_blueprint
 
 
-async def _cancel_generation_tasks(*tasks: asyncio.Task[Any]) -> None:
-    pending = [task for task in tasks if not task.done()]
-    for task in pending:
-        task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)
-
-
-def _require_founder_profile(user: User):
-    if user.role != UserRole.FOUNDER or user.founder_profile is None:
+def _require_founder_profile(user: User) -> UUID:
+    if user.founder_profile is None:
         raise FounderProfileRequiredError(
             "Only founders with a founder profile can generate blueprints."
         )
     return user.founder_profile.user_id
 
 
-def _build_version_payload(
+def _build_blueprint_content_payload (
     *,
     payload: BlueprintGenerateRequest,
-    positioning: PositioningOutput,
     market: MarketOutput,
     competitor: CompetitorOutput,
     persona: PersonaOutput,
@@ -101,29 +87,28 @@ def _build_version_payload(
         "schemaVersion": CONTENT_SCHEMA_VERSION,
         "intake": _intake_json(payload),
         "agents": {
-            "positioning": positioning.model_dump(by_alias=True),
             "market": market.model_dump(by_alias=True),
             "competitor": competitor.model_dump(by_alias=True),
             "persona": persona.model_dump(by_alias=True),
         },
         "generation": {
             "status": "completed",
-            "completedAgents": ["positioning", "market", "competitor", "persona"],
+            "completedAgents": ["market", "competitor", "persona"],
             "updatedAt": datetime.now(UTC).isoformat(),
         },
         "updatedAt": datetime.now(UTC).isoformat(),
     }
 
+    viability = _derive_viability(market, competitor, persona)
     return BlueprintVersionCreate(
-        name=positioning.name,
+        name=_derive_blueprint_name(payload),
         industry=payload.industry,
         idea_desc=payload.idea,
-        differentiator=positioning.differentiator,
+        differentiator=competitor.positioning_angle,
         ai_recommend=_build_ai_recommendation(market, competitor, persona),
-        viability=_derive_viability(market, competitor, persona),
+        viability=viability,
         market_potential=market.score,
-        funding_readiness=_derive_funding_readiness(payload, market),
-        developer_demand=_derive_developer_demand(payload, persona),
+        developer_demand=_derive_developer_demand(market, persona),
         content_json=content_json,
     )
 
@@ -145,7 +130,15 @@ def _build_agent_brief(payload: BlueprintGenerateRequest) -> str:
 
 
 def _intake_json(payload: BlueprintGenerateRequest) -> dict[str, Any]:
-    return payload.model_dump(mode="json", exclude_none=True)
+    data = payload.model_dump(mode="json")
+    return {key: value for key, value in data.items() if value != ""}
+
+
+def _derive_blueprint_name(payload: BlueprintGenerateRequest) -> str:
+    source = payload.solution or payload.idea
+    words = [word.strip(".,:;!?()[]{}") for word in source.split()]
+    name = " ".join(word for word in words[:5] if word)
+    return name[:64] or f"{payload.industry} Blueprint"
 
 
 def _build_ai_recommendation(
@@ -154,8 +147,8 @@ def _build_ai_recommendation(
     persona: PersonaOutput,
 ) -> str:
     return (
-        f"Prioritize the {market.demand_level.lower()}-demand wedge, validate "
-        f"{persona.primary_persona.lower()} adoption, and position against "
+        f"Validate the {market.demand_level.lower()}-demand wedge with "
+        f"{persona.primary_persona.lower()} users, then address "
         f"{competitor.threat_level.lower()} competitive pressure before expanding scope."
     )
 
@@ -166,30 +159,26 @@ def _derive_viability(
     persona: PersonaOutput,
 ) -> int:
     score = market.score
-    score += {"High": 6, "Medium": 2, "Low": -4}[persona.confidence]
-    score += {"High": -6, "Medium": 0, "Low": 5}[competitor.threat_level]
-    return max(0, min(100, score))
+    if persona.confidence == "High":
+        score += 5
+    elif persona.confidence == "Low":
+        score -= 5
+
+    if competitor.threat_level == "High":
+        score -= 6
+    elif competitor.threat_level == "Low":
+        score += 4
+
+    return _clamp_score(score)
 
 
-def _derive_funding_readiness(
-    payload: BlueprintGenerateRequest,
-    market: MarketOutput,
-) -> LevelRating:
-    budget = (payload.budget or "").lower()
-    if market.score >= 78 and any(token in budget for token in ("$", "k", "m", "rs", "pkr")):
+def _derive_developer_demand(market: MarketOutput, persona: PersonaOutput) -> LevelRating:
+    if market.demand_level == "High" and persona.confidence != "Low":
         return LevelRating.HIGH
-    if market.score >= 58 or payload.budget:
-        return LevelRating.MEDIUM
-    return LevelRating.LOW
-
-
-def _derive_developer_demand(
-    payload: BlueprintGenerateRequest,
-    persona: PersonaOutput,
-) -> LevelRating:
-    idea = f"{payload.idea} {payload.industry}".lower()
-    if any(token in idea for token in ("ai", "ml", "automation", "saas", "marketplace")):
-        return LevelRating.HIGH
-    if persona.confidence == "Low":
+    if market.demand_level == "Low" or persona.confidence == "Low":
         return LevelRating.LOW
     return LevelRating.MEDIUM
+
+
+def _clamp_score(score: int) -> int:
+    return max(0, min(100, score))

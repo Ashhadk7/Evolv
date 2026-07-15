@@ -33,7 +33,6 @@ export interface Blueprint {
   isPublic: boolean;
   status: "PUBLISHED" | "DRAFT";
   viability: number;
-  fundingReadiness: "High" | "Medium" | "Low";
   investorInterest: number;
   marketPotential: number;
   developerDemand: "High" | "Medium" | "Low";

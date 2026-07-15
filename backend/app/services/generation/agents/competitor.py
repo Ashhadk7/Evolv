@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.generation.client import call_agent
 from app.services.generation.enrichment import ResearchSource, enrich_competitor_context
+from app.services.generation.prompt_loader import load_prompt, render_prompt
 
 ShortStrength = Annotated[str, Field(min_length=8, max_length=120)]
 ShortWeakness = Annotated[str, Field(min_length=8, max_length=120)]
@@ -44,19 +45,6 @@ class CompetitorOutput(CompetitorAnalysis):
     research_metadata: dict[str, Any] = Field(default_factory=dict, alias="researchMetadata")
 
 
-COMPETITOR_SYSTEM_PROMPT = """You are Evolv's Competitor Agent.
-Create a practical competitor map for a startup blueprint.
-Use the provided research signals as grounding evidence.
-Prefer named companies/products found in the sources.
-If sources are thin, use category alternatives like "Manual workflow" or "Generic marketplace" and set confidence='Low'.
-For each named competitor, include sourceIndexes pointing to the numbered research sources that support it.
-Use an empty sourceIndexes list only for category alternatives that are not named companies.
-Do not invent URLs, funding data, or source names.
-Focus on the founder's realistic first wedge, not every possible adjacent company.
-Keep every sentence short enough for dashboard cards.
-Return JSON only."""
-
-
 async def run_competitor(idea: str, industry: str) -> CompetitorOutput:
     idea = _clean(idea)
     industry = _clean(industry)
@@ -68,23 +56,17 @@ async def run_competitor(idea: str, industry: str) -> CompetitorOutput:
     research = await enrich_competitor_context(idea, industry)
     source_payload = [source.model_dump(by_alias=True) for source in research.sources]
 
-    user_prompt = (
-        f"Idea: {idea}\n"
-        f"Industry: {industry}\n\n"
-        "Build a competitor map for the first realistic product wedge. "
-        "Classify competitors as Direct, Indirect, or Adjacent. "
-        "Explain whitespace that Evolv's founder can act on. "
-        "For each named competitor, include sourceIndexes using the [1], [2] numbers from the research block.\n\n"
-        "Research signals collected by Evolv:\n"
-        f"{research.to_prompt_block()}\n\n"
-        "Do not add a sources field. Evolv will attach the collected source metadata separately."
+    user_prompt = render_prompt(
+        "competitor_user",
+        idea=idea,
+        industry=industry,
+        research=research.to_prompt_block(),
     )
     analysis = await call_agent(
         CompetitorAnalysis,
-        COMPETITOR_SYSTEM_PROMPT,
+        load_prompt("competitor"),
         user_prompt,
         max_tokens=1100,
-        retries=1,
     )
     return CompetitorOutput.model_validate(
         {

@@ -10,7 +10,6 @@ export interface Blueprint {
   industry: string;
   isPublic: boolean;
   viability: number;
-  fundingReadiness: string;
   devMatches: number;
   views: number;
   interested: number;

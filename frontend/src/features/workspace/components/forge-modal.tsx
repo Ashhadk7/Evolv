@@ -241,7 +241,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                   <div className="mb-1 text-sm font-bold text-[#1a2e26]">
                     Generating your blueprint...
                   </div>
-                  <div className="text-xs text-[#7a9e8e]">4 AI agents are working on your idea</div>
+                  <div className="text-xs text-[#7a9e8e]">3 AI agents are working on your idea</div>
                 </div>
                 <div className="mb-6 flex flex-col gap-3.5">
                   {FORGE_AGENTS.map((agent, index) => {
@@ -309,7 +309,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                   Blueprint ready
                 </div>
                 <div className="mb-7 text-[13px] text-[#7a9e8e]">
-                  All 4 agents completed analysis successfully.
+                  All 3 agents completed analysis successfully.
                 </div>
                 <motion.button
                   onClick={handleAccept}

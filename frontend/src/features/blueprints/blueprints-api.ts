@@ -28,7 +28,6 @@ interface BlueprintVersionWire {
   ai_recommend: string | null;
   viability: number;
   market_potential: number;
-  funding_readiness: LevelRating;
   developer_demand: LevelRating;
   content_json: Record<string, unknown> | null;
   generated_at: string;
@@ -41,7 +40,6 @@ interface BlueprintWire {
   created_at: string;
   updated_at: string;
   current_version: BlueprintVersionWire | null;
-  pending_version: BlueprintVersionWire | null;
 }
 
 interface BlueprintListWire {
@@ -66,7 +64,7 @@ export async function listBlueprints(): Promise<Blueprint[]> {
 }
 
 export function blueprintFromWire(data: BlueprintWire): Blueprint {
-  const version = data.pending_version ?? data.current_version;
+  const version = data.current_version;
   if (!version) {
     throw new Error("Blueprint has no version.");
   }
@@ -86,7 +84,6 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
     isPublic: data.visibility === "public",
     status: data.visibility === "public" ? "PUBLISHED" : "DRAFT",
     viability: version.viability,
-    fundingReadiness: version.funding_readiness,
     investorInterest: 0,
     marketPotential: version.market_potential,
     developerDemand: version.developer_demand,
@@ -110,7 +107,7 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
         }))
       : [{ name: "Comparable player", type: "Direct" }],
     differentiator: version.differentiator ?? "Focused AI-guided execution for early teams",
-    features: ["Founder intake", "Agent-generated positioning", "Market evidence", "Persona map"],
+    features: ["Founder intake", "Market evidence", "Competitor map", "Persona map"],
     techStack: {
       frontend: "Next.js",
       backend: "FastAPI",

@@ -1,31 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-
-class BlueprintVisibility(str, Enum):
-    PRIVATE = "private"
-    PUBLIC = "public"
-
-
-class VersionState(str, Enum):
-    CURRENT = "current"
-    PENDING = "pending"
-
-
-class LevelRating(str, Enum):
-    HIGH = "High"
-    MEDIUM = "Medium"
-    LOW = "Low"
+from app.models.blueprint import BlueprintVisibility, LevelRating, VersionState
 
 
 class BlueprintVersionCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=255)
     industry: str = Field(min_length=1, max_length=255)
@@ -34,18 +19,8 @@ class BlueprintVersionCreate(BaseModel):
     ai_recommend: str | None = None
     viability: int = Field(ge=0, le=100)
     market_potential: int = Field(ge=0, le=100)
-    funding_readiness: LevelRating
     developer_demand: LevelRating
-    content_json: dict[str, Any] | None = None
-
-    @field_validator(
-        "name", "industry", "idea_desc", "differentiator", "ai_recommend", mode="before"
-    )
-    @classmethod
-    def strip_text(cls, value: Any) -> Any:
-        if isinstance(value, str):
-            return value.strip()
-        return value
+    content_json: dict[str, Any] = Field(default_factory=dict)
 
 
 class BlueprintVersionResponse(BaseModel):
@@ -61,17 +36,9 @@ class BlueprintVersionResponse(BaseModel):
     ai_recommend: str | None = None
     viability: int
     market_potential: int
-    funding_readiness: LevelRating
     developer_demand: LevelRating
     content_json: dict[str, Any] | None = None
     generated_at: datetime
-
-    @field_validator("state", "funding_readiness", "developer_demand", mode="before")
-    @classmethod
-    def normalize_enum(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value
 
 
 class BlueprintCreate(BaseModel):
@@ -82,41 +49,20 @@ class BlueprintCreate(BaseModel):
 
 
 class BlueprintGenerateRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     idea: str = Field(min_length=20, max_length=2500)
     industry: str = Field(min_length=1, max_length=255)
-    target_customer: str | None = Field(default=None, max_length=500)
-    problem: str | None = Field(default=None, max_length=800)
-    solution: str | None = Field(default=None, max_length=800)
-    stage: str | None = Field(default=None, max_length=120)
-    budget: str | None = Field(default=None, max_length=80)
-    timeline: str | None = Field(default=None, max_length=120)
-    region: str | None = Field(default=None, max_length=120)
-    monetization: str | None = Field(default=None, max_length=500)
-    constraints: str | None = Field(default=None, max_length=800)
+    target_customer: str = Field(default="", max_length=500)
+    problem: str = Field(default="", max_length=800)
+    solution: str = Field(default="", max_length=800)
+    stage: str = Field(default="", max_length=120)
+    budget: str = Field(default="", max_length=80)
+    timeline: str = Field(default="", max_length=120)
+    region: str = Field(default="", max_length=120)
+    monetization: str = Field(default="", max_length=500)
+    constraints: str = Field(default="", max_length=800)
     visibility: BlueprintVisibility = BlueprintVisibility.PRIVATE
-
-    @field_validator(
-        "idea",
-        "industry",
-        "target_customer",
-        "problem",
-        "solution",
-        "stage",
-        "budget",
-        "timeline",
-        "region",
-        "monetization",
-        "constraints",
-        mode="before",
-    )
-    @classmethod
-    def strip_text(cls, value: Any) -> Any:
-        if isinstance(value, str):
-            value = value.strip()
-            return value or None
-        return value
 
 
 class BlueprintUpdate(BaseModel):
@@ -134,14 +80,6 @@ class BlueprintResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     current_version: BlueprintVersionResponse | None = None
-    pending_version: BlueprintVersionResponse | None = None
-
-    @field_validator("visibility", mode="before")
-    @classmethod
-    def normalize_visibility(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value
 
 
 class BlueprintListResponse(BaseModel):
@@ -151,71 +89,3 @@ class BlueprintListResponse(BaseModel):
     limit: int
     offset: int
     items: list[BlueprintResponse]
-
-
-class BlueprintPositioningResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    blueprint_id: UUID
-    version_id: UUID
-    version_state: VersionState
-    positioning: dict[str, Any]
-    content_json: dict[str, Any]
-
-    @field_validator("version_state", mode="before")
-    @classmethod
-    def normalize_version_state(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value
-
-
-class BlueprintMarketResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    blueprint_id: UUID
-    version_id: UUID
-    version_state: VersionState
-    market: dict[str, Any]
-    content_json: dict[str, Any]
-
-    @field_validator("version_state", mode="before")
-    @classmethod
-    def normalize_version_state(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value
-
-
-class BlueprintCompetitorResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    blueprint_id: UUID
-    version_id: UUID
-    version_state: VersionState
-    competitor: dict[str, Any]
-    content_json: dict[str, Any]
-
-    @field_validator("version_state", mode="before")
-    @classmethod
-    def normalize_version_state(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value
-
-
-class BlueprintPersonaResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    blueprint_id: UUID
-    version_id: UUID
-    version_state: VersionState
-    persona: dict[str, Any]
-    content_json: dict[str, Any]
-
-    @field_validator("version_state", mode="before")
-    @classmethod
-    def normalize_version_state(cls, value: Any) -> Any:
-        if isinstance(value, Enum):
-            return value.value
-        return value

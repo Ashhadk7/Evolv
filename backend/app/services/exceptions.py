@@ -21,7 +21,6 @@ class ErrorCode(StrEnum):
     BLUEPRINT_AGENT_INPUT = "blueprint_agent_input"
     BLUEPRINT_GENERATION = "blueprint_generation"
     FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
-    NO_PENDING_VERSION = "no_pending_version"
     DEVELOPER_PROFILE_REQUIRED = "developer_profile_required"
     ALREADY_APPLIED = "already_applied"
     ALREADY_SAVED = "already_saved"
@@ -140,13 +139,6 @@ class BlueprintGenerationError(AppError):
 
     def __init__(self, message: str = "Blueprint generation could not be completed.") -> None:
         super().__init__(ErrorCode.BLUEPRINT_GENERATION, message)
-
-
-class NoPendingVersionError(AppError):
-    """There is no pending version available to promote to current."""
-
-    def __init__(self, message: str = "There is no pending version to promote.") -> None:
-        super().__init__(ErrorCode.NO_PENDING_VERSION, message)
 
 
 class DeveloperProfileRequiredError(AppError):

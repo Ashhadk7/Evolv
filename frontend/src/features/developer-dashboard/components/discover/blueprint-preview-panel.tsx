@@ -52,9 +52,9 @@ export function BlueprintPreviewPanel({
         </div>
         <div className={styles.bpMetric}>
           <div className={styles.bpMetricVal}>
-            {selectedStartup.metrics?.fundingReadiness || 75}%
+            {selectedStartup.metrics?.developerDemand || 75}%
           </div>
-          <div className={styles.bpMetricLabel}>Funding Ready</div>
+          <div className={styles.bpMetricLabel}>Dev Demand</div>
         </div>
         <div className={styles.bpMetric}>
           <div className={styles.bpMetricVal}>{selectedStartup.metrics?.growthPotential || 80}%</div>
