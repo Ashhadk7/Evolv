@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import math
+from functools import lru_cache
+
+from openai import OpenAI
+
+from app.core.config import settings
+
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI | None:
+    global _client
+    if settings.GROQ_API_KEY is None:
+        return None
+    if _client is None:
+        _client = OpenAI(api_key=settings.GROQ_API_KEY.get_secret_value(), base_url=GROQ_BASE_URL)
+    return _client
+
+
+def embeddings_enabled() -> bool:
+    return _get_client() is not None
+
+
+@lru_cache(maxsize=512)
+def _embed_cached(text: str) -> tuple[float, ...]:
+    client = _get_client()
+    if client is None:
+        return ()
+    response = client.embeddings.create(model=settings.GROQ_EMBEDDING_MODEL, input=text)
+    return tuple(response.data[0].embedding)
+
+
+def embed_text(text: str) -> list[float]:
+    normalized = text.strip().lower()
+    if not normalized:
+        return []
+    return list(_embed_cached(normalized))
+
+
+def cosine_similarity(vector_a: list[float], vector_b: list[float]) -> float:
+    if not vector_a or not vector_b:
+        return 0.0
+    dot_product = sum(a * b for a, b in zip(vector_a, vector_b))
+    norm_a = math.sqrt(sum(a * a for a in vector_a))
+    norm_b = math.sqrt(sum(b * b for b in vector_b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot_product / (norm_a * norm_b)

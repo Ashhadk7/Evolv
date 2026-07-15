@@ -17,6 +17,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import Enum as SqlEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -151,5 +152,10 @@ class BlueprintVersion(Base):
         server_default=func.now(),
         nullable=False,
     )
+    # Populated by the Generation pipeline (Tech Stack agent -> roles[], plus the
+    # rest of the AI-generated + deterministic seed). Nullable/optional on purpose:
+    # existing versions and the interim skills-based matching flow keep working
+    # even before this is populated.
+    content_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     blueprint: Mapped[Blueprint] = relationship(back_populates="versions")

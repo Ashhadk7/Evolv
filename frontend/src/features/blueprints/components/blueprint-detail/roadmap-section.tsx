@@ -23,6 +23,7 @@ export function RoadmapSection({
   setPhaseHires,
   totalWeeks,
   reduce,
+  matchedDevelopers = [],
 }: {
   phases: Phase[];
   setPhases: React.Dispatch<React.SetStateAction<Phase[]>>;
@@ -35,6 +36,8 @@ export function RoadmapSection({
   setPhaseHires: React.Dispatch<React.SetStateAction<Record<number, string>>>;
   totalWeeks: number;
   reduce: boolean | null;
+  /** Live-matched developers from GET /blueprints/{id}/matches. Falls back to [] gracefully. */
+  matchedDevelopers?: import("@/features/network/types").FounderContactProfile[];
 }) {
   return (
     <Reveal>
@@ -177,7 +180,7 @@ export function RoadmapSection({
                           className="overflow-hidden"
                         >
                           <div className="mt-3 flex flex-col gap-2">
-                            {devsForPhase(ph.skillset).map((d) => (
+                            {(matchedDevelopers.length > 0 ? matchedDevelopers : devsForPhase(ph.skillset)).map((d) => (
                               <div
                                 key={d.name}
                                 className="border-bp-border-soft bg-bp-card flex items-center gap-3 rounded-[11px] border px-3 py-2.5"

@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr | None = None
     GOOGLE_CALENDAR_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/google/callback"
     GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str = "http://localhost:3000"
+    GROQ_API_KEY: SecretStr | None = None
+    GROQ_EMBEDDING_MODEL: str = "nomic-embed-text-v1_5"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
