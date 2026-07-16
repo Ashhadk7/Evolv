@@ -49,34 +49,6 @@ def create_blueprint(db: Session, founder_id: UUID, visibility) -> Blueprint:
     return blueprint
 
 
-def get_version_by_state(
-    db: Session, blueprint_id: UUID, state: VersionState
-) -> BlueprintVersion | None:
-    statement = select(BlueprintVersion).where(
-        BlueprintVersion.blueprint_id == blueprint_id,
-        BlueprintVersion.state == state,
-    )
-    return db.scalar(statement)
-
-
-_BLUEPRINT_VERSION_FIELDS = (
-    "name",
-    "industry",
-    "idea_desc",
-    "differentiator",
-    "ai_recommend",
-    "viability",
-    "market_potential",
-    "funding_readiness",
-    "developer_demand",
-)
-
-
-def _apply_version_content(version: BlueprintVersion, content: BlueprintVersionCreate) -> None:
-    for field in _BLUEPRINT_VERSION_FIELDS:
-        setattr(version, field, getattr(content, field))
-
-
 def create_version(
     db: Session,
     blueprint_id: UUID,
@@ -93,24 +65,12 @@ def create_version(
         ai_recommend=content.ai_recommend,
         viability=content.viability,
         market_potential=content.market_potential,
-        funding_readiness=content.funding_readiness,
         developer_demand=content.developer_demand,
+        content_json=content.content_json,
     )
     db.add(version)
     db.flush()
     return version
-
-
-def overwrite_version_content(
-    version: BlueprintVersion, content: BlueprintVersionCreate
-) -> BlueprintVersion:
-    _apply_version_content(version, content)
-    version.generated_at = func.now()
-    return version
-
-
-def delete_version(db: Session, version: BlueprintVersion) -> None:
-    db.delete(version)
 
 
 def delete_blueprint(db: Session, blueprint: Blueprint) -> None:

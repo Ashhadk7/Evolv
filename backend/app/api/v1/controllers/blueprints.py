@@ -2,19 +2,19 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status, HTTPException
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentFounder, CurrentUser, DbSession
 from app.schemas.applications import SavedBlueprintResponse
 from app.schemas.blueprints import (
     BlueprintCreate,
+    BlueprintGenerateRequest,
     BlueprintListResponse,
     BlueprintResponse,
     BlueprintUpdate,
-    BlueprintVersionCreate,
-    BlueprintVersionResponse,
     ChatRequest,
     ChatResponse,
 )
 from app.services import application_service, blueprint_service, chat_service
+from app.services.generation import blueprint_generation_service
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ router = APIRouter()
 @router.get("", response_model=BlueprintListResponse)
 def list_blueprints(
     db: DbSession,
-    current_user: CurrentUser,
+    current_user: CurrentFounder,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> BlueprintListResponse:
@@ -38,13 +38,27 @@ def list_blueprints(
 
 
 @router.post("", response_model=BlueprintResponse, status_code=status.HTTP_201_CREATED)
-def create_blueprint(payload: BlueprintCreate, db: DbSession, current_user: CurrentUser) -> BlueprintResponse:
+def create_blueprint(
+    payload: BlueprintCreate, db: DbSession, current_user: CurrentFounder
+) -> BlueprintResponse:
     blueprint = blueprint_service.create_blueprint(db, current_user, payload)
     return BlueprintResponse.model_validate(blueprint)
 
 
+@router.post("/generate", response_model=BlueprintResponse, status_code=status.HTTP_201_CREATED)
+async def generate_blueprint(
+    payload: BlueprintGenerateRequest, db: DbSession, current_user: CurrentFounder
+) -> BlueprintResponse:
+    blueprint = await blueprint_generation_service.generate_blueprint_from_intake(
+        db, current_user, payload
+    )
+    return BlueprintResponse.model_validate(blueprint)
+
+
 @router.get("/{blueprint_id}", response_model=BlueprintResponse)
-def get_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> BlueprintResponse:
+def get_blueprint(
+    blueprint_id: UUID, db: DbSession, current_user: CurrentUser
+) -> BlueprintResponse:
     blueprint = blueprint_service.get_blueprint(
         db, blueprint_id, current_user, require_ownership=False
     )
@@ -53,49 +67,15 @@ def get_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) 
 
 @router.patch("/{blueprint_id}", response_model=BlueprintResponse)
 def update_blueprint(
-    blueprint_id: UUID, payload: BlueprintUpdate, db: DbSession, current_user: CurrentUser
+    blueprint_id: UUID, payload: BlueprintUpdate, db: DbSession, current_user: CurrentFounder
 ) -> BlueprintResponse:
     blueprint = blueprint_service.update_visibility(db, blueprint_id, current_user, payload)
     return BlueprintResponse.model_validate(blueprint)
 
 
 @router.delete("/{blueprint_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> None:
+def delete_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentFounder) -> None:
     blueprint_service.delete_blueprint(db, blueprint_id, current_user)
-
-
-@router.post(
-    "/{blueprint_id}/versions",
-    response_model=BlueprintVersionResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def submit_pending_version(
-    blueprint_id: UUID, payload: BlueprintVersionCreate, db: DbSession, current_user: CurrentUser
-) -> BlueprintVersionResponse:
-    version = blueprint_service.submit_pending_version(db, blueprint_id, current_user, payload)
-    return BlueprintVersionResponse.model_validate(version)
-
-
-@router.get("/{blueprint_id}/versions", response_model=list[BlueprintVersionResponse])
-def list_versions(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> list[BlueprintVersionResponse]:
-    versions = blueprint_service.list_versions(db, blueprint_id, current_user)
-    return versions
-
-
-@router.get("/{blueprint_id}/versions/latest", response_model=BlueprintVersionResponse)
-def get_latest_version(
-    blueprint_id: UUID, db: DbSession, current_user: CurrentUser
-) -> BlueprintVersionResponse:
-    version = blueprint_service.get_latest_version(db, blueprint_id, current_user)
-    return BlueprintVersionResponse.model_validate(version)
-
-
-@router.post("/{blueprint_id}/versions/promote", response_model=BlueprintVersionResponse)
-def promote_pending_version(
-    blueprint_id: UUID, db: DbSession, current_user: CurrentUser
-) -> BlueprintVersionResponse:
-    version = blueprint_service.promote_pending_version(db, blueprint_id, current_user)
-    return BlueprintVersionResponse.model_validate(version)
 
 
 @router.post(

@@ -147,33 +147,6 @@ export function IdeaCard({
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>{bp.views}</div>
           </div>
-          <div>
-            <div
-              style={{
-                fontSize: 9.5,
-                color: "#8aab9a",
-                marginBottom: 1,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Funding
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color:
-                  bp.fundingReadiness === "High"
-                    ? "#2e7d5c"
-                    : bp.fundingReadiness === "Medium"
-                      ? "#C4973A"
-                      : "#b03030",
-              }}
-            >
-              {bp.fundingReadiness}
-            </div>
-          </div>
         </div>
         <motion.button
           onClick={() => onView(bp.id)}

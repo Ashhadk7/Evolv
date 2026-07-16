@@ -177,6 +177,37 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
+}
+
+function recordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(asRecord(item)))
+    : [];
+}
+
+function agentRecord(bp: Blueprint, key: keyof NonNullable<Blueprint["agentOutputs"]>) {
+  return asRecord(bp.agentOutputs?.[key]);
+}
+
+function sentenceList(value: unknown, fallback: string): string {
+  const items = stringArray(value);
+  return items.length ? items.join("; ") : fallback;
+}
+
 function parseMarketMoney(s: string): number {
   const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kKmMbB])?/);
   if (!m) return 500000000;
@@ -209,6 +240,18 @@ function barrierMultiplier(barriers: string): number {
 }
 
 function derivePersonas(bp: Blueprint): Persona[] {
+  const personaAgent = agentRecord(bp, "persona");
+  const generatedPersonas = recordArray(personaAgent?.personas);
+  if (generatedPersonas.length) {
+    return generatedPersonas.slice(0, 3).map((persona) => ({
+      name: stringValue(persona.name, "Generated persona"),
+      segment: (stringValue(persona.segment, "Primary user") as Persona["segment"]),
+      about: stringValue(persona.context, stringValue(persona.role, "Core customer segment")),
+      goals: sentenceList(persona.goals, "Achieve the core outcome faster."),
+      pains: sentenceList(persona.pains, "Current workflows are slow or unreliable."),
+    }));
+  }
+
   const ind = bp.industry.toLowerCase();
   if (ind.includes("health"))
     return [
@@ -275,9 +318,17 @@ function deriveViability(bp: Blueprint): Viability {
 }
 
 function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
+  const marketAgent = agentRecord(bp, "market");
   const cagrNum = parseFloat(bp.market.cagr) || 20;
+  const agentDemandLevel = stringValue(marketAgent?.demandLevel);
   const demandLevel: MarketAnalysis["demandLevel"] =
-    bp.market.score >= 75 ? "High" : bp.market.score >= 60 ? "Medium" : "Low";
+    agentDemandLevel === "High" || agentDemandLevel === "Medium" || agentDemandLevel === "Low"
+      ? agentDemandLevel
+      : bp.market.score >= 75
+        ? "High"
+        : bp.market.score >= 60
+          ? "Medium"
+          : "Low";
   const totalMarketValue = parseMarketMoney(bp.market.size);
   const barrierFactor = barrierMultiplier(bp.market.barriers);
   const reachablePct = clamp((bp.market.score / 100) * 0.22 * barrierFactor, 0.08, 0.22);
@@ -309,22 +360,45 @@ function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
     realisticCapture: fmtMarketMoney(realisticCaptureValue),
     cagr: bp.market.cagr,
     growth,
-    timing,
-    whyNow,
-    insight: `The broad category is ${bp.market.size}; the more useful first target is an estimated ${fmtMarketMoney(reachableMarketValue)} reachable wedge, with about ${fmtMarketMoney(realisticCaptureValue)} plausible 3-year capture if execution matches the current viability score.`,
-    demandSignals: [
-      `${demandLevel} market score (${bp.market.score}/100)`,
-      `${bp.market.cagr} category growth`,
-      `${bp.developerDemand} developer interest for building this kind of product`,
-      bp.competitors.length
-        ? "Comparable competitors validate buyer budget"
-        : "Clear whitespace, but fewer competitor proof points",
-    ],
-    headwinds: [bp.market.barriers, "Incumbent players already have distribution and buyer trust"],
+    timing: stringValue(marketAgent?.timing, timing),
+    whyNow: stringValue(marketAgent?.whyNow, whyNow),
+    insight: stringValue(
+      marketAgent?.insight,
+      `The broad category is ${bp.market.size}; the more useful first target is an estimated ${fmtMarketMoney(reachableMarketValue)} reachable wedge, with about ${fmtMarketMoney(realisticCaptureValue)} plausible 3-year capture if execution matches the current viability score.`
+    ),
+    demandSignals: stringArray(marketAgent?.demandSignals).length
+      ? stringArray(marketAgent?.demandSignals)
+      : [
+          `${demandLevel} market score (${bp.market.score}/100)`,
+          `${bp.market.cagr} category growth`,
+          `${bp.developerDemand} developer interest for building this kind of product`,
+          bp.competitors.length
+            ? "Comparable competitors validate buyer budget"
+            : "Clear whitespace, but fewer competitor proof points",
+        ],
+    headwinds: stringArray(marketAgent?.headwinds).length
+      ? stringArray(marketAgent?.headwinds)
+      : [bp.market.barriers, "Incumbent players already have distribution and buyer trust"],
   };
 }
 
 function deriveCompetitors(bp: Blueprint): CompetitorRow[] {
+  const competitorAgent = agentRecord(bp, "competitor");
+  const generatedCompetitors = recordArray(competitorAgent?.competitors);
+  if (generatedCompetitors.length) {
+    return generatedCompetitors.map((competitor) => ({
+      name: stringValue(competitor.name, "Competitor"),
+      pricing: stringValue(competitor.type, "Comparable player"),
+      strengths: stringArray(competitor.strengths).length
+        ? stringArray(competitor.strengths)
+        : [stringValue(competitor.positioning, "Established category presence")],
+      weaknesses: stringArray(competitor.weaknesses).length
+        ? stringArray(competitor.weaknesses)
+        : ["May not serve the first wedge deeply"],
+      gap: stringValue(competitor.gap, "Opportunity to serve a narrower customer segment better"),
+    }));
+  }
+
   const rows = bp.competitors.length
     ? bp.competitors
     : [{ name: "Established incumbent", type: "Direct" }];
@@ -420,72 +494,37 @@ function deriveSimilarStartups(bp: Blueprint): SimilarStartup[] {
 }
 
 function deriveMvpPlan(bp: Blueprint, totalWeeks: number): MvpPlan {
+  const productAgent = agentRecord(bp, "product");
   return {
     mustHave: bp.features.slice(0, 2),
     shouldHave: bp.features.slice(2, 4),
     niceToHave: bp.features.slice(4),
     timelineWeeks: totalWeeks,
-    outOfScope: [
-      "Native mobile apps — ship web-first, evaluate mobile after MVP validation",
-      "Multi-language / localisation",
-      `Deep ${bp.industry} enterprise integrations beyond the first design partner`,
-    ],
+    outOfScope: stringArray(productAgent?.outOfScope),
   };
 }
 
-const STACK_OPTIONS: Record<StackLayerKey, string[]> = {
-  frontend: ["Next.js", "Remix", "SvelteKit", "Vue / Nuxt"],
-  backend: ["Node.js / Express", "FastAPI (Python)", "Go", "NestJS"],
-  database: ["PostgreSQL", "MySQL", "MongoDB", "PlanetScale"],
-  vectorDb: ["Pinecone", "FAISS", "Weaviate", "Qdrant", "pgvector"],
-  aiProvider: ["OpenAI", "Anthropic", "Groq", "Google Gemini"],
-  hosting: ["Vercel", "Railway", "Render", "AWS"],
-};
-
 function deriveTechStack(bp: Blueprint): TechStackModel {
-  const frontend = bp.techStack.frontend.split(",")[0].trim();
-  const backend = bp.techStack.backend.split(",")[0].trim();
-  const database = bp.techStack.db.split(",")[0].trim();
-  const vectorDb = "Pinecone";
-  const aiProvider = "OpenAI";
-  const hosting = "Vercel";
+  const techStackAgent = agentRecord(bp, "techStack");
+  const layers = asRecord(techStackAgent?.techStack);
   return {
-    frontend: {
-      chosen: frontend,
-      options: STACK_OPTIONS.frontend,
-      reasoning: `${frontend} gives the fastest path to a polished, responsive UI with a large hiring pool.`,
-      monthlyCost: "Included in hosting",
-    },
-    backend: {
-      chosen: backend,
-      options: STACK_OPTIONS.backend,
-      reasoning: `${backend} fits the ${bp.industry} domain logic and scales cleanly as usage grows.`,
-      monthlyCost: "Included in hosting",
-    },
-    database: {
-      chosen: database,
-      options: STACK_OPTIONS.database,
-      reasoning: `${database} handles relational data with strong consistency guarantees for this domain.`,
-      monthlyCost: "$15–60/mo (managed)",
-    },
-    vectorDb: {
-      chosen: vectorDb,
-      options: STACK_OPTIONS.vectorDb,
-      reasoning: `${vectorDb} is the fastest way to ship semantic search and retrieval without managing infra.`,
-      monthlyCost: "$0–70/mo (free tier available)",
-    },
-    aiProvider: {
-      chosen: aiProvider,
-      options: STACK_OPTIONS.aiProvider,
-      reasoning: `${aiProvider} gives the best balance of quality, latency, and cost for this use case.`,
-      monthlyCost: "$50–400/mo (usage-based)",
-    },
-    hosting: {
-      chosen: hosting,
-      options: STACK_OPTIONS.hosting,
-      reasoning: `${hosting} keeps deploys simple with zero-ops scaling for an early-stage team.`,
-      monthlyCost: bp.cost.hosting,
-    },
+    frontend: stackLayer(layers, "frontend"),
+    backend: stackLayer(layers, "backend"),
+    database: stackLayer(layers, "database"),
+    vectorDb: stackLayer(layers, "vectorDb"),
+    aiProvider: stackLayer(layers, "aiProvider"),
+    hosting: stackLayer(layers, "hosting"),
+  };
+}
+
+function stackLayer(layers: Record<string, unknown> | null, key: StackLayerKey): TechStackLayer {
+  const layer = asRecord(layers?.[key]);
+  const chosen = stringValue(layer?.chosen);
+  return {
+    chosen,
+    options: chosen ? [chosen] : [],
+    reasoning: stringValue(layer?.reasoning),
+    monthlyCost: stringValue(layer?.monthlyCost),
   };
 }
 
@@ -495,15 +534,13 @@ function deriveTechStack(bp: Blueprint): TechStackModel {
 const DIAGRAM_NODE_ORDER: {
   id: string;
   kind: ArchitectureNode["kind"];
-  layerKey: StackLayerKey | null;
-  fixedLabel?: string;
+  layerKey: StackLayerKey;
 }[] = [
   { id: "client", kind: "frontend", layerKey: "frontend" },
   { id: "api", kind: "backend", layerKey: "backend" },
   { id: "ai", kind: "ai", layerKey: "aiProvider" },
   { id: "vector", kind: "data", layerKey: "vectorDb" },
   { id: "db", kind: "data", layerKey: "database" },
-  { id: "payments", kind: "integration", layerKey: null, fixedLabel: "Payments — Stripe Connect" },
   { id: "hosting", kind: "infra", layerKey: "hosting" },
 ];
 const DIAGRAM_EDGES: ArchitectureEdge[] = [
@@ -511,7 +548,6 @@ const DIAGRAM_EDGES: ArchitectureEdge[] = [
   { from: "api", to: "ai" },
   { from: "ai", to: "vector" },
   { from: "api", to: "db" },
-  { from: "api", to: "payments" },
   { from: "client", to: "hosting" },
   { from: "api", to: "hosting" },
 ];
@@ -519,9 +555,9 @@ export function buildArchitecture(techStack: TechStackModel): {
   nodes: ArchitectureNode[];
   edges: ArchitectureEdge[];
 } {
-  const labelFor = (key: StackLayerKey, prefix: string) => `${prefix} — ${techStack[key].chosen}`;
+  const labelFor = (key: StackLayerKey, prefix: string) =>
+    techStack[key].chosen ? `${prefix} - ${techStack[key].chosen}` : prefix;
   const nodes: ArchitectureNode[] = DIAGRAM_NODE_ORDER.map((n) => {
-    if (!n.layerKey) return { id: n.id, kind: n.kind, label: n.fixedLabel! };
     const prefix =
       {
         client: "Client",

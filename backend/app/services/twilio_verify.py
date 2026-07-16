@@ -34,13 +34,9 @@ def normalize_phone_number(phone: str) -> str:
 
 class TwilioVerifyClient:
     def __init__(self, settings: Settings) -> None:
-        self._account_sid = (settings.TWILIO_ACCOUNT_SID or "").strip()
-        self._auth_token = (
-            settings.TWILIO_AUTH_TOKEN.get_secret_value().strip()
-            if settings.TWILIO_AUTH_TOKEN is not None
-            else ""
-        )
-        self._service_sid = (settings.TWILIO_VERIFY_SERVICE_SID or "").strip()
+        self._account_sid = settings.TWILIO_ACCOUNT_SID.strip()
+        self._auth_token = settings.TWILIO_AUTH_TOKEN.get_secret_value().strip()
+        self._service_sid = settings.TWILIO_VERIFY_SERVICE_SID.strip()
         self._channel = settings.TWILIO_VERIFY_CHANNEL.strip() or "sms"
         self._timeout = settings.TWILIO_TIMEOUT_SECONDS
 

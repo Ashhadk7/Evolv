@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -17,6 +17,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import Enum as SqlEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -104,10 +105,6 @@ class Blueprint(Base):
     def current_version(self) -> BlueprintVersion | None:
         return next((v for v in self.versions if v.state == VersionState.CURRENT), None)
 
-    @property
-    def pending_version(self) -> BlueprintVersion | None:
-        return next((v for v in self.versions if v.state == VersionState.PENDING), None)
-
 
 class BlueprintVersion(Base):
     __tablename__ = "blueprint_versions"
@@ -144,8 +141,8 @@ class BlueprintVersion(Base):
     ai_recommend: Mapped[str | None] = mapped_column(Text, nullable=True)
     viability: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     market_potential: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    funding_readiness: Mapped[LevelRating] = mapped_column(level_rating_enum, nullable=False)
     developer_demand: Mapped[LevelRating] = mapped_column(level_rating_enum, nullable=False)
+    content_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

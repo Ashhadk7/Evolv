@@ -36,18 +36,24 @@ class Settings(BaseSettings):
     SMTP_USE_STARTTLS: bool = False
     SMTP_TIMEOUT_SECONDS: int = 20
     SECRET_KEY: str = Field(min_length=8)
-    ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
-    TWILIO_ACCOUNT_SID: str | None = None
-    TWILIO_AUTH_TOKEN: SecretStr | None = None
-    TWILIO_VERIFY_SERVICE_SID: str | None = None
-    TWILIO_VERIFY_CHANNEL: str = "sms"
-    TWILIO_TIMEOUT_SECONDS: int = 20
-    GROQ_API_KEY: SecretStr | None = None
+    ALLOWED_ORIGINS: list[str] = Field(min_length=1)
+    TWILIO_ACCOUNT_SID: str = Field(min_length=1)
+    TWILIO_AUTH_TOKEN: SecretStr
+    TWILIO_VERIFY_SERVICE_SID: str = Field(min_length=1)
+    TWILIO_VERIFY_CHANNEL: str = Field(min_length=1)
+    TWILIO_TIMEOUT_SECONDS: int = Field(ge=1, le=120)
+    GOOGLE_CALENDAR_CLIENT_ID: str = Field(min_length=1)
+    GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr
+    GOOGLE_CALENDAR_REDIRECT_URI: str = Field(min_length=1)
+    GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str = Field(min_length=1)
+    AI_TIMEOUT_SECONDS: int = Field(default=45, ge=1, le=180)
+    GROQ_API_KEY: SecretStr
+    GROQ_API_BASE_URL: str = Field(min_length=1)
+    GROQ_MODEL: str = Field(min_length=1)
     CHAT_MODEL_NAME: str = "llama-3.3-70b-versatile"
-    GOOGLE_CALENDAR_CLIENT_ID: str | None = None
-    GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr | None = None
-    GOOGLE_CALENDAR_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/google/callback"
-    GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str = "http://localhost:3000"
+    ENRICHMENT_TIMEOUT_SECONDS: int = Field(default=12, ge=1, le=60)
+    TAVILY_API_KEY: SecretStr
+    TAVILY_BASE_URL: str = Field(min_length=1)
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -72,6 +78,15 @@ class Settings(BaseSettings):
         "SMTP_HOST",
         "SMTP_USERNAME",
         "SECRET_KEY",
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_VERIFY_SERVICE_SID",
+        "TWILIO_VERIFY_CHANNEL",
+        "GOOGLE_CALENDAR_CLIENT_ID",
+        "GOOGLE_CALENDAR_REDIRECT_URI",
+        "GOOGLE_CALENDAR_FRONTEND_RETURN_URL",
+        "GROQ_API_BASE_URL",
+        "GROQ_MODEL",
+        "TAVILY_BASE_URL",
     )
     @classmethod
     def require_non_empty_text(cls, value: str) -> str:
@@ -84,6 +99,10 @@ class Settings(BaseSettings):
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_ANON_KEY",
         "SMTP_PASSWORD",
+        "TWILIO_AUTH_TOKEN",
+        "GOOGLE_CALENDAR_CLIENT_SECRET",
+        "GROQ_API_KEY",
+        "TAVILY_API_KEY",
     )
     @classmethod
     def require_non_empty_secret(cls, value: SecretStr) -> SecretStr:
