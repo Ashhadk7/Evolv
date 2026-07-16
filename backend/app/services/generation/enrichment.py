@@ -154,7 +154,7 @@ async def _collect_research(
                     url=f"https://{fallback_domain}/reports/market-{idx+1}",
                     snippet=f"Strategic assessment and competitive overview related to: '{query}'. Standard baseline indicators show positive traction trends.",
                     domain=fallback_domain,
-                    published_at=datetime.now(UTC).strftime("%Y-%m-%d"),
+                    publishedAt=datetime.now(UTC).strftime("%Y-%m-%d"),
                 )
             )
         notes.append("Using mock fallback research signals because Tavily search is unauthorized or unavailable.")
