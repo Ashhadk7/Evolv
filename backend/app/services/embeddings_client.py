@@ -22,13 +22,13 @@ def _get_client() -> OpenAI | None:
 
 
 def embeddings_enabled() -> bool:
-    return _get_client() is not None
+    return _get_client() is not None and bool(settings.GROQ_EMBEDDING_MODEL)
 
 
 @lru_cache(maxsize=512)
 def _embed_cached(text: str) -> tuple[float, ...]:
     client = _get_client()
-    if client is None:
+    if client is None or not settings.GROQ_EMBEDDING_MODEL:
         return ()
     response = client.embeddings.create(model=settings.GROQ_EMBEDDING_MODEL, input=text)
     return tuple(response.data[0].embedding)

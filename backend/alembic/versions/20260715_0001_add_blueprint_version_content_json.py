@@ -2,11 +2,6 @@
 
 Revision ID: 20260715_0001
 Revises: 20260712_0006
-
-Adds the nullable JSONB seed column the Generation pipeline writes to
-(BlueprintSeed, including roles[]). Purely additive: existing columns,
-rows, and queries are unaffected. Column stays NULL until the Generation
-track's orchestrator starts persisting content_json.
 """
 
 from __future__ import annotations

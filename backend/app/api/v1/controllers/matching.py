@@ -26,7 +26,7 @@ RoleDescriptionFilter = Annotated[
 ]
 
 
-@router.get("", response_model=MatchListResponse)
+@router.get("/matching", response_model=MatchListResponse)
 def match_developers(
     db: DbSession,
     current_user: CurrentUser,
@@ -43,7 +43,7 @@ def match_developers(
     )
 
 
-@router.get("/semantic", response_model=MatchListResponse)
+@router.get("/matching/semantic", response_model=MatchListResponse)
 def match_developers_semantic(
     db: DbSession,
     current_user: CurrentUser,
@@ -62,19 +62,7 @@ def match_developers_semantic(
     )
 
 
-# ---------------------------------------------------------------------------
-# Final target flow: GET /blueprints/{blueprint_id}/matches
-#
-# Mounted separately (own router, registered under the "/blueprints" prefix
-# in api.py) so this file never has to touch app/api/v1/controllers/blueprints.py
-# owned by the Blueprint/Generation track. No skills query param -- roles and
-# their required skills come straight from the blueprint's generated content.
-# ---------------------------------------------------------------------------
-
-blueprint_matches_router = APIRouter()
-
-
-@blueprint_matches_router.get("/{blueprint_id}/matches", response_model=BlueprintMatchesResponse)
+@router.get("/blueprints/{blueprint_id}/matches", response_model=BlueprintMatchesResponse)
 def match_developers_for_blueprint(
     blueprint_id: UUID,
     db: DbSession,
@@ -85,7 +73,6 @@ def match_developers_for_blueprint(
     blueprint = blueprint_service.get_blueprint(
         db, blueprint_id, current_user, require_ownership=False
     )
-
     version = blueprint.current_version or blueprint.pending_version
     content = version.content_json if version is not None else None
     roles = content.get("roles", []) if isinstance(content, dict) else []

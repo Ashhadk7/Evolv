@@ -43,7 +43,4 @@ api_router.include_router(me.router, prefix="/me", tags=["me"])
 api_router.include_router(connections.router, prefix="/connections", tags=["connections"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
-api_router.include_router(matching.router, prefix="/matching", tags=["matching"])
-api_router.include_router(
-    matching.blueprint_matches_router, prefix="/blueprints", tags=["matching"]
-)
+api_router.include_router(matching.router, tags=["matching"])

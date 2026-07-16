@@ -30,8 +30,6 @@ class MatchListResponse(BaseModel):
 
 
 class RoleMatchResponse(BaseModel):
-    """Ranked developer matches for a single role from a blueprint's roles[]."""
-
     model_config = ConfigDict(extra="forbid")
 
     role_title: str
@@ -41,14 +39,6 @@ class RoleMatchResponse(BaseModel):
 
 
 class BlueprintMatchesResponse(BaseModel):
-    """Response for GET /blueprints/{blueprint_id}/matches.
-
-    `roles` is empty (not an error) whenever the blueprint has no version yet,
-    or its version's content_json / roles[] hasn't been populated by the
-    Generation pipeline yet -- so the frontend never breaks while that
-    track is still landing.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     blueprint_id: UUID

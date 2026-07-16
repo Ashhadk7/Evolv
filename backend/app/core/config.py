@@ -44,10 +44,10 @@ class Settings(BaseSettings):
     TWILIO_TIMEOUT_SECONDS: int = 20
     GOOGLE_CALENDAR_CLIENT_ID: str | None = None
     GOOGLE_CALENDAR_CLIENT_SECRET: SecretStr | None = None
-    GOOGLE_CALENDAR_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/google/callback"
-    GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str = "http://localhost:3000"
+    GOOGLE_CALENDAR_REDIRECT_URI: str | None = None
+    GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str | None = None
     GROQ_API_KEY: SecretStr | None = None
-    GROQ_EMBEDDING_MODEL: str = "nomic-embed-text-v1_5"
+    GROQ_EMBEDDING_MODEL: str | None = None
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

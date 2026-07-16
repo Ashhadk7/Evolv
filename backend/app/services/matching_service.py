@@ -44,6 +44,41 @@ def _score_developer(
     return round(weighted * 100)
 
 
+def _build_match(
+    user, profile, match_score: int, semantic_score: int | None = None
+) -> MatchedDeveloperResponse:
+    return MatchedDeveloperResponse(
+        user_id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        avatar_url=user.avatar_url,
+        job_title=profile.job_title,
+        skills=profile.skills,
+        experience_years=profile.experience_years,
+        availability=profile.availability,
+        open_to_remote=profile.open_to_remote,
+        rating_avg=float(profile.rating_avg or 0),
+        match_score=match_score,
+        semantic_score=semantic_score,
+    )
+
+
+def _score_all(
+    developers, required_skills: list[str], min_experience: int
+) -> list[MatchedDeveloperResponse]:
+    scored: list[MatchedDeveloperResponse] = []
+    for user in developers:
+        profile = user.developer_profile
+        if profile is None or (profile.experience_years or 0) < min_experience:
+            continue
+        score = _score_developer(
+            profile.skills, required_skills, profile.experience_years, profile.availability
+        )
+        scored.append(_build_match(user, profile, score))
+    scored.sort(key=lambda item: item.match_score, reverse=True)
+    return scored
+
+
 def get_matches(
     db: Session,
     *,
@@ -52,107 +87,8 @@ def get_matches(
     limit: int = 10,
 ) -> MatchListResponse:
     developers = matching_repository.list_available_developers(db)
-
-    scored: list[MatchedDeveloperResponse] = []
-    for user in developers:
-        profile = user.developer_profile
-        if profile is None:
-            continue
-        if (profile.experience_years or 0) < min_experience:
-            continue
-
-        score = _score_developer(
-            developer_skills=profile.skills,
-            required_skills=required_skills,
-            experience_years=profile.experience_years,
-            available=profile.availability,
-        )
-
-        scored.append(
-            MatchedDeveloperResponse(
-                user_id=user.id,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                avatar_url=user.avatar_url,
-                job_title=profile.job_title,
-                skills=profile.skills,
-                experience_years=profile.experience_years,
-                availability=profile.availability,
-                open_to_remote=profile.open_to_remote,
-                rating_avg=float(profile.rating_avg or 0),
-                match_score=score,
-            )
-        )
-
-    scored.sort(key=lambda item: item.match_score, reverse=True)
-    top_matches = scored[:limit]
-
-    return MatchListResponse(total=len(scored), items=top_matches)
-
-
-# ---------------------------------------------------------------------------
-# Final target flow: GET /blueprints/{id}/matches
-#
-# Reuses the exact same _score_developer() weights/logic as get_matches()
-# above -- nothing about the scoring algorithm changes. The only difference
-# is *where* required_skills comes from: instead of a manual `?skills=`
-# query param, it's read per-role from the blueprint's content_json["roles"]
-# (produced by the Generation track's Tech Stack agent, per Contract 3).
-# ---------------------------------------------------------------------------
-
-
-def _extract_role_title(role: dict) -> str:
-    title = role.get("title") or role.get("role_title")
-    return str(title) if title else "Unspecified Role"
-
-
-def _extract_role_skills(role: dict) -> list[str]:
-    skills = role.get("skills")
-    if not isinstance(skills, list):
-        return []
-    return [str(skill).strip() for skill in skills if str(skill).strip()]
-
-
-def _rank_developers_for_role(
-    developers: list,
-    *,
-    required_skills: list[str],
-    min_experience: int,
-    limit: int,
-) -> list[MatchedDeveloperResponse]:
-    scored: list[MatchedDeveloperResponse] = []
-    for user in developers:
-        profile = user.developer_profile
-        if profile is None:
-            continue
-        if (profile.experience_years or 0) < min_experience:
-            continue
-
-        score = _score_developer(
-            developer_skills=profile.skills,
-            required_skills=required_skills,
-            experience_years=profile.experience_years,
-            available=profile.availability,
-        )
-
-        scored.append(
-            MatchedDeveloperResponse(
-                user_id=user.id,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                avatar_url=user.avatar_url,
-                job_title=profile.job_title,
-                skills=profile.skills,
-                experience_years=profile.experience_years,
-                availability=profile.availability,
-                open_to_remote=profile.open_to_remote,
-                rating_avg=float(profile.rating_avg or 0),
-                match_score=score,
-            )
-        )
-
-    scored.sort(key=lambda item: item.match_score, reverse=True)
-    return scored[:limit]
+    scored = _score_all(developers, required_skills, min_experience)
+    return MatchListResponse(total=len(scored), items=scored[:limit])
 
 
 def get_matches_for_blueprint_roles(
@@ -164,32 +100,21 @@ def get_matches_for_blueprint_roles(
     min_experience: int = 0,
     limit: int = 10,
 ) -> BlueprintMatchesResponse:
-    """Rank developers per role, straight from a blueprint's generated roles[].
-
-    `roles` is expected to be `content_json["roles"]` i.e. a list of
-    `{"title": str, "count": int, "skills": [str, ...]}` dicts. If it's empty
-    (Generation hasn't produced/populated it yet), this returns an empty
-    `roles` list rather than raising -- so callers/pages never break.
-    """
     developers = matching_repository.list_available_developers(db)
 
     role_matches: list[RoleMatchResponse] = []
     for role in roles:
         if not isinstance(role, dict):
             continue
-        required_skills = _extract_role_skills(role)
-        ranked = _rank_developers_for_role(
-            developers,
-            required_skills=required_skills,
-            min_experience=min_experience,
-            limit=limit,
-        )
+        title = str(role.get("title") or role.get("role_title") or "Unspecified Role")
+        skills = [str(skill).strip() for skill in role.get("skills", []) if str(skill).strip()]
+        scored = _score_all(developers, skills, min_experience)
         role_matches.append(
             RoleMatchResponse(
-                role_title=_extract_role_title(role),
-                required_skills=required_skills,
-                total_matches=len(ranked),
-                matches=ranked,
+                role_title=title,
+                required_skills=skills,
+                total_matches=len(scored),
+                matches=scored[:limit],
             )
         )
 
@@ -227,45 +152,24 @@ def get_matches_semantic(
     scored: list[MatchedDeveloperResponse] = []
     for user in developers:
         profile = user.developer_profile
-        if profile is None:
-            continue
-        if (profile.experience_years or 0) < min_experience:
+        if profile is None or (profile.experience_years or 0) < min_experience:
             continue
 
         rule_score = _score_developer(
-            developer_skills=profile.skills,
-            required_skills=required_skills,
-            experience_years=profile.experience_years,
-            available=profile.availability,
+            profile.skills, required_skills, profile.experience_years, profile.availability
         )
+        similarity = _semantic_similarity(profile.skills, role_description)
 
-        semantic_similarity = _semantic_similarity(profile.skills, role_description)
         if semantic_active:
             combined_score = round(
-                RULE_SCORE_WEIGHT * rule_score
-                + SEMANTIC_SCORE_WEIGHT * (semantic_similarity * 100)
+                RULE_SCORE_WEIGHT * rule_score + SEMANTIC_SCORE_WEIGHT * (similarity * 100)
             )
+            semantic_score = round(similarity * 100)
         else:
             combined_score = rule_score
+            semantic_score = None
 
-        scored.append(
-            MatchedDeveloperResponse(
-                user_id=user.id,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                avatar_url=user.avatar_url,
-                job_title=profile.job_title,
-                skills=profile.skills,
-                experience_years=profile.experience_years,
-                availability=profile.availability,
-                open_to_remote=profile.open_to_remote,
-                rating_avg=float(profile.rating_avg or 0),
-                match_score=combined_score,
-                semantic_score=round(semantic_similarity * 100) if semantic_active else None,
-            )
-        )
+        scored.append(_build_match(user, profile, combined_score, semantic_score))
 
     scored.sort(key=lambda item: item.match_score, reverse=True)
-    top_matches = scored[:limit]
-
-    return MatchListResponse(total=len(scored), items=top_matches)
+    return MatchListResponse(total=len(scored), items=scored[:limit])
