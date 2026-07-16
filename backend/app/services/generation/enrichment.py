@@ -150,7 +150,7 @@ async def _collect_research(
                 ResearchSource(
                     provider="tavily",
                     kind="web",
-                    title=f"Market Intelligence Report - {query}",
+                    title=f"Market Intelligence Report - {query}"[:170],
                     url=f"https://{fallback_domain}/reports/market-{idx+1}",
                     snippet=f"Strategic assessment and competitive overview related to: '{query}'. Standard baseline indicators show positive traction trends.",
                     domain=fallback_domain,
