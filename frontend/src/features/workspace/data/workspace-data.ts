@@ -160,10 +160,14 @@ export const WORKSPACE_STAGES = ["All Stages", "Published", "Draft"];
 
 export const WORKSPACE_SORT_OPTIONS = ["Viability", "Recent", "Impressions", "Market Potential"];
 
+// `key` matches the backend agent names written to content_json.generation.completedAgents.
 export const FORGE_AGENTS = [
-  { label: "Market Agent", desc: "Researching market size, growth, and demand signals..." },
-  { label: "Competitor Agent", desc: "Mapping direct and adjacent competitors..." },
-  { label: "Persona Agent", desc: "Building customer, buyer, and gatekeeper personas..." },
+  { key: "market", label: "Market Agent", desc: "Researching market size, growth, and demand signals..." },
+  { key: "competitor", label: "Competitor Agent", desc: "Mapping direct and adjacent competitors..." },
+  { key: "persona", label: "Persona Agent", desc: "Building customer, buyer, and gatekeeper personas..." },
+  { key: "product", label: "Product Agent", desc: "Scoping MVP features and boundaries..." },
+  { key: "strategy", label: "Strategy Agent", desc: "Shaping go-to-market moves and roadmap..." },
+  { key: "techStack", label: "Tech Stack Agent", desc: "Selecting the stack and team roles..." },
 ];
 
 export const WORKSPACE_INSIGHTS = [

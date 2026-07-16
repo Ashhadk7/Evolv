@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -10,10 +9,11 @@ from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.client import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
+from app.services.generation.text import clean
 
-ShortTitle = Annotated[str, Field(min_length=3, max_length=80)]
-ShortText = Annotated[str, Field(min_length=12, max_length=180)]
-StrategyStep = Annotated[str, Field(min_length=10, max_length=150)]
+ShortTitle = Annotated[str, Field(min_length=1, max_length=80)]
+ShortText = Annotated[str, Field(min_length=1, max_length=180)]
+StrategyStep = Annotated[str, Field(min_length=1, max_length=150)]
 
 
 class StrategyItem(BaseModel):
@@ -24,7 +24,7 @@ class StrategyItem(BaseModel):
 
 
 class StrategyAddition(StrategyItem):
-    impact: str = Field(min_length=3, max_length=40)
+    impact: str = Field(min_length=1, max_length=40)
 
 
 class StrategyRisk(BaseModel):
@@ -53,7 +53,7 @@ async def run_strategy(
     competitor: CompetitorOutput,
     differentiator: str,
 ) -> StrategyOutput:
-    differentiator = _clean(differentiator)
+    differentiator = clean(differentiator)
     if not differentiator:
         raise ValueError("Strategy agent requires a differentiator.")
 
@@ -76,7 +76,3 @@ def _agent_json(payload: BaseModel) -> str:
         exclude={"sources", "research_metadata"},
     )
     return json.dumps(data, ensure_ascii=True)
-
-
-def _clean(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip()

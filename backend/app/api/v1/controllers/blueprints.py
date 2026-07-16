@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, BackgroundTasks, Query, status
 
 from app.api.deps import CurrentFounder, CurrentUser, DbSession
 from app.schemas.applications import SavedBlueprintResponse
@@ -45,10 +45,16 @@ def create_blueprint(
 
 @router.post("/generate", response_model=BlueprintResponse, status_code=status.HTTP_201_CREATED)
 async def generate_blueprint(
-    payload: BlueprintGenerateRequest, db: DbSession, current_user: CurrentFounder
+    payload: BlueprintGenerateRequest,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
 ) -> BlueprintResponse:
-    blueprint = await blueprint_generation_service.generate_blueprint_from_intake(
-        db, current_user, payload
+    # Return the blueprint in a `generating` state right away; the agent pipeline
+    # runs in the background so this request doesn't block (and can't time out).
+    blueprint = blueprint_generation_service.start_generation(db, current_user, payload)
+    background_tasks.add_task(
+        blueprint_generation_service.run_generation, blueprint.id, payload
     )
     return BlueprintResponse.model_validate(blueprint)
 

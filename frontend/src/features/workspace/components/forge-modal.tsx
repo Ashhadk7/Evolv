@@ -1,9 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
-import { generateBlueprint } from "@/features/blueprints/blueprints-api";
+import {
+  blueprintGeneration,
+  generateBlueprint,
+  getBlueprint,
+} from "@/features/blueprints/blueprints-api";
 import type { Blueprint } from "@/features/blueprints/types";
 import { FORGE_AGENTS, WORKSPACE_INDUSTRIES } from "@/features/workspace/data/workspace-data";
 import { getApiErrorMessage } from "@/lib/api";
@@ -28,27 +32,19 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
   const [constraints, setConstraints] = useState("");
   const [generatedBlueprint, setGeneratedBlueprint] = useState<Blueprint | null>(null);
   const [generationError, setGenerationError] = useState("");
-  const [agentIndex, setAgentIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [completedAgents, setCompletedAgents] = useState<string[]>([]);
+
+  const progress = Math.round((completedAgents.length / FORGE_AGENTS.length) * 100);
 
   const startGeneration = async () => {
     if (!idea.trim() || !industry) return;
     setGenerationError("");
     setGeneratedBlueprint(null);
+    setCompletedAgents([]);
     setPhase("generating");
-    setAgentIndex(0);
-    setProgress(0);
-
-    let tick = 0;
-    intervalRef.current = setInterval(() => {
-      tick += 1;
-      setProgress((current) => Math.min(current + 2, 92));
-      setAgentIndex(tick % FORGE_AGENTS.length);
-    }, 900);
 
     try {
-      const blueprint = await generateBlueprint({
+      const pending = await generateBlueprint({
         idea,
         industry,
         target_customer: targetCustomer,
@@ -61,19 +57,29 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
         monetization,
         constraints,
       });
+      const blueprint = await pollGeneration(pending.id);
       setGeneratedBlueprint(blueprint);
-      setAgentIndex(FORGE_AGENTS.length - 1);
-      setProgress(100);
       setPhase("done");
     } catch (error) {
       setGenerationError(getApiErrorMessage(error));
       setPhase("input");
-    } finally {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    }
+  };
+
+  // The blueprint is created immediately in a `generating` state; poll the real
+  // backend status (no fake timer) until the agent pipeline reports done/failed.
+  const pollGeneration = async (id: string): Promise<Blueprint> => {
+    for (let attempt = 0; attempt < 180; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const blueprint = await getBlueprint(id);
+      const generation = blueprintGeneration(blueprint);
+      setCompletedAgents(generation.completedAgents);
+      if (generation.status === "completed") return blueprint;
+      if (generation.status === "failed") {
+        throw new Error(generation.error ?? "Blueprint generation failed. Please try again.");
       }
     }
+    throw new Error("Blueprint generation is taking longer than expected. Please try again.");
   };
 
   const handleAccept = () => {
@@ -241,14 +247,16 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                   <div className="mb-1 text-sm font-bold text-[#1a2e26]">
                     Generating your blueprint...
                   </div>
-                  <div className="text-xs text-[#7a9e8e]">3 AI agents are working on your idea</div>
+                  <div className="text-xs text-[#7a9e8e]">
+                    {FORGE_AGENTS.length} AI agents are working on your idea
+                  </div>
                 </div>
                 <div className="mb-6 flex flex-col gap-3.5">
                   {FORGE_AGENTS.map((agent, index) => {
-                    const done = progress === 100 || index < agentIndex;
-                    const active = progress !== 100 && index === agentIndex;
+                    const done = completedAgents.includes(agent.key);
+                    const active = !done && index === completedAgents.length;
                     return (
-                      <div key={agent.label} className="flex items-center gap-3">
+                      <div key={agent.key} className="flex items-center gap-3">
                         <div
                           className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
                             done

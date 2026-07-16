@@ -1,23 +1,20 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 from pydantic import ValidationError
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models.blueprint import VersionState
+from app.db.session import SessionLocal
+from app.models.blueprint import Blueprint, BlueprintVersion, VersionState
 from app.models.user import User
 from app.repositories import blueprints as blueprints_repository
 from app.schemas.blueprints import BlueprintGenerateRequest, BlueprintVersionCreate, LevelRating
-from app.services.exceptions import (
-    BlueprintAgentInputError,
-    BlueprintGenerationError,
-    BlueprintPersistenceError,
-    FounderProfileRequiredError,
-)
+from app.services.exceptions import BlueprintPersistenceError, FounderProfileRequiredError
 from app.services.generation.agents.competitor import CompetitorOutput, run_competitor
 from app.services.generation.agents.market import MarketOutput, run_market
 from app.services.generation.agents.persona import PersonaOutput, run_persona
@@ -27,34 +24,76 @@ from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_
 from app.services.generation.client import AgentClientError
 from app.services.generation.enrichment import EnrichmentError
 
+logger = logging.getLogger(__name__)
+
 CONTENT_SCHEMA_VERSION = 4
+ALL_AGENTS = ["market", "competitor", "persona", "product", "strategy", "techStack"]
 
 
-async def generate_blueprint_from_intake(
-    db: Session,
-    current_user: User,
-    payload: BlueprintGenerateRequest,
-):
+def start_generation(
+    db: Session, current_user: User, payload: BlueprintGenerateRequest
+) -> Blueprint:
+    """Create the blueprint immediately in a `generating` state and return it.
+
+    The slow agent pipeline runs afterwards in a background task (run_generation),
+    so the HTTP request returns in milliseconds instead of blocking for a minute.
+    """
     founder_id = _require_founder_profile(current_user)
-    agent_brief = _build_agent_brief(payload)
+    blueprint = blueprints_repository.create_blueprint(db, founder_id, payload.visibility)
+    blueprints_repository.create_version(
+        db, blueprint.id, VersionState.CURRENT, _pending_version(payload)
+    )
+    db.commit()
+
+    saved = blueprints_repository.get_blueprint_by_id(db, blueprint.id)
+    if saved is None:
+        raise BlueprintPersistenceError("Blueprint could not be created.")
+    return saved
+
+
+async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) -> None:
+    """Run the agent pipeline and write the result onto the blueprint's version.
+
+    Runs in the background with its own DB session. Independent agents run
+    concurrently; dependent ones wait only for what they actually need. Each
+    agent marks itself done the moment it finishes, so the frontend's poll shows
+    progress advancing one agent at a time.
+
+    ponytail: uses FastAPI BackgroundTasks (in-process) — if the server restarts
+    mid-generation the blueprint stays `generating`. Move to a durable queue only
+    if that becomes a real problem at scale.
+    """
+    db = SessionLocal()
+    completed: list[str] = []
+
+    async def track(name: str, coro):
+        result = await coro
+        completed.append(name)
+        _update_generation(db, blueprint_id, completedAgents=list(completed))
+        return result
 
     try:
-        market = await run_market(agent_brief, payload.industry)
-        competitor = await run_competitor(agent_brief, payload.industry)
-        persona = await run_persona(agent_brief, payload.industry)
-        product = await run_product(agent_brief, competitor.positioning_angle)
-        tech_stack = await run_tech_stack(agent_brief, payload.industry, product.features)
-        strategy = await run_strategy(market, competitor, competitor.positioning_angle)
-    except ValueError as exc:
-        raise BlueprintAgentInputError(str(exc)) from exc
-    except (AgentClientError, EnrichmentError, ValidationError) as exc:
-        raise BlueprintGenerationError(
-            "Blueprint generation could not complete. Check provider keys and limits."
-        ) from exc
+        agent_brief = _build_agent_brief(payload)
 
-    try:
-        blueprint = blueprints_repository.create_blueprint(db, founder_id, payload.visibility)
-        version_payload = _build_blueprint_content_payload (
+        # Stage 1 — market, competitor, persona are independent: run together.
+        market, competitor, persona = await asyncio.gather(
+            track("market", run_market(agent_brief, payload.industry)),
+            track("competitor", run_competitor(agent_brief, payload.industry)),
+            track("persona", run_persona(agent_brief, payload.industry)),
+        )
+
+        # Stage 2 — both need only stage-1 output.
+        product, strategy = await asyncio.gather(
+            track("product", run_product(agent_brief, competitor.positioning_angle)),
+            track("strategy", run_strategy(market, competitor, competitor.positioning_angle)),
+        )
+
+        # Stage 3 — needs product features.
+        tech_stack = await track(
+            "techStack", run_tech_stack(agent_brief, payload.industry, product.features)
+        )
+
+        content = _build_blueprint_content_payload(
             payload=payload,
             market=market,
             competitor=competitor,
@@ -63,18 +102,78 @@ async def generate_blueprint_from_intake(
             tech_stack=tech_stack,
             strategy=strategy,
         )
-        blueprints_repository.create_version(
-            db, blueprint.id, VersionState.CURRENT, version_payload
+        _finalize(db, blueprint_id, content)
+    except ValueError as exc:
+        _update_generation(db, blueprint_id, status="failed", error=str(exc))
+    except (AgentClientError, EnrichmentError, ValidationError):
+        # Log the real cause (provider error / schema mismatch) — the user-facing
+        # message stays generic, but a failed generation must be diagnosable.
+        logger.warning("Blueprint generation failed for %s", blueprint_id, exc_info=True)
+        _update_generation(
+            db,
+            blueprint_id,
+            status="failed",
+            error="Blueprint generation could not complete. Check provider keys and limits.",
         )
-        db.commit()
-    except SQLAlchemyError as exc:
-        db.rollback()
-        raise BlueprintPersistenceError("Generated blueprint could not be saved.") from exc
+    except Exception:
+        logger.exception("Unexpected blueprint generation failure for %s", blueprint_id)
+        _update_generation(
+            db,
+            blueprint_id,
+            status="failed",
+            error="Blueprint generation failed unexpectedly. Please try again.",
+        )
+    finally:
+        db.close()
 
-    saved_blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint.id)
-    if saved_blueprint is None:
-        raise BlueprintPersistenceError("Generated blueprint could not be loaded.")
-    return saved_blueprint
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _pending_version(payload: BlueprintGenerateRequest) -> BlueprintVersionCreate:
+    return BlueprintVersionCreate(
+        name=_derive_blueprint_name(payload),
+        industry=payload.industry,
+        idea_desc=payload.idea,
+        differentiator="Generating…",
+        ai_recommend="Generating…",
+        viability=0,
+        market_potential=0,
+        developer_demand=LevelRating.MEDIUM,
+        content_json={
+            "schemaVersion": CONTENT_SCHEMA_VERSION,
+            "intake": _intake_json(payload),
+            "generation": {"status": "generating", "completedAgents": [], "updatedAt": _now()},
+            "updatedAt": _now(),
+        },
+    )
+
+
+def _current_version(db: Session, blueprint_id: UUID) -> BlueprintVersion | None:
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    return blueprint.current_version if blueprint else None
+
+
+# One write path for both progress updates and failures — merges the given
+# fields into the version's `generation` block.
+def _update_generation(db: Session, blueprint_id: UUID, **changes: Any) -> None:
+    version = _current_version(db, blueprint_id)
+    if version is None:
+        return
+    content = dict(version.content_json or {})
+    content["generation"] = {**content.get("generation", {}), **changes, "updatedAt": _now()}
+    content["updatedAt"] = _now()
+    version.content_json = content
+    db.commit()
+
+
+def _finalize(db: Session, blueprint_id: UUID, content: BlueprintVersionCreate) -> None:
+    version = _current_version(db, blueprint_id)
+    if version is None:
+        raise BlueprintPersistenceError("Generated blueprint version disappeared.")
+    blueprints_repository.update_version(db, version, content)
+    db.commit()
 
 
 def _require_founder_profile(user: User) -> UUID:
@@ -85,7 +184,7 @@ def _require_founder_profile(user: User) -> UUID:
     return user.founder_profile.user_id
 
 
-def _build_blueprint_content_payload (
+def _build_blueprint_content_payload(
     *,
     payload: BlueprintGenerateRequest,
     market: MarketOutput,
@@ -108,17 +207,10 @@ def _build_blueprint_content_payload (
         },
         "generation": {
             "status": "completed",
-            "completedAgents": [
-                "market",
-                "competitor",
-                "persona",
-                "product",
-                "techStack",
-                "strategy",
-            ],
-            "updatedAt": datetime.now(UTC).isoformat(),
+            "completedAgents": ALL_AGENTS,
+            "updatedAt": _now(),
         },
-        "updatedAt": datetime.now(UTC).isoformat(),
+        "updatedAt": _now(),
     }
 
     viability = _derive_viability(market, competitor, persona)

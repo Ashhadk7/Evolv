@@ -1,35 +1,35 @@
 from __future__ import annotations
 
-import re
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.services.generation.client import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
+from app.services.generation.text import clean
 
 PersonaSegment = Literal["Primary user", "Economic buyer", "Gatekeeper"]
-ShortGoal = Annotated[str, Field(min_length=8, max_length=120)]
-ShortPain = Annotated[str, Field(min_length=8, max_length=130)]
-ShortTrigger = Annotated[str, Field(min_length=8, max_length=130)]
-ShortObjection = Annotated[str, Field(min_length=8, max_length=130)]
-ShortChannel = Annotated[str, Field(min_length=4, max_length=80)]
-ShortRisk = Annotated[str, Field(min_length=8, max_length=140)]
+ShortGoal = Annotated[str, Field(min_length=1, max_length=120)]
+ShortPain = Annotated[str, Field(min_length=1, max_length=130)]
+ShortTrigger = Annotated[str, Field(min_length=1, max_length=130)]
+ShortObjection = Annotated[str, Field(min_length=1, max_length=130)]
+ShortChannel = Annotated[str, Field(min_length=1, max_length=80)]
+ShortRisk = Annotated[str, Field(min_length=1, max_length=140)]
 
 
 class PersonaCard(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
     segment: PersonaSegment
-    name: str = Field(min_length=2, max_length=70)
-    role: str = Field(min_length=3, max_length=90)
-    context: str = Field(min_length=25, max_length=220)
+    name: str = Field(min_length=1, max_length=70)
+    role: str = Field(min_length=1, max_length=90)
+    context: str = Field(min_length=1, max_length=220)
     goals: list[ShortGoal] = Field(min_length=2, max_length=4)
     pains: list[ShortPain] = Field(min_length=2, max_length=4)
     jobs_to_be_done: list[ShortGoal] = Field(alias="jobsToBeDone", min_length=2, max_length=3)
     buying_triggers: list[ShortTrigger] = Field(alias="buyingTriggers", min_length=2, max_length=3)
     objections: list[ShortObjection] = Field(min_length=2, max_length=3)
-    success_metric: str = Field(alias="successMetric", min_length=12, max_length=130)
+    success_metric: str = Field(alias="successMetric", min_length=1, max_length=130)
     acquisition_channels: list[ShortChannel] = Field(
         alias="acquisitionChannels", min_length=2, max_length=4
     )
@@ -46,7 +46,7 @@ class PersonaOutput(BaseModel):
     confidence: Literal["High", "Medium", "Low"]
 
     @model_validator(mode="after")
-    def require_expected_segments(self) -> "PersonaOutput":
+    def require_expected_segments(self) -> PersonaOutput:
         expected = {"Primary user", "Economic buyer", "Gatekeeper"}
         actual = {persona.segment for persona in self.personas}
         if actual != expected:
@@ -59,8 +59,8 @@ class PersonaOutput(BaseModel):
 
 
 async def run_persona(idea: str, industry: str) -> PersonaOutput:
-    idea = _clean(idea)
-    industry = _clean(industry)
+    idea = clean(idea)
+    industry = clean(industry)
     if not idea:
         raise ValueError("Persona agent requires a startup idea.")
     if not industry:
@@ -72,7 +72,3 @@ async def run_persona(idea: str, industry: str) -> PersonaOutput:
         render_prompt("persona_user", idea=idea, industry=industry),
         max_tokens=1200,
     )
-
-
-def _clean(value: str) -> str:
-    return re.sub(r"\s+", " ", value or "").strip()

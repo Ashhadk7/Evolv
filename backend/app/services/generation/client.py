@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import TypeVar
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel, ValidationError
 from app.core.config import get_settings
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+MAX_ATTEMPTS = 3
 
 
 class AgentClientError(RuntimeError):
@@ -49,15 +52,35 @@ async def call_agent(
     url = f"{settings.GROQ_API_BASE_URL.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
-    try:
-        async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        return _parse_agent_json(schema, content)
-    except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
-        raise AgentClientError("Groq returned an invalid agent response.") from exc
+    # Retry on rate limits (429 — common on Groq's free tier) and transient bad
+    # output. The happy path makes zero extra calls.
+    last_error: Exception | None = None
+    async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                if response.status_code == 429 and attempt < MAX_ATTEMPTS - 1:
+                    await asyncio.sleep(_retry_delay(response, attempt))
+                    continue
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"]
+                return _parse_agent_json(schema, content)
+            except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+                last_error = exc
+                if attempt < MAX_ATTEMPTS - 1:
+                    await asyncio.sleep(1.5 * (attempt + 1))
+                    continue
+    raise AgentClientError(f"Groq returned an invalid agent response: {last_error}") from last_error
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        try:
+            return min(float(retry_after), 20.0)
+        except ValueError:
+            pass
+    return min(2.0**attempt, 20.0)
 
 
 def _parse_agent_json(schema: type[SchemaT], content: str) -> SchemaT:

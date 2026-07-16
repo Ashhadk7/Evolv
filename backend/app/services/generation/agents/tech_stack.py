@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-import re
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.generation.client import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
+from app.services.generation.text import clean
 
-ShortReasoning = Annotated[str, Field(min_length=20, max_length=180)]
-MonthlyCost = Annotated[str, Field(min_length=3, max_length=40)]
-RoleSkills = Annotated[str, Field(min_length=8, max_length=140)]
+ShortReasoning = Annotated[str, Field(min_length=1, max_length=180)]
+MonthlyCost = Annotated[str, Field(min_length=1, max_length=40)]
+RoleSkills = Annotated[str, Field(min_length=1, max_length=140)]
 
 
 class TechStackLayer(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
-    chosen: str = Field(min_length=2, max_length=70)
+    chosen: str = Field(min_length=1, max_length=70)
     reasoning: ShortReasoning
     monthly_cost: MonthlyCost = Field(alias="monthlyCost")
 
@@ -35,7 +35,7 @@ class TechStackPlan(BaseModel):
 class TechRole(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
-    role: str = Field(min_length=3, max_length=80)
+    role: str = Field(min_length=1, max_length=80)
     count: int = Field(ge=1, le=3)
     skills: RoleSkills
     lead: bool
@@ -49,9 +49,9 @@ class TechStackOutput(BaseModel):
 
 
 async def run_tech_stack(idea: str, industry: str, features: list[str]) -> TechStackOutput:
-    idea = _clean(idea)
-    industry = _clean(industry)
-    cleaned_features = [_clean(feature) for feature in features]
+    idea = clean(idea)
+    industry = clean(industry)
+    cleaned_features = [clean(feature) for feature in features]
     cleaned_features = [feature for feature in cleaned_features if feature]
     if not idea:
         raise ValueError("Tech Stack agent requires a startup idea.")
@@ -71,7 +71,3 @@ async def run_tech_stack(idea: str, industry: str, features: list[str]) -> TechS
         ),
         max_tokens=1100,
     )
-
-
-def _clean(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip()

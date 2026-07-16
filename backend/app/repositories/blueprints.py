@@ -73,5 +73,23 @@ def create_version(
     return version
 
 
+def update_version(
+    db: Session,
+    version: BlueprintVersion,
+    content: BlueprintVersionCreate,
+) -> BlueprintVersion:
+    version.name = content.name
+    version.industry = content.industry
+    version.idea_desc = content.idea_desc
+    version.differentiator = content.differentiator
+    version.ai_recommend = content.ai_recommend
+    version.viability = content.viability
+    version.market_potential = content.market_potential
+    version.developer_demand = content.developer_demand
+    version.content_json = content.content_json
+    db.flush()
+    return version
+
+
 def delete_blueprint(db: Session, blueprint: Blueprint) -> None:
     db.delete(blueprint)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -9,6 +10,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.config import get_settings
+from app.services.generation.text import clean
 
 ResearchKind = Literal["market", "competitor"]
 ResearchQuery = tuple[str, int]
@@ -74,8 +76,8 @@ async def enrich_market_context(
 ) -> ResearchBundle:
     """Collect market-size, growth, competitor, and timing signals using Tavily only."""
 
-    idea = _clean(idea)
-    industry = _clean(industry)
+    idea = clean(idea)
+    industry = clean(industry)
     if not idea or not industry:
         raise EnrichmentError("Market enrichment requires both idea and industry.")
 
@@ -92,8 +94,8 @@ async def enrich_competitor_context(
 ) -> ResearchBundle:
     """Collect competitor and category signals using Tavily only."""
 
-    idea = _clean(idea)
-    industry = _clean(industry)
+    idea = clean(idea)
+    industry = clean(industry)
     if not idea or not industry:
         raise EnrichmentError("Competitor enrichment requires both idea and industry.")
 
@@ -124,14 +126,19 @@ async def _collect_research(
         timeout=settings.ENRICHMENT_TIMEOUT_SECONDS,
         headers={"User-Agent": "Evolv/0.1 blueprint-research"},
     ) as client:
-        for query, limit in queries:
-            try:
-                sources, usage = await _search_tavily(client, query, limit, tavily_key)
-            except Exception as exc:
-                provider_errors.append(f"tavily web: {exc}")
-                continue
-            collected.extend(sources)
-            credits_used += usage
+        # Independent searches — run them together instead of one-at-a-time.
+        results = await asyncio.gather(
+            *(_search_tavily(client, query, limit, tavily_key) for query, limit in queries),
+            return_exceptions=True,
+        )
+
+    for result in results:
+        if isinstance(result, Exception):
+            provider_errors.append(f"tavily web: {result}")
+            continue
+        sources, usage = result
+        collected.extend(sources)
+        credits_used += usage
 
     sources = _dedupe_sources(collected)[:max_sources]
     if not sources:
@@ -214,8 +221,8 @@ def _tavily_error_detail(response: httpx.Response) -> str:
 
 
 def _source_from_mapping(item: dict[str, Any]) -> ResearchSource | None:
-    title = _clean(_text(item.get("title")))
-    url = _clean(_text(item.get("url")))
+    title = clean(_text(item.get("title")))
+    url = clean(_text(item.get("url")))
     snippet = _clean_html(_text(item.get("content")))
     if not title or not url:
         return None
@@ -267,9 +274,13 @@ def _text(value: Any) -> str:
 
 
 def _clean_html(value: str) -> str:
-    value = re.sub(r"<[^>]+>", " ", value)
-    return _clean(value)
+    return clean(re.sub(r"<[^>]+>", " ", value))
 
 
-def _clean(value: str) -> str:
-    return re.sub(r"\s+", " ", value or "").strip()
+def attach_research(analysis: BaseModel, research: ResearchBundle) -> dict[str, Any]:
+    """Merge an agent's LLM analysis with its research sources + metadata."""
+    return {
+        **analysis.model_dump(by_alias=True),
+        "sources": [source.model_dump(by_alias=True) for source in research.sources],
+        "researchMetadata": research.to_metadata(),
+    }

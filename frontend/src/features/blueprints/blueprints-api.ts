@@ -73,6 +73,29 @@ export async function listBlueprints(): Promise<Blueprint[]> {
   return data.items.map(blueprintFromWire);
 }
 
+export async function getBlueprint(id: string): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}`, { auth: true });
+  return blueprintFromWire(data);
+}
+
+export interface BlueprintGeneration {
+  status: "generating" | "completed" | "failed";
+  completedAgents: string[];
+  error?: string;
+}
+
+// Reads the real generation status the backend writes into content_json — used
+// to poll a `generating` blueprint until the agent pipeline finishes.
+export function blueprintGeneration(bp: Blueprint): BlueprintGeneration {
+  const gen = asRecord((bp.contentJson as Record<string, unknown> | undefined)?.generation);
+  const status = gen?.status;
+  return {
+    status: status === "completed" || status === "failed" ? status : "generating",
+    completedAgents: stringArray(gen?.completedAgents),
+    error: typeof gen?.error === "string" ? gen.error : undefined,
+  };
+}
+
 export function blueprintFromWire(data: BlueprintWire): Blueprint {
   const version = data.current_version;
   if (!version) {
