@@ -118,6 +118,7 @@ async def _collect_research(
     queries: list[ResearchQuery],
     *,
     max_sources: int,
+) -> ResearchBundle:
     try:
         tavily_key = tavily_api_key()
     except Exception:
