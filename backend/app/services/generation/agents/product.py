@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.services.generation.client import call_agent
+from app.services.generation.agent_service import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
 

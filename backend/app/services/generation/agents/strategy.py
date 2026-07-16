@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
-from app.services.generation.client import call_agent
+from app.services.generation.agent_service import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
 

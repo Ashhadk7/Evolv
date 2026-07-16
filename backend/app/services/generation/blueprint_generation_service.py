@@ -21,7 +21,7 @@ from app.services.generation.agents.persona import PersonaOutput, run_persona
 from app.services.generation.agents.product import ProductOutput, run_product
 from app.services.generation.agents.strategy import StrategyOutput, run_strategy
 from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_stack
-from app.services.generation.client import AgentClientError
+from app.services.generation.agent_service import AgentServiceError
 from app.services.generation.enrichment import EnrichmentError
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         _finalize(db, blueprint_id, content)
     except ValueError as exc:
         _update_generation(db, blueprint_id, status="failed", error=str(exc))
-    except (AgentClientError, EnrichmentError, ValidationError):
+    except (AgentServiceError, EnrichmentError, ValidationError):
         # Log the real cause (provider error / schema mismatch) — the user-facing
         # message stays generic, but a failed generation must be diagnosable.
         logger.warning("Blueprint generation failed for %s", blueprint_id, exc_info=True)

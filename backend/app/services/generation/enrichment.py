@@ -9,7 +9,13 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.config import get_settings
+from app.services.provider_clients import (
+    TAVILY_SEARCH_PATH,
+    tavily_api_key,
+    tavily_headers,
+    tavily_http_client,
+    tavily_url,
+)
 from app.services.generation.text import clean
 
 ResearchKind = Literal["market", "competitor"]
@@ -112,12 +118,10 @@ async def _collect_research(
     queries: list[ResearchQuery],
     *,
     max_sources: int,
-) -> ResearchBundle:
-    settings = get_settings()
-    
-    tavily_key = ""
-    if settings.TAVILY_API_KEY:
-        tavily_key = settings.TAVILY_API_KEY.get_secret_value().strip()
+    try:
+        tavily_key = tavily_api_key()
+    except Exception:
+        tavily_key = ""
 
     provider_errors: list[str] = []
     collected: list[ResearchSource] = []
@@ -126,28 +130,26 @@ async def _collect_research(
     if not tavily_key:
         provider_errors.append("tavily web: TAVILY_API_KEY is not set or empty.")
     else:
-        async with httpx.AsyncClient(
-            timeout=settings.ENRICHMENT_TIMEOUT_SECONDS,
-            headers={"User-Agent": "Evolv/0.1 blueprint-research"},
-        ) as client:
-            # Independent searches — run them together instead of one-at-a-time.
-            results = await asyncio.gather(
-                *(_search_tavily(client, query, limit, tavily_key) for query, limit in queries),
-                return_exceptions=True,
-            )
-
-        for result in results:
-            if isinstance(result, Exception):
-                provider_errors.append(f"tavily web: {result}")
-                continue
-            sources, usage = result
-            collected.extend(sources)
-            credits_used += usage
+        try:
+            async with tavily_http_client() as client:
+                # Independent searches run together instead of one-at-a-time.
+                results = await asyncio.gather(
+                    *(_search_tavily(client, query, limit) for query, limit in queries),
+                    return_exceptions=True,
+                )
+            
+            for idx, res in enumerate(results):
+                if isinstance(res, Exception):
+                    provider_errors.append(f"tavily web: {res}")
+                else:
+                    sources, cost = res
+                    collected.extend(sources)
+                    credits_used += cost
+        except Exception as exc:
+            provider_errors.append(f"tavily web client: {exc}")
 
     sources = _dedupe_sources(collected)[:max_sources]
-    notes = [
-        "Tavily-only enrichment: web results are collected before Groq synthesis."
-    ]
+    notes: list[str] = []
 
     if not sources:
         # Fall back gracefully to mock results instead of raising EnrichmentError to abort the generation
@@ -185,12 +187,10 @@ async def _search_tavily(
     client: httpx.AsyncClient,
     query: str,
     limit: int,
-    api_key: str,
 ) -> tuple[list[ResearchSource], int]:
-    settings = get_settings()
     response = await client.post(
-        f"{settings.TAVILY_BASE_URL.rstrip('/')}/search",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        tavily_url(TAVILY_SEARCH_PATH),
+        headers=tavily_headers(),
         json={
             "query": query,
             "search_depth": "basic",

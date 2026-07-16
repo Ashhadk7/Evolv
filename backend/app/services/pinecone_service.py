@@ -1,33 +1,10 @@
-from __future__ import annotations
+from app.services.provider_clients import DEVELOPER_EMBEDDING_NAMESPACE, pinecone_index
 
-from typing import Any
-
-try:
-    from pinecone import Pinecone
-except ImportError:
-    Pinecone = None
-
-from app.core.config import settings
-
-DEVELOPER_NAMESPACE = "developers"
-
-_client = None
-
-
-def _get_client() -> Any | None:
-    global _client
-    if Pinecone is None or settings.PINECONE_API_KEY is None:
-        return None
-    if _client is None:
-        _client = Pinecone(api_key=settings.PINECONE_API_KEY.get_secret_value())
-    return _client
+DEVELOPER_NAMESPACE = DEVELOPER_EMBEDDING_NAMESPACE
 
 
 def _get_index():
-    client = _get_client()
-    if client is None or not settings.PINECONE_INDEX_NAME:
-        return None
-    return client.Index(name=settings.PINECONE_INDEX_NAME)
+    return pinecone_index()
 
 
 def index_ready() -> bool:
