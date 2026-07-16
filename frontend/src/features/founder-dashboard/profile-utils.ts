@@ -221,6 +221,8 @@ export function getFounderEducationSummary(profile: FounderProfileShape) {
   return formatFounderEducations(getFounderEducations(profile)) || profile.education?.trim() || "";
 }
 
+// KEEP IN SYNC with backend ensure_complete_profile_fields (services/founder_profiles.py).
+// This is the UX check; the backend is the enforced gate. Change both together.
 export function getMissingFounderProfileFields(profile: FounderProfileShape) {
   const domains = Array.isArray(profile.domains) ? profile.domains : [];
   const missing: string[] = [];

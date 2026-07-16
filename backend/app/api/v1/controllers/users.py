@@ -36,7 +36,7 @@ def list_users(
     role: RoleFilter = None,
     search: SearchFilter = None,
     limit: LimitFilter = 50,
-    offset: LimitFilter = 0,
+    offset: OffsetFilter = 0,
 ) -> UserListResponse:
     users, total = users_repository.list_users(
         db,

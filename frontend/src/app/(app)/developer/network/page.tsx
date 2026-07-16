@@ -12,7 +12,6 @@ export default function DevNetworkPage() {
 
   return (
     <Network
-      onNavigate={nav.navigateDeveloper}
       onMessage={nav.handleOpenNetworkMessage}
       onPendingCountChange={setNetworkRequestCount}
       profileComplete={profileComplete}

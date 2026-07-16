@@ -1,20 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FounderContactProfile, NetworkMessageTarget } from "@/features/network/types";
 import {
   connectionApi,
   loadNetworkConnections,
   loadNetworkPeople,
 } from "@/features/network/lib/network-api";
-import {
-  getInitialNetworkState as getInitialDevState,
-  saveStoredState as saveDevState,
-} from "@/features/network/lib/developer-network-storage";
-import {
-  getInitialNetworkState as getInitialFounderState,
-  saveStoredState as saveFounderState,
-} from "@/features/network/lib/founder-network-storage";
 import type { StoredNetworkState } from "@/features/network/types";
 
 interface UseNetworkProps {
@@ -34,29 +26,28 @@ export function useNetwork({
 }: UseNetworkProps) {
   // Select constants and storage loaders based on the role
   const [people, setPeople] = useState<FounderContactProfile[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [connectionIdByUser, setConnectionIdByUser] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    let active = true;
-    void loadNetworkPeople()
-      .then((items) => { if (active) setPeople(items); })
-      .catch(() => { if (active) setPeople([]); });
-    return () => { active = false; };
+  // Distinguish "loaded, genuinely empty" from "failed to load" so the UI can
+  // show a real error + retry instead of a misleading "No results found".
+  const loadPeople = useCallback(() => {
+    loadNetworkPeople()
+      .then((items) => { setPeople(items); setLoadError(false); })
+      .catch(() => { setPeople([]); setLoadError(true); });
   }, []);
 
-  const storageLoad = useMemo(() => {
-    return role === "developer" ? getInitialDevState : getInitialFounderState;
-  }, [role]);
-
-  const storageSave = useMemo(() => {
-    return role === "developer" ? saveDevState : saveFounderState;
-  }, [role]);
-
+  useEffect(() => { loadPeople(); }, [loadPeople]);
+  const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"network" | "requests" | "connections">("network");
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-
-  const [networkState, setNetworkState] = useState<StoredNetworkState>(storageLoad);
+  const [networkState, setNetworkState] = useState<StoredNetworkState>({
+    connected: {},
+    pendingIds: [],
+    ignoredIds: [],
+    outgoingIds: [],
+    requestNotes: {},
+  });
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
   const [requestModalPerson, setRequestModalPerson] = useState<FounderContactProfile | null>(null);
 
@@ -90,11 +81,6 @@ export function useNetwork({
     }).catch(() => undefined);
     return () => { active = false; };
   }, []);
-
-  // Save stored state on changes
-  useEffect(() => {
-    storageSave(networkState);
-  }, [networkState, storageSave]);
 
   // Notify of pending counts
   useEffect(() => {
@@ -199,10 +185,8 @@ export function useNetwork({
       const connectionId = connectionIdByUser[person.id];
       if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections);
     } else if (isCurrentlyRequested) {
-      setNetworkState((prev) => ({
-        ...prev,
-        outgoingIds: prev.outgoingIds.filter((oid) => oid !== person.id),
-      }));
+      const connectionId = connectionIdByUser[person.id];
+      if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections);
     } else {
       setRequestModalPerson(person);
     }
@@ -228,13 +212,8 @@ export function useNetwork({
 
   const handleMessage = (person: FounderContactProfile) => {
     if (requireProfileBeforeAction(() => handleMessage(person))) return;
-    const isCurrentlyRequested = outgoingSet.has(person.id);
-    if (isCurrentlyRequested) {
-      markOutgoingRequest(person);
-      openInbox(person, requestNotes[person.id]);
-      return;
-    }
-    openInbox(person);
+    const initialNote = outgoingSet.has(person.id) ? requestNotes[person.id] : undefined;
+    openInbox(person, initialNote);
   };
 
   const handleSendRequestWithoutNote = () => {
@@ -268,6 +247,8 @@ export function useNetwork({
     connectedPeople,
     filteredSuggested,
     filteredConnections,
+    loadError,
+    retryLoadPeople: loadPeople,
     handleAcceptRequest,
     handleIgnoreRequest,
     handleDismissSuggestion,

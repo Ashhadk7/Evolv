@@ -29,10 +29,10 @@ export function ProfileEditor({
   onToggleDomain,
   onEducationsChange,
   onPhotoUpload,
+  onRemovePhoto,
   onCancel,
   onSave,
   saving,
-  saveError,
 }: {
   local: FounderProfile;
   fullName: string;
@@ -44,10 +44,10 @@ export function ProfileEditor({
   onToggleDomain: (domain: string) => void;
   onEducationsChange: (next: FounderEducation[]) => void;
   onPhotoUpload: (file?: File) => void;
+  onRemovePhoto?: () => void;
   onCancel: () => void;
   onSave: () => void;
   saving: boolean;
-  saveError: string;
 }) {
   return (
     <motion.div
@@ -103,6 +103,16 @@ export function ProfileEditor({
               <p className="text-[12px]" style={{ color: TEXT_MUTED }}>
                 Edit each section, then save to refresh the public view.
               </p>
+              {onRemovePhoto && (
+                <button
+                  type="button"
+                  onClick={onRemovePhoto}
+                  className="mt-1.5 text-[11px] font-bold hover:underline"
+                  style={{ color: "#c0392b" }}
+                >
+                  Remove photo
+                </button>
+              )}
             </div>
           </div>
           <button
@@ -247,11 +257,6 @@ export function ProfileEditor({
         <Check size={15} weight="bold" />
         {saving ? "Saving..." : "Save Changes"}
       </motion.button>
-      {saveError && (
-        <p className="-mt-7 text-center text-[12px] font-semibold" style={{ color: TEXT_MUTED }}>
-          {saveError}
-        </p>
-      )}
     </motion.div>
   );
 }

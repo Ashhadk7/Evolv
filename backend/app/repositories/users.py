@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.developer_review import DeveloperReview
-from app.models.user import DeveloperProfile, User, UserRole
+from app.models.user import DeveloperProfile, FounderProfile, User, UserRole
 from app.schemas.auth import SignupRequest
 
 
@@ -113,7 +113,16 @@ def list_users(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[User], int]:
-    filters = [User.email_verified.is_(True)]
+    filters = [
+        User.email_verified.is_(True),
+        # Only users who have completed their profile are discoverable to others.
+        # profile_complete is a computed property on User, so filter the underlying
+        # founder/developer columns directly.
+        or_(
+            FounderProfile.profile_complete.is_(True),
+            DeveloperProfile.profile_complete.is_(True),
+        ),
+    ]
 
     if role is not None:
         filters.append(User.role == role)
@@ -128,10 +137,19 @@ def list_users(
             )
         )
 
-    count_statement = select(func.count()).select_from(User).where(*filters)
+    def with_profile_joins(statement):
+        return (
+            statement.outerjoin(FounderProfile, FounderProfile.user_id == User.id)
+            .outerjoin(DeveloperProfile, DeveloperProfile.user_id == User.id)
+        )
+
+    count_statement = with_profile_joins(select(func.count()).select_from(User)).where(*filters)
     users_statement = (
-        select(User)
-        .options(selectinload(User.founder_profile), selectinload(User.developer_profile))
+        with_profile_joins(
+            select(User).options(
+                selectinload(User.founder_profile), selectinload(User.developer_profile)
+            )
+        )
         .where(*filters)
         .order_by(User.created_at.desc())
         .offset(offset)

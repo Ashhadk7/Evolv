@@ -1,6 +1,21 @@
-import { getAccessToken } from "@/features/auth/lib/session";
+import { clearSession, getAccessToken } from "@/features/auth/lib/session";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+
+// A 401 on an authenticated call means the session is dead (expired, revoked,
+// or the account no longer exists) — the token can never become valid again by
+// retrying. Without this, callers that swallow errors (loadData, background
+// fetches) leave the UI showing stale cached/default data with no indication
+// the user isn't really signed in. Clearing + redirecting here, once, makes
+// that failure mode structurally impossible instead of relying on every
+// call site to handle it.
+function handleExpiredSession(): void {
+  if (typeof window === "undefined") return;
+  clearSession();
+  if (window.location.pathname !== "/sign-in") {
+    window.location.replace("/sign-in");
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -67,10 +82,16 @@ export function getApiErrorMessage(
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, auth = false } = options;
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // FormData (file uploads) must keep the browser-set multipart boundary, so we
+  // don't set Content-Type or JSON-stringify it.
+  const isFormData = body instanceof FormData;
+  const headers: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
   if (auth) {
     const token = getAccessToken();
-    if (!token) throw new ApiError(401, "You are not signed in.", "no_session");
+    if (!token) {
+      handleExpiredSession();
+      throw new ApiError(401, "You are not signed in.", "no_session");
+    }
     headers.Authorization = `Bearer ${token}`;
   }
 
@@ -79,7 +100,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     response = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, "Could not reach the server. Check your connection.", "network_error");
@@ -90,6 +111,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (auth && response.status === 401) handleExpiredSession();
     throw new ApiError(response.status, extractErrorDetail(data), data?.code ?? null);
   }
 

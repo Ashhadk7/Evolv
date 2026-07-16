@@ -7,6 +7,7 @@ import type { NetworkTabProps } from "@/features/network/types/founder-network-t
 import { ConnectionRequestModal } from "../connection-request-modal";
 import { PendingRequestsPanel } from "../pending-requests-panel";
 import { NetworkPersonCard } from "../network-person-card";
+import { NetworkLoadError } from "../network-load-error";
 import { useNetwork } from "@/features/network/lib/use-network";
 
 export function NetworkTab({
@@ -33,6 +34,8 @@ export function NetworkTab({
     connectedPeople,
     filteredSuggested,
     filteredConnections,
+    loadError,
+    retryLoadPeople,
     handleAcceptRequest,
     handleIgnoreRequest,
     handleDismissSuggestion,
@@ -188,7 +191,9 @@ export function NetworkTab({
             </div>
 
             {/* Grid of suggested matches */}
-            {filteredSuggested.length > 0 ? (
+            {loadError ? (
+              <NetworkLoadError onRetry={retryLoadPeople} />
+            ) : filteredSuggested.length > 0 ? (
               <motion.div
                 layout
                 className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
@@ -215,7 +220,7 @@ export function NetworkTab({
                 </div>
                 <h3 className="text-[14px] font-bold text-[#1a2e26]">No results found</h3>
                 <p className="mt-1 max-w-sm text-[11px] text-[#6b8e7e] leading-relaxed">
-                  We couldn't find any developers matching "{searchQuery}" and the active filters. Try refining your keywords.
+                  We couldn&apos;t find any developers matching &quot;{searchQuery}&quot; and the active filters. Try refining your keywords.
                 </p>
               </div>
             )}

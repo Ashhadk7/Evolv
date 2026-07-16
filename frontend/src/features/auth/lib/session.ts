@@ -25,9 +25,27 @@ function storage(remember: boolean): Storage {
   return remember ? localStorage : sessionStorage;
 }
 
+// The role is mirrored into a cookie so Next middleware can gate /founder and
+// /developer routes server-side. This cookie is a routing hint only — the real
+// security boundary is the API's bearer-token check. Its lifetime matches the
+// session store: persistent for "remember me", session-only otherwise.
+const ROLE_COOKIE = "evolv_role";
+
+function setRoleCookie(role: string, remember: boolean): void {
+  if (typeof document === "undefined") return;
+  const maxAge = remember ? "; Max-Age=2592000" : "";
+  document.cookie = `${ROLE_COOKIE}=${role}; path=/; SameSite=Lax${maxAge}`;
+}
+
+function clearRoleCookie(): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${ROLE_COOKIE}=; path=/; Max-Age=0; SameSite=Lax`;
+}
+
 export function saveSession(session: Session, remember: boolean): void {
   clearSession();
   storage(remember).setItem(SESSION_KEY, JSON.stringify(session));
+  setRoleCookie(session.user.role, remember);
 }
 
 export function getSession(): Session | null {
@@ -46,6 +64,7 @@ export function getAccessToken(): string | null {
 export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
+  clearRoleCookie();
   notifySessionCleared();
 }
 

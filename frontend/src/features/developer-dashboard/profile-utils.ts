@@ -160,6 +160,8 @@ export function getDeveloperLinkedIn(profile: DeveloperProfile) {
   return profile.linkedin?.trim() || profile.linkedIn?.trim() || "";
 }
 
+// KEEP IN SYNC with backend ensure_complete_profile_fields (services/developer_profiles.py).
+// This is the UX check; the backend is the enforced gate. Change both together.
 export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
   const missing: string[] = [];
 
