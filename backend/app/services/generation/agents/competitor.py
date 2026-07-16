@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.services.generation.client import call_agent
+from app.services.generation.agent_service import call_agent
 from app.services.generation.enrichment import (
     ResearchSource,
     attach_research,

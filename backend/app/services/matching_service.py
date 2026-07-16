@@ -12,7 +12,7 @@ from app.schemas.matching import (
     MatchListResponse,
     RoleMatchResponse,
 )
-from app.services import embeddings_client, pinecone_service
+from app.services import embeddings_service, pinecone_service
 
 logger = logging.getLogger(__name__)
 
@@ -159,12 +159,12 @@ def get_matches_semantic(
     min_experience: int = 0,
     limit: int = 10,
 ) -> MatchListResponse:
-    if not embeddings_client.embeddings_enabled() or not pinecone_service.index_ready():
+    if not embeddings_service.embeddings_enabled() or not pinecone_service.index_ready():
         return _fallback_rule_based(db, required_skills, min_experience, limit)
 
     query_text = f"{role_description} skills: {', '.join(required_skills)}"
     try:
-        query_embedding = embeddings_client.embed_text(query_text)
+        query_embedding = embeddings_service.embed_text(query_text)
         if not query_embedding:
             return _fallback_rule_based(db, required_skills, min_experience, limit)
 
@@ -207,7 +207,7 @@ def sync_developer_embedding(user_id: UUID, skills: list[str]) -> None:
     if not skills:
         return
     try:
-        embedding = embeddings_client.embed_text(", ".join(skills))
+        embedding = embeddings_service.embed_text(", ".join(skills))
         if embedding:
             pinecone_service.upsert_developer(str(user_id), embedding)
     except Exception:
@@ -228,7 +228,7 @@ def reindex_developer_embeddings(db: Session) -> int:
         profile = user.developer_profile
         if profile is None or not profile.skills:
             continue
-        embedding = embeddings_client.embed_text(", ".join(profile.skills))
+        embedding = embeddings_service.embed_text(", ".join(profile.skills))
         if not embedding:
             continue
         pinecone_service.upsert_developer(str(user.id), embedding)
