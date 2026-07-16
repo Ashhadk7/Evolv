@@ -45,6 +45,10 @@ class SignupError(Exception):
     pass
 
 
+class SignupValidationError(SignupError):
+    pass
+
+
 class AuthProviderConfigurationError(SignupError):
     pass
 

@@ -98,9 +98,16 @@ export async function persistSignupAccount({
         };
 
   if (role === "founder") {
-    await saveFounderProfile({ ...profile, gender: "", description: "" } as FounderProfile);
+    await saveFounderProfile(
+      { ...profile, gender: "", description: "" } as FounderProfile,
+      { preferCreate: true, reload: false, saveAccount: false }
+    );
     return "/founder/dashboard" as const;
   }
-  await saveDeveloperProfile(profile as DeveloperProfile);
+  await saveDeveloperProfile(profile as DeveloperProfile, {
+    preferCreate: true,
+    reload: false,
+    saveAccount: false,
+  });
   return "/developer/dashboard" as const;
 }
