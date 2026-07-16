@@ -69,7 +69,7 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
   addNetworkInboxContact: (contact) =>
     set((s) => ({
       networkInboxContacts: [contact, ...s.networkInboxContacts.filter((c) => c.id !== contact.id)],
-      inboxActiveContactId: contact.id,
+      inboxActiveContactId: contact.conversationId ?? contact.id,
     })),
   setNetworkRequestCount: (n) => set({ networkRequestCount: n }),
   setPendingProtectedAction: (fn) => set({ pendingProtectedAction: fn }),

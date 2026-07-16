@@ -56,14 +56,18 @@ export interface FounderContactProfile {
 // the two names are kept as aliases so neither role has to change its imports.
 export interface NetworkMessageTarget {
   id: string;
+  conversationId?: string;
+  participantId?: string;
   name: string;
   role: string;
   match: number;
   initials: string;
   online?: boolean;
   personType?: "Founder" | "Developer";
-  requestStatus?: "pending";
-  requestDirection?: "outgoing";
+  email?: string;
+  avatarUrl?: string;
+  requestStatus?: "pending" | "accepted" | "rejected";
+  requestDirection?: "incoming" | "outgoing";
   initialMessage?: string;
   subject?: string;
 }

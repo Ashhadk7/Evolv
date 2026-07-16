@@ -24,6 +24,8 @@ from app.schemas.messages import (
     MessageResponse,
     RequestActionResponse,
     SendMessageRequest,
+    StartConversationRequest,
+    StartConversationResponse,
 )
 
 
@@ -45,8 +47,56 @@ def find_participant(
     ensure_user_can_use_messaging(current_user)
     participant = users_repository.get_user_by_email(db, email.strip().lower())
     if participant is None or participant.id == current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evolv member not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Evolv member not found.",
+        )
     return MessageParticipantLookupResponse(participant=build_participant(participant))
+
+
+def start_conversation(
+    db: Session, *, payload: StartConversationRequest, current_user: User
+) -> StartConversationResponse:
+    recipient = users_repository.get_user_by_id(db, payload.recipient_id)
+    if recipient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient not found.")
+
+    ensure_can_start_messaging(current_user, recipient)
+    try:
+        connection = get_or_create_openable_connection(
+            db,
+            current_user=current_user,
+            recipient=recipient,
+            initial_message=payload.initial_message,
+        )
+        message = None
+        if payload.initial_message is not None:
+            ensure_can_send_on_connection(db, connection, current_user.id)
+            message = messages_repository.create_message(
+                db,
+                connection_id=connection.id,
+                sender_id=current_user.id,
+                recipient_id=recipient.id,
+                body=payload.initial_message,
+            )
+            connection.updated_at = datetime.now(UTC)
+
+        db.flush()
+        if message is not None:
+            db.refresh(message)
+        db.commit()
+        db.refresh(connection)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Conversation could not be started.",
+        ) from exc
+
+    return StartConversationResponse(
+        conversation=build_conversation_summary(db, connection, current_user),
+        message=build_message_response(message) if message is not None else None,
+    )
 
 
 def send_message(
@@ -57,7 +107,12 @@ def send_message(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient not found.")
 
     ensure_can_start_messaging(current_user, recipient)
-    connection = get_or_create_sendable_connection(db, current_user, recipient)
+    connection = get_or_create_sendable_connection(
+        db,
+        current_user,
+        recipient,
+        initial_message=payload.body,
+    )
 
     try:
         message = messages_repository.create_message(
@@ -212,6 +267,13 @@ def decline_request(
 
     try:
         messages_repository.decline_connection(connection)
+        network_connection = connections_repository.get_active_connection(
+            db,
+            connection.requester_id,
+            connection.addressee_id,
+        )
+        if network_connection is not None:
+            network_connection.status = NetworkConnectionStatus.REJECTED
         db.commit()
         db.refresh(connection)
     except SQLAlchemyError as exc:
@@ -228,20 +290,127 @@ def decline_request(
 
 
 def get_or_create_sendable_connection(
-    db: Session, current_user: User, recipient: User
+    db: Session,
+    current_user: User,
+    recipient: User,
+    *,
+    initial_message: str | None = None,
+) -> MessageConnection:
+    connection = get_or_create_openable_connection(
+        db,
+        current_user=current_user,
+        recipient=recipient,
+        initial_message=initial_message,
+    )
+    ensure_can_send_on_connection(db, connection, current_user.id)
+    return connection
+
+
+def get_or_create_openable_connection(
+    db: Session,
+    *,
+    current_user: User,
+    recipient: User,
+    initial_message: str | None = None,
 ) -> MessageConnection:
     connection = messages_repository.get_connection_between(db, current_user.id, recipient.id)
-    if connection is None:
-        connection = messages_repository.create_connection(
+    if connection is not None:
+        if connection.status == ConnectionStatus.DECLINED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This message request was declined.",
+            )
+        if connection.status == ConnectionStatus.ACCEPTED:
+            ensure_network_connection_status(
+                db,
+                requester_id=connection.requester_id,
+                addressee_id=connection.addressee_id,
+                status=NetworkConnectionStatus.ACCEPTED,
+                note=None,
+            )
+            return connection
+        network_connection = connections_repository.get_active_connection(
             db,
-            requester_id=current_user.id,
-            addressee_id=recipient.id,
+            connection.requester_id,
+            connection.addressee_id,
         )
-        db.flush()
+        if (
+            network_connection is not None
+            and network_connection.status == NetworkConnectionStatus.ACCEPTED
+        ):
+            messages_repository.accept_connection(connection)
+            return connection
+        if initial_message is not None and connection.requester_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Accept the message request before replying.",
+            )
+        ensure_network_connection_status(
+            db,
+            requester_id=connection.requester_id,
+            addressee_id=connection.addressee_id,
+            status=NetworkConnectionStatus.PENDING,
+            note=initial_message,
+        )
         return connection
 
+    network_connection = connections_repository.get_active_connection(
+        db,
+        current_user.id,
+        recipient.id,
+    )
+    if network_connection is not None:
+        if network_connection.status == NetworkConnectionStatus.ACCEPTED:
+            connection = messages_repository.create_connection(
+                db,
+                requester_id=current_user.id,
+                addressee_id=recipient.id,
+            )
+            messages_repository.accept_connection(connection)
+            db.flush()
+            return connection
+        if network_connection.status == NetworkConnectionStatus.PENDING:
+            if initial_message is not None and network_connection.requester_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Accept the message request before replying.",
+                )
+            connection = messages_repository.create_connection(
+                db,
+                requester_id=network_connection.requester_id,
+                addressee_id=network_connection.receiver_id,
+            )
+            if initial_message is not None and not network_connection.note:
+                network_connection.note = network_note(initial_message)
+            db.flush()
+            return connection
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This connection request was declined.",
+        )
+
+    connections_repository.create_connection(
+        db,
+        requester_id=current_user.id,
+        receiver_id=recipient.id,
+        note=network_note(initial_message),
+    )
+    connection = messages_repository.create_connection(
+        db,
+        requester_id=current_user.id,
+        addressee_id=recipient.id,
+    )
+    db.flush()
+    return connection
+
+
+def ensure_can_send_on_connection(
+    db: Session,
+    connection: MessageConnection,
+    sender_id: UUID,
+) -> None:
     if connection.status == ConnectionStatus.ACCEPTED:
-        return connection
+        return
 
     if connection.status == ConnectionStatus.DECLINED:
         raise HTTPException(
@@ -249,7 +418,7 @@ def get_or_create_sendable_connection(
             detail="This message request was declined.",
         )
 
-    if connection.requester_id != current_user.id:
+    if connection.requester_id != sender_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accept the message request before replying.",
@@ -258,7 +427,7 @@ def get_or_create_sendable_connection(
     sent_count = messages_repository.count_pending_messages_by_sender(
         db,
         connection_id=connection.id,
-        sender_id=current_user.id,
+        sender_id=sender_id,
     )
     if sent_count > 0:
         raise HTTPException(
@@ -266,7 +435,46 @@ def get_or_create_sendable_connection(
             detail="Wait for this message request to be accepted before sending another message.",
         )
 
-    return connection
+
+def ensure_network_connection_status(
+    db: Session,
+    *,
+    requester_id: UUID,
+    addressee_id: UUID,
+    status: NetworkConnectionStatus,
+    note: str | None,
+) -> None:
+    network_connection = connections_repository.get_active_connection(
+        db,
+        requester_id,
+        addressee_id,
+    )
+    if network_connection is None:
+        network_connection = connections_repository.create_connection(
+            db,
+            requester_id=requester_id,
+            receiver_id=addressee_id,
+            note=network_note(note),
+        )
+    elif network_connection.status in {
+        NetworkConnectionStatus.IGNORED,
+        NetworkConnectionStatus.REJECTED,
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This connection request was declined.",
+        )
+    elif note is not None and not network_connection.note:
+        network_connection.note = network_note(note)
+
+    if status == NetworkConnectionStatus.ACCEPTED:
+        network_connection.status = NetworkConnectionStatus.ACCEPTED
+
+
+def network_note(message: str | None) -> str | None:
+    if message is None:
+        return None
+    return message[:500]
 
 
 def get_participating_connection(
@@ -274,7 +482,10 @@ def get_participating_connection(
 ) -> MessageConnection:
     connection = messages_repository.get_connection_by_id(db, connection_id)
     if connection is None or user_id not in {connection.requester_id, connection.addressee_id}:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found.",
+        )
     return connection
 
 

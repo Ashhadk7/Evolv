@@ -113,7 +113,7 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   addNetworkInboxContact: (contact) =>
     set((s) => ({
       networkInboxContacts: [contact, ...s.networkInboxContacts.filter((c) => c.id !== contact.id)],
-      inboxActiveContactId: contact.id,
+      inboxActiveContactId: contact.conversationId ?? contact.id,
     })),
   setSettingsSection: (section) => set({ settingsSection: section }),
   bumpSettingsEditSignal: () => set((s) => ({ settingsEditSignal: s.settingsEditSignal + 1 })),

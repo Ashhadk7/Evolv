@@ -76,6 +76,7 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
   const listRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef("");
   const conversationsRef = useRef<Conversation[]>([]);
+  const syncedLaunchIdRef = useRef("");
 
   const load = useCallback(async () => {
     try {
@@ -168,6 +169,19 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
   const contacts = useMemo(() => conversations.map((c) => contactFrom(c, directions[c.id], onlineUserIds.has(c.participant.id))), [conversations, directions, onlineUserIds]);
   const activeId = activeContactId && contacts.some((c) => c.id === activeContactId) ? activeContactId : localActiveId;
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  useEffect(() => {
+    if (!activeContactId || activeContactId === syncedLaunchIdRef.current) return;
+    const launchedContact = contacts.find((item) => item.id === activeContactId);
+    if (!launchedContact) return;
+    syncedLaunchIdRef.current = activeContactId;
+    setFilter(
+      launchedContact.requestDirection === "incoming"
+        ? "requests"
+        : launchedContact.requestDirection === "outgoing"
+          ? "pending"
+          : "general"
+    );
+  }, [activeContactId, contacts]);
   const contact = contacts.find((c) => c.id === activeId);
   const conversation = conversations.find((c) => c.id === activeId);
   const thread = messages[activeId] ?? [];
@@ -192,6 +206,10 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
     setLoadingConversationId(id);
     try { const data = await messagingApi.messages(id); if (userId) setMessages((old) => ({ ...old, [id]: data.items.map((m) => uiMessage(m, userId)) })); await messagingApi.read(id); markConversationReadLocal(id); } catch (err) { setError(getApiErrorMessage(err)); } finally { setLoadingConversationId(null); }
   }, [markConversationReadLocal, messages, onActiveContactChange, userId]);
+  useEffect(() => {
+    if (!activeId || loadingChats || profileOpen || Object.hasOwn(messages, activeId)) return;
+    void select(activeId);
+  }, [activeId, loadingChats, messages, profileOpen, select]);
   useLayoutEffect(() => { if (loadingConversationId === activeId) return; const frame = requestAnimationFrame(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }); return () => cancelAnimationFrame(frame); }, [activeId, loadingConversationId, profileOpen, thread.length]);
 
   const visible = contacts.filter((c) => filter === "requests" ? c.requestDirection === "incoming" : filter === "pending" ? c.requestDirection === "outgoing" : filter === "unread" ? !c.requestDirection && c.unread > 0 : !c.requestDirection);
