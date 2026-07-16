@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import math
 from functools import lru_cache
 
 from openai import OpenAI
+from scipy.spatial.distance import cosine as scipy_cosine_distance
 
 from app.core.config import settings
 
@@ -44,9 +44,7 @@ def embed_text(text: str) -> list[float]:
 def cosine_similarity(vector_a: list[float], vector_b: list[float]) -> float:
     if not vector_a or not vector_b:
         return 0.0
-    dot_product = sum(a * b for a, b in zip(vector_a, vector_b))
-    norm_a = math.sqrt(sum(a * a for a in vector_a))
-    norm_b = math.sqrt(sum(b * b for b in vector_b))
-    if norm_a == 0 or norm_b == 0:
+    if not any(vector_a) or not any(vector_b):
         return 0.0
-    return dot_product / (norm_a * norm_b)
+    distance = scipy_cosine_distance(vector_a, vector_b)
+    return max(0.0, min(1.0 - float(distance), 1.0))
