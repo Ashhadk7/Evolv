@@ -81,111 +81,36 @@ export function buildInfoGrid(bp: Blueprint, desc: string) {
   ];
 }
 
-export const PLATFORM_FEATURES: { name: string; note?: string; priority: string }[] = [
-  { name: "Authentication & onboarding", note: "Auth.js / Clerk", priority: "Must-have" },
-  { name: "Milestone payments & escrow", note: "Stripe Connect", priority: "Must-have" },
-  { name: "Notifications & email", note: "Knock · Resend", priority: "Should-have" },
-  { name: "Admin & analytics dashboard", note: "PostHog", priority: "Nice-to-have" },
-];
-
 export function buildGapAnalysis(bp: Blueprint) {
-  const gaps = [
-    {
-      title: "Priced for large players only",
-      text: `Incumbents target enterprise budgets, leaving smaller ${bp.industry} teams unserved.`,
-    },
-    {
-      title: "Thin explainability & trust",
-      text: "Outputs are delivered as black boxes, slowing adoption in high-stakes decisions.",
-    },
-    {
-      title: "Poor workflow integration",
-      text: "Tools live in isolation instead of fitting the systems teams already use daily.",
-    },
-    {
-      title: "Slow time-to-value",
-      text: "Heavy setup and onboarding delay the first real outcome by weeks.",
-    },
-  ];
-  const additions = [
-    {
-      title: "Explainability layer",
-      impact: "Differentiator",
-      text: "Surface the “why” behind every AI result to build trust and speed approvals.",
-    },
-    {
-      title: "Native workflow integrations",
-      impact: "High impact",
-      text: `Connect to the systems ${bp.industry} teams already use so the product fits in, not around.`,
-    },
-    {
-      title: "Self-serve onboarding",
-      impact: "Quick win",
-      text: "A guided first-run that delivers a real result inside 10 minutes.",
-    },
-    {
-      title: "Usage-based starter tier",
-      impact: "Growth",
-      text: "A low-friction entry price that converts smaller teams the incumbents ignore.",
-    },
-  ];
-  const pathToComplete = [
-    "Ship the must-have MVP and validate the core loop with 3–5 design partners.",
-    "Add the explainability + integration layers that turn a feature into a defensible product.",
-    "Layer self-serve onboarding and a usage-based tier to open a scalable growth channel.",
-  ];
-  return { gaps, additions, pathToComplete };
+  return {
+    gaps: bp.strategy?.marketLacks ?? [],
+    additions: bp.strategy?.recommendedAdditions ?? [],
+    pathToComplete: bp.strategy?.pathToComplete ?? [],
+  };
 }
 
 export function buildGoToMarket(bp: Blueprint) {
-  const gtmChannels = [
-    {
-      icon: <UsersThree size={16} weight="duotone" className="text-bp-teal" />,
-      title: "Design partners",
-      text: `Hand-pick 3–5 ${bp.industry} teams for deep, co-built early adoption.`,
-    },
-    {
-      icon: <Megaphone size={16} weight="duotone" className="text-bp-teal" />,
-      title: "Content & community",
-      text: "Publish in-the-weeds expertise where the audience already gathers.",
-    },
-    {
-      icon: <Storefront size={16} weight="duotone" className="text-bp-teal" />,
-      title: "Product-led self-serve",
-      text: "A free entry tier that turns usage into qualified, expanding accounts.",
-    },
-    {
-      icon: <Plugs size={16} weight="duotone" className="text-bp-teal" />,
-      title: "Integration partners",
-      text: "Distribute through the platforms your users already live in.",
-    },
+  return {
+    gtmChannels: (bp.strategy?.gtmChannels ?? []).map((channel, index) => ({
+      ...channel,
+      icon: gtmIcon(index),
+    })),
+    gtmPhases: bp.strategy?.gtmSequence ?? [],
+  };
+}
+
+function gtmIcon(index: number) {
+  const icons = [
+    <UsersThree size={16} weight="duotone" className="text-bp-teal" />,
+    <Megaphone size={16} weight="duotone" className="text-bp-teal" />,
+    <Storefront size={16} weight="duotone" className="text-bp-teal" />,
+    <Plugs size={16} weight="duotone" className="text-bp-teal" />,
   ];
-  const gtmPhases = ["Private beta", "Design-partner rollout", "Public launch", "Scale & expand"];
-  return { gtmChannels, gtmPhases };
+  return icons[index % icons.length];
 }
 
 export function buildTeamRoles(bp: Blueprint) {
-  return [
-    {
-      role: "Full-Stack Engineer",
-      count: 1,
-      skills: "Next.js · TypeScript · API design",
-      lead: true,
-    },
-    {
-      role: bp.techStack.ai ? "ML / AI Engineer" : "Backend Engineer",
-      count: 1,
-      skills: `${bp.techStack.ai || bp.techStack.backend} · pipelines`,
-      lead: false,
-    },
-    {
-      role: "Backend Engineer",
-      count: 1,
-      skills: `${bp.techStack.backend} · ${bp.techStack.db}`,
-      lead: false,
-    },
-    { role: "Product Designer", count: 1, skills: "UX · design systems (part-time)", lead: false },
-  ];
+  return bp.roles ?? [];
 }
 
 export const developerProfiles = FOUNDER_NETWORK_PROFILES.filter(
@@ -228,28 +153,13 @@ export function devsForRole(role: { role: string; skills: string }) {
 const SEV_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
 
 export function buildRiskRows(bp: Blueprint) {
-  return [
-    {
-      risk: "Well-funded incumbents move into the niche",
-      sev: "Medium",
-      mit: "Win on focus, speed, and price for under-served teams; build integration moat early.",
-    },
-    {
-      risk: bp.market.barriers,
-      sev: "High",
-      mit: "Engage requirements early, design for compliance, and ship audit-ready from day one.",
-    },
-    {
-      risk: "Model accuracy below user trust threshold",
-      sev: "Medium",
-      mit: "Ship explainability, keep a human-in-the-loop, and improve on real usage data.",
-    },
-    {
-      risk: "Slow developer ramp delays milestones",
-      sev: "Low",
-      mit: "Scope independently-shippable milestones; pay on approval to keep momentum.",
-    },
-  ].sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
+  return (bp.strategy?.risks ?? [])
+    .map((risk) => ({
+      risk: risk.risk,
+      sev: risk.severity,
+      mit: risk.mitigation,
+    }))
+    .sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
 }
 
 // Severity = danger scale: High risk is red, low risk is safe (mint).
@@ -287,16 +197,13 @@ export function buildAnalytics(bp: Blueprint) {
 }
 
 export function buildAiRecs(bp: Blueprint) {
+  const additions = bp.strategy?.recommendedAdditions ?? [];
+  const risks = bp.strategy?.risks ?? [];
   return [
     { p: "High", text: bp.aiRecommend },
-    {
-      p: "High",
-      text: "Lock in a technical co-founder or lead developer from your matched candidates.",
-    },
-    { p: "Medium", text: "Build the explainability layer — it's your clearest differentiation." },
-    { p: "Medium", text: "Line up 3–5 design partners before the public launch milestone." },
-    { p: "Low", text: "Draft a usage-based starter tier to widen the top of funnel." },
-  ];
+    ...additions.slice(0, 2).map((addition) => ({ p: "Medium", text: addition.text })),
+    ...risks.slice(0, 2).map((risk) => ({ p: risk.severity, text: risk.mitigation })),
+  ].filter((item) => item.text);
 }
 
 export function buildFeatureItems(features: string[]) {

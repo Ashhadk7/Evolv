@@ -15,7 +15,7 @@ class FounderProfileBase(BaseModel):
     description: str | None = None
     linkedin: str | None = Field(None, max_length=255)
     venture_stage: str | None = Field(None, max_length=100)
-    primary_goal: str | None = Field(None, max_length=100)
+    primary_goal: str = Field(default="not_selected", max_length=100)
     domains: list[str] = Field(default_factory=list, max_length=50)
     profile_complete: bool = False
 

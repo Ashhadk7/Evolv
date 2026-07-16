@@ -67,7 +67,6 @@ _BLUEPRINT_VERSION_FIELDS = (
     "ai_recommend",
     "viability",
     "market_potential",
-    "funding_readiness",
     "developer_demand",
     "content_json",
 )
@@ -84,35 +83,21 @@ def create_version(
     state: VersionState,
     content: BlueprintVersionCreate,
 ) -> BlueprintVersion:
-    version = BlueprintVersion(
-        blueprint_id=blueprint_id,
-        state=state,
-        name=content.name,
-        industry=content.industry,
-        idea_desc=content.idea_desc,
-        differentiator=content.differentiator,
-        ai_recommend=content.ai_recommend,
-        viability=content.viability,
-        market_potential=content.market_potential,
-        funding_readiness=content.funding_readiness,
-        developer_demand=content.developer_demand,
-        content_json=content.content_json,
-    )
+    version = BlueprintVersion(blueprint_id=blueprint_id, state=state)
+    _apply_version_content(version, content)
     db.add(version)
     db.flush()
     return version
 
 
-def overwrite_version_content(
-    version: BlueprintVersion, content: BlueprintVersionCreate
+def update_version(
+    db: Session,
+    version: BlueprintVersion,
+    content: BlueprintVersionCreate,
 ) -> BlueprintVersion:
     _apply_version_content(version, content)
-    version.generated_at = func.now()
+    db.flush()
     return version
-
-
-def delete_version(db: Session, version: BlueprintVersion) -> None:
-    db.delete(version)
 
 
 def delete_blueprint(db: Session, blueprint: Blueprint) -> None:

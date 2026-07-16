@@ -39,13 +39,13 @@ class AccountProfileResponse(BaseModel):
     role: SignupRole
     first_name: str
     last_name: str
-    phone: str | None
+    phone: str
     phone_verified: bool
-    country: str | None
-    country_code: str | None
-    state_province: str | None
-    city: str | None
-    dob: date | None
+    country: str
+    country_code: str
+    state_province: str
+    city: str
+    dob: date
     gender: str | None
     avatar_url: str | None
 
@@ -53,13 +53,13 @@ class AccountProfileResponse(BaseModel):
 class AccountProfileUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    first_name: str | None = Field(None, min_length=1, max_length=100)
-    last_name: str | None = Field(None, min_length=1, max_length=100)
-    phone: str | None = Field(None, max_length=50)
-    country: str | None = Field(None, max_length=100)
-    country_code: str | None = Field(None, max_length=10)
-    state_province: str | None = Field(None, max_length=100)
-    city: str | None = Field(None, max_length=100)
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    phone: str | None = Field(default=None, max_length=50)
+    country: str | None = Field(default=None, max_length=100)
+    country_code: str | None = Field(default=None, max_length=10)
+    state_province: str | None = Field(default=None, max_length=100)
+    city: str | None = Field(default=None, max_length=100)
     dob: date | None = None
-    gender: str | None = Field(None, max_length=50)
+    gender: str | None = Field(default=None, max_length=50)
     avatar_url: str | None = None

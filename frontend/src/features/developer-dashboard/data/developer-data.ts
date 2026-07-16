@@ -186,7 +186,7 @@ export const opportunities = [
     roles: ["AI Engineer", "Backend Engineer", "ML Engineer"],
     techStack: ["Python", "FastAPI", "AI/ML", "React", "Docker"],
     matchExplanation: "Your FastAPI, Python and AI experience strongly align with this startup.",
-    metrics: { viability: 92, fundingReadiness: 85, growthPotential: 90 },
+    metrics: { viability: 92, developerDemand: 85, growthPotential: 90 },
     logo: "NH",
   },
   {
@@ -203,7 +203,7 @@ export const opportunities = [
     roles: ["Full Stack Developer", "DevOps Engineer"],
     techStack: ["Node.js", "React", "AWS", "Docker"],
     matchExplanation: "Your Node.js, React and AWS skills are a perfect fit for their tech stack.",
-    metrics: { viability: 85, fundingReadiness: 75, growthPotential: 88 },
+    metrics: { viability: 85, developerDemand: 75, growthPotential: 88 },
     logo: "AL",
   },
   {
@@ -219,7 +219,7 @@ export const opportunities = [
     roles: ["Blockchain Developer", "Backend Engineer"],
     techStack: ["Python", "Solidity", "Blockchain", "React"],
     matchExplanation: "Your Python and Blockchain expertise matches their technical requirements.",
-    metrics: { viability: 78, fundingReadiness: 70, growthPotential: 82 },
+    metrics: { viability: 78, developerDemand: 70, growthPotential: 82 },
     logo: "VE",
   },
   {
@@ -235,7 +235,7 @@ export const opportunities = [
     roles: ["ML Engineer", "Backend Engineer"],
     techStack: ["Python", "PyTorch", "GraphQL", "AWS"],
     matchExplanation: "Your Python, PyTorch and GraphQL skills are highly relevant.",
-    metrics: { viability: 88, fundingReadiness: 82, growthPotential: 92 },
+    metrics: { viability: 88, developerDemand: 82, growthPotential: 92 },
     logo: "FF",
   },
   {
@@ -252,7 +252,7 @@ export const opportunities = [
     techStack: ["React", "Node.js", "Three.js", "PostgreSQL"],
     matchExplanation:
       "Your React and Node.js experience aligns with their educational platform needs.",
-    metrics: { viability: 72, fundingReadiness: 65, growthPotential: 78 },
+    metrics: { viability: 72, developerDemand: 65, growthPotential: 78 },
     logo: "AT",
   },
   {
@@ -268,7 +268,7 @@ export const opportunities = [
     roles: ["Backend Engineer", "React Developer"],
     techStack: ["Python", "FastAPI", "React", "PostgreSQL"],
     matchExplanation: "Your FastAPI and Python expertise is exactly what they need.",
-    metrics: { viability: 82, fundingReadiness: 78, growthPotential: 85 },
+    metrics: { viability: 82, developerDemand: 78, growthPotential: 85 },
     logo: "MC",
   },
 ];

@@ -27,4 +27,4 @@ class CreateMeetResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     meet_url: str
-    event_url: str | None = None
+    event_url: str

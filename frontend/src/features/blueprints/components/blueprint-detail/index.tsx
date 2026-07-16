@@ -37,7 +37,6 @@ import {
   buildRiskRows,
   buildTeamRoles,
   buildVentureAssessment,
-  PLATFORM_FEATURES,
   TOC_SECTIONS,
 } from "./blueprint-detail-data";
 import { useBlueprintUrlSync } from "./hooks/use-blueprint-url-sync";
@@ -165,15 +164,7 @@ export function BlueprintDetail({
 
   const featureItems = buildFeatureItems(editing ? draftFeatures : bp.features);
 
-  const stack = deriveStack({
-    ...bp,
-    techStack: {
-      ...bp.techStack,
-      frontend: draftTechStack.frontend.chosen,
-      backend: draftTechStack.backend.chosen,
-      db: draftTechStack.database.chosen,
-    },
-  });
+  const stack = deriveStack(draftTechStack);
 
   const cost = content.costModel;
   const fin = content.financials;
@@ -263,7 +254,6 @@ export function BlueprintDetail({
           <BlueprintPersonasSection personas={personas} />
           <BlueprintProductScopeSection
             featureItems={featureItems}
-            platformFeatures={PLATFORM_FEATURES}
             outOfScope={content.mvpPlan.outOfScope}
           />
           <BlueprintTechStackSection
