@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.blueprint import BlueprintVisibility, LevelRating, VersionState
 
@@ -20,7 +20,16 @@ class BlueprintVersionCreate(BaseModel):
     viability: int = Field(ge=0, le=100)
     market_potential: int = Field(ge=0, le=100)
     developer_demand: LevelRating
-    content_json: dict[str, Any] = Field(default_factory=dict)
+    content_json: dict[str, Any] | None = None
+
+    @field_validator(
+        "name", "industry", "idea_desc", "differentiator", "ai_recommend", mode="before"
+    )
+    @classmethod
+    def strip_text(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return value.strip()
+        return value
 
 
 class BlueprintVersionResponse(BaseModel):
@@ -37,7 +46,7 @@ class BlueprintVersionResponse(BaseModel):
     viability: int
     market_potential: int
     developer_demand: LevelRating
-    content_json: dict[str, Any] | None
+    content_json: dict[str, Any] | None = None
     generated_at: datetime
 
 

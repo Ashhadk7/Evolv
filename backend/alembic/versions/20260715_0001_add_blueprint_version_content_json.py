@@ -1,4 +1,4 @@
-"""add blueprint version content_json
+"""Add content_json column to blueprint_versions.
 
 Revision ID: 20260715_0001
 Revises: 20260712_0006

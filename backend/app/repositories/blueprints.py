@@ -49,25 +49,42 @@ def create_blueprint(db: Session, founder_id: UUID, visibility) -> Blueprint:
     return blueprint
 
 
+def get_version_by_state(
+    db: Session, blueprint_id: UUID, state: VersionState
+) -> BlueprintVersion | None:
+    statement = select(BlueprintVersion).where(
+        BlueprintVersion.blueprint_id == blueprint_id,
+        BlueprintVersion.state == state,
+    )
+    return db.scalar(statement)
+
+
+_BLUEPRINT_VERSION_FIELDS = (
+    "name",
+    "industry",
+    "idea_desc",
+    "differentiator",
+    "ai_recommend",
+    "viability",
+    "market_potential",
+    "developer_demand",
+    "content_json",
+)
+
+
+def _apply_version_content(version: BlueprintVersion, content: BlueprintVersionCreate) -> None:
+    for field in _BLUEPRINT_VERSION_FIELDS:
+        setattr(version, field, getattr(content, field))
+
+
 def create_version(
     db: Session,
     blueprint_id: UUID,
     state: VersionState,
     content: BlueprintVersionCreate,
 ) -> BlueprintVersion:
-    version = BlueprintVersion(
-        blueprint_id=blueprint_id,
-        state=state,
-        name=content.name,
-        industry=content.industry,
-        idea_desc=content.idea_desc,
-        differentiator=content.differentiator,
-        ai_recommend=content.ai_recommend,
-        viability=content.viability,
-        market_potential=content.market_potential,
-        developer_demand=content.developer_demand,
-        content_json=content.content_json,
-    )
+    version = BlueprintVersion(blueprint_id=blueprint_id, state=state)
+    _apply_version_content(version, content)
     db.add(version)
     db.flush()
     return version
@@ -78,15 +95,7 @@ def update_version(
     version: BlueprintVersion,
     content: BlueprintVersionCreate,
 ) -> BlueprintVersion:
-    version.name = content.name
-    version.industry = content.industry
-    version.idea_desc = content.idea_desc
-    version.differentiator = content.differentiator
-    version.ai_recommend = content.ai_recommend
-    version.viability = content.viability
-    version.market_potential = content.market_potential
-    version.developer_demand = content.developer_demand
-    version.content_json = content.content_json
+    _apply_version_content(version, content)
     db.flush()
     return version
 

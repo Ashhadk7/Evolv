@@ -28,6 +28,7 @@ def configuration_ready() -> bool:
         settings.GOOGLE_CALENDAR_CLIENT_ID
         and settings.GOOGLE_CALENDAR_CLIENT_SECRET
         and settings.GOOGLE_CALENDAR_REDIRECT_URI
+        and settings.GOOGLE_CALENDAR_FRONTEND_RETURN_URL
     )
 
 

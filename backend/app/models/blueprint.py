@@ -148,5 +148,6 @@ class BlueprintVersion(Base):
         server_default=func.now(),
         nullable=False,
     )
+    content_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     blueprint: Mapped[Blueprint] = relationship(back_populates="versions")

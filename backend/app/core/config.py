@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SMTP_USE_STARTTLS: bool = False
     SMTP_TIMEOUT_SECONDS: int = 20
     SECRET_KEY: str = Field(min_length=8)
-    ALLOWED_ORIGINS: list[str] = Field(min_length=1)
+    ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     TWILIO_ACCOUNT_SID: str = Field(min_length=1)
     TWILIO_AUTH_TOKEN: SecretStr
     TWILIO_VERIFY_SERVICE_SID: str = Field(min_length=1)
@@ -50,9 +50,13 @@ class Settings(BaseSettings):
     GROQ_API_KEY: SecretStr
     GROQ_API_BASE_URL: str = Field(min_length=1)
     GROQ_MODEL: str = Field(min_length=1)
+    GROQ_EMBEDDING_MODEL: str | None = None
     ENRICHMENT_TIMEOUT_SECONDS: int = Field(default=12, ge=1, le=60)
     TAVILY_API_KEY: SecretStr
     TAVILY_BASE_URL: str = Field(min_length=1)
+    PINECONE_API_KEY: SecretStr | None = None
+    PINECONE_INDEX_NAME: str | None = None
+    PINECONE_REGION: str | None = None
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

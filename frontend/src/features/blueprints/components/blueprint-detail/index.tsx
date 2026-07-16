@@ -11,7 +11,6 @@ import {
 } from "@/features/blueprints/blueprint-content";
 import type { Blueprint } from "@/features/blueprints/types";
 import { NetworkProfileDetailScreen } from "@/features/network/components/network-profile-detail";
-import { FOUNDER_NETWORK_PROFILES } from "@/features/network/data";
 import type { FounderContactProfile, FounderNetworkMessageTarget } from "@/features/network/types";
 import { ChatPanel } from "../chat-panel";
 import { deriveStack } from "../derive-stack";
@@ -45,6 +44,7 @@ import { useBlueprintScrollProgress } from "./hooks/use-blueprint-scroll-progres
 import { useBlueprintToast } from "./hooks/use-blueprint-toast";
 import { useBlueprintPublishShare } from "./hooks/use-blueprint-publish-share";
 import { useBlueprintEditor } from "./hooks/use-blueprint-editor";
+import { useBlueprintMatches } from "./hooks/use-blueprint-matches";
 import { TeamTalentSection } from "./team-talent-section";
 import { RoadmapSection } from "./roadmap-section";
 import { MarketAnalysisSection } from "./market-analysis-section";
@@ -78,12 +78,7 @@ export function BlueprintDetail({
   const reduce = useReducedMotion();
   const [selectedDeveloper, setSelectedDeveloper] = useState<FounderContactProfile | null>(null);
   const [activeRoleFilter, setActiveRoleFilter] = useState("all");
-  const [developerConnections, setDeveloperConnections] = useState<Record<string, boolean>>(() =>
-    FOUNDER_NETWORK_PROFILES.reduce<Record<string, boolean>>((acc, profile) => {
-      if (profile.type === "Developer") acc[profile.id] = profile.connected;
-      return acc;
-    }, {})
-  );
+  const [developerConnections, setDeveloperConnections] = useState<Record<string, boolean>>({});
   const [content] = useState<BlueprintContent>(() => buildBlueprintContent(bp));
   const [phases, setPhases] = useState<Phase[]>(() => content.phases);
   const [editPhase, setEditPhase] = useState<number | null>(null);
@@ -92,6 +87,7 @@ export function BlueprintDetail({
 
   const { toast, showToast } = useBlueprintToast();
   const { handleBack } = useBlueprintUrlSync(bp.id, onBack);
+  const { allDevelopers: matchedDevelopers } = useBlueprintMatches(bp.id, { limit: 10 });
   const { scrollRef, progress, onScroll, restoreBlueprintScrollRef } =
     useBlueprintScrollProgress(selectedDeveloper);
   const { published, copyLink, togglePublish } = useBlueprintPublishShare(bp, onSave, showToast);
@@ -275,6 +271,7 @@ export function BlueprintDetail({
             activeRoleFilter={activeRoleFilter}
             onRoleFilterChange={setActiveRoleFilter}
             onSelectDeveloper={handleViewMatchedDeveloper}
+            matchedDevelopers={matchedDevelopers}
           />
 
           <RoadmapSection
@@ -289,6 +286,7 @@ export function BlueprintDetail({
             setPhaseHires={setPhaseHires}
             totalWeeks={totalWeeks}
             reduce={reduce}
+            matchedDevelopers={matchedDevelopers}
           />
 
           <MarketAnalysisSection marketAnalysis={content.marketAnalysis} />

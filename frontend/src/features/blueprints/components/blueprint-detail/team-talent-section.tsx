@@ -8,12 +8,7 @@ import { SectionHead } from "@/components/shared/section-head";
 import { Chip } from "@/components/shared/chip";
 import { Avatar } from "@/components/shared/avatar";
 import type { FounderContactProfile } from "@/features/network/types";
-import {
-  developerProfiles,
-  developerRoleText,
-  devsForRole,
-  isDeveloperAvailable,
-} from "./blueprint-detail-data";
+import { developerRoleText, isDeveloperAvailable } from "./blueprint-detail-data";
 
 interface Role {
   role: string;
@@ -28,15 +23,39 @@ export function TeamTalentSection({
   activeRoleFilter,
   onRoleFilterChange,
   onSelectDeveloper,
+  matchedDevelopers = [],
 }: {
   roles: Role[];
   developerConnections: Record<string, boolean>;
   activeRoleFilter: string;
   onRoleFilterChange: (role: string) => void;
   onSelectDeveloper: (profile: FounderContactProfile) => void;
+  /** Live-matched developers from GET /blueprints/{id}/matches. Falls back to [] gracefully. */
+  matchedDevelopers?: FounderContactProfile[];
 }) {
   const visibleMatchedRoles =
     activeRoleFilter === "all" ? roles : roles.filter((role) => role.role === activeRoleFilter);
+
+  /**
+   * For each role, pick developers from the API-matched list whose skills
+   * overlap with the role's required skills. Falls back to any available dev
+   * if no matches found for a specific role.
+   */
+  function devsForRoleApi(role: { role: string; skills: string }): FounderContactProfile[] {
+    if (matchedDevelopers.length === 0) return [];
+    const terms = `${role.role} ${role.skills}`
+      .toLowerCase()
+      .split(/[^a-z0-9+.#]+/)
+      .filter(Boolean);
+    const matched = matchedDevelopers.filter((d) =>
+      terms.some(
+        (term) =>
+          d.role.toLowerCase().includes(term) ||
+          d.skills.some((sk) => sk.toLowerCase().includes(term) || term.includes(sk.toLowerCase()))
+      )
+    );
+    return (matched.length ? matched : matchedDevelopers).slice(0, 3);
+  }
 
   return (
     <Reveal>
@@ -67,7 +86,7 @@ export function TeamTalentSection({
             icon={<CodeBlock size={18} weight="duotone" className="text-bp-success" />}
             kicker="AI Suggested"
             title="Matched Developers"
-            right={<Chip tone="mint">{developerProfiles.length} profiles</Chip>}
+            right={<Chip tone="mint">{matchedDevelopers.length} profiles</Chip>}
           />
           <div className="mb-3.5 flex flex-wrap gap-2">
             {[
@@ -92,63 +111,71 @@ export function TeamTalentSection({
             })}
           </div>
           <div className="blueprint-scroll flex max-h-[430px] flex-col gap-3 overflow-y-auto pr-1.5">
-            {visibleMatchedRoles.map((r) => (
-              <div
-                key={r.role}
-                className="border-bp-border-soft bg-bp-tint rounded-xl border px-[15px] py-[13px]"
-              >
-                <div className="mb-2.5 flex items-center justify-between gap-2.5">
-                  <div className="text-bp-ink text-[12.5px] font-extrabold">{r.role}</div>
-                  <Chip tone={r.lead ? "mint" : "neutral"}>
-                    {r.lead ? "Priority hire" : "Suggested"}
-                  </Chip>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {devsForRole(r).map((d) => {
-                    const avail = isDeveloperAvailable(d);
-                    const connected = developerConnections[d.id];
-                    return (
-                      <motion.button
-                        key={`${r.role}-${d.id}`}
-                        type="button"
-                        whileHover={{
-                          y: -2,
-                          borderColor: "#c5ddd0",
-                          boxShadow: "0 8px 22px rgba(15,28,24,0.06)",
-                        }}
-                        onClick={() => onSelectDeveloper(d)}
-                        className="border-bp-border-soft bg-bp-card flex w-full cursor-pointer items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left"
-                      >
-                        <Avatar initials={d.initials} size={32} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex min-w-0 items-center gap-[7px]">
-                            <span className="text-bp-ink overflow-hidden text-[13px] font-bold text-ellipsis whitespace-nowrap">
-                              {d.name}
-                            </span>
-                            {d.online && (
-                              <span className="bg-bp-success h-[7px] w-[7px] shrink-0 rounded-full" />
-                            )}
-                          </div>
-                          <div className="text-bp-muted mt-0.5 overflow-hidden text-[11.5px] text-ellipsis whitespace-nowrap">
-                            {developerRoleText(d)}
-                          </div>
-                        </div>
-                        <Chip tone={avail ? "mint" : "amber"}>
-                          {avail ? "Available" : d.availability}
-                        </Chip>
-                        {connected && <Chip tone="neutral">Connected</Chip>}
-                        <span
-                          style={NUM}
-                          className="rounded-full bg-[#e8f5ef] px-2.5 py-1 text-xs font-extrabold text-[#1d6e47]"
-                        >
-                          {d.match}%
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
+            {matchedDevelopers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <span className="text-bp-muted text-[12px]">
+                  No developer matches found yet.
+                </span>
               </div>
-            ))}
+            ) : (
+              visibleMatchedRoles.map((r) => (
+                <div
+                  key={r.role}
+                  className="border-bp-border-soft bg-bp-tint rounded-xl border px-[15px] py-[13px]"
+                >
+                  <div className="mb-2.5 flex items-center justify-between gap-2.5">
+                    <div className="text-bp-ink text-[12.5px] font-extrabold">{r.role}</div>
+                    <Chip tone={r.lead ? "mint" : "neutral"}>
+                      {r.lead ? "Priority hire" : "Suggested"}
+                    </Chip>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {devsForRoleApi(r).map((d) => {
+                      const avail = isDeveloperAvailable(d);
+                      const connected = developerConnections[d.id];
+                      return (
+                        <motion.button
+                          key={`${r.role}-${d.id}`}
+                          type="button"
+                          whileHover={{
+                            y: -2,
+                            borderColor: "#c5ddd0",
+                            boxShadow: "0 8px 22px rgba(15,28,24,0.06)",
+                          }}
+                          onClick={() => onSelectDeveloper(d)}
+                          className="border-bp-border-soft bg-bp-card flex w-full cursor-pointer items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left"
+                        >
+                          <Avatar initials={d.initials} size={32} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-[7px]">
+                              <span className="text-bp-ink overflow-hidden text-[13px] font-bold text-ellipsis whitespace-nowrap">
+                                {d.name}
+                              </span>
+                              {d.online && (
+                                <span className="bg-bp-success h-[7px] w-[7px] shrink-0 rounded-full" />
+                              )}
+                            </div>
+                            <div className="text-bp-muted mt-0.5 overflow-hidden text-[11.5px] text-ellipsis whitespace-nowrap">
+                              {developerRoleText(d)}
+                            </div>
+                          </div>
+                          <Chip tone={avail ? "mint" : "amber"}>
+                            {avail ? "Available" : d.availability}
+                          </Chip>
+                          {connected && <Chip tone="neutral">Connected</Chip>}
+                          <span
+                            style={NUM}
+                            className="rounded-full bg-[#e8f5ef] px-2.5 py-1 text-xs font-extrabold text-[#1d6e47]"
+                          >
+                            {d.match}%
+                          </span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
