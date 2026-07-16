@@ -115,6 +115,7 @@ def list_users(
 ) -> tuple[list[User], int]:
     filters = [
         User.email_verified.is_(True),
+        User.phone_verified.is_(True),
         # Only users who have completed their profile are discoverable to others.
         # profile_complete is a computed property on User, so filter the underlying
         # founder/developer columns directly.

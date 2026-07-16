@@ -78,9 +78,15 @@ def save_developer_review(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot review your own developer profile.",
         )
+    ensure_user_can_review(current_user)
 
     developer = users_repository.get_user_with_public_profile_by_id(db, user_id)
-    if developer is None or developer.role != UserRole.DEVELOPER or developer.developer_profile is None:
+    if (
+        developer is None
+        or developer.role != UserRole.DEVELOPER
+        or developer.developer_profile is None
+        or not developer.profile_complete
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Developer profile not found.",
@@ -136,7 +142,7 @@ def build_founder_profile_response(user: User) -> PublicFounderProfile:
         venture_stage=profile.venture_stage,
         primary_goal=profile.primary_goal,
         domains=profile.domains,
-        profile_complete=profile.profile_complete,
+        profile_complete=user.profile_complete,
         educations=[EducationResponse.model_validate(education) for education in user.educations],
     )
 
@@ -158,7 +164,7 @@ def build_developer_profile_response(user: User) -> PublicDeveloperProfile:
         portfolio_link=profile.portfolio_link,
         skills=profile.skills,
         rating_avg=float(profile.rating_avg or 0),
-        profile_complete=profile.profile_complete,
+        profile_complete=user.profile_complete,
         educations=[EducationResponse.model_validate(education) for education in user.educations],
         certifications=[
             CertificationResponse.model_validate(certification)
@@ -166,3 +172,16 @@ def build_developer_profile_response(user: User) -> PublicDeveloperProfile:
         ],
         reviews=[build_review_response(review) for review in profile.reviews],
     )
+
+
+def ensure_user_can_review(user: User) -> None:
+    if not user.phone_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verify your phone number before submitting reviews.",
+        )
+    if not user.profile_complete:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Complete your profile before submitting reviews.",
+        )

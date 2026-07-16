@@ -223,3 +223,7 @@ class NotFoundError(Exception):
 
 class ConflictError(Exception):
     """A requested create or update operation conflicts with existing state."""
+
+
+class ForbiddenError(Exception):
+    """The current user is not allowed to perform this action."""

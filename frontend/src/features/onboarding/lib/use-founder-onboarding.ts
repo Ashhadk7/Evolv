@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import {
   formatFounderEducations,
   getFounderEducations,
-  getMissingFounderProfileFields,
+  getMissingFounderProfileDetailFields,
   normalizeFounderProfileForSave,
   type FounderEducation,
 } from "@/features/founder-dashboard/profile-utils";
@@ -67,7 +67,7 @@ export function useFounderOnboarding({
 
   const handleComplete = () => {
     const normalized = normalizeFounderProfileForSave(profile) as FounderProfile;
-    const missing = getMissingFounderProfileFields(normalized);
+    const missing = getMissingFounderProfileDetailFields(normalized);
     if (missing.length) {
       setError(
         `Please fill ${missing.join(", ")} before sending messages or connection requests.`

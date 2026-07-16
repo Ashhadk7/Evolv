@@ -94,7 +94,7 @@ def build_response(db: Session, profile: DeveloperProfile) -> DeveloperProfileRe
         portfolio_link=profile.portfolio_link,
         skills=profile.skills,
         rating_avg=float(profile.rating_avg or 0),
-        profile_complete=profile.profile_complete,
+        profile_complete=bool(profile.profile_complete and profile.user.phone_verified),
         educations=get_education_responses(db, profile.user_id),
         certifications=get_certification_responses(db, profile.user_id),
         reviews=get_developer_review_responses(db, profile.user_id),

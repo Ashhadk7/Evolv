@@ -47,6 +47,8 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
 
   const profileComplete = isFounderProfileComplete(profile);
   const missingProfileFields = getMissingFounderProfileFields(profile);
+  const needsOnlyPhoneVerification =
+    missingProfileFields.length === 1 && missingProfileFields[0] === "verified phone number";
 
   return (
     <AuthGuard requiredRole="founder">
@@ -81,9 +83,16 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
         visible={!profileComplete && !showOnboarding && !profilePromptDismissed}
         missingProfileFields={missingProfileFields}
         messageSuffix="before sending messages or connection requests."
+        title={needsOnlyPhoneVerification ? "Verify number" : "Complete profile setup"}
+        message={
+          needsOnlyPhoneVerification
+            ? "Verify your phone number to complete your profile and appear in the network."
+            : undefined
+        }
+        actionLabel={needsOnlyPhoneVerification ? "Verify number" : "Complete profile"}
         buttonPaddingX={5}
         onDismiss={() => setProfilePromptDismissed(true)}
-        onOpenProfile={nav.handleOpenProfile}
+        onOpenProfile={needsOnlyPhoneVerification ? nav.handleOpenSecurity : nav.handleOpenProfile}
       />
 
       {showOnboarding && (

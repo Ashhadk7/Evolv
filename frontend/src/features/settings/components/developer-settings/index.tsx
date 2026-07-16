@@ -56,9 +56,10 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
 const Settings = () => {
   const dashboardProfile = useDeveloperDashboardStore((state) => state.profile);
   const completeProfile = useDeveloperDashboardStore((state) => state.completeProfile);
+  const activeTab = useDeveloperDashboardStore((state) => state.settingsTab);
+  const setActiveTab = useDeveloperDashboardStore((state) => state.setSettingsTab);
   const [profile, setProfile] = useState(() => hydrateDeveloperProfile(dashboardProfile));
   const [notifications, setNotifications] = useState(defaultNotifications);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [paySaved, setPaySaved] = useState(false);

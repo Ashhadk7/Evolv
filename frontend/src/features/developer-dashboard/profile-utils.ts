@@ -32,6 +32,7 @@ export interface DeveloperProfile {
   lastName?: string;
   email?: string;
   phone?: string;
+  phoneVerified?: boolean;
   country?: string;
   city?: string;
   location?: string;
@@ -162,7 +163,7 @@ export function getDeveloperLinkedIn(profile: DeveloperProfile) {
 
 // KEEP IN SYNC with backend ensure_complete_profile_fields (services/developer_profiles.py).
 // This is the UX check; the backend is the enforced gate. Change both together.
-export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
+export function getMissingDeveloperProfileDetailFields(profile: DeveloperProfile) {
   const missing: string[] = [];
 
   if (!getDeveloperRole(profile)) missing.push("professional role");
@@ -174,6 +175,16 @@ export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
   if (!getDeveloperLinkedIn(profile)) missing.push("LinkedIn");
 
   return missing;
+}
+
+export function getMissingDeveloperProfileFields(profile: DeveloperProfile) {
+  const missing = getMissingDeveloperProfileDetailFields(profile);
+  if (!profile.phoneVerified) missing.push("verified phone number");
+  return missing;
+}
+
+export function isDeveloperProfileDetailsComplete(profile: DeveloperProfile) {
+  return getMissingDeveloperProfileDetailFields(profile).length === 0;
 }
 
 export function isDeveloperProfileComplete(profile: DeveloperProfile) {
@@ -214,7 +225,7 @@ export function normalizeDeveloperProfileForSave<T extends DeveloperProfile>(pro
     avatarUrl: profile.avatarUrl || profile.photo || "",
     photo: profile.photo || profile.avatarUrl || "",
     firstTime: false,
-    profileComplete: isDeveloperProfileComplete({
+    profileComplete: isDeveloperProfileDetailsComplete({
       ...profile,
       jobTitle,
       role: jobTitle,

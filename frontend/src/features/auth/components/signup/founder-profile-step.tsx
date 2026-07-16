@@ -83,7 +83,7 @@ export function FounderProfileStep({
           />
         )}
         <TextInput
-          label="LinkedIn"
+          label="LinkedIn (optional)"
           value={founder.linkedin}
           onChange={(value) => onFieldChange("linkedin", value)}
           placeholder="https://linkedin.com/in/..."

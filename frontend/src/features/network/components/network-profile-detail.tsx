@@ -131,9 +131,7 @@ export function NetworkProfileDetailScreen({
     }
   };
 
-  const handleAddReview = async () => {
-    const trimmed = reviewText.trim();
-    if (!trimmed || savingReview) return;
+  const submitReview = async (trimmed: string) => {
     setSavingReview(true);
     try {
       await saveDeveloperReview(profile.id, { rating: reviewRating, comment: trimmed });
@@ -146,6 +144,13 @@ export function NetworkProfileDetailScreen({
     } finally {
       setSavingReview(false);
     }
+  };
+
+  const handleAddReview = async () => {
+    const trimmed = reviewText.trim();
+    if (!trimmed || savingReview) return;
+    if (requireProfileBeforeAction(() => void submitReview(trimmed))) return;
+    await submitReview(trimmed);
   };
 
   return (

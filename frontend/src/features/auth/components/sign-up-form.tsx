@@ -112,9 +112,8 @@ export function SignUpForm() {
           founder.educationLevel,
           degreeValue,
           founder.primaryGoal,
-          founder.linkedin,
         ].filter(Boolean).length + (founder.domains.length ? 1 : 0);
-      return Math.round((filled / 7) * 100);
+      return Math.round((filled / 6) * 100);
     }
     if (role === "developer") {
       const degreeValue =
@@ -295,8 +294,7 @@ export function SignUpForm() {
         founder.bio &&
         founder.domains.length &&
         founder.educationLevel &&
-        founderDegreeName &&
-        founder.linkedin
+        founderDegreeName
       );
     }
     const developerDegreeName =

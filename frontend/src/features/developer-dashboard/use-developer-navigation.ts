@@ -4,6 +4,7 @@
 // and every developer page. Mirror of use-founder-navigation.
 import { useRouter } from "next/navigation";
 import {
+  getMissingDeveloperProfileFields,
   isDeveloperProfileComplete,
   type DeveloperProfile,
 } from "@/features/developer-dashboard/profile-utils";
@@ -21,7 +22,17 @@ export function useDeveloperNavigation() {
 
   const handleOpenProfile = () => {
     const s = useDeveloperDashboardStore.getState();
+    s.setSettingsTab("profile");
     s.setShowOnboarding(false);
+    s.setProfilePromptDismissed(true);
+    go("settings");
+  };
+
+  const handleOpenSecurity = () => {
+    const s = useDeveloperDashboardStore.getState();
+    s.setSettingsTab("security");
+    s.setShowOnboarding(false);
+    s.setPendingProtectedAction(null);
     s.setProfilePromptDismissed(true);
     go("settings");
   };
@@ -35,6 +46,13 @@ export function useDeveloperNavigation() {
     const s = useDeveloperDashboardStore.getState();
     if (isDeveloperProfileComplete(s.profile)) {
       afterComplete?.();
+      return;
+    }
+    const missing = getMissingDeveloperProfileFields(s.profile);
+    if (missing.length === 1 && missing[0] === "verified phone number") {
+      s.setPendingProtectedAction(null);
+      s.setShowOnboarding(false);
+      s.setProfilePromptDismissed(false);
       return;
     }
     s.setPendingProtectedAction(afterComplete ?? null);
@@ -63,6 +81,7 @@ export function useDeveloperNavigation() {
     go,
     navigateDeveloper,
     handleOpenProfile,
+    handleOpenSecurity,
     handleOpenNetworkMessage,
     requireDeveloperProfile,
     handleOnboardingComplete,

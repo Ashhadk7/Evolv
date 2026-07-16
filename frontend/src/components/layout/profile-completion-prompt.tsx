@@ -10,6 +10,9 @@ export function ProfileCompletionPrompt({
   visible,
   missingProfileFields,
   messageSuffix,
+  title = "Complete profile setup",
+  message,
+  actionLabel = "Complete profile",
   headerClassName = "",
   buttonPaddingX,
   onDismiss,
@@ -18,6 +21,9 @@ export function ProfileCompletionPrompt({
   visible: boolean;
   missingProfileFields: string[];
   messageSuffix: string;
+  title?: string;
+  message?: string;
+  actionLabel?: string;
   headerClassName?: string;
   buttonPaddingX: number;
   onDismiss: () => void;
@@ -48,7 +54,7 @@ export function ProfileCompletionPrompt({
             <div className="min-w-0 flex-1">
               <div className={`flex items-start justify-between gap-2 ${headerClassName}`}>
                 <p className="text-[13px] font-extrabold" style={{ color: "#1a2e26" }}>
-                  Complete profile setup
+                  {title}
                 </p>
                 <button
                   type="button"
@@ -61,7 +67,8 @@ export function ProfileCompletionPrompt({
                 </button>
               </div>
               <p className="mt-1 text-[12px] leading-5" style={{ color: "#6b8e7e" }}>
-                Add {missingProfileFields.slice(0, 2).join(", ") || "your details"} {messageSuffix}
+                {message ??
+                  `Add ${missingProfileFields.slice(0, 2).join(", ") || "your details"} ${messageSuffix}`}
               </p>
               <button
                 type="button"
@@ -73,7 +80,7 @@ export function ProfileCompletionPrompt({
                   paddingRight: buttonPaddingX,
                 }}
               >
-                Complete profile
+                {actionLabel}
                 <ArrowRight size={13} weight="bold" />
               </button>
             </div>

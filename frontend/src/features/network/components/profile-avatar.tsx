@@ -9,15 +9,18 @@ export function ProfileAvatar({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full font-bold text-white"
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold text-white"
       style={{
         width: size,
         height: size,
-        background: profile.avatarColor,
+        background: profile.avatarUrl ? undefined : profile.avatarColor,
+        backgroundImage: profile.avatarUrl ? `url(${profile.avatarUrl})` : undefined,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
         fontSize: size > 56 ? 18 : 12,
       }}
     >
-      {profile.initials}
+      {!profile.avatarUrl && profile.initials}
     </div>
   );
 }

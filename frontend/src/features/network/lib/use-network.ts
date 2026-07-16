@@ -245,14 +245,24 @@ export function useNetwork({
 
   const handleSendRequestWithoutNote = () => {
     if (!requestModalPerson) return;
-    void openOrStartConversation(requestModalPerson, undefined, false).then((conversation) => {
+    const person = requestModalPerson;
+    if (requireProfileBeforeAction()) {
+      setRequestModalPerson(null);
+      return;
+    }
+    void openOrStartConversation(person, undefined, false).then((conversation) => {
       if (conversation) setRequestModalPerson(null);
     });
   };
 
   const handleSendRequestWithNote = (note: string) => {
     if (!requestModalPerson) return;
-    void openOrStartConversation(requestModalPerson, note, true).then((conversation) => {
+    const person = requestModalPerson;
+    if (requireProfileBeforeAction()) {
+      setRequestModalPerson(null);
+      return;
+    }
+    void openOrStartConversation(person, note, true).then((conversation) => {
       if (conversation) setRequestModalPerson(null);
     });
   };
@@ -269,6 +279,7 @@ export function useNetwork({
     requestModalPerson,
     setRequestModalPerson,
     actionError,
+    clearActionError: () => setActionError(""),
     connected,
     pendingIds,
     outgoingSet,

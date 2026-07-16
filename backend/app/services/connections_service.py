@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.models.connection import Connection, ConnectionStatus
 from app.models.messaging import ConnectionStatus as MessageConnectionStatus
+from app.models.user import User, UserRole
 from app.repositories import connections as connections_repo
 from app.repositories import messages as messages_repo
 from app.repositories import users as users_repo
 from app.schemas.connections import ConnectionCreate, ConnectionUpdate
-from app.services.exceptions import ConflictError, NotFoundError
+from app.services.exceptions import ConflictError, ForbiddenError, NotFoundError
 
 
 def _build_user_summary(user) -> dict:
@@ -45,17 +46,20 @@ def _build_user_summary(user) -> dict:
 
 def send_connection_request(
     db: Session,
-    requester_id: UUID,
+    current_user: User,
     payload: ConnectionCreate,
 ) -> Connection:
-    if requester_id == payload.receiver_id:
+    if current_user.id == payload.receiver_id:
         raise ConflictError("You cannot connect to yourself.")
 
     receiver = users_repo.get_user_by_id(db, payload.receiver_id)
     if receiver is None:
         raise NotFoundError("Receiver user not found.")
 
-    existing = connections_repo.get_active_connection(db, requester_id, payload.receiver_id)
+    ensure_user_can_use_network(current_user)
+    ensure_user_can_use_network(receiver, subject="This member")
+
+    existing = connections_repo.get_active_connection(db, current_user.id, payload.receiver_id)
     if existing:
         if existing.status == ConnectionStatus.ACCEPTED:
             raise ConflictError("You are already connected to this user.")
@@ -66,7 +70,7 @@ def send_connection_request(
 
     return connections_repo.create_connection(
         db,
-        requester_id=requester_id,
+        requester_id=current_user.id,
         receiver_id=payload.receiver_id,
         note=payload.note,
     )
@@ -74,15 +78,16 @@ def send_connection_request(
 
 def update_connection_status(
     db: Session,
-    user_id: UUID,
+    current_user: User,
     connection_id: UUID,
     payload: ConnectionUpdate,
 ) -> Connection:
+    ensure_user_can_use_network(current_user)
     connection = connections_repo.get_connection_by_id(db, connection_id)
     if connection is None:
         raise NotFoundError("Connection request not found.")
 
-    if connection.receiver_id != user_id:
+    if connection.receiver_id != current_user.id:
         raise ConflictError("Only the recipient can respond to this connection request.")
 
     if connection.status != ConnectionStatus.PENDING:
@@ -92,6 +97,20 @@ def update_connection_status(
     sync_message_connection_status(db, connection, payload.status)
     db.flush()
     return connection
+
+
+def ensure_user_can_use_network(user: User, *, subject: str = "Your") -> None:
+    if not user.email_verified:
+        raise ForbiddenError(f"{subject} email must be verified before using network actions.")
+    if not user.phone_verified:
+        if subject == "Your":
+            raise ForbiddenError("Verify your phone number before using network actions.")
+        raise ForbiddenError(f"{subject} is not available for network actions yet.")
+    profile = user.founder_profile if user.role == UserRole.FOUNDER else user.developer_profile
+    if profile is None or not bool(getattr(profile, "profile_complete", False)):
+        if subject == "Your":
+            raise ForbiddenError("Complete your profile before using network actions.")
+        raise ForbiddenError(f"{subject} is not available for network actions yet.")
 
 
 def sync_message_connection_status(
