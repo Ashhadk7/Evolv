@@ -1,5 +1,5 @@
 import type { Contact } from "@/features/messaging/types/developer-inbox-types";
-import type { DeveloperContactProfile } from "@/features/developer-dashboard/data/developer-network-data";
+import type { FounderContactProfile as DeveloperContactProfile } from "@/features/network/types";
 
 export function profileToContact(profile: DeveloperContactProfile): Contact {
   return {

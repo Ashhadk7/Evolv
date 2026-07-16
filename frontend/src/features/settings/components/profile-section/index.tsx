@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "@phosphor-icons/react";
+import { AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import type { FounderProfile } from "@/features/founder-dashboard/types";
+import { getApiErrorMessage } from "@/lib/api";
 import {
   formatFounderEducation,
   formatFounderEducations,
   getFounderEducationSummary,
   getFounderEducations,
+  getMissingFounderProfileFields,
   normalizeFounderProfileForSave,
   type FounderEducation,
 } from "@/features/founder-dashboard/profile-utils";
+import { removeAvatar, uploadAvatar } from "@/features/profiles/profile-api";
+import { AvatarCropModal } from "../avatar-crop-modal";
+
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 import {
   getProfileName,
   getProfileInitials,
@@ -31,9 +37,9 @@ export function ProfileSection({
 }) {
   const [local, setLocal] = useState<FounderProfile>(profile);
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const safeDomains = Array.isArray(local.domains) ? local.domains : [];
@@ -109,20 +115,24 @@ export function ProfileSection({
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveError("");
     try {
-      await onSave(
-        normalizeFounderProfileForSave({
+      const normalized = normalizeFounderProfileForSave({
         ...local,
         domains: safeDomains,
         educations: safeEducations,
-        }) as FounderProfile
-      );
+      }) as FounderProfile;
+      await onSave(normalized);
       setEditing(false);
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2200);
-    } catch {
-      setSaveError("We could not save your profile. Please try again.");
+      const missing = getMissingFounderProfileFields(normalized);
+      if (missing.length) {
+        toast.warning(
+          `Saved, but add ${missing.join(", ")} to complete your profile and appear in the network.`
+        );
+      } else {
+        toast.success("Changes saved");
+      }
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -141,39 +151,51 @@ export function ProfileSection({
     setEditing(false);
   };
 
-  const handlePhotoUpload = (file?: File) => {
-    if (!file || !file.type.startsWith("image/")) return;
+  // Validate before showing anything, so an oversized/invalid file is rejected
+  // up front (like GitHub) instead of failing later on save.
+  const handlePhotoSelect = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file (PNG, JPEG, or WebP).");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error("That image is over 2 MB. Please choose a smaller one.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setLocal((p) => ({ ...p, avatarUrl: reader.result as string }));
-      }
+      if (typeof reader.result === "string") setCropSrc(reader.result);
     };
     reader.readAsDataURL(file);
   };
 
+  const handleCropSave = async (blob: Blob) => {
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadAvatar(blob);
+      setLocal((p) => ({ ...p, avatarUrl: url }));
+      toast.success("Photo updated");
+      setCropSrc(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    try {
+      await removeAvatar();
+      setLocal((p) => ({ ...p, avatarUrl: "" }));
+      toast.success("Photo removed");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
   return (
     <div className="relative flex flex-col gap-5 pb-10">
-      <AnimatePresence>
-        {saved && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute top-0 right-0 z-20 flex items-center gap-2 px-3 py-2 text-[12px] font-bold"
-            style={{
-              background: "#e8f5ef",
-              color: "#2e7d5c",
-              border: "1px solid #cde8da",
-              borderRadius: 8,
-              boxShadow: "0 10px 26px rgba(15,28,24,0.10)",
-            }}
-          >
-            <Check size={14} weight="bold" />
-            Saved changes
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence mode="wait" initial={false}>
         {!editing ? (
@@ -202,14 +224,23 @@ export function ProfileSection({
             onFieldChange={set}
             onToggleDomain={toggleDomain}
             onEducationsChange={handleEducationsChange}
-            onPhotoUpload={handlePhotoUpload}
+            onPhotoUpload={handlePhotoSelect}
+            onRemovePhoto={local.avatarUrl ? () => void handleRemovePhoto() : undefined}
             onCancel={handleCancel}
             onSave={() => void handleSave()}
             saving={saving}
-            saveError={saveError}
           />
         )}
       </AnimatePresence>
+
+      {cropSrc && (
+        <AvatarCropModal
+          imageSrc={cropSrc}
+          saving={uploadingPhoto}
+          onCancel={() => setCropSrc(null)}
+          onSave={(blob) => void handleCropSave(blob)}
+        />
+      )}
     </div>
   );
 }

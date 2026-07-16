@@ -13,7 +13,6 @@ import {
   MapPin,
   Star,
   UserPlus,
-  Users,
 } from "@phosphor-icons/react";
 import type { FounderContactProfile } from "@/features/network/types";
 import { RatingStars } from "@/components/shared/rating-stars";
@@ -219,12 +218,11 @@ export function NetworkProfileDetailScreen({
                   <span className="flex items-center gap-1">
                     <Briefcase size={12} /> {profile.experience}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Users size={12} /> {profile.mutual} mutual
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Star size={12} weight="fill" /> {profile.match}% match
-                  </span>
+                  {profile.match > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Star size={12} weight="fill" /> {profile.match}% AI Match
+                    </span>
+                  )}
                   {isDeveloper && (
                     <span className="flex items-center gap-1.5">
                       <RatingStars rating={displayRating} size={12} />
@@ -294,13 +292,12 @@ export function NetworkProfileDetailScreen({
                 isDeveloper
                   ? isInboxSurface
                     ? "md:grid-cols-2"
-                    : "lg:grid-cols-4"
+                    : "lg:grid-cols-3"
                   : isInboxSurface
                     ? "md:grid-cols-2"
-                    : "lg:grid-cols-3"
+                    : "lg:grid-cols-2"
               }`}
             >
-              <DetailTile label="Match" value={`${profile.match}%`} />
               {isDeveloper && (
                 <DetailTile label="Rating" value={`${displayRating}/5 (${reviewCount} reviews)`} />
               )}

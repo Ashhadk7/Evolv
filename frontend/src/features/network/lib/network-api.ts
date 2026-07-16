@@ -2,11 +2,13 @@ import { apiFetch } from "@/lib/api";
 import { getSession } from "@/features/auth/lib/session";
 import type { FounderContactProfile, NetworkReview } from "@/features/network/types";
 import type { DeveloperCertification } from "@/features/developer-dashboard/profile-utils";
-import type { FounderEducation } from "@/features/founder-dashboard/profile-utils";
-
-interface WireEducation { id: string; level: string; degree: string | null; custom_degree: string | null; school: string }
-interface WireCertification { id: string; name: string; issuer: string; issue_date?: string | null; credential_id?: string | null; credential_url?: string | null }
-interface WireReview { id: string; reviewer_name: string; rating: number; comment: string; created_at: string; updated_at: string }
+import {
+  type WireEducation,
+  type WireCertification,
+  type WireReview,
+  educationFromWire,
+  reviewFromWire,
+} from "@/features/profiles/lib/profile-wire";
 interface UserSummary { id: string; email: string; role: "founder" | "developer"; first_name: string; last_name: string; city: string | null; country: string | null; avatar_url: string | null; phone_verified: boolean; profile_title: string | null; profile_bio: string | null; profile_complete: boolean; rating_avg: number | null; discovery_tags: string[] }
 interface PublicFounderProfile { headline: string | null; bio: string | null; description: string | null; linkedin: string | null; venture_stage: string | null; primary_goal: string | null; domains: string[]; profile_complete: boolean; educations: WireEducation[] }
 interface PublicDeveloperProfile { job_title: string | null; bio: string | null; experience_years: number | null; availability: boolean; open_to_remote: boolean; preferred_budget: string | null; github: string | null; linkedin: string | null; portfolio_link: string | null; skills: string[]; rating_avg: number; profile_complete: boolean; educations: WireEducation[]; certifications: WireCertification[]; reviews: WireReview[] }
@@ -47,34 +49,10 @@ function initialsFor(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "U";
 }
 
-function educationFromWire(items: WireEducation[] = []): FounderEducation[] {
-  return items.map((item) => ({
-    id: item.id,
-    level: item.level,
-    degree: item.degree ?? "",
-    customDegree: item.custom_degree ?? "",
-    school: item.school,
-  }));
-}
-
 function certificationFromWire(items: WireCertification[] = []): DeveloperCertification[] {
   return items.map((item) => ({
     id: item.id,
     name: item.name,
-  }));
-}
-
-function reviewFromWire(items: WireReview[] = []): NetworkReview[] {
-  return items.map((item) => ({
-    id: item.id,
-    reviewer: item.reviewer_name,
-    rating: item.rating,
-    comment: item.comment,
-    date: new Date(item.updated_at || item.created_at).toLocaleDateString([], {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
   }));
 }
 

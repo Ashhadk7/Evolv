@@ -144,8 +144,7 @@ def authenticate_websocket_user(db: Session, token: str | None) -> User | None:
     app_user = users_repository.get_user_by_id(db, auth_user.id)
     if app_user is None or not app_user.email_verified:
         return None
-    try:
-        message_service.ensure_user_can_use_messaging(app_user)
-    except HTTPException:
-        return None
+    # Presence (online status) is open to any authenticated user. The full
+    # messaging gate (phone verified + complete profile) is enforced on *sending*
+    # in send_message -> ensure_can_start_messaging, so it isn't repeated here.
     return app_user
