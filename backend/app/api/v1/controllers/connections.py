@@ -11,7 +11,7 @@ from app.schemas.connections import (
     ConnectionUpdate,
 )
 from app.services import connections_service
-from app.services.exceptions import ConflictError, NotFoundError
+from app.services.exceptions import ConflictError, ForbiddenError, NotFoundError
 
 router = APIRouter()
 
@@ -50,11 +50,13 @@ def send_connection_request(
     current_user: CurrentUser,
 ) -> ConnectionResponse:
     try:
-        conn = connections_service.send_connection_request(db, current_user.id, payload)
+        conn = connections_service.send_connection_request(db, current_user, payload)
         db.commit()
         db.refresh(conn)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
@@ -73,11 +75,13 @@ def respond_to_connection_request(
     current_user: CurrentUser,
 ) -> ConnectionResponse:
     try:
-        conn = connections_service.update_connection_status(db, current_user.id, connection_id, payload)
+        conn = connections_service.update_connection_status(db, current_user, connection_id, payload)
         db.commit()
         db.refresh(conn)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 

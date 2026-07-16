@@ -5,6 +5,8 @@ export const DEFAULT_DEVELOPER_PROFILE: DeveloperProfile = {
   firstName: "",
   lastName: "",
   email: "",
+  phone: "",
+  phoneVerified: false,
   avatarUrl: "",
   jobTitle: "",
   role: "",

@@ -40,6 +40,8 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
 
   const profileComplete = isDeveloperProfileComplete(profile);
   const missingProfileFields = getMissingDeveloperProfileFields(profile);
+  const needsOnlyPhoneVerification =
+    missingProfileFields.length === 1 && missingProfileFields[0] === "verified phone number";
 
   return (
     <AuthGuard requiredRole="developer">
@@ -71,10 +73,17 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         visible={!profileComplete && !showOnboarding && !profilePromptDismissed}
         missingProfileFields={missingProfileFields}
         messageSuffix="before applying, messaging, or using network actions."
+        title={needsOnlyPhoneVerification ? "Verify number" : "Complete profile setup"}
+        message={
+          needsOnlyPhoneVerification
+            ? "Verify your phone number to complete your profile and appear in the network."
+            : undefined
+        }
+        actionLabel={needsOnlyPhoneVerification ? "Verify number" : "Complete profile"}
         headerClassName="pr-3.5 pl-3.5"
         buttonPaddingX={10}
         onDismiss={() => setProfilePromptDismissed(true)}
-        onOpenProfile={nav.handleOpenProfile}
+        onOpenProfile={needsOnlyPhoneVerification ? nav.handleOpenSecurity : nav.handleOpenProfile}
       />
 
       {showOnboarding && (

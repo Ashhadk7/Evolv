@@ -560,7 +560,7 @@ def build_participant(user: User) -> MessageParticipant:
         last_name=user.last_name,
         avatar_url=user.avatar_url,
         profile_title=get_profile_title(user),
-        profile_complete=bool(getattr(profile, "profile_complete", False)),
+        profile_complete=user.profile_complete,
         phone_verified=user.phone_verified,
     )
 

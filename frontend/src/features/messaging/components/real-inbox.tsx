@@ -174,13 +174,20 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
     const launchedContact = contacts.find((item) => item.id === activeContactId);
     if (!launchedContact) return;
     syncedLaunchIdRef.current = activeContactId;
-    setFilter(
-      launchedContact.requestDirection === "incoming"
-        ? "requests"
-        : launchedContact.requestDirection === "outgoing"
-          ? "pending"
-          : "general"
-    );
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setFilter(
+        launchedContact.requestDirection === "incoming"
+          ? "requests"
+          : launchedContact.requestDirection === "outgoing"
+            ? "pending"
+            : "general"
+      );
+    });
+    return () => {
+      active = false;
+    };
   }, [activeContactId, contacts]);
   const contact = contacts.find((c) => c.id === activeId);
   const conversation = conversations.find((c) => c.id === activeId);
@@ -208,7 +215,13 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
   }, [markConversationReadLocal, messages, onActiveContactChange, userId]);
   useEffect(() => {
     if (!activeId || loadingChats || profileOpen || Object.hasOwn(messages, activeId)) return;
-    void select(activeId);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void select(activeId);
+    });
+    return () => {
+      active = false;
+    };
   }, [activeId, loadingChats, messages, profileOpen, select]);
   useLayoutEffect(() => { if (loadingConversationId === activeId) return; const frame = requestAnimationFrame(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }); return () => cancelAnimationFrame(frame); }, [activeId, loadingConversationId, profileOpen, thread.length]);
 

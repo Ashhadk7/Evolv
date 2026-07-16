@@ -8,6 +8,7 @@ import { ConnectionRequestModal } from "../connection-request-modal";
 import { PendingRequestsPanel } from "../pending-requests-panel";
 import { NetworkPersonCard } from "../network-person-card";
 import { NetworkLoadError } from "../network-load-error";
+import { NetworkActionToast } from "../network-action-toast";
 import { useNetwork } from "@/features/network/lib/use-network";
 
 export default function Network({
@@ -28,6 +29,7 @@ export default function Network({
     requestModalPerson,
     setRequestModalPerson,
     actionError,
+    clearActionError,
     connected,
     pendingIds,
     outgoingSet,
@@ -57,11 +59,6 @@ export default function Network({
     return (
       <>
         <div className="relative h-screen overflow-hidden">
-          {actionError && (
-            <div className="absolute left-6 right-6 top-4 z-20 rounded-xl border border-[#ead7c2] bg-[#fff8ef] px-4 py-3 text-[12px] font-semibold text-[#935f24] shadow-sm">
-              {actionError}
-            </div>
-          )}
           <NetworkProfileDetailScreen
             key={selectedPerson.id}
             profile={selectedPerson}
@@ -75,6 +72,8 @@ export default function Network({
             onMessage={handleMessage}
             connectionLabel={selectedRequested ? "Requested" : undefined}
             connectionDisabled={selectedRequested}
+            profileComplete={profileComplete}
+            onRequireProfile={onRequireProfile}
           />
         </div>
         <AnimatePresence>
@@ -87,6 +86,7 @@ export default function Network({
             />
           )}
         </AnimatePresence>
+        <NetworkActionToast message={actionError} onDismiss={clearActionError} />
       </>
     );
   }
@@ -155,12 +155,6 @@ export default function Network({
             </button>
           </div>
         </div>
-
-        {actionError && (
-          <div className="mb-4 rounded-xl border border-[#ead7c2] bg-[#fff8ef] px-4 py-3 text-[12px] font-semibold text-[#935f24]">
-            {actionError}
-          </div>
-        )}
 
         {/* Tab 1: Directory Search View */}
         {activeTab === "network" && (
@@ -316,6 +310,7 @@ export default function Network({
           />
         )}
       </AnimatePresence>
+      <NetworkActionToast message={actionError} onDismiss={clearActionError} />
     </>
   );
 }

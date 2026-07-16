@@ -135,7 +135,7 @@ class User(Base):
     @property
     def profile_complete(self) -> bool:
         profile = self.founder_profile if self.role == UserRole.FOUNDER else self.developer_profile
-        return bool(profile and profile.profile_complete)
+        return bool(self.phone_verified and profile and profile.profile_complete)
 
     @property
     def rating_avg(self) -> float | None:

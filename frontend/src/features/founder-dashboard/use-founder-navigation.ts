@@ -4,7 +4,10 @@
 // every founder page. Each handler composes a store action with router navigation.
 // Reads use `getState()` so this hook does not subscribe/re-render on store changes.
 import { useRouter } from "next/navigation";
-import { isFounderProfileComplete } from "@/features/founder-dashboard/profile-utils";
+import {
+  getMissingFounderProfileFields,
+  isFounderProfileComplete,
+} from "@/features/founder-dashboard/profile-utils";
 import type { FounderProfile } from "./types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
 import { useFounderDashboardStore } from "./store";
@@ -49,6 +52,16 @@ export function useFounderNavigation() {
     go("settings");
   };
 
+  const handleOpenSecurity = () => {
+    const s = useFounderDashboardStore.getState();
+    s.setSettingsSection("security");
+    s.setShowOnboarding(false);
+    s.setPendingProtectedTab(null);
+    s.setPendingProtectedAction(null);
+    s.setProfilePromptDismissed(true);
+    go("settings");
+  };
+
   const handleOpenPaymentSettings = () => {
     const s = useFounderDashboardStore.getState();
     s.setSettingsSection("payment");
@@ -61,6 +74,14 @@ export function useFounderNavigation() {
     const s = useFounderDashboardStore.getState();
     if (isFounderProfileComplete(s.profile)) {
       afterComplete?.();
+      return;
+    }
+    const missing = getMissingFounderProfileFields(s.profile);
+    if (missing.length === 1 && missing[0] === "verified phone number") {
+      s.setPendingProtectedAction(null);
+      s.setPendingProtectedTab(null);
+      s.setShowOnboarding(false);
+      s.setProfilePromptDismissed(false);
       return;
     }
     s.setPendingProtectedAction(afterComplete ?? null);
@@ -112,6 +133,7 @@ export function useFounderNavigation() {
     handleViewBlueprint,
     handleOpenNetworkMessage,
     handleOpenProfile,
+    handleOpenSecurity,
     handleOpenPaymentSettings,
     requireFounderProfile,
     handleOnboardingComplete,

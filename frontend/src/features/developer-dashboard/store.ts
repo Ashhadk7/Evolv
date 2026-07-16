@@ -12,6 +12,7 @@ import { DEFAULT_DEVELOPER_PROFILE } from "./profile";
 import { ApiError } from "@/lib/api";
 import { getSession } from "@/features/auth/lib/session";
 import { loadDeveloperProfile, saveDeveloperProfile } from "@/features/profiles/profile-api";
+import type { SettingsTab } from "@/features/settings/components/developer-settings/developer-settings-types";
 
 interface DeveloperDashboardState {
   profile: DeveloperProfile;
@@ -22,6 +23,7 @@ interface DeveloperDashboardState {
   inboxActiveContactId: string;
   networkInboxContacts: DeveloperInboxLaunchContact[];
   networkRequestCount: number;
+  settingsTab: SettingsTab;
   pendingProtectedAction: (() => void) | null;
 
   loadData: () => Promise<void>;
@@ -31,6 +33,7 @@ interface DeveloperDashboardState {
   setInboxActiveContactId: (id: string) => void;
   addNetworkInboxContact: (contact: DeveloperInboxLaunchContact) => void;
   setNetworkRequestCount: (n: number) => void;
+  setSettingsTab: (tab: SettingsTab) => void;
   setPendingProtectedAction: (fn: (() => void) | null) => void;
 }
 
@@ -43,6 +46,7 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
   inboxActiveContactId: "asad",
   networkInboxContacts: [],
   networkRequestCount: 0,
+  settingsTab: "profile",
   pendingProtectedAction: null,
 
   loadData: async () => {
@@ -72,5 +76,6 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
       inboxActiveContactId: contact.conversationId ?? contact.id,
     })),
   setNetworkRequestCount: (n) => set({ networkRequestCount: n }),
+  setSettingsTab: (tab) => set({ settingsTab: tab }),
   setPendingProtectedAction: (fn) => set({ pendingProtectedAction: fn }),
 }));

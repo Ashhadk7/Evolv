@@ -20,6 +20,7 @@ export interface FounderProfileShape {
   customDegreeName?: string;
   educations?: FounderEducation[];
   profileComplete?: boolean;
+  phoneVerified?: boolean;
 }
 
 export const EDUCATION_LEVELS = [
@@ -223,7 +224,7 @@ export function getFounderEducationSummary(profile: FounderProfileShape) {
 
 // KEEP IN SYNC with backend ensure_complete_profile_fields (services/founder_profiles.py).
 // This is the UX check; the backend is the enforced gate. Change both together.
-export function getMissingFounderProfileFields(profile: FounderProfileShape) {
+export function getMissingFounderProfileDetailFields(profile: FounderProfileShape) {
   const domains = Array.isArray(profile.domains) ? profile.domains : [];
   const missing: string[] = [];
 
@@ -231,9 +232,18 @@ export function getMissingFounderProfileFields(profile: FounderProfileShape) {
   if (!profile.bio?.trim()) missing.push("short bio");
   if (!domains.length) missing.push("domains of interest");
   if (!getFounderEducationSummary(profile)) missing.push("education");
-  if (!profile.linkedin?.trim()) missing.push("LinkedIn");
 
   return missing;
+}
+
+export function getMissingFounderProfileFields(profile: FounderProfileShape) {
+  const missing = getMissingFounderProfileDetailFields(profile);
+  if (!profile.phoneVerified) missing.push("verified phone number");
+  return missing;
+}
+
+export function isFounderProfileDetailsComplete(profile: FounderProfileShape) {
+  return getMissingFounderProfileDetailFields(profile).length === 0;
 }
 
 export function isFounderProfileComplete(profile: FounderProfileShape) {
@@ -250,6 +260,11 @@ export function normalizeFounderProfileForSave<T extends FounderProfileShape>(pr
     domains,
     educations,
     education,
-    profileComplete: isFounderProfileComplete({ ...profile, domains, educations, education }),
+    profileComplete: isFounderProfileDetailsComplete({
+      ...profile,
+      domains,
+      educations,
+      education,
+    }),
   };
 }

@@ -84,7 +84,7 @@ def build_response(db: Session, profile: FounderProfile) -> FounderProfileRespon
         venture_stage=profile.venture_stage,
         primary_goal=profile.primary_goal,
         domains=profile.domains,
-        profile_complete=profile.profile_complete,
+        profile_complete=bool(profile.profile_complete and profile.user.phone_verified),
         stripe_connected=profile.stripe_connected,
         educations=get_education_responses(db, profile.user_id),
     )
@@ -104,8 +104,6 @@ def ensure_complete_profile_fields(
         missing.append("headline")
     if not profile.bio or not profile.bio.strip():
         missing.append("bio")
-    if not profile.linkedin or not profile.linkedin.strip():
-        missing.append("LinkedIn")
     if not profile.domains:
         missing.append("domains")
     educations = submitted_educations

@@ -72,7 +72,7 @@ export function ProfileSection({
     local.bio,
     safeDomains.length ? "domains" : "",
     educationSummary,
-    local.linkedin,
+    local.phoneVerified ? "verified phone" : "",
   ];
   const completion = Math.round(
     (completionItems.filter(Boolean).length / completionItems.length) * 100

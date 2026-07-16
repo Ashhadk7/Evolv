@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   getDeveloperEducations,
-  getMissingDeveloperProfileFields,
+  getMissingDeveloperProfileDetailFields,
   normalizeDeveloperProfileForSave,
   getDeveloperSkillEntries,
   type DeveloperProfile,
@@ -99,7 +99,7 @@ export function useDeveloperOnboarding({
 
   const handleComplete = () => {
     const normalized = normalizeDeveloperProfileForSave(profile);
-    const missing = getMissingDeveloperProfileFields(normalized);
+    const missing = getMissingDeveloperProfileDetailFields(normalized);
     if (missing.length) {
       setError(
         `Please fill ${missing.join(", ")} before using applications, messages, or network actions.`
