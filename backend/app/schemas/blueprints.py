@@ -36,6 +36,7 @@ class BlueprintVersionCreate(BaseModel):
     market_potential: int = Field(ge=0, le=100)
     funding_readiness: LevelRating
     developer_demand: LevelRating
+    content_json: dict[str, Any] | None = None
 
     @field_validator(
         "name", "industry", "idea_desc", "differentiator", "ai_recommend", mode="before"
@@ -63,6 +64,7 @@ class BlueprintVersionResponse(BaseModel):
     funding_readiness: LevelRating
     developer_demand: LevelRating
     generated_at: datetime
+    content_json: dict[str, Any] | None = None
 
     @field_validator("state", "funding_readiness", "developer_demand", mode="before")
     @classmethod

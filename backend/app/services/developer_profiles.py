@@ -12,6 +12,7 @@ from app.schemas.developer_profiles import (
     DeveloperProfileResponse,
     DeveloperProfileUpdate,
 )
+from app.services.matching_service import remove_developer_embedding, sync_developer_embedding
 from app.services.profile_helpers import (
     commit_profile_change,
     ensure_user_role,
@@ -43,6 +44,7 @@ def create_profile(
     ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Developer profile could not be created.")
     db.refresh(profile)
+    sync_developer_embedding(profile.user_id, profile.skills)
     return build_response(db, profile)
 
 
@@ -60,6 +62,7 @@ def update_profile(
     ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Developer profile could not be updated.")
     db.refresh(profile)
+    sync_developer_embedding(profile.user_id, profile.skills)
     return build_response(db, profile)
 
 
@@ -68,6 +71,7 @@ def delete_profile(db: Session, current_user: User) -> None:
     profile = get_profile_or_404(db, current_user.id)
     developer_profiles_repository.delete_developer_profile_for_user(db, profile=profile)
     commit_profile_change(db, "Developer profile could not be deleted.")
+    remove_developer_embedding(current_user.id)
 
 
 def get_profile_or_404(db: Session, user_id: UUID) -> DeveloperProfile:

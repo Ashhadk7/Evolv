@@ -69,6 +69,7 @@ _BLUEPRINT_VERSION_FIELDS = (
     "market_potential",
     "funding_readiness",
     "developer_demand",
+    "content_json",
 )
 
 
@@ -95,6 +96,7 @@ def create_version(
         market_potential=content.market_potential,
         funding_readiness=content.funding_readiness,
         developer_demand=content.developer_demand,
+        content_json=content.content_json,
     )
     db.add(version)
     db.flush()

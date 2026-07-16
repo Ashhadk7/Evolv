@@ -75,7 +75,9 @@ def match_developers_for_blueprint(
     )
     version = blueprint.current_version or blueprint.pending_version
     content = version.content_json if version is not None else None
-    roles = content.get("roles", []) if isinstance(content, dict) else []
+    agents = content.get("agents", {}) if isinstance(content, dict) else {}
+    tech_stack = agents.get("techStack", {}) if isinstance(agents, dict) else {}
+    roles = tech_stack.get("roles", []) if isinstance(tech_stack, dict) else []
 
     return matching_service.get_matches_for_blueprint_roles(
         db,

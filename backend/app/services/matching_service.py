@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from app.repositories import matching as matching_repository
@@ -11,6 +14,8 @@ from app.schemas.matching import (
 )
 from app.services import embeddings_client, pinecone_service
 
+logger = logging.getLogger(__name__)
+
 SKILL_WEIGHT = 0.6
 EXPERIENCE_WEIGHT = 0.25
 AVAILABILITY_WEIGHT = 0.15
@@ -18,6 +23,16 @@ EXPERIENCE_CAP_YEARS = 8
 
 RULE_SCORE_WEIGHT = 0.5
 SEMANTIC_SCORE_WEIGHT = 0.5
+
+
+def _parse_role_skills(raw_skills: object) -> list[str]:
+    """Blueprint roles store skills as a comma-separated string (e.g. 'React, Node.js, ...'),
+    but tolerate a list too in case the generator output shape changes."""
+    if isinstance(raw_skills, str):
+        return [skill.strip() for skill in raw_skills.split(",") if skill.strip()]
+    if isinstance(raw_skills, list):
+        return [str(skill).strip() for skill in raw_skills if str(skill).strip()]
+    return []
 
 
 def _score_developer(
@@ -114,8 +129,10 @@ def get_matches_for_blueprint_roles(
     for role in roles:
         if not isinstance(role, dict):
             continue
-        title = str(role.get("title") or role.get("role_title") or "Unspecified Role")
-        skills = [str(skill).strip() for skill in role.get("skills", []) if str(skill).strip()]
+        title = str(
+            role.get("role") or role.get("title") or role.get("role_title") or "Unspecified Role"
+        )
+        skills = _parse_role_skills(role.get("skills"))
         scored = _score_all(developers, skills, min_experience)
         role_matches.append(
             RoleMatchResponse(
@@ -146,11 +163,16 @@ def get_matches_semantic(
         return _fallback_rule_based(db, required_skills, min_experience, limit)
 
     query_text = f"{role_description} skills: {', '.join(required_skills)}"
-    query_embedding = embeddings_client.embed_text(query_text)
-    if not query_embedding:
+    try:
+        query_embedding = embeddings_client.embed_text(query_text)
+        if not query_embedding:
+            return _fallback_rule_based(db, required_skills, min_experience, limit)
+
+        top_matches = pinecone_service.query_top_k(query_embedding, top_k=limit)
+    except Exception:
+        logger.exception("Semantic matching failed, falling back to rule-based matching")
         return _fallback_rule_based(db, required_skills, min_experience, limit)
 
-    top_matches = pinecone_service.query_top_k(query_embedding, top_k=limit)
     if not top_matches:
         return MatchListResponse(total=0, items=[])
 
@@ -179,6 +201,24 @@ def get_matches_semantic(
 
     scored.sort(key=lambda item: item.match_score, reverse=True)
     return MatchListResponse(total=len(scored), items=scored[:limit])
+
+
+def sync_developer_embedding(user_id: UUID, skills: list[str]) -> None:
+    if not skills:
+        return
+    try:
+        embedding = embeddings_client.embed_text(", ".join(skills))
+        if embedding:
+            pinecone_service.upsert_developer(str(user_id), embedding)
+    except Exception:
+        logger.exception("Failed to sync developer embedding for user %s", user_id)
+
+
+def remove_developer_embedding(user_id: UUID) -> None:
+    try:
+        pinecone_service.delete_developer(str(user_id))
+    except Exception:
+        logger.exception("Failed to remove developer embedding for user %s", user_id)
 
 
 def reindex_developer_embeddings(db: Session) -> int:
