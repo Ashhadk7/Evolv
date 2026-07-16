@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from typing import TypeVar
 
 import httpx
@@ -12,12 +13,14 @@ from app.services.provider_clients import (
     GROQ_CHAT_COMPLETIONS_PATH,
     groq_headers,
     groq_http_client,
+    groq_sync_http_client,
     groq_url,
 )
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 MAX_ATTEMPTS = 3
+CHAT_MAX_ATTEMPTS = 5
 
 
 class AgentServiceError(RuntimeError):
@@ -121,10 +124,10 @@ def _retry_delay(response: httpx.Response, attempt: int) -> float:
     return min(3.0 * (attempt + 1), 90.0)
 
 
-def generate_chat(system: str, messages: list[dict]) -> str:
+def generate_chat(system: str, messages: list[dict[str, str]]) -> str:
     settings = get_settings()
-    api_key = settings.GROQ_API_KEY.get_secret_value().strip()
-    if not api_key:
+    headers = groq_headers()
+    if not headers["Authorization"].removeprefix("Bearer ").strip():
         raise AgentServiceError("GROQ_API_KEY is required for chat completions.")
 
     payload = {
@@ -136,26 +139,24 @@ def generate_chat(system: str, messages: list[dict]) -> str:
         "temperature": 0.3,
     }
 
-    url = f"{settings.GROQ_API_BASE_URL.rstrip('/')}/chat/completions"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    url = groq_url(GROQ_CHAT_COMPLETIONS_PATH)
 
-    # Unified synchronous httpx call matching the async call_agent pattern with 5 retries
     last_error: Exception | None = None
-    with httpx.Client(timeout=settings.AI_TIMEOUT_SECONDS) as client:
-        for attempt in range(5):
+    with groq_sync_http_client() as client:
+        for attempt in range(CHAT_MAX_ATTEMPTS):
             try:
                 response = client.post(url, headers=headers, json=payload)
-                if response.status_code == 429 and attempt < 4:
-                    import time
+                if response.status_code == 429 and attempt < CHAT_MAX_ATTEMPTS - 1:
                     time.sleep(_retry_delay(response, attempt))
                     continue
                 response.raise_for_status()
                 content = response.json()["choices"][0]["message"]["content"]
-                return content or ""
+                if not isinstance(content, str) or not content.strip():
+                    raise ValueError("AI provider returned an empty chat response.")
+                return content.strip()
             except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
                 last_error = exc
-                if attempt < 4:
-                    import time
+                if attempt < CHAT_MAX_ATTEMPTS - 1:
                     time.sleep(2.0 * (attempt + 1))
                     continue
     raise AgentServiceError(f"Groq returned an invalid chat response: {last_error}") from last_error

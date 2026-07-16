@@ -87,6 +87,7 @@ def update_visibility(
 
     return blueprint
 
+
 def delete_blueprint(db: Session, blueprint_id: UUID, current_user: User) -> None:
     blueprint = get_blueprint(db, blueprint_id, current_user, require_ownership=True)
 
@@ -97,32 +98,30 @@ def delete_blueprint(db: Session, blueprint_id: UUID, current_user: User) -> Non
         db.rollback()
         raise BlueprintPersistenceError("Blueprint could not be deleted.") from exc
 
+
 def get_blueprint_dict(db: Session, blueprint_id: UUID, current_user: User) -> dict | None:
     blueprint = get_blueprint(db, blueprint_id, current_user, require_ownership=False)
     if not blueprint or not blueprint.current_version:
         return None
-    
+
     version = blueprint.current_version
-    cost_data = {}
-    if version.content_json and "agents" in version.content_json:
-        ts_agent = version.content_json["agents"].get("techStack") or {}
-        cost_data = {
-            "timeline": ts_agent.get("timeline") or "14 weeks",
-            "team": f"{len(ts_agent.get('roles', []))} roles" if ts_agent.get("roles") else "4 members",
-        }
-        
+    content_json = version.content_json or {}
+    intake = content_json.get("intake", {}) if isinstance(content_json, dict) else {}
+
     return {
         "id": str(blueprint.id),
         "name": version.name,
         "industry": version.industry,
-        "idea": version.idea_desc,
+        "ideaDesc": version.idea_desc,
         "differentiator": version.differentiator,
+        "aiRecommend": version.ai_recommend,
         "viability": version.viability,
         "marketPotential": version.market_potential,
-        "contentJson": version.content_json or {},
-        "cost": cost_data,
-        "views": 0,
-        "developerApplications": 7,
-        "profileSaves": 4,
+        "developerDemand": version.developer_demand.value,
+        "contentJson": content_json,
+        "cost": {
+            "timeline": intake.get("timeline", "") if isinstance(intake, dict) else "",
+            "budget": intake.get("budget", "") if isinstance(intake, dict) else "",
+        },
     }
 

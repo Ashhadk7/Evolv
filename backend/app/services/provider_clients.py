@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterator
 
 import httpx
 from pydantic import SecretStr
@@ -48,6 +48,13 @@ def groq_headers() -> dict[str, str]:
 async def groq_http_client() -> AsyncIterator[httpx.AsyncClient]:
     settings = get_settings()
     async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
+        yield client
+
+
+@contextmanager
+def groq_sync_http_client() -> Iterator[httpx.Client]:
+    settings = get_settings()
+    with httpx.Client(timeout=settings.AI_TIMEOUT_SECONDS) as client:
         yield client
 
 

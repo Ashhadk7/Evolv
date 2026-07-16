@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -101,20 +101,20 @@ class BlueprintListResponse(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    role: str
-    content: str
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
 
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    messages: list[ChatMessage]
+    messages: list[ChatMessage] = Field(min_length=1, max_length=20)
 
 
 class ChatResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    response: str
+    response: str = Field(min_length=1)
 

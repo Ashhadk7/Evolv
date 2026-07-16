@@ -90,6 +90,7 @@ class Settings(BaseSettings):
         "GOOGLE_CALENDAR_FRONTEND_RETURN_URL",
         "GROQ_API_BASE_URL",
         "GROQ_MODEL",
+        "CHAT_MODEL_NAME",
         "TAVILY_BASE_URL",
     )
     @classmethod
