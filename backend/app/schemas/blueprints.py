@@ -111,3 +111,17 @@ class BlueprintListResponse(BaseModel):
     limit: int
     offset: int
     items: list[BlueprintResponse]
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    blueprint: dict[str, Any] | None = None
+
+
+class ChatResponse(BaseModel):
+    content: str

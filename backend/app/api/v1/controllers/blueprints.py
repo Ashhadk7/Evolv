@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, status, HTTPException
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.applications import SavedBlueprintResponse
@@ -11,8 +11,10 @@ from app.schemas.blueprints import (
     BlueprintUpdate,
     BlueprintVersionCreate,
     BlueprintVersionResponse,
+    ChatRequest,
+    ChatResponse,
 )
-from app.services import application_service, blueprint_service
+from app.services import application_service, blueprint_service, chat_service
 
 router = APIRouter()
 
@@ -111,3 +113,24 @@ def save_blueprint(
 @router.delete("/{blueprint_id}/save", status_code=status.HTTP_204_NO_CONTENT)
 def unsave_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> None:
     application_service.unsave_blueprint(db, current_user, blueprint_id)
+
+
+@router.post("/{blueprint_id}/chat", response_model=ChatResponse)
+def blueprint_chat(
+    blueprint_id: str,
+    payload: ChatRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> ChatResponse:
+    try:
+        reply = chat_service.get_chat_response(
+            messages=[m.model_dump() for m in payload.messages],
+            blueprint_data=payload.blueprint,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return ChatResponse(content=reply)

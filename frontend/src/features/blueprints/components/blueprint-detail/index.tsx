@@ -330,7 +330,7 @@ export function BlueprintDetail({
 
       <DetailToast toast={toast} />
 
-      <ChatPanel bp={bp} />
+      <ChatPanel bp={bp} blueprintId={bp.id} />
     </motion.div>
   );
 }
