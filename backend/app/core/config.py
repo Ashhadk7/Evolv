@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_FRONTEND_RETURN_URL: str | None = None
     GROQ_API_KEY: SecretStr | None = None
     GROQ_EMBEDDING_MODEL: str | None = None
+    PINECONE_API_KEY: SecretStr | None = None
+    PINECONE_INDEX_NAME: str | None = None
+    PINECONE_REGION: str | None = None
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

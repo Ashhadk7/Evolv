@@ -3,7 +3,6 @@ from __future__ import annotations
 from functools import lru_cache
 
 from openai import OpenAI
-from scipy.spatial.distance import cosine as scipy_cosine_distance
 
 from app.core.config import settings
 
@@ -39,12 +38,3 @@ def embed_text(text: str) -> list[float]:
     if not normalized:
         return []
     return list(_embed_cached(normalized))
-
-
-def cosine_similarity(vector_a: list[float], vector_b: list[float]) -> float:
-    if not vector_a or not vector_b:
-        return 0.0
-    if not any(vector_a) or not any(vector_b):
-        return 0.0
-    distance = scipy_cosine_distance(vector_a, vector_b)
-    return max(0.0, min(1.0 - float(distance), 1.0))

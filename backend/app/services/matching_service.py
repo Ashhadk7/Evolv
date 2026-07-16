@@ -9,7 +9,7 @@ from app.schemas.matching import (
     MatchListResponse,
     RoleMatchResponse,
 )
-from app.services import embeddings_client
+from app.services import embeddings_client, pinecone_service
 
 SKILL_WEIGHT = 0.6
 EXPERIENCE_WEIGHT = 0.25
@@ -79,6 +79,14 @@ def _score_all(
     return scored
 
 
+def _fallback_rule_based(
+    db: Session, required_skills: list[str], min_experience: int, limit: int
+) -> MatchListResponse:
+    developers = matching_repository.list_available_developers(db)
+    scored = _score_all(developers, required_skills, min_experience)
+    return MatchListResponse(total=len(scored), items=scored[:limit])
+
+
 def get_matches(
     db: Session,
     *,
@@ -126,18 +134,6 @@ def get_matches_for_blueprint_roles(
     )
 
 
-def _semantic_similarity(developer_skills: list[str], role_description: str) -> float:
-    if not embeddings_client.embeddings_enabled() or not role_description.strip():
-        return 0.0
-    if not developer_skills:
-        return 0.0
-
-    role_vector = embeddings_client.embed_text(role_description)
-    skills_vector = embeddings_client.embed_text(", ".join(developer_skills))
-    similarity = embeddings_client.cosine_similarity(role_vector, skills_vector)
-    return max(0.0, min(similarity, 1.0))
-
-
 def get_matches_semantic(
     db: Session,
     *,
@@ -146,30 +142,55 @@ def get_matches_semantic(
     min_experience: int = 0,
     limit: int = 10,
 ) -> MatchListResponse:
-    developers = matching_repository.list_available_developers(db)
-    semantic_active = embeddings_client.embeddings_enabled() and bool(role_description.strip())
+    if not embeddings_client.embeddings_enabled() or not pinecone_service.index_ready():
+        return _fallback_rule_based(db, required_skills, min_experience, limit)
+
+    query_text = f"{role_description} skills: {', '.join(required_skills)}"
+    query_embedding = embeddings_client.embed_text(query_text)
+    if not query_embedding:
+        return _fallback_rule_based(db, required_skills, min_experience, limit)
+
+    top_matches = pinecone_service.query_top_k(query_embedding, top_k=limit)
+    if not top_matches:
+        return MatchListResponse(total=0, items=[])
+
+    developers_by_id = {
+        str(user.id): user
+        for user in matching_repository.get_developers_by_ids(
+            db, [developer_id for developer_id, _ in top_matches]
+        )
+    }
 
     scored: list[MatchedDeveloperResponse] = []
-    for user in developers:
-        profile = user.developer_profile
+    for developer_id, similarity in top_matches:
+        user = developers_by_id.get(developer_id)
+        profile = user.developer_profile if user else None
         if profile is None or (profile.experience_years or 0) < min_experience:
             continue
 
         rule_score = _score_developer(
             profile.skills, required_skills, profile.experience_years, profile.availability
         )
-        similarity = _semantic_similarity(profile.skills, role_description)
-
-        if semantic_active:
-            combined_score = round(
-                RULE_SCORE_WEIGHT * rule_score + SEMANTIC_SCORE_WEIGHT * (similarity * 100)
-            )
-            semantic_score = round(similarity * 100)
-        else:
-            combined_score = rule_score
-            semantic_score = None
-
+        semantic_score = round(similarity * 100)
+        combined_score = round(
+            RULE_SCORE_WEIGHT * rule_score + SEMANTIC_SCORE_WEIGHT * semantic_score
+        )
         scored.append(_build_match(user, profile, combined_score, semantic_score))
 
     scored.sort(key=lambda item: item.match_score, reverse=True)
     return MatchListResponse(total=len(scored), items=scored[:limit])
+
+
+def reindex_developer_embeddings(db: Session) -> int:
+    developers = matching_repository.list_available_developers(db)
+    indexed = 0
+    for user in developers:
+        profile = user.developer_profile
+        if profile is None or not profile.skills:
+            continue
+        embedding = embeddings_client.embed_text(", ".join(profile.skills))
+        if not embedding:
+            continue
+        pinecone_service.upsert_developer(str(user.id), embedding)
+        indexed += 1
+    return indexed
