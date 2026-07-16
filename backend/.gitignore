@@ -23,3 +23,7 @@ env/
 
 # OS
 .DS_Store
+# Local AI plans and presentation prep
+IMPLEMENTATION_PLAN.md
+backend_presentation_prep*.md
+

@@ -7,7 +7,6 @@ import {
   ChatCircle,
   CheckCircle,
   MapPin,
-  Star,
   UserPlus,
   X,
 } from "@phosphor-icons/react";
@@ -95,12 +94,14 @@ export function NetworkPersonCard({
           <Buildings size={11} /> {person.company}
         </p>
 
-        {/* AI Match Badge */}
-        <div className="mt-2.5 flex justify-center">
-          <span className="rounded-full px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide uppercase border bg-[rgba(137,215,183,0.08)] text-[#2e7d5c] border-[rgba(137,215,183,0.25)]">
-            {person.match}% AI Match
-          </span>
-        </div>
+        {/* AI Match Badge — appears once the matching engine returns a score */}
+        {person.match > 0 && (
+          <div className="mt-2.5 flex justify-center">
+            <span className="rounded-full px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide uppercase border bg-[rgba(137,215,183,0.08)] text-[#2e7d5c] border-[rgba(137,215,183,0.25)]">
+              {person.match}% AI Match
+            </span>
+          </div>
+        )}
 
         {/* Developer Ratings */}
         {person.type === "Developer" && (

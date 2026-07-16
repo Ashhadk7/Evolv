@@ -103,7 +103,7 @@ export function useFounderNavigation() {
       /* ignore */
     }
     clearAllUserData();
-    window.location.href = "/sign-in";
+    window.location.replace("/sign-in");
   };
 
   return {

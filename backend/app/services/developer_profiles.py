@@ -101,6 +101,8 @@ def build_response(db: Session, profile: DeveloperProfile) -> DeveloperProfileRe
     )
 
 
+# KEEP IN SYNC with frontend getMissingDeveloperProfileFields (developer-dashboard/profile-utils.ts).
+# This is the enforced gate; the frontend check is UX only. Change both together.
 def ensure_complete_profile_fields(
     db: Session,
     profile: DeveloperProfile,

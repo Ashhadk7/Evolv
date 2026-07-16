@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Users, UserPlus, Star } from "@phosphor-icons/react";
+import { Users, UserPlus } from "@phosphor-icons/react";
 import { RatingStars } from "@/components/shared/rating-stars";
 import { TypeBadge } from "@/components/shared/type-badge";
 import type { FounderContactProfile } from "@/features/network/types";
@@ -26,7 +26,7 @@ export function PendingRequestsPanel({
         </div>
         <h3 className="text-[14px] font-bold text-[#1a2e26]">No pending invitations</h3>
         <p className="mt-1 max-w-sm text-[11px] text-[#6b8e7e] leading-relaxed">
-          When other developers or founders send you a connection request, you'll see them listed here.
+          When other developers or founders send you a connection request, you&apos;ll see them listed here.
         </p>
       </div>
     );

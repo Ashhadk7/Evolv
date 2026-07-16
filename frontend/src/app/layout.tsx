@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Evolv",
@@ -13,7 +14,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.className} ${GeistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster position="bottom-right" closeButton />
+      </body>
     </html>
   );
 }

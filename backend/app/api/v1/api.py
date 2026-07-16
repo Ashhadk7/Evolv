@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 
 from app.api.v1.controllers import (
-    applications,
     account,
+    applications,
     auth,
     blueprints,
-    connections,
     calendar,
+    connections,
     developer_profiles,
     domains,
     founder_profiles,

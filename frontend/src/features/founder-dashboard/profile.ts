@@ -10,7 +10,7 @@ export const STORAGE_KEY_PROFILE = "evolv_founder_profile";
 export const STORAGE_KEY_BLUEPRINTS = "evolv_founder_blueprints";
 
 export const DEFAULT_FOUNDER_PROFILE: FounderProfile = {
-  firstName: "Asad",
+  firstName: "",
   lastName: "",
   bio: "",
   domains: [],

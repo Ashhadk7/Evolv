@@ -162,7 +162,7 @@ export function DashboardSidebar({
       return;
     }
     clearAllUserData();
-    window.location.href = "/sign-in";
+    window.location.replace("/sign-in");
   };
 
   const renderAvatar = (size: number, fontSize: number) => (
