@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from app.services.provider_clients import DEVELOPER_EMBEDDING_NAMESPACE, pinecone_index
 
 DEVELOPER_NAMESPACE = DEVELOPER_EMBEDDING_NAMESPACE

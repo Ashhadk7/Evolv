@@ -76,19 +76,90 @@ async def call_agent(
     raise AgentServiceError(f"Groq returned an invalid agent response: {last_error}") from last_error
 
 
-def _retry_delay(response: httpx.Response, attempt: int) -> float:
-    retry_after = response.headers.get("retry-after")
-    if retry_after:
-        try:
-            return min(float(retry_after), 20.0)
-        except ValueError:
-            pass
-    return min(2.0**attempt, 20.0)
-
-
 def _parse_agent_json(schema: type[SchemaT], content: str) -> SchemaT:
     try:
         raw = json.loads(content)
     except json.JSONDecodeError as exc:
         raise AgentServiceError("AI provider response was not valid JSON.") from exc
     return schema.model_validate(raw)
+
+
+def _parse_time_string(val: str) -> float:
+    val = val.strip().lower()
+    if val.endswith("ms"):
+        try:
+            return float(val[:-2]) / 1000.0
+        except ValueError:
+            pass
+    if val.endswith("s"):
+        val = val[:-1]
+    if "m" in val:
+        parts = val.split("m")
+        try:
+            minutes = float(parts[0])
+            seconds = float(parts[1]) if len(parts) > 1 and parts[1] else 0.0
+            return minutes * 60.0 + seconds
+        except ValueError:
+            pass
+    try:
+        return float(val)
+    except ValueError:
+        return 5.0
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        try:
+            return min(float(retry_after), 90.0)
+        except ValueError:
+            pass
+    for header in ("x-ratelimit-reset-tokens", "x-ratelimit-reset-requests"):
+        val = response.headers.get(header)
+        if val:
+            return min(_parse_time_string(val) + 0.5, 90.0)
+    return min(3.0 * (attempt + 1), 90.0)
+
+
+def generate_chat(system: str, messages: list[dict]) -> str:
+    settings = get_settings()
+    api_key = settings.GROQ_API_KEY.get_secret_value().strip()
+    if not api_key:
+        raise AgentServiceError("GROQ_API_KEY is required for chat completions.")
+
+    payload = {
+        "model": settings.CHAT_MODEL_NAME,
+        "messages": [
+            {"role": "system", "content": system},
+            *messages,
+        ],
+        "temperature": 0.3,
+    }
+
+    url = f"{settings.GROQ_API_BASE_URL.rstrip('/')}/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    # Unified synchronous httpx call matching the async call_agent pattern with 5 retries
+    last_error: Exception | None = None
+    with httpx.Client(timeout=settings.AI_TIMEOUT_SECONDS) as client:
+        for attempt in range(5):
+            try:
+                response = client.post(url, headers=headers, json=payload)
+                if response.status_code == 429 and attempt < 4:
+                    import time
+                    time.sleep(_retry_delay(response, attempt))
+                    continue
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"]
+                return content or ""
+            except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+                last_error = exc
+                if attempt < 4:
+                    import time
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+    raise AgentServiceError(f"Groq returned an invalid chat response: {last_error}") from last_error
+
+
+
+

@@ -86,7 +86,10 @@ async def tavily_http_client() -> AsyncIterator[httpx.AsyncClient]:
 
 @lru_cache(maxsize=1)
 def pinecone_client() -> Pinecone | None:
-    from pinecone import Pinecone
+    try:
+        from pinecone import Pinecone
+    except ImportError:
+        return None
 
     settings = get_settings()
     if settings.PINECONE_API_KEY is None:
