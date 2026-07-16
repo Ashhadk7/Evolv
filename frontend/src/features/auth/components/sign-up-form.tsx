@@ -36,6 +36,17 @@ function resolveSignUpError(err: unknown): string {
   });
 }
 
+function resolveProfileSaveError(err: unknown): string {
+  return getApiErrorMessage(err, (e) => {
+    if (e.status === 401 || e.status === 403) {
+      return "Your email is verified, but this session expired before saving the profile. Log in and finish your profile from Settings.";
+    }
+    if (e.status === 422) return e.detail;
+    if (e.status === 502) return "We couldn't save your profile right now. Please try again shortly.";
+    return undefined;
+  });
+}
+
 export function SignUpForm() {
   const router = useRouter();
   const scrollRef = useRef<HTMLElement | null>(null);
@@ -129,7 +140,11 @@ export function SignUpForm() {
     [accountErrors]
   );
   const visibleError =
-    step === 1 && accountSubmitted && accountErrorSummary ? accountErrorSummary : error;
+    step === 1 && accountSubmitted && accountErrorSummary
+      ? accountErrorSummary
+      : step === 2
+        ? ""
+        : error;
   const {
     countryOptions,
     locationStatus,
@@ -312,8 +327,8 @@ export function SignUpForm() {
         profileComplete: !skip && isProfileComplete(),
       });
       router.push(redirectPath);
-    } catch {
-      setError("Something went wrong while saving your profile.");
+    } catch (err) {
+      setError(resolveProfileSaveError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -548,7 +563,13 @@ export function SignUpForm() {
                   boxShadow: "0 4px 14px rgba(15,28,24,0.18)",
                 }}
               >
-                {step < 2 ? (isSubmitting ? "Creating account..." : "Continue") : "Complete profile"}
+                {step < 2
+                  ? isSubmitting
+                    ? "Creating account..."
+                    : "Continue"
+                  : isSubmitting
+                    ? "Saving profile..."
+                    : "Complete profile"}
                 {step < 2 ? (
                   <ArrowRight size={14} weight="bold" />
                 ) : role === "founder" ? (

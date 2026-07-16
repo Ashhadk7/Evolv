@@ -8,6 +8,8 @@ import {
   loadNetworkPeople,
 } from "@/features/network/lib/network-api";
 import type { StoredNetworkState } from "@/features/network/types";
+import { messagingApi, type Conversation } from "@/features/messaging/lib/messaging-api";
+import { getApiErrorMessage } from "@/lib/api";
 
 interface UseNetworkProps {
   role: "developer" | "founder";
@@ -50,8 +52,9 @@ export function useNetwork({
   });
   const [selectedPerson, setSelectedPerson] = useState<FounderContactProfile | null>(null);
   const [requestModalPerson, setRequestModalPerson] = useState<FounderContactProfile | null>(null);
+  const [actionError, setActionError] = useState("");
 
-  const { connected, pendingIds, ignoredIds, outgoingIds, requestNotes } = networkState;
+  const { connected, pendingIds, ignoredIds, outgoingIds } = networkState;
   const outgoingSet = useMemo(() => new Set(outgoingIds), [outgoingIds]);
 
   const refreshConnections = async () => {
@@ -160,13 +163,15 @@ export function useNetwork({
     if (requireProfileBeforeAction(() => handleAcceptRequest(id))) return;
     const connectionId = connectionIdByUser[id];
     if (!connectionId) return;
-    void connectionApi.respond(connectionId, "accepted").then(refreshConnections);
+    setActionError("");
+    void connectionApi.respond(connectionId, "accepted").then(refreshConnections).catch((error) => setActionError(getApiErrorMessage(error)));
   };
 
   const handleIgnoreRequest = (id: string) => {
     const connectionId = connectionIdByUser[id];
     if (!connectionId) return;
-    void connectionApi.respond(connectionId, "ignored").then(refreshConnections);
+    setActionError("");
+    void connectionApi.respond(connectionId, "ignored").then(refreshConnections).catch((error) => setActionError(getApiErrorMessage(error)));
   };
 
   const handleDismissSuggestion = (id: string) => {
@@ -183,50 +188,73 @@ export function useNetwork({
 
     if (isCurrentlyConnected) {
       const connectionId = connectionIdByUser[person.id];
-      if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections);
+      if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections).catch((error) => setActionError(getApiErrorMessage(error)));
     } else if (isCurrentlyRequested) {
       const connectionId = connectionIdByUser[person.id];
-      if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections);
+      if (connectionId) void connectionApi.remove(connectionId).then(refreshConnections).catch((error) => setActionError(getApiErrorMessage(error)));
     } else {
       setRequestModalPerson(person);
     }
   };
 
-  const markOutgoingRequest = (person: FounderContactProfile, note?: string) => {
-    void connectionApi.send(person.id, note).then(refreshConnections);
-  };
-
-  const openInbox = (person: FounderContactProfile, initialNote?: string) => {
+  const openInbox = (
+    person: FounderContactProfile,
+    conversation: Conversation,
+    initialNote?: string
+  ) => {
     const target = {
-      id: person.id,
+      id: conversation.id,
+      conversationId: conversation.id,
+      participantId: person.id,
       name: person.name,
       role: person.role,
       personType: person.type,
       initials: person.initials,
       match: person.match,
       online: person.online,
+      email: person.email,
+      avatarUrl: person.avatarUrl,
+      requestStatus: conversation.status === "declined" ? "rejected" : conversation.status,
+      requestDirection: conversation.status === "pending" ? (pendingIds.includes(person.id) ? "incoming" : "outgoing") : undefined,
       initialMessage: initialNote,
-    };
+    } satisfies NetworkMessageTarget;
     onMessage?.(target);
+  };
+
+  const openOrStartConversation = async (
+    person: FounderContactProfile,
+    initialNote?: string,
+    redirectToInbox = true
+  ) => {
+    try {
+      setActionError("");
+      const result = await messagingApi.start(person.id, initialNote);
+      await refreshConnections();
+      if (redirectToInbox) openInbox(person, result.conversation, initialNote);
+      return result.conversation;
+    } catch (error) {
+      setActionError(getApiErrorMessage(error));
+      return null;
+    }
   };
 
   const handleMessage = (person: FounderContactProfile) => {
     if (requireProfileBeforeAction(() => handleMessage(person))) return;
-    const initialNote = outgoingSet.has(person.id) ? requestNotes[person.id] : undefined;
-    openInbox(person, initialNote);
+    void openOrStartConversation(person);
   };
 
   const handleSendRequestWithoutNote = () => {
     if (!requestModalPerson) return;
-    markOutgoingRequest(requestModalPerson);
-    setRequestModalPerson(null);
+    void openOrStartConversation(requestModalPerson, undefined, false).then((conversation) => {
+      if (conversation) setRequestModalPerson(null);
+    });
   };
 
   const handleSendRequestWithNote = (note: string) => {
     if (!requestModalPerson) return;
-    markOutgoingRequest(requestModalPerson, note);
-    openInbox(requestModalPerson, note);
-    setRequestModalPerson(null);
+    void openOrStartConversation(requestModalPerson, note, true).then((conversation) => {
+      if (conversation) setRequestModalPerson(null);
+    });
   };
 
   return {
@@ -240,6 +268,7 @@ export function useNetwork({
     setSelectedPerson,
     requestModalPerson,
     setRequestModalPerson,
+    actionError,
     connected,
     pendingIds,
     outgoingSet,

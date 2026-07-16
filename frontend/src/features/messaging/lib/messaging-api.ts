@@ -10,6 +10,7 @@ export const messagingApi = {
   conversations: () => apiFetch<{ items: Conversation[] }>("/messages/conversations", { auth: true }),
   requests: () => apiFetch<{ items: Conversation[] }>("/messages/requests", { auth: true }),
   pending: () => apiFetch<{ items: Conversation[] }>("/messages/pending", { auth: true }),
+  start: (recipientId: string, initialMessage?: string | null) => apiFetch<{ conversation: Conversation; message: ApiMessage | null }>("/messages/conversations", { method: "POST", auth: true, body: { recipient_id: recipientId, initial_message: initialMessage?.trim() || null } }),
   messages: (id: string) => apiFetch<{ conversation: Conversation; items: ApiMessage[] }>(`/messages/conversations/${id}?limit=100&offset=0`, { auth: true }),
   read: (id: string) => apiFetch(`/messages/conversations/${id}/read`, { method: "PATCH", auth: true }),
   accept: (id: string) => apiFetch(`/messages/requests/${id}/accept`, { method: "POST", auth: true }),

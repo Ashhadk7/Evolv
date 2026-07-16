@@ -37,6 +37,8 @@ export interface Contact {
 // Contact passed from Network → Inbox when starting a conversation.
 export interface InboxLaunchContact {
   id: string;
+  conversationId?: string;
+  participantId?: string;
   name: string;
   role: string;
   match?: number;

@@ -79,6 +79,28 @@ class MessageListResponse(BaseModel):
     items: list[MessageResponse]
 
 
+class StartConversationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    recipient_id: UUID
+    initial_message: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("initial_message")
+    @classmethod
+    def strip_initial_message(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
+class StartConversationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conversation: ConversationSummary
+    message: MessageResponse | None = None
+
+
 class SendMessageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

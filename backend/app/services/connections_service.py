@@ -5,7 +5,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.connection import Connection, ConnectionStatus
+from app.models.messaging import ConnectionStatus as MessageConnectionStatus
 from app.repositories import connections as connections_repo
+from app.repositories import messages as messages_repo
 from app.repositories import users as users_repo
 from app.schemas.connections import ConnectionCreate, ConnectionUpdate
 from app.services.exceptions import ConflictError, NotFoundError
@@ -22,7 +24,13 @@ def _build_user_summary(user) -> dict:
         company = user.founder_profile.venture_stage
 
     raw_role = user.role.value if hasattr(user.role, "value") else str(user.role)
-    mapped_role = "Developer" if raw_role == "developer" else "Founder" if raw_role == "founder" else raw_role.capitalize()
+    mapped_role = (
+        "Developer"
+        if raw_role == "developer"
+        else "Founder"
+        if raw_role == "founder"
+        else raw_role.capitalize()
+    )
 
     return {
         "id": user.id,
@@ -54,7 +62,7 @@ def send_connection_request(
         elif existing.status == ConnectionStatus.PENDING:
             raise ConflictError("A connection request is already pending between you two.")
         else:
-            connections_repo.delete_connection(db, existing)
+            raise ConflictError("This connection request was declined.")
 
     return connections_repo.create_connection(
         db,
@@ -81,8 +89,37 @@ def update_connection_status(
         raise ConflictError("This request has already been processed.")
 
     connection.status = payload.status
+    sync_message_connection_status(db, connection, payload.status)
     db.flush()
     return connection
+
+
+def sync_message_connection_status(
+    db: Session,
+    connection: Connection,
+    status: ConnectionStatus,
+) -> None:
+    message_connection = messages_repo.get_connection_between(
+        db,
+        connection.requester_id,
+        connection.receiver_id,
+    )
+    if status == ConnectionStatus.ACCEPTED:
+        if message_connection is None:
+            message_connection = messages_repo.create_connection(
+                db,
+                requester_id=connection.requester_id,
+                addressee_id=connection.receiver_id,
+            )
+        messages_repo.accept_connection(message_connection)
+        return
+
+    if (
+        status in {ConnectionStatus.IGNORED, ConnectionStatus.REJECTED}
+        and message_connection is not None
+        and message_connection.status == MessageConnectionStatus.PENDING
+    ):
+        messages_repo.decline_connection(message_connection)
 
 
 def remove_connection(db: Session, user_id: UUID, connection_id: UUID) -> None:

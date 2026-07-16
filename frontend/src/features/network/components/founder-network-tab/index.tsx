@@ -27,6 +27,7 @@ export function NetworkTab({
     setSelectedPerson,
     requestModalPerson,
     setRequestModalPerson,
+    actionError,
     connected,
     pendingIds,
     outgoingSet,
@@ -55,7 +56,12 @@ export function NetworkTab({
     const selectedRequested = outgoingSet.has(selectedPerson.id);
     return (
       <>
-        <div className="h-screen overflow-hidden">
+        <div className="relative h-screen overflow-hidden">
+          {actionError && (
+            <div className="absolute left-6 right-6 top-4 z-20 rounded-xl border border-[#ead7c2] bg-[#fff8ef] px-4 py-3 text-[12px] font-semibold text-[#935f24] shadow-sm">
+              {actionError}
+            </div>
+          )}
           <NetworkProfileDetailScreen
             key={selectedPerson.id}
             profile={selectedPerson}
@@ -149,6 +155,12 @@ export function NetworkTab({
             </button>
           </div>
         </div>
+
+        {actionError && (
+          <div className="mb-4 rounded-xl border border-[#ead7c2] bg-[#fff8ef] px-4 py-3 text-[12px] font-semibold text-[#935f24]">
+            {actionError}
+          </div>
+        )}
 
         {/* Tab 1: Directory Search View */}
         {activeTab === "network" && (

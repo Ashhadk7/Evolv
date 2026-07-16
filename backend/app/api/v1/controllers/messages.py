@@ -14,6 +14,8 @@ from app.schemas.messages import (
     MessageListResponse,
     PresenceResponse,
     RequestActionResponse,
+    StartConversationRequest,
+    StartConversationResponse,
 )
 from app.services import message_websocket as message_websocket_service
 from app.services import messages as message_service
@@ -48,6 +50,18 @@ def find_participant(
 @router.get("/conversations", response_model=ConversationListResponse)
 def list_conversations(db: DbSession, current_user: CurrentUser) -> ConversationListResponse:
     return message_service.list_conversations(db, current_user)
+
+
+@router.post("/conversations", response_model=StartConversationResponse)
+async def start_conversation(
+    payload: StartConversationRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> StartConversationResponse:
+    result = message_service.start_conversation(db, payload=payload, current_user=current_user)
+    if result.message is not None:
+        await message_websocket_service.publish_message_created(result.message)
+    return result
 
 
 @router.get("/requests", response_model=ConversationListResponse)
