@@ -97,7 +97,7 @@ function BlueprintPreview() {
             {[
               { label: "Market potential", value: 91 },
               { label: "Developer demand", value: 78 },
-              { label: "Developer demand", value: 82 },
+              { label: "Investor interest", value: 82 },
             ].map((item, i) => (
               <div
                 key={item.label}
