@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChatCircleDots, PaperPlaneTilt, X } from "@phosphor-icons/react";
+import { ChatCircleDots, X } from "@phosphor-icons/react";
 import type { Blueprint } from "@/features/blueprints/types";
+import { getAccessToken } from "@/features/auth/lib/session";
 
 // Floating Blueprint AI assistant — feature-local, only used inside BlueprintDetail.
 type ChatMsg = { from: "ai" | "user"; text: string };
 
-export function ChatPanel({ bp }: { bp: Blueprint }) {
+export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: string }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([
     {
@@ -24,22 +25,43 @@ export function ChatPanel({ bp }: { bp: Blueprint }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs, typing]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
     if (!text) return;
     setMsgs((m) => [...m, { from: "user", text }]);
     setInput("");
     setTyping(true);
-    const replies = [
-      `For ${bp.name}, I'd build the ${bp.techStack.frontend} client and ${bp.techStack.backend} API first — that unlocks the core flow and lets a developer demo value early.`,
-      `The biggest lever is the AI layer (${bp.techStack.ai}). Ship a thin inference pipeline behind a clean API, then iterate on accuracy once real data flows in.`,
-      `Budget-wise, front-load the must-have milestones. Payments release per approved milestone, so keep each phase independently shippable.`,
-    ];
-    const reply = replies[msgs.filter((m) => m.from === "user").length % replies.length];
-    window.setTimeout(() => {
+
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const token = getAccessToken();
+      const response = await fetch(`${API_BASE}/blueprints/${blueprintId}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token || ""}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            ...msgs.map((m) => ({
+              role: m.from === "user" ? "user" : "assistant",
+              content: m.text,
+            })),
+            { role: "user", content: text },
+          ].slice(-6), // Keep last 6 messages (3 turns) to prevent rate limits and payload bloat
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+      const data = await response.json();
+      setMsgs((m) => [...m, { from: "ai", text: data.response }]);
+    } catch (error) {
+      console.error(error);
+      setMsgs((m) => [...m, { from: "ai", text: "I'm sorry, I couldn't reach the chatbot API server." }]);
+    } finally {
       setTyping(false);
-      setMsgs((m) => [...m, { from: "ai", text: reply }]);
-    }, 1200);
+    }
   };
 
   return (
@@ -243,7 +265,6 @@ export function ChatPanel({ bp }: { bp: Blueprint }) {
               <motion.button
                 onClick={send}
                 whileTap={{ scale: 0.9 }}
-                className="bp-gradient-btn"
                 style={{
                   width: 38,
                   height: 38,
@@ -253,9 +274,15 @@ export function ChatPanel({ bp }: { bp: Blueprint }) {
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  background: "linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%)",
+                  border: "1px solid rgba(5, 31, 25, 0.88)",
+                  boxShadow: "inset 0 1px 0 rgba(171, 255, 220, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.18)",
+                  padding: 0,
                 }}
               >
-                <PaperPlaneTilt size={16} weight="fill" className="text-bp-mint" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#abffdc" viewBox="0 0 256 256">
+                  <path d="M224,48V160a16,16,0,0,1-16,16H80v40a8,8,0,0,1-13.66,5.66l-48-48a8,8,0,0,1,0-11.32l48-48A8,8,0,0,1,80,120v40h128V48a8,8,0,0,1,16,0Z" />
+                </svg>
               </motion.button>
             </div>
           </motion.div>

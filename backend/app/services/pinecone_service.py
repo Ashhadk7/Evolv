@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-from pinecone import Pinecone
+from typing import Any
+
+try:
+    from pinecone import Pinecone
+except ImportError:
+    Pinecone = None
 
 from app.core.config import settings
 
 DEVELOPER_NAMESPACE = "developers"
 
-_client: Pinecone | None = None
+_client = None
 
 
-def _get_client() -> Pinecone | None:
+def _get_client() -> Any | None:
     global _client
-    if settings.PINECONE_API_KEY is None:
+    if Pinecone is None or settings.PINECONE_API_KEY is None:
         return None
     if _client is None:
         _client = Pinecone(api_key=settings.PINECONE_API_KEY.get_secret_value())

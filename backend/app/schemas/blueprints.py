@@ -98,3 +98,23 @@ class BlueprintListResponse(BaseModel):
     limit: int
     offset: int
     items: list[BlueprintResponse]
+
+
+class ChatMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    messages: list[ChatMessage]
+
+
+class ChatResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    response: str
+

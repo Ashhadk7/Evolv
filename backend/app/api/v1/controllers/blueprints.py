@@ -10,8 +10,10 @@ from app.schemas.blueprints import (
     BlueprintListResponse,
     BlueprintResponse,
     BlueprintUpdate,
+    ChatRequest,
+    ChatResponse,
 )
-from app.services import application_service, blueprint_service
+from app.services import application_service, blueprint_service, chat_service
 from app.services.generation import blueprint_generation_service
 
 router = APIRouter()
@@ -97,3 +99,17 @@ def save_blueprint(
 @router.delete("/{blueprint_id}/save", status_code=status.HTTP_204_NO_CONTENT)
 def unsave_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUser) -> None:
     application_service.unsave_blueprint(db, current_user, blueprint_id)
+
+
+@router.post("/{blueprint_id}/chat", response_model=ChatResponse)
+def blueprint_chat(
+    blueprint_id: UUID,
+    payload: ChatRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> ChatResponse:
+    blueprint_data = blueprint_service.get_blueprint_dict(db, blueprint_id, current_user)
+    messages_list = [{"role": msg.role, "content": msg.content} for msg in payload.messages]
+    reply = chat_service.get_chat_response(messages_list, blueprint_data)
+    return ChatResponse(response=reply)
+
