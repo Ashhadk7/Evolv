@@ -10,7 +10,6 @@ export const DEFAULT_BLUEPRINTS: Blueprint[] = [
     isPublic: true,
     status: "PUBLISHED",
     viability: 82,
-    fundingReadiness: "High",
     investorInterest: 3,
     marketPotential: 91,
     developerDemand: "High",
@@ -51,7 +50,6 @@ export const DEFAULT_BLUEPRINTS: Blueprint[] = [
     isPublic: false,
     status: "DRAFT",
     viability: 68,
-    fundingReadiness: "Medium",
     investorInterest: 2,
     marketPotential: 74,
     developerDemand: "Medium",
@@ -85,7 +83,6 @@ export const DEFAULT_BLUEPRINTS: Blueprint[] = [
     isPublic: true,
     status: "PUBLISHED",
     viability: 74,
-    fundingReadiness: "Low",
     investorInterest: 2,
     marketPotential: 68,
     developerDemand: "Low",
@@ -122,7 +119,6 @@ export const DEFAULT_BLUEPRINTS: Blueprint[] = [
     isPublic: false,
     status: "DRAFT",
     viability: 61,
-    fundingReadiness: "Medium",
     investorInterest: 2,
     marketPotential: 72,
     developerDemand: "Medium",
@@ -164,12 +160,14 @@ export const WORKSPACE_STAGES = ["All Stages", "Published", "Draft"];
 
 export const WORKSPACE_SORT_OPTIONS = ["Viability", "Recent", "Impressions", "Market Potential"];
 
+// `key` matches the backend agent names written to content_json.generation.completedAgents.
 export const FORGE_AGENTS = [
-  { label: "Market Analysis Agent", desc: "Analysing market size & growth..." },
-  { label: "Competitor Scout Agent", desc: "Mapping direct & indirect competitors..." },
-  { label: "Feature Architect Agent", desc: "Generating MVP feature scope..." },
-  { label: "Tech Stack Agent", desc: "Evaluating optimal tech architecture..." },
-  { label: "Financial Modeler Agent", desc: "Modelling costs & runway..." },
+  { key: "market", label: "Market Agent", desc: "Researching market size, growth, and demand signals..." },
+  { key: "competitor", label: "Competitor Agent", desc: "Mapping direct and adjacent competitors..." },
+  { key: "persona", label: "Persona Agent", desc: "Building customer, buyer, and gatekeeper personas..." },
+  { key: "product", label: "Product Agent", desc: "Scoping MVP features and boundaries..." },
+  { key: "strategy", label: "Strategy Agent", desc: "Shaping go-to-market moves and roadmap..." },
+  { key: "techStack", label: "Tech Stack Agent", desc: "Selecting the stack and team roles..." },
 ];
 
 export const WORKSPACE_INSIGHTS = [

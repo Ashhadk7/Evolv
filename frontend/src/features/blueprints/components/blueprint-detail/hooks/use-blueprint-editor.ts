@@ -34,7 +34,7 @@ export function useBlueprintEditor(
       techStack: {
         frontend: draftTechStack.frontend.chosen,
         backend: draftTechStack.backend.chosen,
-        ai: bp.techStack.ai,
+        ai: draftTechStack.aiProvider.chosen,
         db: draftTechStack.database.chosen,
         vectorDb: draftTechStack.vectorDb.chosen,
         aiProvider: draftTechStack.aiProvider.chosen,

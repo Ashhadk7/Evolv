@@ -17,6 +17,7 @@ import { normalizeFounderProfileForSave } from "@/features/founder-dashboard/pro
 import { ApiError } from "@/lib/api";
 import { loadFounderProfile, saveFounderProfile } from "@/features/profiles/profile-api";
 import { getSession } from "@/features/auth/lib/session";
+import { listBlueprints } from "@/features/blueprints/blueprints-api";
 import {
   DEFAULT_FOUNDER_PROFILE,
   STORAGE_KEY_BLUEPRINTS,
@@ -81,8 +82,14 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
     try {
       set({ profile: mergeFounderProfiles(DEFAULT_FOUNDER_PROFILE, await loadFounderProfile()) });
 
-      const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
-      if (storedBlueprints) set({ blueprints: JSON.parse(storedBlueprints) as Blueprint[] });
+      try {
+        const apiBlueprints = await listBlueprints();
+        set({ blueprints: apiBlueprints });
+        localStorage.setItem(STORAGE_KEY_BLUEPRINTS, JSON.stringify(apiBlueprints));
+      } catch {
+        const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
+        if (storedBlueprints) set({ blueprints: JSON.parse(storedBlueprints) as Blueprint[] });
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         const user = getSession()?.user;

@@ -25,11 +25,9 @@ function priorityTone(priority: string) {
 
 export function BlueprintProductScopeSection({
   featureItems,
-  platformFeatures,
   outOfScope,
 }: {
   featureItems: ScopeItem[];
-  platformFeatures: ScopeItem[];
   outOfScope: string[];
 }) {
   return (
@@ -43,9 +41,7 @@ export function BlueprintProductScopeSection({
         />
         <div className="grid grid-cols-3 gap-4">
           {["Must-have", "Should-have", "Nice-to-have"].map((tier) => {
-            const items = [...featureItems, ...platformFeatures].filter(
-              (feature) => feature.priority === tier
-            );
+            const items = featureItems.filter((feature) => feature.priority === tier);
             return (
               <div key={tier}>
                 <div className="mb-3 flex items-center gap-2">
@@ -78,17 +74,19 @@ export function BlueprintProductScopeSection({
             );
           })}
         </div>
-        <div className="mt-5">
-          <Label>Out of scope for v1</Label>
-          <div className="flex flex-col gap-2">
-            {outOfScope.map((item, index) => (
-              <div key={index} className="flex items-start gap-[9px]">
-                <XCircle size={15} weight="fill" className="text-bp-label mt-px shrink-0" />
-                <span className="text-bp-muted text-[12.5px] leading-[1.5]">{item}</span>
-              </div>
-            ))}
+        {outOfScope.length ? (
+          <div className="mt-5">
+            <Label>Out of scope for v1</Label>
+            <div className="flex flex-col gap-2">
+              {outOfScope.map((item, index) => (
+                <div key={index} className="flex items-start gap-[9px]">
+                  <XCircle size={15} weight="fill" className="text-bp-label mt-px shrink-0" />
+                  <span className="text-bp-muted text-[12.5px] leading-[1.5]">{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </Reveal>
   );
