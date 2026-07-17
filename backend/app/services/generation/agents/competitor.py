@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.services.generation.agent_service import call_agent
 from app.services.generation.enrichment import (
@@ -11,7 +11,7 @@ from app.services.generation.enrichment import (
     enrich_competitor_context,
 )
 from app.services.generation.prompt_loader import load_prompt, render_prompt
-from app.services.generation.text import clean
+from app.services.generation.text import clean, clip
 
 ShortStrength = Annotated[str, Field(min_length=1, max_length=120)]
 ShortWeakness = Annotated[str, Field(min_length=1, max_length=120)]
@@ -42,6 +42,10 @@ class CompetitorAnalysis(BaseModel):
     insight: str = Field(min_length=1, max_length=280)
     assumptions: list[ShortAssumption] = Field(min_length=2, max_length=4)
     confidence: Literal["High", "Medium", "Low"]
+    # Free-form paragraph — clipped, never hard-failed, when the model runs long.
+    analysis: Annotated[str, BeforeValidator(clip(1200))] = Field(
+        min_length=120, max_length=1200
+    )
 
 
 class CompetitorOutput(CompetitorAnalysis):
@@ -49,22 +53,29 @@ class CompetitorOutput(CompetitorAnalysis):
     research_metadata: dict[str, Any] = Field(default_factory=dict, alias="researchMetadata")
 
 
-async def run_competitor(idea: str, industry: str) -> CompetitorOutput:
+async def run_competitor(
+    brief: str, idea: str, industry: str, queries: list[str] | None = None
+) -> CompetitorOutput:
+    # brief (full intake) feeds the LLM; idea (short field) feeds the fallback
+    # search templates — never send the multi-field brief to a search engine.
+    brief = clean(brief)
     idea = clean(idea)
     industry = clean(industry)
-    if not idea:
-        raise ValueError("Competitor agent requires a startup idea.")
+    if not brief:
+        raise ValueError("Competitor agent requires a startup brief.")
     if not industry:
         raise ValueError("Competitor agent requires an industry/domain.")
 
-    research = await enrich_competitor_context(idea, industry)
+    research = await enrich_competitor_context(idea or brief, industry, queries=queries)
     user_prompt = render_prompt(
         "competitor_user",
-        idea=idea,
+        idea=brief,
         industry=industry,
-        research=research.to_prompt_block(),
+        # Competitor mapping needs breadth more than depth: more sources,
+        # shorter snippets, same trimmed token footprint as the market agent.
+        research=research.to_prompt_block(max_sources=8, snippet_chars=350),
     )
     analysis = await call_agent(
-        CompetitorAnalysis, load_prompt("competitor"), user_prompt, max_tokens=1100
+        CompetitorAnalysis, load_prompt("competitor"), user_prompt, max_tokens=1500
     )
     return CompetitorOutput.model_validate(attach_research(analysis, research))

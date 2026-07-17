@@ -58,7 +58,7 @@ class PersonaOutput(BaseModel):
         return self
 
 
-async def run_persona(idea: str, industry: str) -> PersonaOutput:
+async def run_persona(idea: str, industry: str, research: str) -> PersonaOutput:
     idea = clean(idea)
     industry = clean(industry)
     if not idea:
@@ -69,6 +69,6 @@ async def run_persona(idea: str, industry: str) -> PersonaOutput:
     return await call_agent(
         PersonaOutput,
         load_prompt("persona"),
-        render_prompt("persona_user", idea=idea, industry=industry),
+        render_prompt("persona_user", idea=idea, industry=industry, research=research),
         max_tokens=1200,
     )

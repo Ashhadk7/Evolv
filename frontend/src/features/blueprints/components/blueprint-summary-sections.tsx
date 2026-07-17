@@ -37,6 +37,8 @@ function priorityTone(priority: string) {
 
 export function BlueprintExecutiveSummarySection({
   bp,
+  executiveSummary,
+  keyAssumptions,
   totalBuildCost,
   timelineLabel,
   phaseCount,
@@ -44,6 +46,8 @@ export function BlueprintExecutiveSummarySection({
   mvpFeatureCount,
 }: {
   bp: Blueprint;
+  executiveSummary?: string;
+  keyAssumptions?: string[];
   totalBuildCost: string;
   timelineLabel: string;
   phaseCount: number;
@@ -67,16 +71,26 @@ export function BlueprintExecutiveSummarySection({
             kicker="Overview"
             title="Executive Summary"
           />
-          <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">
-            <strong className="text-bp-ink">{bp.name}</strong> is a {bp.industry} venture built
-            around a simple thesis: {bp.differentiator.toLowerCase()}. {bp.ideaDesc}
-          </p>
-          <p className="text-bp-body text-[14.5px] leading-[1.75]">
-            This blueprint translates that idea into an executable plan - a recommended
-            architecture, a milestone-based build roadmap, a budget the founder funds directly, and
-            the developer profiles best matched to ship it. Everything below is structured so a
-            developer could pick it up and start building.
-          </p>
+          {executiveSummary ? (
+            <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">{executiveSummary}</p>
+          ) : (
+            <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">
+              <strong className="text-bp-ink">{bp.name}</strong> is a {bp.industry} venture built
+              around a simple thesis: {bp.differentiator.toLowerCase()}. {bp.ideaDesc}
+            </p>
+          )}
+          {keyAssumptions && keyAssumptions.length > 0 && (
+            <div className="border-bp-border-soft bg-bp-tint rounded-xl border px-4 py-3">
+              <div className="font-mono-app text-bp-label mb-1.5 text-[10px] font-bold tracking-[0.1em] uppercase">
+                Load-bearing assumptions
+              </div>
+              <ul className="text-bp-body m-0 list-disc pl-4 text-[12.5px] leading-[1.6]">
+                {keyAssumptions.map((assumption) => (
+                  <li key={assumption}>{assumption}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <div style={cardStyle({ padding: "26px 28px" })}>
           <Label>Build snapshot</Label>
@@ -130,9 +144,11 @@ export function BlueprintSignalsSection({
             <div className="font-mono-app text-bp-label mt-[7px] text-[9.5px] font-bold tracking-[0.08em] uppercase">
               {item.label}
             </div>
-            <div className="mt-2.5 flex justify-center">
-              <Trend value={item.trend} positive={item.up} />
-            </div>
+            {item.trend && (
+              <div className="mt-2.5 flex justify-center">
+                <Trend value={item.trend} positive={item.up} />
+              </div>
+            )}
             <div className="text-bp-label mt-[7px] text-[10.5px]">{item.cap}</div>
             <div className="mt-3">
               <SegmentedBar value={0} total={8} lit={item.lit} height={14} />

@@ -4,6 +4,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.config import get_settings
 from app.services.generation.agent_service import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
@@ -70,4 +71,5 @@ async def run_tech_stack(idea: str, industry: str, features: list[str]) -> TechS
             features="\n".join(f"- {feature}" for feature in cleaned_features),
         ),
         max_tokens=1100,
+        model=get_settings().GROQ_FAST_MODEL,
     )

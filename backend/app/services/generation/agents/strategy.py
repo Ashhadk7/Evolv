@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agent_service import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
-from app.services.generation.text import clean
+from app.services.generation.text import clean, clip
 
 ShortTitle = Annotated[str, Field(min_length=1, max_length=80)]
 ShortText = Annotated[str, Field(min_length=1, max_length=180)]
@@ -46,12 +46,18 @@ class StrategyOutput(BaseModel):
     risks: list[StrategyRisk] = Field(min_length=3, max_length=5)
     gtm_channels: list[StrategyItem] = Field(alias="gtmChannels", min_length=3, max_length=5)
     gtm_sequence: list[StrategyStep] = Field(alias="gtmSequence", min_length=3, max_length=5)
+    # Free-form paragraph — clipped, never hard-failed, when the model runs long.
+    analysis: Annotated[str, BeforeValidator(clip(1200))] = Field(
+        min_length=120, max_length=1200
+    )
 
 
 async def run_strategy(
     market: MarketOutput,
     competitor: CompetitorOutput,
     differentiator: str,
+    research: str,
+    personas: str,
 ) -> StrategyOutput:
     differentiator = clean(differentiator)
     if not differentiator:
@@ -65,8 +71,10 @@ async def run_strategy(
             market=_agent_json(market),
             competitors=_agent_json(competitor),
             differentiator=differentiator,
+            research=research,
+            personas=personas,
         ),
-        max_tokens=1300,
+        max_tokens=1700,
     )
 
 

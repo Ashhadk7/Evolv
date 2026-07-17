@@ -14,11 +14,20 @@ import { ViabilityGauge } from "@/components/shared/viability-gauge";
 interface SubScore {
   label: string;
   value: number;
+  note?: string;
 }
+
+const VERDICT_TONE: Record<string, "mint" | "amber" | "red"> = {
+  Build: "mint",
+  "Validate first": "amber",
+  Rethink: "red",
+};
 
 export function BlueprintHeroSection({
   bp,
   stageLabel,
+  tagline,
+  verdict,
   phasesCount,
   buildWeeks,
   viabilityScore,
@@ -27,6 +36,8 @@ export function BlueprintHeroSection({
 }: {
   bp: Blueprint;
   stageLabel: string;
+  tagline?: string;
+  verdict?: string;
   phasesCount: number;
   buildWeeks: number;
   viabilityScore: number;
@@ -43,6 +54,11 @@ export function BlueprintHeroSection({
             <h1 className="text-bp-ink text-[38px] leading-[1.04] font-extrabold tracking-[-0.032em]">
               {bp.name}
             </h1>
+            {tagline && (
+              <p className="text-bp-muted mt-1.5 mb-0 text-[15px] leading-[1.4] italic">
+                {tagline}
+              </p>
+            )}
             <div className="mt-3.5 flex flex-wrap gap-2">
               <Chip
                 tone="mint"
@@ -50,7 +66,11 @@ export function BlueprintHeroSection({
               >
                 {bp.industry}
               </Chip>
-              <Chip>{stageLabel}</Chip>
+              {verdict ? (
+                <Chip tone={VERDICT_TONE[verdict] ?? "neutral"}>Verdict: {verdict}</Chip>
+              ) : (
+                <Chip>{stageLabel}</Chip>
+              )}
               <Chip>Updated {bp.updatedAt}</Chip>
             </div>
             <p className="text-bp-body mt-4.5 max-w-[540px] text-base leading-[1.7]">
@@ -69,9 +89,18 @@ export function BlueprintHeroSection({
               <ViabilityGauge score={viabilityScore} />
             </div>
             <p className="text-bp-body m-0 text-[12.5px] leading-[1.6]">{viabilityReasoning}</p>
-            <div className="border-bp-border-soft grid grid-cols-4 gap-3.5 border-t pt-3.5">
+            <div
+              className="border-bp-border-soft grid gap-3.5 border-t pt-3.5"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(subScoreRow.length, 3)}, 1fr)`,
+              }}
+            >
               {subScoreRow.map((score) => (
-                <div key={score.label} className="flex flex-col gap-1.5">
+                <div
+                  key={score.label}
+                  className="flex flex-col gap-1.5"
+                  title={score.note || undefined}
+                >
                   <span style={NUM} className="text-bp-ink text-base leading-none font-bold">
                     {score.value}
                   </span>

@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     GROQ_API_KEY: SecretStr
     GROQ_API_BASE_URL: str = Field(min_length=1)
     GROQ_MODEL: str = Field(min_length=1)
+    # Mechanical agents (planner, product, tech stack) run on this cheaper,
+    # faster model — it has its own separate rate-limit budget on Groq.
+    GROQ_FAST_MODEL: str = "llama-3.1-8b-instant"
     CHAT_MODEL_NAME: str = "llama-3.1-8b-instant"
     GROQ_EMBEDDING_MODEL: str | None = None
     ENRICHMENT_TIMEOUT_SECONDS: int = Field(default=12, ge=1, le=60)
