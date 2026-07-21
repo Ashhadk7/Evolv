@@ -52,36 +52,56 @@ export type Persona = {
   pains: string;
 };
 
+export type SubScore = { label: string; value: number; note: string };
+
 export type Viability = {
   score: number;
   grade: string;
   reasoning: string;
-  subScores: { market: number; execution: number; timing: number; teamFit: number };
+  verdict: string; // "Build" | "Validate first" | "Rethink" | "" for legacy blueprints
+  subScores: SubScore[];
 };
+
+export type ResearchSourceRef = { title: string; url: string; domain: string };
+
+export type CitedText = { text: string; sourceIndexes: number[] };
 
 export type MarketAnalysis = {
   demandLevel: "High" | "Medium" | "Low";
   totalMarket: string;
-  reachableMarket: string;
-  realisticCapture: string;
+  totalMarketBasis: string; // "sourced" | "assumption" | ""
+  bottomUpSam: string; // customers × price, computed by the backend ("" for legacy)
+  bottomUpBasis: string;
   cagr: string;
-  growth: string;
+  cagrBasis: string;
   timing: string;
   whyNow: string;
   insight: string;
-  demandSignals: string[];
+  analysis: string; // long-form analyst paragraph ("" for legacy blueprints)
+  demandSignals: CitedText[];
   headwinds: string[];
+  confidence: string;
+  assumptions: string[];
+  sources: ResearchSourceRef[];
+  retrievedAt: string;
 };
 
 export type CompetitorRow = {
   name: string;
-  pricing: string;
+  type: string;
   strengths: string[];
   weaknesses: string[];
   gap: string;
+  sourceIndexes: number[];
 };
 
-export type SimilarStartup = { name: string; oneLiner: string; outcome: string };
+export type CompetitorInsight = {
+  analysis: string;
+  confidence: string;
+  assumptions: string[];
+  sources: ResearchSourceRef[];
+  retrievedAt: string;
+};
 
 export type MvpPlan = {
   mustHave: string[];
@@ -148,6 +168,7 @@ export type Financials = {
   eoyMrr: number;
   eoyArr: number;
   breakEvenMonth: number | null; // null → not within 24 months
+  assumptions: string[]; // every input to this illustrative model, stated plainly
 };
 
 export type StackCat = {
@@ -157,12 +178,23 @@ export type StackCat = {
   rows: { k: string; v: string }[];
 };
 
+export type Synthesis = {
+  tagline: string;
+  executiveSummary: string;
+  verdict: string;
+  verdictReasoning: string;
+  redFlags: { flag: string; severity: string }[];
+  contradictions: string[];
+  keyAssumptions: string[];
+};
+
 export type BlueprintContent = {
   personas: Persona[];
   viability: Viability;
+  synthesis: Synthesis;
   marketAnalysis: MarketAnalysis;
   competitors: CompetitorRow[];
-  similarStartups: SimilarStartup[];
+  competitorInsight: CompetitorInsight;
   mvpPlan: MvpPlan;
   techStack: TechStackModel;
   costModel: CostModel;
@@ -173,10 +205,6 @@ export type BlueprintContent = {
 /* ═══════════════════════════════════════════════════════ */
 /* Derivation helpers                                         */
 /* ═══════════════════════════════════════════════════════ */
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -208,35 +236,11 @@ function sentenceList(value: unknown, fallback: string): string {
   return items.length ? items.join("; ") : fallback;
 }
 
-function parseMarketMoney(s: string): number {
-  const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kKmMbB])?/);
-  if (!m) return 500000000;
-  let n = parseFloat(m[1]);
-  const u = (m[2] || "").toLowerCase();
-  if (u === "k") n *= 1000;
-  else if (u === "m") n *= 1000000;
-  else if (u === "b") n *= 1000000000;
-  return n;
-}
-
 function fmtMarketMoney(n: number): string {
   if (n >= 1000000000) return "$" + (n / 1000000000).toFixed(n % 1000000000 ? 1 : 0) + "B";
   if (n >= 1000000) return "$" + (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "M";
   if (n >= 1000) return "$" + Math.round(n / 1000) + "K";
   return "$" + Math.round(n);
-}
-
-function barrierMultiplier(barriers: string): number {
-  const b = barriers.toLowerCase();
-  if (
-    b.includes("high") ||
-    b.includes("regulatory") ||
-    b.includes("hardware") ||
-    b.includes("grid")
-  )
-    return 0.76;
-  if (b.includes("moderate") || b.includes("content")) return 0.9;
-  return 1;
 }
 
 function derivePersonas(bp: Blueprint): Persona[] {
@@ -252,74 +256,106 @@ function derivePersonas(bp: Blueprint): Persona[] {
     }));
   }
 
-  const ind = bp.industry.toLowerCase();
-  if (ind.includes("health"))
-    return [
-      {
-        name: "The Frontline Clinician",
-        segment: "Primary user",
-        about:
-          "Oncologists and radiologists who review scans every day and carry the diagnostic decision.",
-        goals: "Faster, more confident diagnoses with fewer false positives.",
-        pains: "Manual review is slow, and existing AI tools don't explain their reasoning.",
-      },
-      {
-        name: "The Clinic Operations Lead",
-        segment: "Economic buyer",
-        about: "Runs throughput and budget for the practice, and signs off on any new tooling.",
-        goals: "Higher patient throughput with a clear, provable ROI on new tools.",
-        pains: "Cost is hard to justify and EHR integration stalls every rollout.",
-      },
-      {
-        name: "The Health-System IT Owner",
-        segment: "Gatekeeper",
-        about: "Owns security, compliance and deployment — and can block adoption outright.",
-        goals: "Secure, compliant, low-maintenance software that passes review.",
-        pains: "Data privacy, audit trails and vendor risk are dealbreakers.",
-      },
-    ];
-  return [
-    {
-      name: `The ${bp.industry} Practitioner`,
-      segment: "Primary user",
-      about: `The person who would use ${bp.name} day to day to get the core ${bp.industry.toLowerCase()} job done.`,
-      goals: `Get the core ${bp.industry.toLowerCase()} outcome faster, with far less friction.`,
-      pains: "Today's tools are clunky, generic and slow to deliver real value.",
-    },
-    {
-      name: "The Team Lead",
-      segment: "Economic buyer",
-      about: "Owns the budget and the decision to adopt on behalf of their team.",
-      goals: "Clear ROI, easy rollout and measurable impact within a quarter.",
-      pains: "Hard to evaluate, and switching costs feel high.",
-    },
-    {
-      name: "The Ops / IT Owner",
-      segment: "Gatekeeper",
-      about: "Responsible for security, access and keeping existing systems reliable.",
-      goals: "Reliable, secure software that fits the systems they already run.",
-      pains: "Security review, permissions and integration overhead slow everything down.",
-    },
-  ];
+  // No agent data → no personas. Fabricated archetypes erode trust in the
+  // sections that ARE researched; the section renders an unavailable state.
+  return [];
 }
 
-function deriveViability(bp: Blueprint): Viability {
-  const cagrNum = parseFloat(bp.market.cagr) || 20;
-  const execution = Math.round(bp.viability * 0.88);
-  const timing = Math.min(95, Math.round(55 + cagrNum));
-  const teamFit = bp.developerDemand === "High" ? 88 : bp.developerDemand === "Medium" ? 72 : 58;
-  const tier = bp.viability >= 80 ? "strong" : bp.viability >= 68 ? "solid" : "early-stage";
+function numberValue(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function citedTexts(value: unknown): CitedText[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") return { text: item, sourceIndexes: [] };
+      const record = asRecord(item);
+      return {
+        text: stringValue(record?.text),
+        sourceIndexes: Array.isArray(record?.sourceIndexes)
+          ? record.sourceIndexes.filter((n): n is number => typeof n === "number")
+          : [],
+      };
+    })
+    .filter((item) => item.text);
+}
+
+function sourceRefs(value: unknown): ResearchSourceRef[] {
+  return recordArray(value)
+    .map((source) => ({
+      title: stringValue(source.title),
+      url: stringValue(source.url),
+      domain: stringValue(source.domain),
+    }))
+    .filter((source) => source.title && source.url);
+}
+
+function retrievedAtOf(agent: Record<string, unknown> | null): string {
+  const generatedAt = stringValue(asRecord(agent?.researchMetadata)?.generatedAt);
+  return generatedAt ? generatedAt.slice(0, 10) : "";
+}
+
+// The six scorecard dimensions, in display order. Values come from the
+// backend's rubric-scored agent — nothing is re-derived on the client.
+const SCORECARD_DIMENSIONS: { key: string; label: string }[] = [
+  { key: "problemSeverity", label: "Problem" },
+  { key: "marketQuality", label: "Market" },
+  { key: "differentiation", label: "Differentiation" },
+  { key: "executionFeasibility", label: "Execution" },
+  { key: "competition", label: "Competition" },
+  { key: "timing", label: "Timing" },
+];
+
+function scorecardSubScores(bp: Blueprint): SubScore[] {
+  const scorecard = agentRecord(bp, "scorecard");
+  if (!scorecard) {
+    // Legacy blueprint (schema <= 4): the market score is the only real
+    // sub-score that exists — show it alone rather than inventing three more.
+    return [{ label: "Market", value: bp.market.score, note: "" }];
+  }
+  return SCORECARD_DIMENSIONS.map(({ key, label }) => {
+    const dimension = asRecord(scorecard[key]);
+    return {
+      label,
+      value: numberValue(dimension?.score),
+      note: stringValue(dimension?.justification),
+    };
+  });
+}
+
+function deriveSynthesis(bp: Blueprint): Synthesis {
+  const synthesis = agentRecord(bp, "synthesis");
+  return {
+    tagline: stringValue(synthesis?.tagline),
+    executiveSummary: stringValue(synthesis?.executiveSummary),
+    verdict: stringValue(synthesis?.verdict),
+    verdictReasoning: stringValue(synthesis?.verdictReasoning),
+    redFlags: recordArray(synthesis?.redFlags)
+      .map((flag) => ({
+        flag: stringValue(flag.flag),
+        severity: stringValue(flag.severity, "Medium"),
+      }))
+      .filter((flag) => flag.flag),
+    contradictions: stringArray(synthesis?.contradictions),
+    keyAssumptions: stringArray(synthesis?.keyAssumptions),
+  };
+}
+
+function deriveViability(bp: Blueprint, synthesis: Synthesis): Viability {
+  const reasoning =
+    synthesis.verdictReasoning || bp.aiRecommend || "Generated before verdict support was added.";
   return {
     score: bp.viability,
     grade: gradeFor(bp.viability),
-    reasoning: `${bp.name} scores ${bp.viability}/100 — ${tier} fundamentals, driven by ${bp.market.score >= 75 ? "a large, fast-growing market" : "a focused, underserved niche"} and ${bp.developerDemand.toLowerCase()} developer interest. ${bp.aiRecommend}.`,
-    subScores: { market: bp.market.score, execution, timing, teamFit },
+    reasoning,
+    verdict: synthesis.verdict,
+    subScores: scorecardSubScores(bp),
   };
 }
 
 function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
   const marketAgent = agentRecord(bp, "market");
-  const cagrNum = parseFloat(bp.market.cagr) || 20;
   const agentDemandLevel = stringValue(marketAgent?.demandLevel);
   const demandLevel: MarketAnalysis["demandLevel"] =
     agentDemandLevel === "High" || agentDemandLevel === "Medium" || agentDemandLevel === "Low"
@@ -329,169 +365,64 @@ function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
         : bp.market.score >= 60
           ? "Medium"
           : "Low";
-  const totalMarketValue = parseMarketMoney(bp.market.size);
-  const barrierFactor = barrierMultiplier(bp.market.barriers);
-  const reachablePct = clamp((bp.market.score / 100) * 0.22 * barrierFactor, 0.08, 0.22);
-  const capturePct = clamp((bp.viability / 100) * 0.06 * barrierFactor, 0.015, 0.06);
-  const reachableMarketValue = totalMarketValue * reachablePct;
-  const realisticCaptureValue = reachableMarketValue * capturePct;
-  const growth =
-    cagrNum > 25
-      ? `${bp.market.cagr} CAGR signals fast category expansion, but also higher urgency to prove the wedge quickly.`
-      : cagrNum > 15
-        ? `${bp.market.cagr} CAGR is strong enough for new entrants if the first segment is narrow and reachable.`
-        : `${bp.market.cagr} CAGR suggests a steadier market where differentiation has to carry more of the sale.`;
-  const whyNow =
-    cagrNum > 25
-      ? `The market is still forming, so ${bp.name} can shape buyer expectations around ${bp.differentiator.toLowerCase()} before defaults harden.`
-      : cagrNum > 15
-        ? `The category is growing, but buyer workflows have not fully settled; ${bp.differentiator.toLowerCase()} gives the product a timely entry wedge.`
-        : `The market is mature enough to have budget, but underserved teams still need a cheaper, focused alternative to incumbent tools.`;
-  const timing =
-    cagrNum > 25
-      ? "Early — the category is still forming, which is the ideal window to establish position."
-      : cagrNum > 15
-        ? "Growing steadily — there's room to build a position before the market consolidates."
-        : "Maturing — differentiation and cost efficiency matter more than pure timing here.";
+  const customerCount = numberValue(marketAgent?.customerCount);
+  const priceAnnualUsd = numberValue(marketAgent?.priceAnnualUsd);
+  const bottomUpBasis =
+    customerCount && priceAnnualUsd
+      ? `${customerCount.toLocaleString()} customers × ${fmtMarketMoney(priceAnnualUsd)}/yr — ${stringValue(marketAgent?.customerCountBasis)}`
+      : "";
   return {
     demandLevel,
     totalMarket: bp.market.size,
-    reachableMarket: fmtMarketMoney(reachableMarketValue),
-    realisticCapture: fmtMarketMoney(realisticCaptureValue),
+    totalMarketBasis: stringValue(marketAgent?.sizeBasis),
+    bottomUpSam: stringValue(marketAgent?.bottomUpSam),
+    bottomUpBasis,
     cagr: bp.market.cagr,
-    growth,
-    timing: stringValue(marketAgent?.timing, timing),
-    whyNow: stringValue(marketAgent?.whyNow, whyNow),
-    insight: stringValue(
-      marketAgent?.insight,
-      `The broad category is ${bp.market.size}; the more useful first target is an estimated ${fmtMarketMoney(reachableMarketValue)} reachable wedge, with about ${fmtMarketMoney(realisticCaptureValue)} plausible 3-year capture if execution matches the current viability score.`
-    ),
-    demandSignals: stringArray(marketAgent?.demandSignals).length
-      ? stringArray(marketAgent?.demandSignals)
-      : [
-          `${demandLevel} market score (${bp.market.score}/100)`,
-          `${bp.market.cagr} category growth`,
-          `${bp.developerDemand} developer interest for building this kind of product`,
-          bp.competitors.length
-            ? "Comparable competitors validate buyer budget"
-            : "Clear whitespace, but fewer competitor proof points",
-        ],
-    headwinds: stringArray(marketAgent?.headwinds).length
-      ? stringArray(marketAgent?.headwinds)
-      : [bp.market.barriers, "Incumbent players already have distribution and buyer trust"],
+    cagrBasis: stringValue(marketAgent?.cagrBasis),
+    timing: stringValue(marketAgent?.timing),
+    whyNow: stringValue(marketAgent?.whyNow),
+    insight: stringValue(marketAgent?.insight),
+    analysis: stringValue(marketAgent?.analysis),
+    demandSignals: citedTexts(marketAgent?.demandSignals),
+    headwinds: stringArray(marketAgent?.headwinds),
+    confidence: stringValue(marketAgent?.confidence),
+    assumptions: stringArray(marketAgent?.assumptions),
+    sources: sourceRefs(marketAgent?.sources),
+    retrievedAt: retrievedAtOf(marketAgent),
   };
 }
 
 function deriveCompetitors(bp: Blueprint): CompetitorRow[] {
+  // Agent data only. Fabricating pricing or strengths for real companies is
+  // the fastest possible credibility kill — no agent data, no table.
   const competitorAgent = agentRecord(bp, "competitor");
-  const generatedCompetitors = recordArray(competitorAgent?.competitors);
-  if (generatedCompetitors.length) {
-    return generatedCompetitors.map((competitor) => ({
-      name: stringValue(competitor.name, "Competitor"),
-      pricing: stringValue(competitor.type, "Comparable player"),
-      strengths: stringArray(competitor.strengths).length
-        ? stringArray(competitor.strengths)
-        : [stringValue(competitor.positioning, "Established category presence")],
-      weaknesses: stringArray(competitor.weaknesses).length
-        ? stringArray(competitor.weaknesses)
-        : ["May not serve the first wedge deeply"],
-      gap: stringValue(competitor.gap, "Opportunity to serve a narrower customer segment better"),
-    }));
-  }
-
-  const rows = bp.competitors.length
-    ? bp.competitors
-    : [{ name: "Established incumbent", type: "Direct" }];
-  return rows.map((c) => {
-    const direct = c.type === "Direct";
-    return {
-      name: c.name,
-      pricing: direct ? "Enterprise pricing, custom quotes" : "Mid-market, seat-based pricing",
-      strengths: direct
-        ? ["Established brand trust", "Deep enterprise integrations"]
-        : ["Broad platform reach", "Lower switching friction for buyers"],
-      weaknesses: direct
-        ? ["Slow to adapt, built for large teams", "Expensive for smaller buyers"]
-        : [`Generic — not purpose-built for ${bp.industry}`, "Limited depth on the core workflow"],
-      gap: direct
-        ? `Priced out of reach for smaller ${bp.industry} teams`
-        : "Doesn't go deep enough on the core workflow",
-    };
-  });
+  return recordArray(competitorAgent?.competitors).map((competitor) => ({
+    name: stringValue(competitor.name, "Competitor"),
+    type: stringValue(competitor.type, "Direct"),
+    strengths: stringArray(competitor.strengths).length
+      ? stringArray(competitor.strengths)
+      : [stringValue(competitor.positioning, "Established category presence")],
+    weaknesses: stringArray(competitor.weaknesses).length
+      ? stringArray(competitor.weaknesses)
+      : ["May not serve the first wedge deeply"],
+    gap: stringValue(competitor.gap, "Opportunity to serve a narrower customer segment better"),
+    sourceIndexes: Array.isArray(competitor.sourceIndexes)
+      ? competitor.sourceIndexes.filter((n): n is number => typeof n === "number")
+      : [],
+  }));
 }
 
-const SIMILAR_STARTUPS_BY_INDUSTRY: Record<string, SimilarStartup[]> = {
-  health: [
-    {
-      name: "PathAI",
-      oneLiner: "AI-assisted pathology diagnostics for hospital labs.",
-      outcome: "Raised $255M+ across multiple rounds; deployed across major health systems.",
-    },
-    {
-      name: "Tempus",
-      oneLiner: "Precision-medicine platform combining clinical and molecular data.",
-      outcome: "IPO'd in 2024 at a multi-billion dollar valuation.",
-    },
-    {
-      name: "Paige",
-      oneLiner: "FDA-cleared AI for cancer diagnosis from pathology slides.",
-      outcome: "First FDA-approved AI product in digital pathology.",
-    },
-  ],
-  saas: [
-    {
-      name: "Linear",
-      oneLiner: "Opinionated issue tracking built for fast-moving product teams.",
-      outcome: "Reached a $1.25B valuation with a small, focused team.",
-    },
-    {
-      name: "Notion",
-      oneLiner: "Flexible workspace for docs, wikis, and lightweight databases.",
-      outcome: "Grew to 30M+ users before raising at a $10B valuation.",
-    },
-  ],
-  clean: [
-    {
-      name: "Arcadia",
-      oneLiner: "Software layer connecting households and businesses to clean energy.",
-      outcome: "Raised $377M+ and partners with utilities across the US.",
-    },
-    {
-      name: "LO3 Energy",
-      oneLiner: "Blockchain-based peer-to-peer energy trading.",
-      outcome: "Piloted transactive-grid projects with utilities in three countries.",
-    },
-  ],
-  ed: [
-    {
-      name: "Khanmigo",
-      oneLiner: "AI tutor layered on Khan Academy's curriculum.",
-      outcome: "Rolled out to hundreds of school districts within its first year.",
-    },
-    {
-      name: "Squirrel AI",
-      oneLiner: "Adaptive learning engine for K-12 math in China.",
-      outcome: "Scaled to 2,000+ learning centers before expanding internationally.",
-    },
-  ],
-};
-function deriveSimilarStartups(bp: Blueprint): SimilarStartup[] {
-  const ind = bp.industry.toLowerCase();
-  const key = Object.keys(SIMILAR_STARTUPS_BY_INDUSTRY).find((k) => ind.includes(k));
-  if (key) return SIMILAR_STARTUPS_BY_INDUSTRY[key];
-  return [
-    {
-      name: `${bp.industry} category leader`,
-      oneLiner: `An established player proving demand for ${bp.industry.toLowerCase()} tooling exists.`,
-      outcome: "Reached meaningful scale with a comparable product thesis.",
-    },
-    {
-      name: "Adjacent-market challenger",
-      oneLiner: `A startup that broke into ${bp.industry.toLowerCase()} from a neighbouring category.`,
-      outcome: "Validated that outsiders can win here with the right wedge.",
-    },
-  ];
+function deriveCompetitorInsight(bp: Blueprint): CompetitorInsight {
+  const competitorAgent = agentRecord(bp, "competitor");
+  return {
+    analysis: stringValue(competitorAgent?.analysis),
+    confidence: stringValue(competitorAgent?.confidence),
+    assumptions: stringArray(competitorAgent?.assumptions),
+    sources: sourceRefs(competitorAgent?.sources),
+    retrievedAt: retrievedAtOf(competitorAgent),
+  };
 }
+
 
 function deriveMvpPlan(bp: Blueprint, totalWeeks: number): MvpPlan {
   const productAgent = agentRecord(bp, "product");
@@ -600,7 +531,34 @@ function parseMonthly(s: string): number {
 const PALETTE = { mint: "#89d7b7", teal: "#428475", mintSoft: "#a8dfc9", faint: "#cfe3d8" };
 
 function buildPhases(bp: Blueprint): Phase[] {
-  const raw: Omit<Phase, "primarySkill" | "weeklyRate" | "cost">[] = [
+  const productAgent = agentRecord(bp, "product");
+  const agentPhases = recordArray(productAgent?.phases);
+  const raw: Omit<Phase, "primarySkill" | "weeklyRate" | "cost">[] = agentPhases.length
+    ? agentPhases.map((phase, index) => {
+        const skill = stringValue(phase.primarySkill, "Full Stack");
+        return {
+          name: stringValue(phase.name, `Phase ${index + 1}`),
+          layer: skill,
+          weeks: Math.max(1, numberValue(phase.weeks, 2)),
+          deliverables: stringArray(phase.deliverables),
+          acceptanceCriteria: stringArray(phase.acceptanceCriteria),
+          skillset: [skill],
+          status: index === 0 ? ("In Progress" as const) : ("Planned" as const),
+        };
+      })
+    : legacyPhases(bp);
+  return raw.map((p) => {
+    const primarySkill = p.skillset[0];
+    const weeklyRate = rateForSkill(primarySkill);
+    return { ...p, primarySkill, weeklyRate, cost: weeklyRate * p.weeks };
+  });
+}
+
+/* Fallback roadmap for blueprints generated before the product agent planned
+   phases (schema <= 4). Generic scaffolding, not idea-specific — new
+   generations never hit this path. */
+function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" | "cost">[] {
+  return [
     {
       name: "Foundation & UI",
       layer: bp.techStack.frontend,
@@ -621,11 +579,7 @@ function buildPhases(bp: Blueprint): Phase[] {
       name: "Core Backend & API",
       layer: bp.techStack.backend,
       weeks: 4,
-      deliverables: [
-        "Data model & migrations",
-        "REST API + auth middleware",
-        "Core business logic",
-      ],
+      deliverables: ["Data model & migrations", "REST API + auth middleware", "Core business logic"],
       acceptanceCriteria: [
         "API contract documented and typed end-to-end",
         "Core business logic covered by tests",
@@ -646,38 +600,15 @@ function buildPhases(bp: Blueprint): Phase[] {
       status: "Planned",
     },
     {
-      name: "Payments & Integrations",
-      layer: "Stripe Connect",
-      weeks: 2,
-      deliverables: [
-        "Milestone escrow flow",
-        "Connected accounts & payouts",
-        "Email & notifications",
-      ],
-      acceptanceCriteria: [
-        "A milestone can be funded, approved, and paid out end-to-end in test mode",
-      ],
-      skillset: ["Backend", "Stripe Connect"],
-      status: "Planned",
-    },
-    {
       name: "Hardening & Launch",
       layer: "QA · CI/CD",
       weeks: 2,
       deliverables: ["E2E + load testing", "Observability & alerts", "Production deploy pipeline"],
-      acceptanceCriteria: [
-        "E2E suite passes in CI",
-        "Alerts fire correctly on a simulated incident",
-      ],
+      acceptanceCriteria: ["E2E suite passes in CI", "Alerts fire correctly on a simulated incident"],
       skillset: ["DevOps", "QA"],
       status: "Planned",
     },
   ];
-  return raw.map((p) => {
-    const primarySkill = p.skillset[0];
-    const weeklyRate = rateForSkill(primarySkill);
-    return { ...p, primarySkill, weeklyRate, cost: weeklyRate * p.weeks };
-  });
 }
 
 function buildCostModel(bp: Blueprint, phases: Phase[]): CostModel {
@@ -712,10 +643,15 @@ function buildCostModel(bp: Blueprint, phases: Phase[]): CostModel {
 }
 
 function deriveFinancials(bp: Blueprint, buildCost: number): Financials {
+  const marketAgent = agentRecord(bp, "market");
+  // Price comes from the market agent's researched wedge price when present;
+  // the legacy $49 default only applies to pre-scorecard blueprints.
+  const priceAnnual = numberValue(marketAgent?.priceAnnualUsd);
+  const price = priceAnnual ? Math.max(1, Math.round(priceAnnual / 12)) : 49;
+  const priceBasis = stringValue(marketAgent?.priceBasis);
   const startingUsers = Math.round(20 + bp.marketPotential * 0.6);
   const monthlyGrowthPct = Math.round((0.08 + (bp.viability / 100) * 0.08) * 100); // 8–16%/mo
   const g = monthlyGrowthPct / 100;
-  const price = 49;
   // Compute month-by-month for 24 months so break-even can be found beyond year 1.
   let users = startingUsers;
   let cumulative = 0;
@@ -735,11 +671,19 @@ function deriveFinancials(bp: Blueprint, buildCost: number): Financials {
     startingUsers,
     monthlyGrowthPct,
     revenueModel:
-      "B2B SaaS subscription with usage-based tiers. Founders fund development directly; developers are paid per approved milestone through Evolv's Stripe Connect escrow.",
+      bp.intake?.monetization ||
+      "Subscription pricing assumed — no monetization model was provided at intake.",
     year1,
     eoyMrr: eoy.mrr,
     eoyArr: eoy.mrr * 12,
     breakEvenMonth,
+    assumptions: [
+      priceBasis
+        ? `Price $${price}/user/mo — ${priceBasis}`
+        : `Price $${price}/user/mo — default assumption, not researched`,
+      `Starting users (${startingUsers}) scaled from the market score — assumption`,
+      `Growth ${monthlyGrowthPct}%/mo — model assumption, not a forecast`,
+    ],
   };
 }
 
@@ -750,12 +694,14 @@ export function buildBlueprintContent(bp: Blueprint): BlueprintContent {
   const phases = buildPhases(bp);
   const totalWeeks = phases.reduce((s, p) => s + p.weeks, 0) || 1;
   const costModel = buildCostModel(bp, phases);
+  const synthesis = deriveSynthesis(bp);
   return {
     personas: derivePersonas(bp),
-    viability: deriveViability(bp),
+    viability: deriveViability(bp, synthesis),
+    synthesis,
     marketAnalysis: deriveMarketAnalysis(bp),
     competitors: deriveCompetitors(bp),
-    similarStartups: deriveSimilarStartups(bp),
+    competitorInsight: deriveCompetitorInsight(bp),
     mvpPlan: deriveMvpPlan(bp, totalWeeks),
     techStack: deriveTechStack(bp),
     costModel,

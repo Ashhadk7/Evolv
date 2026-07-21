@@ -153,13 +153,19 @@ export function FinancialsSection({
       {/* REVENUE & BREAK-EVEN */}
       <div style={cardStyle({ padding: "28px 30px" })}>
         <Label>Revenue &amp; break-even</Label>
-        <p className="text-bp-muted mb-[18px] text-[13px] leading-[1.65]">
-          Modelled as a B2B SaaS subscription at{" "}
+        <p className="text-bp-muted mb-2.5 text-[13px] leading-[1.65]">
+          {fin.revenueModel} Modelled at{" "}
           <strong className="text-bp-ink">${fin.pricePerUser}/user per month</strong>, starting near{" "}
           {fin.startingUsers} paying users and growing ~{fin.monthlyGrowthPct}% each month.{" "}
           <strong className="text-bp-ink">MRR</strong> is monthly recurring revenue;{" "}
           <strong className="text-bp-ink">ARR</strong> is that figure annualised.
         </p>
+        <div className="border-bp-border-soft bg-bp-tint mb-[18px] flex gap-[9px] rounded-[11px] border px-3.5 py-2.5">
+          <Calculator size={14} weight="duotone" className="text-bp-amber mt-px shrink-0" />
+          <span className="text-bp-muted text-[11.5px] leading-[1.5]">
+            <strong>Illustrative model, not a forecast.</strong> {fin.assumptions.join(" · ")}
+          </span>
+        </div>
         <div className="mb-6 grid grid-cols-3 gap-3.5">
           {[
             {

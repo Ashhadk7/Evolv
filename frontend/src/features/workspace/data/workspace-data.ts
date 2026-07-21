@@ -167,7 +167,9 @@ export const FORGE_AGENTS = [
   { key: "persona", label: "Persona Agent", desc: "Building customer, buyer, and gatekeeper personas..." },
   { key: "product", label: "Product Agent", desc: "Scoping MVP features and boundaries..." },
   { key: "strategy", label: "Strategy Agent", desc: "Shaping go-to-market moves and roadmap..." },
+  { key: "scorecard", label: "Scorecard Agent", desc: "Scoring viability against the evidence..." },
   { key: "techStack", label: "Tech Stack Agent", desc: "Selecting the stack and team roles..." },
+  { key: "synthesis", label: "Synthesis Agent", desc: "Naming the venture and writing the verdict..." },
 ];
 
 export const WORKSPACE_INSIGHTS = [

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -19,15 +20,31 @@ from app.services.generation.agents.competitor import CompetitorOutput, run_comp
 from app.services.generation.agents.market import MarketOutput, run_market
 from app.services.generation.agents.persona import PersonaOutput, run_persona
 from app.services.generation.agents.product import ProductOutput, run_product
+from app.services.generation.agents.research_planner import run_research_planner
+from app.services.generation.agents.scorecard import (
+    ScorecardOutput,
+    derive_viability,
+    run_scorecard,
+)
 from app.services.generation.agents.strategy import StrategyOutput, run_strategy
+from app.services.generation.agents.synthesis import SynthesisOutput, run_synthesis
 from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_stack
-from app.services.generation.agent_service import AgentServiceError
-from app.services.generation.enrichment import EnrichmentError
+from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
+from app.services.generation.enrichment import EnrichmentError, sources_to_prompt_block
 
 logger = logging.getLogger(__name__)
 
-CONTENT_SCHEMA_VERSION = 4
-ALL_AGENTS = ["market", "competitor", "persona", "product", "strategy", "techStack"]
+CONTENT_SCHEMA_VERSION = 5
+ALL_AGENTS = [
+    "market",
+    "competitor",
+    "persona",
+    "product",
+    "strategy",
+    "scorecard",
+    "techStack",
+    "synthesis",
+]
 
 
 def start_generation(
@@ -72,25 +89,89 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         _update_generation(db, blueprint_id, completedAgents=list(completed))
         return result
 
+    async def gather_stage(*coros):
+        # asyncio.gather leaves sibling tasks running when one fails — they'd
+        # keep retrying rate limits (burning quota) and writing progress onto a
+        # blueprint already marked failed. Cancel them with the stage.
+        tasks = [asyncio.ensure_future(coro) for coro in coros]
+        try:
+            return await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
     try:
         agent_brief = _build_agent_brief(payload)
 
-        # Stage 1 — market, competitor, persona are independent: run together.
-        market, competitor, persona = await asyncio.gather(
-            track("market", run_market(agent_brief, payload.industry)),
-            track("competitor", run_competitor(agent_brief, payload.industry)),
-            track("persona", run_persona(agent_brief, payload.industry)),
+        # Stage 0 — plan idea-specific research queries. Planner failure falls
+        # back to the template queries inside enrichment, so generation never
+        # gets worse than the pre-planner behavior.
+        market_queries: list[str] | None = None
+        competitor_queries: list[str] | None = None
+        try:
+            plan = await run_research_planner(agent_brief)
+            market_queries = plan.market_queries
+            competitor_queries = plan.competitor_queries
+        except (AgentServiceError, ValidationError):
+            logger.warning(
+                "Research planner failed for %s; using template queries", blueprint_id
+            )
+
+        # Stage 1 — market and competitor research + analysis run together.
+        market, competitor = await gather_stage(
+            track("market", run_market(agent_brief, payload.idea, payload.industry, market_queries)),
+            track(
+                "competitor",
+                run_competitor(agent_brief, payload.idea, payload.industry, competitor_queries),
+            ),
         )
 
-        # Stage 2 — both need only stage-1 output.
-        product, strategy = await asyncio.gather(
-            track("product", run_product(agent_brief, competitor.positioning_angle)),
-            track("strategy", run_strategy(market, competitor, competitor.positioning_angle)),
+        # Stage 2 — persona grounds itself in the stage-1 sources (no extra
+        # searches). Second-hand consumers get a trimmed block (top 5 sources
+        # each, short snippets) — full snippets live with market/competitor.
+        shared_research = sources_to_prompt_block(
+            market.sources[:5] + competitor.sources[:5], snippet_chars=300
+        )
+        persona = await track(
+            "persona", run_persona(agent_brief, payload.industry, shared_research)
         )
 
-        # Stage 3 — needs product features.
-        tech_stack = await track(
-            "techStack", run_tech_stack(agent_brief, payload.industry, product.features)
+        # Stage 3 — product scopes to persona pains, strategy grounds GTM in
+        # persona channels, scorecard judges the assembled evidence.
+        persona_context = _persona_context(persona)
+        product, strategy, scorecard = await gather_stage(
+            track(
+                "product",
+                run_product(agent_brief, competitor.positioning_angle, persona_context),
+            ),
+            track(
+                "strategy",
+                run_strategy(
+                    market,
+                    competitor,
+                    competitor.positioning_angle,
+                    shared_research,
+                    persona_context,
+                ),
+            ),
+            track(
+                "scorecard",
+                run_scorecard(agent_brief, market, competitor, persona, shared_research),
+            ),
+        )
+
+        # Stage 4 — tech stack needs product features; synthesis reviews the
+        # whole file (it does not need the tech stack, so they run together).
+        tech_stack, synthesis = await gather_stage(
+            track("techStack", run_tech_stack(agent_brief, payload.industry, product.features)),
+            track(
+                "synthesis",
+                run_synthesis(
+                    agent_brief, market, competitor, persona, product, strategy, scorecard
+                ),
+            ),
         )
 
         content = _build_blueprint_content_payload(
@@ -101,11 +182,18 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             product=product,
             tech_stack=tech_stack,
             strategy=strategy,
+            scorecard=scorecard,
+            synthesis=synthesis,
         )
         _finalize(db, blueprint_id, content)
     except ValueError as exc:
         _update_generation(db, blueprint_id, status="failed", error=str(exc))
-    except (AgentServiceError, EnrichmentError, ValidationError):
+    except (AgentRateLimitError, EnrichmentError) as exc:
+        # Rate limits and research outages are actionable — show the real
+        # cause (wait time / provider error) instead of the generic message.
+        logger.warning("Blueprint generation blocked for %s: %s", blueprint_id, exc)
+        _update_generation(db, blueprint_id, status="failed", error=str(exc))
+    except (AgentServiceError, ValidationError):
         # Log the real cause (provider error / schema mismatch) — the user-facing
         # message stays generic, but a failed generation must be diagnosable.
         logger.warning("Blueprint generation failed for %s", blueprint_id, exc_info=True)
@@ -193,17 +281,28 @@ def _build_blueprint_content_payload(
     product: ProductOutput,
     tech_stack: TechStackOutput,
     strategy: StrategyOutput,
+    scorecard: ScorecardOutput,
+    synthesis: SynthesisOutput,
 ) -> BlueprintVersionCreate:
+    # Bottom-up SAM is computed in code from the agent's two estimates — the
+    # LLM judges the inputs, never the arithmetic.
+    market_dump = market.model_dump(by_alias=True)
+    market_dump["bottomUpSam"] = _fmt_usd(market.customer_count * market.price_annual_usd)
+
     content_json = {
         "schemaVersion": CONTENT_SCHEMA_VERSION,
         "intake": _intake_json(payload),
         "agents": {
-            "market": market.model_dump(by_alias=True),
+            "market": market_dump,
             "competitor": competitor.model_dump(by_alias=True),
             "persona": persona.model_dump(by_alias=True),
             "product": product.model_dump(by_alias=True),
             "techStack": tech_stack.model_dump(by_alias=True),
             "strategy": strategy.model_dump(by_alias=True),
+            # sourceIndexes here refer to the trimmed shared block: indexes 1-5
+            # map to the first 5 market sources, 6-10 to the first 5 competitor sources.
+            "scorecard": scorecard.model_dump(by_alias=True),
+            "synthesis": synthesis.model_dump(by_alias=True),
         },
         "generation": {
             "status": "completed",
@@ -213,13 +312,13 @@ def _build_blueprint_content_payload(
         "updatedAt": _now(),
     }
 
-    viability = _derive_viability(market, competitor, persona)
+    viability = derive_viability(scorecard)
     return BlueprintVersionCreate(
-        name=_derive_blueprint_name(payload),
+        name=synthesis.brand_name,
         industry=payload.industry,
         idea_desc=payload.idea,
         differentiator=competitor.positioning_angle,
-        ai_recommend=_build_ai_recommendation(market, competitor, persona),
+        ai_recommend=f"{synthesis.verdict}: {synthesis.verdict_reasoning}",
         viability=viability,
         market_potential=market.score,
         developer_demand=_derive_developer_demand(market, persona),
@@ -255,37 +354,6 @@ def _derive_blueprint_name(payload: BlueprintGenerateRequest) -> str:
     return name[:64] or f"{payload.industry} Blueprint"
 
 
-def _build_ai_recommendation(
-    market: MarketOutput,
-    competitor: CompetitorOutput,
-    persona: PersonaOutput,
-) -> str:
-    return (
-        f"Validate the {market.demand_level.lower()}-demand wedge with "
-        f"{persona.primary_persona.lower()} users, then address "
-        f"{competitor.threat_level.lower()} competitive pressure before expanding scope."
-    )
-
-
-def _derive_viability(
-    market: MarketOutput,
-    competitor: CompetitorOutput,
-    persona: PersonaOutput,
-) -> int:
-    score = market.score
-    if persona.confidence == "High":
-        score += 5
-    elif persona.confidence == "Low":
-        score -= 5
-
-    if competitor.threat_level == "High":
-        score -= 6
-    elif competitor.threat_level == "Low":
-        score += 4
-
-    return _clamp_score(score)
-
-
 def _derive_developer_demand(market: MarketOutput, persona: PersonaOutput) -> LevelRating:
     if market.demand_level == "High" and persona.confidence != "Low":
         return LevelRating.HIGH
@@ -294,5 +362,27 @@ def _derive_developer_demand(market: MarketOutput, persona: PersonaOutput) -> Le
     return LevelRating.MEDIUM
 
 
-def _clamp_score(score: int) -> int:
-    return max(0, min(100, score))
+def _persona_context(persona: PersonaOutput) -> str:
+    """Compact persona digest for the product and strategy prompts."""
+    primary = next(
+        (p for p in persona.personas if p.segment == persona.primary_persona),
+        persona.personas[0],
+    )
+    channels = sorted({c for p in persona.personas for c in p.acquisition_channels})
+    return json.dumps(
+        {
+            "primaryRole": primary.role,
+            "pains": primary.pains,
+            "jobsToBeDone": primary.jobs_to_be_done,
+            "objections": primary.objections,
+            "acquisitionChannels": channels,
+        },
+        ensure_ascii=True,
+    )
+
+
+def _fmt_usd(value: int) -> str:
+    for threshold, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "K")):
+        if value >= threshold:
+            return f"${value / threshold:.1f}{suffix}".replace(".0", "")
+    return f"${value}"

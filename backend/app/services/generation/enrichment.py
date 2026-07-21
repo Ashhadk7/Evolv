@@ -49,21 +49,12 @@ class ResearchBundle(BaseModel):
     notes: list[str] = Field(default_factory=list)
     credits_used: int = Field(default=0, alias="creditsUsed")
 
-    def to_prompt_block(self) -> str:
-        if not self.sources:
-            return "No external sources were collected."
-
-        lines = []
-        for index, source in enumerate(self.sources, start=1):
-            published = f", published={source.published_at}" if source.published_at else ""
-            domain = f", domain={source.domain}" if source.domain else ""
-            lines.append(
-                f"[{index}] provider={source.provider}, kind={source.kind}{domain}{published}\n"
-                f"Title: {source.title}\n"
-                f"URL: {source.url}\n"
-                f"Signal: {source.snippet}"
-            )
-        return "\n\n".join(lines)
+    def to_prompt_block(
+        self, *, max_sources: int | None = None, snippet_chars: int | None = None
+    ) -> str:
+        # The full source list stays attached to the blueprint for the evidence
+        # UI — these limits only trim what the LLM prompt carries.
+        return sources_to_prompt_block(self.sources[:max_sources], snippet_chars=snippet_chars)
 
     def to_metadata(self) -> dict[str, Any]:
         return {
@@ -78,45 +69,59 @@ class ResearchBundle(BaseModel):
 
 
 async def enrich_market_context(
-    idea: str, industry: str, *, max_sources: int = 10
+    idea: str, industry: str, *, queries: list[str] | None = None, max_sources: int = 10
 ) -> ResearchBundle:
-    """Collect market-size, growth, competitor, and timing signals using Tavily only."""
+    """Collect market signals. Uses planner queries when given, template queries otherwise."""
 
     idea = clean(idea)
     industry = clean(industry)
     if not idea or not industry:
         raise EnrichmentError("Market enrichment requires both idea and industry.")
 
-    queries = [
-        (f"{industry} market size CAGR forecast startup 2025 2026", 4),
-        (f"{idea} {industry} competitors market growth", 4),
-        (f"{industry} startup adoption customer demand recent signals", 3),
-    ]
-    return await _collect_research("market", queries, max_sources=max_sources)
+    planned: list[ResearchQuery] = (
+        [(query, 4) for query in queries]
+        if queries
+        else [
+            (f"{industry} market size CAGR forecast startup 2025 2026", 4),
+            (f"{idea} {industry} competitors market growth", 4),
+            (f"{industry} startup adoption customer demand recent signals", 3),
+        ]
+    )
+    return await _collect_research(
+        "market", planned, idea=idea, industry=industry, max_sources=max_sources
+    )
 
 
 async def enrich_competitor_context(
-    idea: str, industry: str, *, max_sources: int = 12
+    idea: str, industry: str, *, queries: list[str] | None = None, max_sources: int = 12
 ) -> ResearchBundle:
-    """Collect competitor and category signals using Tavily only."""
+    """Collect competitor signals. Uses planner queries when given, template queries otherwise."""
 
     idea = clean(idea)
     industry = clean(industry)
     if not idea or not industry:
         raise EnrichmentError("Competitor enrichment requires both idea and industry.")
 
-    queries = [
-        (f"{idea} competitors alternatives startup", 5),
-        (f"{industry} startups competitors platform market map", 5),
-        (f"{industry} startup competitors product launches recent signals", 3),
-    ]
-    return await _collect_research("competitor", queries, max_sources=max_sources)
+    planned: list[ResearchQuery] = (
+        [(query, 4) for query in queries]
+        if queries
+        else [
+            (f"{idea} competitors alternatives startup", 5),
+            (f"{industry} startups competitors platform market map", 5),
+            (f"{industry} startup competitors product launches recent signals", 3),
+        ]
+    )
+    return await _collect_research(
+        "competitor", planned, idea=idea, industry=industry, max_sources=max_sources
+    )
 
 
 async def _collect_research(
     kind: ResearchKind,
     queries: list[ResearchQuery],
     *,
+    idea: str,
+    industry: str,
     max_sources: int,
 ) -> ResearchBundle:
     try:
@@ -149,25 +154,17 @@ async def _collect_research(
         except Exception as exc:
             provider_errors.append(f"tavily web client: {exc}")
 
-    sources = _dedupe_sources(collected)[:max_sources]
+    sources = _filter_relevant(_dedupe_sources(collected), _relevance_tokens(idea, industry))[
+        :max_sources
+    ]
     notes: list[str] = []
 
     if not sources:
-        # Fall back gracefully to mock results instead of raising EnrichmentError to abort the generation
-        fallback_domain = "searchenrichment.evolv.internal"
-        for idx, (query, _) in enumerate(queries[:3]):
-            sources.append(
-                ResearchSource(
-                    provider="tavily",
-                    kind="web",
-                    title=f"Market Intelligence Report - {query}"[:170],
-                    url=f"https://{fallback_domain}/reports/market-{idx+1}",
-                    snippet=f"Strategic assessment and competitive overview related to: '{query}'. Standard baseline indicators show positive traction trends.",
-                    domain=fallback_domain,
-                    publishedAt=datetime.now(UTC).strftime("%Y-%m-%d"),
-                )
-            )
-        notes.append("Using mock fallback research signals because Tavily search is unauthorized or unavailable.")
+        # No real evidence means no blueprint — fabricated sources would flow
+        # into the evidence UI and skew every downstream agent. Fail with the
+        # actual provider error so the user can fix keys/limits.
+        detail = "; ".join(provider_errors) or "no relevant results found"
+        raise EnrichmentError(f"Web research unavailable ({detail})")
 
     if provider_errors:
         notes.append("Some Tavily searches failed; output uses the successful searches only.")
@@ -194,7 +191,7 @@ async def _search_tavily(
         headers=tavily_headers(),
         json={
             "query": query,
-            "search_depth": "basic",
+            "search_depth": "advanced",
             "chunks_per_source": 3,
             "max_results": limit,
             "topic": "general",
@@ -258,6 +255,55 @@ def _source_from_mapping(item: dict[str, Any]) -> ResearchSource | None:
         domain=_domain_for(url),
         publishedAt=_published_at_for(item),
     )
+
+
+def sources_to_prompt_block(
+    sources: list[ResearchSource], *, snippet_chars: int | None = None
+) -> str:
+    """Render sources for a prompt. `snippet_chars` trims snippets for
+    second-hand consumers (persona/strategy/scorecard) to save prompt tokens —
+    the primary analysts (market/competitor) get the full snippets."""
+    if not sources:
+        return "No external sources were collected."
+
+    lines = []
+    for index, source in enumerate(sources, start=1):
+        published = f", published={source.published_at}" if source.published_at else ""
+        domain = f", domain={source.domain}" if source.domain else ""
+        snippet = source.snippet[:snippet_chars] if snippet_chars else source.snippet
+        lines.append(
+            f"[{index}] provider={source.provider}, kind={source.kind}{domain}{published}\n"
+            f"Title: {source.title}\n"
+            f"URL: {source.url}\n"
+            f"Signal: {snippet}"
+        )
+    return "\n\n".join(lines)
+
+
+_RELEVANCE_STOPWORDS = frozenset(
+    "the a an and or for with that this from into your our their they will have has "
+    "startup startups market business platform product service company".split()
+)
+
+
+def _relevance_tokens(idea: str, industry: str) -> set[str]:
+    words = re.findall(r"[a-z]{4,}", f"{idea} {industry}".lower())
+    return {word for word in words if word not in _RELEVANCE_STOPWORDS}
+
+
+def _filter_relevant(
+    sources: list[ResearchSource], tokens: set[str]
+) -> list[ResearchSource]:
+    # ponytail: naive token-overlap filter — swap for an LLM relevance check only
+    # if off-topic sources still get through.
+    if not tokens:
+        return sources
+    kept = [
+        source
+        for source in sources
+        if tokens & set(re.findall(r"[a-z]{4,}", f"{source.title} {source.snippet}".lower()))
+    ]
+    return kept or sources  # never filter down to nothing
 
 
 def _dedupe_sources(sources: list[ResearchSource]) -> list[ResearchSource]:

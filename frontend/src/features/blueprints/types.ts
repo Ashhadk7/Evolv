@@ -7,6 +7,8 @@ export interface BlueprintAgentOutputs {
   product?: Record<string, unknown>;
   techStack?: Record<string, unknown>;
   strategy?: Record<string, unknown>;
+  scorecard?: Record<string, unknown>;
+  synthesis?: Record<string, unknown>;
 }
 
 export interface BlueprintRole {

@@ -36,13 +36,18 @@ export const TOC_SECTIONS = [
   "Risks & Mitigations",
 ];
 
-export function buildVentureAssessment(bp: Blueprint) {
-  const strengths = [
-    "Clear, sizeable market demand",
-    "Strong developer interest & matchability",
-    "Defensible differentiation vs. incumbents",
-  ];
-  const assessmentRisks = ["Competitive, well-funded incumbents", bp.market.barriers];
+export function buildVentureAssessment(bp: Blueprint, content: BlueprintContent) {
+  // Strengths = the scorecard's best-scoring dimensions, in the agent's own
+  // words. Risks = the synthesis agent's red flags. Nothing is invented here;
+  // legacy blueprints without scorecard data show what actually exists.
+  const strengths = content.viability.subScores
+    .filter((s) => s.note && s.value >= 60)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3)
+    .map((s) => s.note);
+  const assessmentRisks = content.synthesis.redFlags.length
+    ? content.synthesis.redFlags.map((r) => r.flag)
+    : [bp.market.barriers].filter(Boolean);
   return { strengths, assessmentRisks };
 }
 
@@ -61,7 +66,9 @@ export function buildInfoGrid(bp: Blueprint, desc: string) {
     {
       icon: <Warning size={16} weight="duotone" className="text-bp-red" />,
       label: "Problem",
-      text: `Existing ${bp.industry} solutions are expensive, slow to adopt, and built for large players. ${bp.market.barriers} compounds this — leaving smaller teams with wasted time, higher costs, and outcomes that lag what is now technically possible.`,
+      text:
+        bp.intake?.problem ||
+        `Existing ${bp.industry} solutions are expensive, slow to adopt, and built for large players. ${bp.market.barriers} compounds this — leaving smaller teams with wasted time, higher costs, and outcomes that lag what is now technically possible.`,
     },
     {
       icon: <Lightbulb size={16} weight="duotone" className="text-bp-amber" />,
@@ -76,7 +83,9 @@ export function buildInfoGrid(bp: Blueprint, desc: string) {
     {
       icon: <Coins size={16} weight="duotone" className="text-bp-success" />,
       label: "Revenue Model",
-      text: `B2B SaaS subscription with usage-based tiers. Founders fund development directly and pay contributing developers per approved milestone through Evolv's escrow.`,
+      text:
+        bp.intake?.monetization ||
+        "No monetization model was provided at intake — define one before fundraising.",
     },
   ];
 }
@@ -167,31 +176,32 @@ export const sevTone = (s: string) =>
   (s === "High" ? "red" : s === "Medium" ? "amber" : "mint") as "red" | "amber" | "mint";
 
 export function buildAnalytics(bp: Blueprint) {
-  // Real platform counts only — no re-derived percentages here
+  // Real platform counts only — no invented trends or padded numbers.
+  const lit = (n: number) => Math.min(8, n);
   return [
     {
       label: "Blueprint Views",
       value: String(bp.views),
-      trend: "+24%",
+      trend: "",
       up: true,
-      cap: "vs last month",
-      lit: 6,
+      cap: "all time",
+      lit: lit(bp.views),
     },
     {
       label: "Developer Applications",
-      value: String(bp.devMatches + 7),
-      trend: "+3",
+      value: String(bp.devMatches),
+      trend: "",
       up: true,
-      cap: "vs 9 last month",
-      lit: 5,
+      cap: "all time",
+      lit: lit(bp.devMatches),
     },
     {
       label: "Profile Saves",
-      value: String(bp.interested + 4),
-      trend: "+2",
+      value: String(bp.interested),
+      trend: "",
       up: true,
-      cap: "vs 2 last month",
-      lit: 4,
+      cap: "all time",
+      lit: lit(bp.interested),
     },
   ];
 }

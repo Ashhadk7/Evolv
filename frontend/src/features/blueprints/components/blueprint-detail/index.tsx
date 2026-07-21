@@ -137,25 +137,28 @@ export function BlueprintDetail({
     score: viabilityScore,
     grade,
     reasoning: viabilityReasoning,
+    verdict,
     subScores,
   } = content.viability;
-  const stageLabel =
-    viabilityScore >= 82
+  // The synthesis verdict is the stage label when present; legacy blueprints
+  // fall back to the old score-threshold tiers.
+  const stageLabel = verdict
+    ? verdict === "Build"
+      ? "Build Ready"
+      : verdict === "Validate first"
+        ? "Validation Stage"
+        : "Rethink Advised"
+    : viabilityScore >= 82
       ? "Launch Ready"
       : viabilityScore >= 72
         ? "Build Ready"
         : viabilityScore >= 62
           ? "Validation Stage"
           : "Concept Stage";
-  const subScoreRow = [
-    { label: "Market", value: subScores.market },
-    { label: "Execution", value: subScores.execution },
-    { label: "Timing", value: subScores.timing },
-    { label: "Team Fit", value: subScores.teamFit },
-  ];
+  const subScoreRow = subScores;
   const architecture = buildArchitecture(draftTechStack);
 
-  const { strengths, assessmentRisks } = buildVentureAssessment(bp);
+  const { strengths, assessmentRisks } = buildVentureAssessment(bp, content);
 
   const desc = editing ? draftDesc : bp.ideaDesc;
   const infoGrid = buildInfoGrid(bp, desc);
@@ -226,6 +229,8 @@ export function BlueprintDetail({
           <BlueprintHeroSection
             bp={bp}
             stageLabel={stageLabel}
+            tagline={content.synthesis.tagline}
+            verdict={verdict}
             phasesCount={phases.length}
             buildWeeks={cost.buildWeeks}
             viabilityScore={viabilityScore}
@@ -241,6 +246,8 @@ export function BlueprintDetail({
 
           <BlueprintExecutiveSummarySection
             bp={bp}
+            executiveSummary={content.synthesis.executiveSummary}
+            keyAssumptions={content.synthesis.keyAssumptions}
             totalBuildCost={fmtMoney(cost.total)}
             timelineLabel={cost.timelineLabel}
             phaseCount={phases.length}
@@ -294,7 +301,7 @@ export function BlueprintDetail({
           <CompetitiveLandscapeSection
             bpName={bp.name}
             competitorRows={competitorRows}
-            similarStartups={content.similarStartups}
+            insight={content.competitorInsight}
           />
 
           <GapAnalysisSection gaps={gaps} additions={additions} pathToComplete={pathToComplete} />
