@@ -52,3 +52,5 @@ next-env.d.ts
 # Local AI plans and presentation prep
 IMPLEMENTATION_PLAN.md
 backend_presentation_prep*.md
+REMAINING_WORK.md
+backend/BACKEND_AI_GUIDE.md
