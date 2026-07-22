@@ -104,7 +104,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
         throw new Error(data?.detail || "Refine request failed.");
       }
 
-      // Smooth simulated progress bar while polling
       progressIntervalRef.current = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 88) return 88;
@@ -112,7 +111,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
         });
       }, 800);
 
-      // Start background polling to detect completion
       let attempts = 0;
       pollIntervalRef.current = setInterval(async () => {
         attempts++;
@@ -132,13 +130,11 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
               setStep("completed");
               setStatusMessage(`${SECTION_LABELS[section]} has been successfully refined!`);
 
-              // Transform raw fresh response to Blueprint model and update parent page
               const freshBlueprint = transformBlueprint(freshData);
               onRefined?.(freshBlueprint);
             }
           }
         } catch {
-          /* transient poll error retry */
         }
 
         if (attempts >= 22) {
@@ -165,7 +161,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
 
   return (
     <>
-      {/* Trigger button in Blueprint ActionBar */}
       <button
         onClick={() => setOpen(true)}
         title="Refine a section with AI"
@@ -192,7 +187,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
       <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -207,7 +201,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
               }}
             />
 
-            {/* Modal */}
             <motion.div
               initial={{ y: 32, opacity: 0, scale: 0.97 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -230,7 +223,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                 gap: 20,
               }}
             >
-              {/* Header */}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#e8f4ef", display: "flex", alignItems: "center", gap: 8 }}>
@@ -257,10 +249,8 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                 )}
               </div>
 
-              {/* STEP 1: Form View */}
               {step === "form" && (
                 <>
-                  {/* Section selector */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(232,244,239,0.55)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       Select Section to Refine
@@ -295,7 +285,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                     </div>
                   </div>
 
-                  {/* Feedback textarea */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(232,244,239,0.55)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       Your Instructions / Feedback
@@ -325,7 +314,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                     </div>
                   </div>
 
-                  {/* Modal Actions */}
                   <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
                     <button
                       onClick={handleClose}
@@ -365,7 +353,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                 </>
               )}
 
-              {/* STEP 2: Refining State (Progress Bar inside Modal) */}
               {step === "refining" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "12px 0 8px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -386,7 +373,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                     </div>
                   </div>
 
-                  {/* Progress Bar Container */}
                   <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ height: 8, width: "100%", background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
                       <motion.div
@@ -404,7 +390,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                 </div>
               )}
 
-              {/* STEP 3: Completed State inside Modal */}
               {step === "completed" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "10px 0 6px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -439,7 +424,6 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                 </div>
               )}
 
-              {/* STEP 4: Error State */}
               {step === "error" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#ff6b6b" }}>

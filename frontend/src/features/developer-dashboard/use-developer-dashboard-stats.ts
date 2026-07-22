@@ -33,14 +33,6 @@ const FALLBACK_KPIS: DashboardKpi[] = [
   { id: 4, label: "Pending Applications", value: "—", trend: "", trendUp: true },
 ];
 
-/**
- * Fetches real KPI data from the backend to power the developer dashboard widgets.
- * Falls back to stub data gracefully so the UI never breaks on API errors.
- *
- * Currently wires:
- *  - Pending Applications count → GET /api/v1/applications?status=pending&limit=1
- *  - (Earnings + Active Projects are stub until backend exposes those endpoints)
- */
 export function useDeveloperDashboardStats(): DashboardStats {
   const [kpis, setKpis] = useState<DashboardKpi[]>(FALLBACK_KPIS);
   const [loading, setLoading] = useState(true);
@@ -58,7 +50,6 @@ export function useDeveloperDashboardStats(): DashboardStats {
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       try {
-        // Fetch applications to count total, pending, and accepted
         const appRes = await fetch(`${API_BASE}/applications?limit=100`, { headers });
         let allApps: unknown[] = [];
         if (appRes.ok) {
@@ -66,7 +57,6 @@ export function useDeveloperDashboardStats(): DashboardStats {
           allApps = Array.isArray(appData.items) ? appData.items : [];
         }
 
-        // Fetch public blueprints for matching count
         let matchingCount = 0;
         try {
           const bpRes = await fetch(`${API_BASE}/blueprints?limit=100`, { headers });
@@ -75,7 +65,6 @@ export function useDeveloperDashboardStats(): DashboardStats {
             matchingCount = typeof bpData.total === "number" ? bpData.total : (bpData.items?.length || 0);
           }
         } catch {
-          /* optional matching count */
         }
 
         const totalApps = allApps.length;
@@ -121,7 +110,6 @@ export function useDeveloperDashboardStats(): DashboardStats {
         }
       } catch (err) {
         if (!cancelled) {
-          // Graceful degradation: keep stub data, surface error for debugging
           setError(err instanceof Error ? err.message : "Failed to load dashboard stats");
         }
       } finally {

@@ -4,8 +4,6 @@ import { useState } from "react";
 import { X, CheckCircle, ArrowSquareOut } from "@phosphor-icons/react";
 import type { ResearchSourceRef } from "@/features/blueprints/blueprint-content";
 
-/* Superscript citation chips: [1][3] → clickable links into the section's
-   source list. Indexes are 1-based, matching the backend's sourceIndexes. */
 export function SourceChips({
   indexes,
   sources,
@@ -41,7 +39,6 @@ export function SourceChips({
         })}
       </sup>
 
-      {/* Interactive Evidence Source Detail Modal */}
       {activeSource && (
         <div
           onClick={() => setActiveSource(null)}
@@ -129,8 +126,6 @@ export function SourceChips({
   );
 }
 
-/* "Based on N sources · retrieved DATE · Medium confidence" footer for
-   research-backed sections, with the assumptions the agent declared. */
 export function ResearchFooter({
   sources,
   retrievedAt,

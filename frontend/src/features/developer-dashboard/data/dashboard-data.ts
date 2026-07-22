@@ -1,8 +1,3 @@
-// dashboard-data.ts — Person 4's mock exports for the developer dashboard overview.
-// ⚠️ Do NOT import from this file in the Discover feed (use discover-data.ts).
-// Split from developer-data.ts to prevent merge conflicts between Person 3 and Person 4.
-
-// ── Stub KPI cards shown while real data loads ─────────────────────────────
 export const statsData = [
   {
     id: 2,
@@ -141,7 +136,6 @@ export const projects = [
   },
 ];
 
-// Application tracker status config
 export const applicationsStatusConfig: Record<string, { color: string; bg: string; icon: string }> = {
   Interview: { color: "#7C5CBF", bg: "rgba(124, 92, 191, 0.1)", icon: "comments" },
   Pending: { color: "#C4973A", bg: "rgba(196, 151, 58, 0.1)", icon: "hourglass-half" },

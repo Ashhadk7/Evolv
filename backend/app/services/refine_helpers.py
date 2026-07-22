@@ -1,7 +1,3 @@
-"""Helper utilities and data transformers for blueprint section refinement.
-
-Extracted from refine_service.py for clean modularity and separation of concerns.
-"""
 from __future__ import annotations
 
 import json
@@ -33,7 +29,6 @@ def get_now_iso() -> str:
 
 
 def build_refine_brief(intake: dict[str, Any], feedback: str) -> str:
-    """Reconstruct a startup brief with the founder's refinement feedback placed at the top for maximum LLM attention."""
     parts = [
         ("Startup idea", intake.get("idea", "")),
         ("Target customer", intake.get("target_customer", "")),
@@ -56,7 +51,6 @@ def build_refine_brief(intake: dict[str, Any], feedback: str) -> str:
 
 
 def build_shared_research(agents: dict[str, Any]) -> str:
-    """Rebuild a trimmed source block from stored market/competitor sources."""
     def _parse_sources(raw_list: list[dict]) -> list[ResearchSource]:
         sources = []
         for item in raw_list[:5]:
@@ -79,7 +73,6 @@ def extract_features(agents: dict[str, Any]) -> list[str]:
 
 
 def persona_context_from_agents(agents: dict[str, Any]) -> str:
-    """Compact persona JSON string for product/strategy prompts."""
     persona_data = agents.get("persona", {})
     personas = persona_data.get("personas", [])
     primary_segment = persona_data.get("primaryPersona", "")
@@ -95,7 +88,6 @@ def persona_context_from_agents(agents: dict[str, Any]) -> str:
 
 
 def reconstruct_market_competitor(agents: dict[str, Any]):
-    """Re-hydrate lightweight Pydantic objects from stored agent JSON."""
     from app.services.generation.agents.competitor import CompetitorOutput
     from app.services.generation.agents.market import MarketOutput
 
@@ -150,7 +142,6 @@ def reconstruct_scorecard(agents: dict[str, Any]):
 
 
 def patch_refine_status(db: Session, blueprint_id: UUID, section: str, status: str) -> None:
-    """Write an error status into the refinement metadata block."""
     blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
     if blueprint is None or blueprint.current_version is None:
         return

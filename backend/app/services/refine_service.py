@@ -1,11 +1,3 @@
-"""Blueprint refine service.
-
-Re-runs a single targeted agent against the *existing* blueprint + founder
-feedback, then writes the result back to the current version's content_json.
-
-Supported sections (map 1-to-1 with agent names):
-    market | competitor | persona | product | strategy | techStack | synthesis
-"""
 from __future__ import annotations
 
 import asyncio
@@ -43,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 
 def mark_refinement_started(db: Session, blueprint_id: UUID, section: str) -> None:
-    """Synchronously mark the blueprint refinement status as 'refining' in DB."""
     blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
     if blueprint is None or blueprint.current_version is None:
         return
@@ -62,7 +53,6 @@ async def refine_section(
     section: str,
     feedback: str,
 ) -> None:
-    """Background task: re-run one agent and patch its slice in content_json."""
     db = SessionLocal()
     try:
         await _run_refine(db, blueprint_id, section, feedback)
@@ -85,10 +75,7 @@ async def _run_refine(db: Session, blueprint_id: UUID, section: str, feedback: s
     idea = intake.get("idea", "")
     industry = intake.get("industry", "")
 
-    # Build a brief that includes the founder's feedback so the agent adapts
     agent_brief = build_refine_brief(intake, feedback)
-
-    # Shared research block (best-effort from existing sources)
     shared_research = build_shared_research(agents)
 
     new_agent_output = await _call_agent_for_section(
@@ -101,12 +88,11 @@ async def _run_refine(db: Session, blueprint_id: UUID, section: str, feedback: s
         feedback=feedback,
     )
 
-    # Patch only the refined section into content_json
     agents[section] = new_agent_output
     content["agents"] = agents
     content["refinement"] = {
         "section": section,
-        "feedback": feedback[:300],  # store a trimmed copy for audit
+        "feedback": feedback[:300],
         "refinedAt": get_now_iso(),
         "status": "completed",
     }
@@ -127,7 +113,6 @@ async def _call_agent_for_section(
     shared_research: str,
     feedback: str = "",
 ) -> dict[str, Any]:
-    """Dispatch to the correct agent and return its raw model_dump output."""
     if section == "market":
         queries = [feedback] if feedback else None
         result = await run_market(agent_brief, idea, industry, queries)

@@ -1,7 +1,3 @@
-// discover-data.ts — Person 3's mock exports for the Discover feed.
-// ⚠️ Do NOT import from this file in the developer dashboard (use dashboard-data.ts).
-// Split from developer-data.ts to prevent merge conflicts between Person 3 and Person 4.
-
 export const discoverStats = [
   { id: 1, label: "New Matches", value: "18", trend: "+6", trendUp: true },
   { id: 2, label: "High Match Opportunities", value: "12", trend: "+4", trendUp: true },
