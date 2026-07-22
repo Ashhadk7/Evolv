@@ -10,11 +10,14 @@ import { MeterBar } from "@/components/shared/meter-bar";
 import { Reveal } from "@/components/shared/reveal";
 import { SectionHead } from "@/components/shared/section-head";
 import { ViabilityGauge } from "@/components/shared/viability-gauge";
+import { SourceChips } from "@/components/shared/source-evidence";
+import type { ResearchSourceRef } from "@/features/blueprints/blueprint-content";
 
 interface SubScore {
   label: string;
   value: number;
   note?: string;
+  sourceIndexes?: number[];
 }
 
 const VERDICT_TONE: Record<string, "mint" | "amber" | "red"> = {
@@ -33,6 +36,7 @@ export function BlueprintHeroSection({
   viabilityScore,
   viabilityReasoning,
   subScoreRow,
+  combinedSources,
 }: {
   bp: Blueprint;
   stageLabel: string;
@@ -43,6 +47,7 @@ export function BlueprintHeroSection({
   viabilityScore: number;
   viabilityReasoning: string;
   subScoreRow: SubScore[];
+  combinedSources?: ResearchSourceRef[];
 }) {
   return (
     <Reveal y={14}>
@@ -103,6 +108,9 @@ export function BlueprintHeroSection({
                 >
                   <span style={NUM} className="text-bp-ink text-base leading-none font-bold">
                     {score.value}
+                    {score.sourceIndexes && score.sourceIndexes.length > 0 && combinedSources && combinedSources.length > 0 && (
+                      <SourceChips indexes={score.sourceIndexes} sources={combinedSources} />
+                    )}
                   </span>
                   <MeterBar value={score.value} height={3} />
                   <span className="font-mono-app text-bp-label text-[9px] tracking-[0.06em] whitespace-nowrap uppercase">

@@ -10,11 +10,14 @@ from app.schemas.blueprints import (
     BlueprintListResponse,
     BlueprintResponse,
     BlueprintUpdate,
+    BlueprintRefineRequest,
+    BlueprintRefineResponse,
     ChatRequest,
     ChatResponse,
 )
 from app.services import application_service, blueprint_service, chat_service
 from app.services.generation import blueprint_generation_service
+from app.services import refine_service
 
 router = APIRouter()
 
@@ -113,3 +116,29 @@ def blueprint_chat(
     reply = chat_service.get_chat_response(messages_list, blueprint_data)
     return ChatResponse(response=reply)
 
+
+@router.post("/{blueprint_id}/refine", response_model=BlueprintRefineResponse)
+async def refine_blueprint(
+    blueprint_id: UUID,
+    payload: BlueprintRefineRequest,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
+) -> BlueprintRefineResponse:
+    """Re-run a single targeted agent with founder feedback and patch the result
+    back into the blueprint's current version. Returns immediately; the agent
+    runs in the background (same pattern as /generate)."""
+    # Verify the blueprint belongs to this founder before queuing the task
+    blueprint_service.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+    background_tasks.add_task(
+        refine_service.refine_section,
+        blueprint_id,
+        payload.section,
+        payload.feedback,
+    )
+    return BlueprintRefineResponse(
+        blueprint_id=str(blueprint_id),
+        section=payload.section,
+        status="queued",
+        message=f"Refining {payload.section!r} in the background. Refresh the blueprint in ~15s to see the update.",
+    )

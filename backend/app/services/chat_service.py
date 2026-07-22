@@ -5,7 +5,7 @@ from typing import Any
 
 from app.services.generation.agent_service import generate_chat
 
-CHAT_HISTORY_LIMIT = 12
+CHAT_HISTORY_LIMIT = 14
 
 
 def get_chat_response(messages: list[dict[str, str]], blueprint_data: dict[str, Any] | None) -> str:

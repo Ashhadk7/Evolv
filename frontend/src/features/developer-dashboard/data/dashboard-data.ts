@@ -1,0 +1,151 @@
+// dashboard-data.ts — Person 4's mock exports for the developer dashboard overview.
+// ⚠️ Do NOT import from this file in the Discover feed (use discover-data.ts).
+// Split from developer-data.ts to prevent merge conflicts between Person 3 and Person 4.
+
+// ── Stub KPI cards shown while real data loads ─────────────────────────────
+export const statsData = [
+  {
+    id: 2,
+    label: "Active Projects",
+    value: "—",
+    trend: "",
+    trendUp: true,
+  },
+  {
+    id: 3,
+    label: "Earnings",
+    value: "—",
+    trend: "",
+    trendUp: true,
+  },
+  {
+    id: 4,
+    label: "Pending Applications",
+    value: "—",
+    trend: "",
+    trendUp: true,
+  },
+];
+
+export const recentMatches = [
+  {
+    id: 2,
+    name: "Nexus Health",
+    icon: "heartbeat",
+    matchScore: 94,
+    description: "AI-driven diagnostics platform for early-stage oncology detection.",
+    techStack: ["Python", "FastAPI", "AI/ML"],
+    industry: "HealthTech",
+    stage: "Seed Stage",
+    budget: "$250K",
+    teamSize: "8 team",
+    logo: "NH",
+  },
+  {
+    id: 3,
+    name: "Aura Logistics",
+    icon: "truck",
+    matchScore: 88,
+    description: "Last-mile delivery drone network for suburban environments.",
+    techStack: ["Node.js", "React", "AWS"],
+    industry: "Logistics",
+    stage: "Series A",
+    budget: "$850K",
+    teamSize: "12 team",
+    iconClass: "logistics",
+    logo: "AL",
+  },
+  {
+    id: 4,
+    name: "Veritas Energy",
+    icon: "bolt",
+    matchScore: 82,
+    description: "Decentralized micro-grid management software for solar cooperatives.",
+    techStack: ["Python", "Solidity", "Blockchain"],
+    industry: "CleanTech",
+    stage: "MVP",
+    budget: "$180K",
+    teamSize: "6 team",
+    iconClass: "energy",
+    logo: "VE",
+  },
+];
+
+export const applications = [
+  {
+    id: 1,
+    name: "Nexus Health",
+    icon: "heartbeat",
+    iconClass: "health",
+    role: "AI Engineer",
+    date: "Applied 2 days ago",
+    status: "Interview",
+  },
+  {
+    id: 2,
+    name: "FinFlow AI",
+    icon: "dollar-sign",
+    iconClass: "finflow",
+    role: "Backend Developer",
+    date: "Applied 1 week ago",
+    status: "Pending",
+  },
+  {
+    id: 3,
+    name: "Aura Logistics",
+    icon: "truck",
+    iconClass: "logistics",
+    role: "Full Stack Dev",
+    date: "Applied 2 weeks ago",
+    status: "Accepted",
+  },
+  {
+    id: 4,
+    name: "Veritas Energy",
+    icon: "bolt",
+    iconClass: "energy",
+    role: "Smart Contract Eng",
+    date: "Applied 3 weeks ago",
+    status: "Declined",
+  },
+];
+
+export const projects = [
+  {
+    id: 1,
+    name: "Nexus Health",
+    role: "AI Engineer",
+    icon: "heartbeat",
+    iconClass: "health",
+    progress: 75,
+    progressColor: "green",
+    teamMembers: ["A", "B", "C"],
+    extraMembers: 5,
+    stage: "Testing",
+    deadline: "4 days",
+    hoursLogged: "124 hrs",
+  },
+  {
+    id: 2,
+    name: "Aura Logistics",
+    role: "Lead Developer",
+    icon: "truck",
+    iconClass: "logistics",
+    progress: 42,
+    progressColor: "orange",
+    teamMembers: ["D", "E", "F"],
+    extraMembers: 3,
+    stage: "Development",
+    deadline: "15 days",
+    hoursLogged: "64 hrs",
+  },
+];
+
+// Application tracker status config
+export const applicationsStatusConfig: Record<string, { color: string; bg: string; icon: string }> = {
+  Interview: { color: "#7C5CBF", bg: "rgba(124, 92, 191, 0.1)", icon: "comments" },
+  Pending: { color: "#C4973A", bg: "rgba(196, 151, 58, 0.1)", icon: "hourglass-half" },
+  Accepted: { color: "#5BC8A0", bg: "rgba(91, 200, 160, 0.1)", icon: "check-circle" },
+  Declined: { color: "#FF6B6B", bg: "rgba(255, 107, 107, 0.1)", icon: "times-circle" },
+  Applied: { color: "#5BC8A0", bg: "rgba(91, 200, 160, 0.1)", icon: "paper-plane" },
+};

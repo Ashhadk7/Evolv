@@ -13,6 +13,7 @@ import type { Blueprint } from "@/features/blueprints/types";
 import { NetworkProfileDetailScreen } from "@/features/network/components/network-profile-detail";
 import type { FounderContactProfile, FounderNetworkMessageTarget } from "@/features/network/types";
 import { ChatPanel } from "../chat-panel";
+import { RefineModal } from "../refine-modal";
 import { deriveStack } from "../derive-stack";
 import { BlueprintActionBar } from "../blueprint-action-bar";
 import { BlueprintPrintCover } from "../blueprint-print-cover";
@@ -182,6 +183,11 @@ export function BlueprintDetail({
   const analytics = buildAnalytics(bp);
   const aiRecs = buildAiRecs(bp);
 
+  // Combined source pool for F5 scorecard verification chips.
+  // Scorecard's sourceIndexes reference the shared research block: first 5
+  // market sources (indexes 1-5) then first 5 competitor sources (indexes 6-10).
+  const verificationSources = content.marketAnalysis.sources.slice(0, 10);
+
   if (selectedDeveloper) {
     return (
       <NetworkProfileDetailScreen
@@ -236,6 +242,7 @@ export function BlueprintDetail({
             viabilityScore={viabilityScore}
             viabilityReasoning={viabilityReasoning}
             subScoreRow={subScoreRow}
+            combinedSources={verificationSources}
           />
 
           <BlueprintVentureAssessmentSection
@@ -326,6 +333,12 @@ export function BlueprintDetail({
       <DetailToast toast={toast} />
 
       <ChatPanel bp={bp} blueprintId={bp.id} />
+      <RefineModal
+        blueprintId={bp.id}
+        blueprintName={bp.name}
+        isFounder={profileComplete}
+        onQueued={() => showToast("Refine queued — refresh in ~15s to see the updated section.")}
+      />
     </motion.div>
   );
 }

@@ -52,7 +52,7 @@ export type Persona = {
   pains: string;
 };
 
-export type SubScore = { label: string; value: number; note: string };
+export type SubScore = { label: string; value: number; note: string; sourceIndexes: number[] };
 
 export type Viability = {
   score: number;
@@ -312,14 +312,19 @@ function scorecardSubScores(bp: Blueprint): SubScore[] {
   if (!scorecard) {
     // Legacy blueprint (schema <= 4): the market score is the only real
     // sub-score that exists — show it alone rather than inventing three more.
-    return [{ label: "Market", value: bp.market.score, note: "" }];
+    return [{ label: "Market", value: bp.market.score, note: "", sourceIndexes: [] }];
   }
   return SCORECARD_DIMENSIONS.map(({ key, label }) => {
     const dimension = asRecord(scorecard[key]);
+    const rawIndexes = dimension?.sourceIndexes;
+    const sourceIndexes = Array.isArray(rawIndexes)
+      ? (rawIndexes as unknown[]).filter((n): n is number => typeof n === "number")
+      : [];
     return {
       label,
       value: numberValue(dimension?.score),
       note: stringValue(dimension?.justification),
+      sourceIndexes,
     };
   });
 }
