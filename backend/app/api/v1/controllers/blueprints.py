@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Query, status
 
 from app.api.deps import CurrentFounder, CurrentUser, DbSession
 from app.schemas.applications import SavedBlueprintResponse
+from app.schemas.notifications import NotificationResponse
 from app.schemas.blueprints import (
     BlueprintCreate,
     BlueprintGenerateRequest,
@@ -13,8 +14,11 @@ from app.schemas.blueprints import (
     ChatRequest,
     ChatResponse,
 )
+from app.models.blueprint import BlueprintVisibility
 from app.services import application_service, blueprint_service, chat_service
 from app.services.generation import blueprint_generation_service
+from app.services import message_websocket as message_websocket_service
+from app.services import notifications_service
 
 router = APIRouter()
 
@@ -73,9 +77,32 @@ def get_blueprint(
 
 @router.patch("/{blueprint_id}", response_model=BlueprintResponse)
 def update_blueprint(
-    blueprint_id: UUID, payload: BlueprintUpdate, db: DbSession, current_user: CurrentFounder
+    blueprint_id: UUID,
+    payload: BlueprintUpdate,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
 ) -> BlueprintResponse:
+    current_blueprint = blueprint_service.get_blueprint(
+        db,
+        blueprint_id,
+        current_user,
+        require_ownership=True,
+    )
+    was_private = current_blueprint.visibility != BlueprintVisibility.PUBLIC
     blueprint = blueprint_service.update_visibility(db, blueprint_id, current_user, payload)
+    if was_private and blueprint.visibility == BlueprintVisibility.PUBLIC:
+        notifications = notifications_service.notify_blueprint_published(
+            db,
+            blueprint_id=blueprint.id,
+            founder=current_user,
+        )
+        for notification in notifications:
+            background_tasks.add_task(
+                message_websocket_service.publish_notification_created,
+                notification.user_id,
+                NotificationResponse.model_validate(notification),
+            )
     return BlueprintResponse.model_validate(blueprint)
 
 

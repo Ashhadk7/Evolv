@@ -26,6 +26,27 @@ def get_application_by_developer_and_blueprint(
     return db.scalar(statement)
 
 
+def get_latest_active_application_between_founder_and_developer(
+    db: Session,
+    *,
+    founder_id: UUID,
+    developer_id: UUID,
+) -> Application | None:
+    statement = (
+        select(Application)
+        .join(Blueprint, Blueprint.id == Application.blueprint_id)
+        .options(selectinload(Application.blueprint).selectinload(Blueprint.versions))
+        .where(
+            Blueprint.founder_id == founder_id,
+            Application.developer_id == developer_id,
+            Application.status == "applied",
+        )
+        .order_by(Application.applied_at.desc())
+        .limit(1)
+    )
+    return db.scalar(statement)
+
+
 def list_applications_for_developer(
     db: Session,
     developer_id: UUID,
@@ -34,7 +55,9 @@ def list_applications_for_developer(
     offset: int = 0,
 ) -> tuple[list[Application], int]:
     count_statement = (
-        select(func.count()).select_from(Application).where(Application.developer_id == developer_id)
+        select(func.count())
+        .select_from(Application)
+        .where(Application.developer_id == developer_id)
     )
     total = db.scalar(count_statement) or 0
 

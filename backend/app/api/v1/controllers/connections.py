@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.connections import (
@@ -11,7 +11,10 @@ from app.schemas.connections import (
     ConnectionUpdate,
 )
 from app.services import connections_service
+from app.services import message_websocket as message_websocket_service
+from app.services import notifications_service
 from app.services.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.schemas.notifications import NotificationResponse
 
 router = APIRouter()
 
@@ -46,6 +49,7 @@ def list_outgoing_requests(
 @router.post("", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
 def send_connection_request(
     payload: ConnectionCreate,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ) -> ConnectionResponse:
@@ -60,22 +64,44 @@ def send_connection_request(
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
+    notification = notifications_service.notify_connection_request(
+        db,
+        requester=current_user,
+        receiver_id=conn.receiver_id,
+        note=conn.note,
+    )
+    if notification is not None:
+        background_tasks.add_task(
+            message_websocket_service.publish_notification_created,
+            notification.user_id,
+            NotificationResponse.model_validate(notification),
+        )
+
     outgoing = connections_service.list_outgoing_requests(db, current_user.id)
     for item in outgoing:
         if item["id"] == conn.id:
             return ConnectionResponse.model_validate(item)
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve connection detail.")
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Failed to retrieve connection detail.",
+    )
 
 
 @router.patch("/{connection_id}", response_model=ConnectionResponse)
 def respond_to_connection_request(
     connection_id: UUID,
     payload: ConnectionUpdate,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ) -> ConnectionResponse:
     try:
-        conn = connections_service.update_connection_status(db, current_user, connection_id, payload)
+        conn = connections_service.update_connection_status(
+            db,
+            current_user,
+            connection_id,
+            payload,
+        )
         db.commit()
         db.refresh(conn)
     except NotFoundError as exc:
@@ -84,6 +110,19 @@ def respond_to_connection_request(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    if conn.status == "accepted":
+        notification = notifications_service.notify_connection_accepted(
+            db,
+            requester_id=conn.requester_id,
+            accepter=current_user,
+        )
+        if notification is not None:
+            background_tasks.add_task(
+                message_websocket_service.publish_notification_created,
+                notification.user_id,
+                NotificationResponse.model_validate(notification),
+            )
 
     if conn.status == "accepted":
         connections = connections_service.list_my_connections(db, current_user.id)

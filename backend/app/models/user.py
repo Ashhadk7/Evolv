@@ -70,6 +70,11 @@ class User(Base):
     dob: Mapped[date] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String)
     avatar_url: Mapped[str | None] = mapped_column(String)
+    notification_preferences: Mapped[dict[str, bool]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
     terms_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
