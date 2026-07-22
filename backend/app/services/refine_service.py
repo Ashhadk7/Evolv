@@ -134,11 +134,13 @@ async def _call_agent_for_section(
 ) -> dict[str, Any]:
     """Dispatch to the correct agent and return its raw model_dump output."""
     if section == "market":
-        result = await run_market(agent_brief, idea, industry, None)
+        queries = [feedback] if feedback else None
+        result = await run_market(agent_brief, idea, industry, queries)
         return result.model_dump(by_alias=True)
 
     if section == "competitor":
-        result = await run_competitor(agent_brief, idea, industry, None)
+        queries = [feedback, f"{feedback} competitor"] if feedback else None
+        result = await run_competitor(agent_brief, idea, industry, queries)
         return result.model_dump(by_alias=True)
 
     if section == "persona":
