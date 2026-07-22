@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowsClockwise, CheckCircle, Warning, Sparkle } from "@phosphor-icons/react";
 import { getAccessToken } from "@/features/auth/lib/session";
-import { transformBlueprint } from "@/features/blueprints/blueprints-api";
+import { blueprintFromWire as transformBlueprint } from "@/features/blueprints/blueprints-api";
 import type { Blueprint } from "@/features/blueprints/types";
 
 type RefinableSection =

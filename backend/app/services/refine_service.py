@@ -184,7 +184,7 @@ async def _call_agent_for_section(
 
 
 def _build_refine_brief(intake: dict[str, Any], feedback: str) -> str:
-    """Reconstruct a startup brief with the founder's refinement feedback appended."""
+    """Reconstruct a startup brief with the founder's refinement feedback placed at the top for maximum LLM attention."""
     parts = [
         ("Startup idea", intake.get("idea", "")),
         ("Target customer", intake.get("target_customer", "")),
@@ -197,12 +197,12 @@ def _build_refine_brief(intake: dict[str, Any], feedback: str) -> str:
         ("Monetization", intake.get("monetization", "")),
         ("Constraints", intake.get("constraints", "")),
     ]
-    brief = "\n".join(f"{label}: {value}" for label, value in parts if value)
+    base_brief = "\n".join(f"{label}: {value}" for label, value in parts if value)
     return (
-        f"{brief}\n\n"
         f"CRITICAL OVERRIDE INSTRUCTION FROM FOUNDER:\n"
-        f"The founder specifically requested the following refinement: \"{feedback}\".\n"
-        f"You MUST honor and incorporate this request into your choices and output schema."
+        f"The founder specifically requested: \"{feedback}\".\n"
+        f"You MUST set the tech stack choices (e.g. backend, frontend, database, etc.) to strictly fulfill this request!\n\n"
+        f"Base Brief:\n{base_brief}"
     )
 
 

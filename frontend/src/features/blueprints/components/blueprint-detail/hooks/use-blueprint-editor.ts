@@ -23,6 +23,7 @@ export function useBlueprintEditor(
   const [draftTechStack, setDraftTechStack] = useState<TechStackModel>(() => content.techStack);
 
   // Sync draft state whenever fresh content/bp arrives (e.g. after AI refinement)
+  const techStackKey = JSON.stringify(content.techStack);
   useEffect(() => {
     if (!editing) {
       setDraftTechStack(content.techStack);
@@ -31,7 +32,7 @@ export function useBlueprintEditor(
       setDraftCost(bp.cost);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bp.updatedAt, bp.id, editing]);
+  }, [techStackKey, bp.id, editing]);
 
   const updateTechStackLayer = (key: StackLayerKey, value: string) =>
     setDraftTechStack((prev) => ({ ...prev, [key]: { ...prev[key], chosen: value } }));
