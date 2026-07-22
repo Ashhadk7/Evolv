@@ -5,7 +5,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.blueprint import Blueprint, BlueprintVersion, VersionState
+from app.models.blueprint import Blueprint, BlueprintVersion, BlueprintVisibility, VersionState
+from app.models.user import FounderProfile
 from app.schemas.blueprints import BlueprintVersionCreate
 
 
@@ -40,6 +41,19 @@ def list_blueprints_for_founder(
     )
     blueprints = list(db.scalars(statement).all())
     return blueprints, total
+
+
+def list_public_blueprints(db: Session) -> list[Blueprint]:
+    statement = (
+        select(Blueprint)
+        .options(
+            selectinload(Blueprint.versions),
+            selectinload(Blueprint.founder_profile).selectinload(FounderProfile.user),
+        )
+        .where(Blueprint.visibility == BlueprintVisibility.PUBLIC)
+        .order_by(Blueprint.updated_at.desc())
+    )
+    return list(db.scalars(statement).all())
 
 
 def create_blueprint(db: Session, founder_id: UUID, visibility) -> Blueprint:

@@ -34,7 +34,9 @@ def list_applications(
 
 @router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 def create_application(payload: ApplicationCreate, db: DbSession, current_user: CurrentUser) -> ApplicationResponse:
-    application = application_service.create_application(db, current_user, payload.blueprint_id)
+    application = application_service.create_application(
+        db, current_user, payload.blueprint_id, role=payload.role
+    )
     return ApplicationResponse.model_validate(application)
 
 

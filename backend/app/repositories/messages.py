@@ -86,12 +86,16 @@ def count_pending_messages_by_sender(
     *,
     connection_id: UUID,
     sender_id: UUID,
+    since: datetime | None = None,
 ) -> int:
+    conditions = [Message.connection_id == connection_id, Message.sender_id == sender_id]
+    if since is not None:
+        conditions.append(Message.created_at >= since)
     return (
         db.scalar(
             select(func.count())
             .select_from(Message)
-            .where(Message.connection_id == connection_id, Message.sender_id == sender_id)
+            .where(*conditions)
         )
         or 0
     )
