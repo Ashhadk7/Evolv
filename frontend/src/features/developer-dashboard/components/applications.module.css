@@ -70,9 +70,13 @@
 /* Main Grid */
 .mainGrid {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
   gap: 1.5rem;
   align-items: flex-start;
+}
+
+.mainGridFull {
+  grid-template-columns: 1fr;
 }
 
 .leftCol {
@@ -84,13 +88,20 @@
   background: #ffffff;
   border-radius: 0.75rem;
   border: 1px solid #e6e0d7;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .tableHeader {
   display: grid;
-  grid-template-columns: 1.8fr 1fr 0.6fr 0.9fr 1fr 1.2fr;
-  gap: 0.5rem;
+  grid-template-columns:
+    minmax(240px, 2.2fr)
+    minmax(140px, 1.1fr)
+    minmax(78px, 0.6fr)
+    minmax(112px, 0.75fr)
+    minmax(112px, 0.85fr)
+    minmax(160px, 1fr);
+  gap: 0.75rem;
   padding: 0.65rem 1rem;
   background: #f7f6f3;
   border-bottom: 1px solid #e6e0d7;
@@ -99,17 +110,25 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #888;
+  min-width: 760px;
 }
 
 .tableRow {
   display: grid;
-  grid-template-columns: 1.8fr 1fr 0.6fr 0.9fr 1fr 1.2fr;
-  gap: 0.5rem;
+  grid-template-columns:
+    minmax(240px, 2.2fr)
+    minmax(140px, 1.1fr)
+    minmax(78px, 0.6fr)
+    minmax(112px, 0.75fr)
+    minmax(112px, 0.85fr)
+    minmax(160px, 1fr);
+  gap: 0.75rem;
   padding: 1.15rem 1rem;
   border-bottom: 1px solid #f7f6f3;
   align-items: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  min-width: 760px;
 }
 
 .tableRow:last-child {
@@ -118,6 +137,14 @@
 
 .tableRow:hover {
   background: #f7f6f3;
+}
+
+.withdrawnRow {
+  background: #fffaf8;
+}
+
+.withdrawnRow:hover {
+  background: #fff4ef;
 }
 
 .rowSelected {
@@ -217,7 +244,7 @@
 
 .emptyRow {
   text-align: center;
-  padding: 2.5rem 1rem;
+  padding: 4rem 1rem;
 }
 
 .emptyIcon {
@@ -228,6 +255,16 @@
 .emptyRow p {
   font-size: 0.78rem;
   color: #888;
+  margin-bottom: 1rem;
+}
+
+.discoverCta {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.76rem;
 }
 
 /* Detail Panel */
@@ -240,8 +277,7 @@
   top: 1.5rem;
   max-height: calc(100vh - 3rem);
   overflow-y: auto;
-  position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .detailPanel::before {
@@ -328,6 +364,14 @@
   font-size: 0.68rem;
 }
 
+.fullBlueprintBtn {
+  width: 100%;
+  min-height: 38px;
+  justify-content: center;
+  margin-bottom: 0.95rem;
+  font-size: 0.76rem;
+}
+
 /* Detail Panel Sections */
 .dpSection {
   margin-bottom: 0.85rem;
@@ -360,6 +404,32 @@
   font-size: 0.75rem;
   color: #555;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.appliedRoleCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid #bfe7d7;
+  border-radius: 0.55rem;
+  background: #eaf5f0;
+  padding: 0.65rem 0.75rem;
+}
+
+.appliedRoleCard strong {
+  color: #0d2b22;
+  font-size: 0.82rem;
+}
+
+.appliedRoleCard span {
+  color: #4e7365;
+  font-size: 0.66rem;
+  font-weight: 700;
 }
 
 .whyList {

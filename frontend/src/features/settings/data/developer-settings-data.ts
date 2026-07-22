@@ -8,6 +8,7 @@ import {
   type DeveloperProfile,
   type DeveloperSkillEntry,
 } from "@/features/developer-dashboard/profile-utils";
+import type { NotificationPreferences } from "@/features/notifications/notifications-api";
 
 export type DeveloperSettingsReview = {
   id: string;
@@ -57,8 +58,8 @@ export const defaultProfile: DeveloperSettingsProfile = {
   techStack: [],
   availability: true,
   openToRemote: true,
-  preferredBudget: "$180K – $250K",
-  experienceYears: "5",
+  preferredBudget: "",
+  experienceYears: "",
   avatarUrl: "",
   tags: [],
   skillEntries: [],
@@ -76,26 +77,35 @@ export const defaultProfile: DeveloperSettingsProfile = {
   reviews: [],
 };
 
-export type DeveloperNotificationPrefs = {
-  newMatch: boolean;
-  applicationUpdate: boolean;
-  messageReceived: boolean;
-  weeklyDigest: boolean;
-  founderViewed: boolean;
-  marketingEmails: boolean;
-};
+export type DeveloperNotificationPrefs = Pick<
+  NotificationPreferences,
+  | "newMatch"
+  | "blueprintPublished"
+  | "applicationUpdate"
+  | "connectionRequest"
+  | "connectionAccepted"
+  | "messageReceived"
+  | "weeklyDigest"
+  | "founderViewed"
+  | "marketingEmails"
+  | "sound"
+>;
 
 export const defaultNotifications: DeveloperNotificationPrefs = {
   newMatch: true,
+  blueprintPublished: true,
   applicationUpdate: true,
+  connectionRequest: true,
+  connectionAccepted: true,
   messageReceived: true,
   weeklyDigest: true,
   founderViewed: false,
   marketingEmails: false,
+  sound: true,
 };
 
 export const getProfileName = (profile: Partial<DeveloperSettingsProfile>) =>
-  profile.name || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Developer";
+  profile.name || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Your profile";
 
 export const getProfileInitials = (profile: Partial<DeveloperSettingsProfile>) => {
   const name = getProfileName(profile);
@@ -131,6 +141,12 @@ export const hydrateDeveloperProfile = (
     photo: user.photo || user.avatarUrl || "",
     role: user.jobTitle || user.role || "",
     bio: user.bio || "",
+    availability:
+      typeof user.availability === "boolean" ? user.availability : defaultProfile.availability,
+    openToRemote:
+      typeof user.openToRemote === "boolean" ? user.openToRemote : defaultProfile.openToRemote,
+    preferredBudget: user.preferredBudget || "",
+    experienceYears: user.experienceYears || user.experience || "",
     tags: Array.isArray(user.tags) ? user.tags : [],
     techStack: Array.isArray(user.techStack)
       ? user.techStack

@@ -12,7 +12,6 @@ import {
   type FounderEducation,
 } from "@/features/founder-dashboard/profile-utils";
 import { getInitials } from "@/features/onboarding/components/onboarding-helpers";
-import { persistDeveloperProfile } from "./persist-developer-profile";
 
 export function useDeveloperOnboarding({
   initialProfile,
@@ -42,7 +41,7 @@ export function useDeveloperOnboarding({
     };
   });
 
-  const fullName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Developer";
+  const fullName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Your profile";
   const initials = getInitials(profile, "D");
   const educations = useMemo(() => getDeveloperEducations(profile), [profile]);
   const skillEntries = useMemo(() => getDeveloperSkillEntries(profile), [profile]);
@@ -83,16 +82,6 @@ export function useDeveloperOnboarding({
   };
 
   const handleSkip = () => {
-    try {
-      const raw = localStorage.getItem("evolv_user");
-      const existing = raw ? JSON.parse(raw) : {};
-      localStorage.setItem(
-        "evolv_user",
-        JSON.stringify({ ...existing, firstTime: false, profileComplete: false })
-      );
-    } catch {
-      /* ignore */
-    }
     if (onSkip) onSkip();
     else onComplete();
   };
@@ -108,8 +97,7 @@ export function useDeveloperOnboarding({
     }
 
     setError("");
-    const savedProfile = persistDeveloperProfile(normalized);
-    onComplete(savedProfile);
+    onComplete(normalized);
   };
 
   return {

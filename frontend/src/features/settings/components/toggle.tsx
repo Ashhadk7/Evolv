@@ -3,13 +3,27 @@
 import { motion } from "framer-motion";
 import { DARK } from "@/features/settings/lib/settings-theme";
 
-export function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
+export function Toggle({
+  on,
+  onChange,
+  disabled = false,
+}: {
+  on: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onChange}
+      disabled={disabled}
       className="relative shrink-0 rounded-full transition-colors duration-200"
-      style={{ width: 36, height: 20, background: on ? DARK : "#dde5e0" }}
+      style={{
+        width: 36,
+        height: 20,
+        background: on ? DARK : "#dde5e0",
+        opacity: disabled ? 0.62 : 1,
+      }}
       aria-pressed={on}
     >
       <motion.span

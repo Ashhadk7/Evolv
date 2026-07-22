@@ -1,11 +1,8 @@
-import type { opportunities } from "@/features/developer-dashboard/data/developer-data";
+import type {
+  DiscoverBlueprint,
+  DiscoverFilterOptions,
+  DiscoverFilters,
+} from "@/features/developer-dashboard/lib/discover-api";
 
-export type Opportunity = (typeof opportunities)[number] & { matchScore?: number };
-
-export type DiscoverFilters = {
-  industry?: string | null;
-  fundingStage?: string | null;
-  matchScore?: string | null;
-  viability?: string | null;
-  techStack?: string | null;
-};
+export type Opportunity = DiscoverBlueprint;
+export type { DiscoverFilterOptions, DiscoverFilters };

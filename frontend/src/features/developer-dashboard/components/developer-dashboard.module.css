@@ -10,10 +10,9 @@
   min-width: 0;
 }
 
-/* KPI Row: 4 cards */
 .kpiRow {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -27,6 +26,112 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1rem;
+}
+
+.matchItem {
+  min-height: 190px;
+  padding: 1rem;
+  border: 1px solid #e6e0d7;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.matchItem:hover {
+  transform: translateY(-2px);
+  border-color: #8fd8be;
+  box-shadow: 0 8px 28px rgba(13, 43, 34, 0.06);
+}
+
+.matchItem strong {
+  display: block;
+  margin: 0.75rem 0 0.18rem;
+  color: #10231d;
+  font-size: 0.95rem;
+}
+
+.matchItem > span {
+  color: #6d837a;
+  font-size: 0.74rem;
+}
+
+.matchItem p {
+  display: -webkit-box;
+  margin: 0.65rem 0 0;
+  overflow: hidden;
+  color: #4d6259;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.matchTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.matchLogo {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cfe3d7;
+  border-radius: 0.55rem;
+  background: #eaf5f0;
+  color: #0d2b22;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.matchScore {
+  border-radius: 999px;
+  border: 1px solid #8fd8be;
+  background: #eaf5f0;
+  color: #0d5c35;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.18rem 0.55rem;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.8rem;
+}
+
+.tagRow span {
+  border-radius: 999px;
+  background: #f7f6f3;
+  border: 1px solid #e6e0d7;
+  color: #56665f;
+  font-size: 0.64rem;
+  font-weight: 650;
+  padding: 0.16rem 0.48rem;
+}
+
+.emptyPanel {
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #d9e7df;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: #7d9188;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 1rem;
+  text-align: center;
 }
 
 /* Row 4: Applications + Active Projects */
@@ -128,6 +233,48 @@
   color: #0d2b22;
 }
 
+.listStack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  border: 1px solid #edf2ee;
+  border-radius: 0.55rem;
+  background: #fafcfa;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.listItem strong,
+.listItem span {
+  display: block;
+}
+
+.listItem strong {
+  color: #10231d;
+  font-size: 0.82rem;
+}
+
+.listItem span,
+.listItem small {
+  color: #7d9188;
+  font-size: 0.7rem;
+}
+
+.panelEmpty {
+  margin: 0.15rem 0 0;
+  color: #7d9188;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 /* Footer */
 .footer {
   margin-top: 1.5rem;
@@ -156,7 +303,7 @@
 /* Responsive */
 @media (max-width: 1200px) {
   .kpiRow {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

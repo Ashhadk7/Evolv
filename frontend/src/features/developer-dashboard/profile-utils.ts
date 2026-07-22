@@ -41,7 +41,11 @@ export interface DeveloperProfile {
   jobTitle?: string;
   role?: string;
   experience?: string;
+  experienceYears?: string;
   bio?: string;
+  availability?: boolean | string;
+  openToRemote?: boolean;
+  preferredBudget?: string;
   tags?: string[];
   skillEntries?: DeveloperSkillEntry[];
   techStack?: string[];

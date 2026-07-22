@@ -3,12 +3,6 @@
 import type { PaymentData } from "./developer-settings-types";
 import styles from "./developer-settings.module.css";
 
-const BILLING_SUMMARY = [
-  { label: "Total Earned", value: "$12,400", icon: "dollar-sign", color: "#5BC8A0" },
-  { label: "Pending Payout", value: "$1,800", icon: "hourglass-half", color: "#C4973A" },
-  { label: "Last Payment", value: "$3,200", icon: "check-circle", color: "#7C5CBF" },
-];
-
 export function PaymentTab({
   payData,
   onChangePayData,
@@ -125,38 +119,10 @@ export function PaymentTab({
         </div>
       )}
 
-      <div className={styles.sectionDivider}>Billing Summary</div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "1rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        {BILLING_SUMMARY.map((item) => (
-          <div
-            key={item.label}
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: "12px",
-              padding: "1rem 1.2rem",
-            }}
-          >
-            <div style={{ color: "#666", fontSize: "0.75rem", marginBottom: "0.4rem" }}>
-              <i
-                className={`fas fa-${item.icon}`}
-                style={{ marginRight: "0.4rem", color: item.color }}
-              />
-              {item.label}
-            </div>
-            <div style={{ color: item.color, fontSize: "1.4rem", fontWeight: 700 }}>
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
+      <div className={styles.sectionDivider}>Payout Summary</div>
+      <p className={styles.emptyState} style={{ margin: 0, padding: "0 1.2rem 1.5rem" }}>
+        Payout history will appear once project payments are connected.
+      </p>
 
       <div className={styles.cardFooter}>
         <button

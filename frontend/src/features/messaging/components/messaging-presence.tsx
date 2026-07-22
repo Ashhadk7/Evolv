@@ -4,6 +4,14 @@ import { useEffect } from "react";
 
 import { SESSION_CLEARED_EVENT } from "@/features/auth/lib/session";
 import { createMessagingSocket } from "@/features/messaging/lib/messaging-api";
+import {
+  NOTIFICATION_CREATED_EVENT,
+  NOTIFICATION_REFRESH_EVENT,
+} from "@/features/notifications/notification-events";
+import {
+  notificationFromWire,
+  type NotifWire,
+} from "@/features/notifications/notifications-api";
 
 // A rejected handshake (e.g. 403) surfaces as a generic close, so we can't tell
 // "permanent" from "transient" by code. Exponential backoff + a cap keeps a
@@ -35,6 +43,26 @@ export function MessagingPresence({ enabled }: { enabled: boolean }) {
       try {
         socket = createMessagingSocket();
         socket.onopen = () => { attempts = 0; };
+        socket.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data) as {
+              event?: string;
+              notification?: NotifWire;
+            };
+            if (payload.event === "notification.created" && payload.notification) {
+              window.dispatchEvent(
+                new CustomEvent(NOTIFICATION_CREATED_EVENT, {
+                  detail: notificationFromWire(payload.notification),
+                })
+              );
+            }
+            if (payload.event === "message.created") {
+              window.dispatchEvent(new Event(NOTIFICATION_REFRESH_EVENT));
+            }
+          } catch {
+            /* ignore non-notification socket payloads */
+          }
+        };
         socket.onclose = scheduleRetry;
       } catch {
         scheduleRetry();

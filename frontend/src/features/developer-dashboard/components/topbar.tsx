@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getSession } from "@/features/auth/lib/session";
 import type { DeveloperTab } from "@/features/developer-dashboard/types";
 
 interface TopbarProps {
@@ -21,29 +22,26 @@ export function Topbar({
   onNotifClick,
 }: TopbarProps) {
   const [localProfile, setLocalProfile] = useState({
-    firstName: "Sarah",
-    lastName: "Mitchell",
+    firstName: "",
+    lastName: "",
     avatarUrl: "",
   });
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("evolv_user");
-      if (raw) {
-        const user = JSON.parse(raw);
-        queueMicrotask(() => {
-          setLocalProfile({
-            firstName: user.firstName || "Sarah",
-            lastName: user.lastName || "Mitchell",
-            avatarUrl: user.avatarUrl || user.photo || "",
-          });
-        });
-      }
-    } catch {}
+    const user = getSession()?.user;
+    if (!user) return;
+    queueMicrotask(() => {
+      setLocalProfile({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        avatarUrl: "",
+      });
+    });
   }, []);
 
   const activeProfile = propProfile || localProfile;
-  const fullText = title || `Welcome back, ${activeProfile.firstName || "Developer"}`;
+  const fullText =
+    title || (activeProfile.firstName ? `Welcome back, ${activeProfile.firstName}` : "Welcome back");
 
   const initials =
     `${activeProfile.firstName?.[0] ?? ""}${activeProfile.lastName?.[0] ?? ""}`.toUpperCase() ||
@@ -130,7 +128,7 @@ export function Topbar({
         >
           {activeProfile.avatarUrl ? (
             <span
-              aria-label={`${activeProfile.firstName || "Developer"} profile`}
+              aria-label={`${activeProfile.firstName || "Your"} profile`}
               role="img"
               style={{
                 width: "100%",

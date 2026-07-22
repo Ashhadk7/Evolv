@@ -22,6 +22,7 @@ export function ProfileTabEdit({
   displayPhoto,
   photoInputRef,
   onPhotoUpload,
+  photoUploading,
   onChangeField,
   profileTags,
   onToggleTag,
@@ -47,7 +48,8 @@ export function ProfileTabEdit({
   displayInitials: string;
   displayPhoto: string;
   photoInputRef: RefObject<HTMLInputElement | null>;
-  onPhotoUpload: (file: File | null | undefined) => void;
+  onPhotoUpload: (file: File | null | undefined) => void | Promise<void>;
+  photoUploading: boolean;
   onChangeField: (
     key: "name" | "email" | "role" | "github" | "linkedin" | "portfolioLink" | "bio",
     value: string
@@ -86,6 +88,7 @@ export function ProfileTabEdit({
             className={`${styles.profileAvatar} ${styles.profileAvatarButton}`}
             onClick={() => photoInputRef.current?.click()}
             aria-label="Change profile photo"
+            disabled={photoUploading}
           >
             {displayPhoto ? (
               <img src={displayPhoto} alt={displayName} />
@@ -101,15 +104,17 @@ export function ProfileTabEdit({
             <button
               className={styles.changePhotoBtn}
               onClick={() => photoInputRef.current?.click()}
+              disabled={photoUploading}
             >
-              <i className="fas fa-camera" /> Change Photo
+              <i className="fas fa-camera" /> {photoUploading ? "Uploading..." : "Change Photo"}
             </button>
             <input
               ref={photoInputRef}
               type="file"
               accept="image/*"
               style={{ display: "none" }}
-              onChange={(e) => onPhotoUpload(e.target.files?.[0])}
+              disabled={photoUploading}
+              onChange={(e) => void onPhotoUpload(e.target.files?.[0])}
             />
           </div>
         </section>

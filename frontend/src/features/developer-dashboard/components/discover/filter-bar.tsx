@@ -1,96 +1,115 @@
-import styles from "@/features/developer-dashboard/components/discover.module.css";
-import type { filterOptions as filterOptionsData } from "@/features/developer-dashboard/data/developer-data";
-import type { DiscoverFilters } from "./types";
+import { Filter, Search, X } from "lucide-react";
 
-const VIABILITY_LABELS: Record<string, string> = {
-  "0-50": "<50%",
-  "50-70": "50-70%",
-  "70-85": "70-85%",
-  "85-100": "85%+",
-};
+import styles from "@/features/developer-dashboard/components/discover.module.css";
+import type { DiscoverFilterOptions, DiscoverFilters } from "./types";
+
+const VIABILITY_OPTIONS = [
+  { label: "Any viability", value: "" },
+  { label: "70% and up", value: "70" },
+  { label: "80% and up", value: "80" },
+  { label: "90% and up", value: "90" },
+];
 
 export function FilterBar({
   filterOptions,
-  allTechStacks,
   activeFilters,
   onFilterChange,
   onClearFilters,
 }: {
-  filterOptions: typeof filterOptionsData;
-  allTechStacks: string[];
+  filterOptions: DiscoverFilterOptions;
   activeFilters: DiscoverFilters;
   onFilterChange: (key: keyof DiscoverFilters, value: string) => void;
   onClearFilters: () => void;
 }) {
+  const hasFilters = Object.values(activeFilters).some(Boolean);
+  const hasDynamicOptions =
+    filterOptions.industries.length > 0 ||
+    filterOptions.stages.length > 0 ||
+    filterOptions.techStack.length > 0;
+
   return (
-    <div className={styles.filterBar}>
-      <div className={styles.filterGroup}>
-        <span className={styles.filterLabel}>
-          <i className="fas fa-filter"></i> Industry:
-        </span>
-        {filterOptions.industries.map((ind) => (
-          <button
-            key={ind}
-            className={`${styles.filterChip} ${activeFilters.industry === ind ? styles.filterActive : ""}`}
-            onClick={() => onFilterChange("industry", ind)}
-          >
-            {ind}
-          </button>
-        ))}
+    <section className={styles.filterBar}>
+      <div className={styles.searchBox}>
+        <Search size={16} />
+        <input
+          value={activeFilters.q ?? ""}
+          onChange={(event) => onFilterChange("q", event.target.value)}
+          placeholder="Search blueprint, role, stack"
+        />
       </div>
-      <div className={styles.filterGroup}>
-        <span className={styles.filterLabel}>
-          <i className="fas fa-seedling"></i> Stage:
+
+      <label className={styles.selectFilter}>
+        <span>
+          <Filter size={14} /> Industry
         </span>
-        {filterOptions.fundingStages.map((s) => (
-          <button
-            key={s}
-            className={`${styles.filterChip} ${activeFilters.fundingStage === s ? styles.filterActive : ""}`}
-            onClick={() => onFilterChange("fundingStage", s)}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-      <div className={styles.filterGroup}>
-        <span className={styles.filterLabel}>
-          <i className="fas fa-chart-bar"></i> Viability:
-        </span>
-        {filterOptions.viabilityRanges.map((range) => (
-          <button
-            key={range}
-            className={`${styles.filterChip} ${activeFilters.viability === range ? styles.filterActive : ""}`}
-            onClick={() => onFilterChange("viability", range)}
-          >
-            {VIABILITY_LABELS[range] || range}
-          </button>
-        ))}
-      </div>
-      <div className={styles.filterGroup}>
-        <span className={styles.filterLabel}>
-          <i className="fas fa-code"></i> Tech Stack:
-        </span>
-        {allTechStacks.map((tech) => (
-          <button
-            key={tech}
-            className={`${styles.filterChip} ${activeFilters.techStack === tech ? styles.filterActive : ""}`}
-            onClick={() => onFilterChange("techStack", tech)}
-          >
-            {tech}
-          </button>
-        ))}
-      </div>
-      {Object.values(activeFilters).some(Boolean) && (
-        <div className={styles.filterGroup}>
-          <button
-            className={styles.filterChip}
-            style={{ borderColor: "#FF6B6B", color: "#FF6B6B" }}
-            onClick={onClearFilters}
-          >
-            <i className="fas fa-times"></i> Clear All
-          </button>
-        </div>
+        <select
+          value={activeFilters.industry ?? ""}
+          onChange={(event) => onFilterChange("industry", event.target.value)}
+        >
+          <option value="">All industries</option>
+          {filterOptions.industries.map((industry) => (
+            <option key={industry} value={industry}>
+              {industry}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={styles.selectFilter}>
+        <span>Stage</span>
+        <select
+          value={activeFilters.stage ?? ""}
+          onChange={(event) => onFilterChange("stage", event.target.value)}
+        >
+          <option value="">All stages</option>
+          {filterOptions.stages.map((stage) => (
+            <option key={stage} value={stage}>
+              {stage}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={styles.selectFilter}>
+        <span>Tech</span>
+        <select
+          value={activeFilters.tech ?? ""}
+          onChange={(event) => onFilterChange("tech", event.target.value)}
+        >
+          <option value="">Any stack</option>
+          {filterOptions.techStack.map((tech) => (
+            <option key={tech} value={tech}>
+              {tech}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={styles.selectFilter}>
+        <span>Viability</span>
+        <select
+          value={activeFilters.minViability ?? ""}
+          onChange={(event) => onFilterChange("minViability", event.target.value)}
+        >
+          {VIABILITY_OPTIONS.map((option) => (
+            <option key={option.value || "any"} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {hasFilters && (
+        <button className={styles.clearFiltersBtn} onClick={onClearFilters}>
+          <X size={14} /> Clear
+        </button>
       )}
-    </div>
+
+      {!hasDynamicOptions && (
+        <p className={styles.filterHint}>
+          Industry, stage, and tech filters appear after at least one public blueprint is available.
+        </p>
+      )}
+    </section>
   );
 }

@@ -73,6 +73,16 @@
   line-height: 1.5;
   margin: 0 0 2rem;
 }
+.saveError {
+  margin: -1.2rem 0 1.2rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #fee2e2;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
 .tabBtn {
   display: flex;
   align-items: center;
@@ -597,6 +607,12 @@
   border-color: #8fd8be;
   color: #0d2b22;
   background: #eaf5f0;
+}
+
+.changePhotoBtn:disabled,
+.profileAvatarButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 .formGrid {
   display: grid;

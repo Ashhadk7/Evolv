@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClientIcon as Icon } from "@/components/ui/client-icon";
 import { Logo } from "@/features/auth/components/logo";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
 import type { AppNotif } from "@/features/notifications/types";
 import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
   fetchNotifications,
+  fetchNotificationPreferences,
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/features/notifications/notifications-api";
+import {
+  NOTIFICATION_CREATED_EVENT,
+  NOTIFICATION_REFRESH_EVENT,
+  type NotificationCreatedEvent,
+} from "@/features/notifications/notification-events";
 import type { BadgeKey, NavSection } from "@/config/navigation";
 import { clearAllUserData } from "@/features/auth/lib/session";
 
@@ -36,6 +43,42 @@ const PILL_BORDER = "rgba(137,215,183,0.09)";
 const MENU_BG = "#1e3831";
 const CLEAR = "rgba(0,0,0,0)";
 
+let notificationAudioContext: AudioContext | null = null;
+
+function playNotificationSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioContextCtor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const context = notificationAudioContext ?? new AudioContextCtor();
+    notificationAudioContext = context;
+    if (context.state === "suspended") {
+      void context.resume().catch(() => undefined);
+    }
+
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const start = context.currentTime;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(660, start);
+    oscillator.frequency.exponentialRampToValueAtTime(880, start + 0.08);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.16, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.24);
+  } catch {
+    /* sound is best effort */
+  }
+}
+
 export interface DashboardSidebarProps {
   /** Nav sections to render (founderNav / developerNav). */
   sections: NavSection[];
@@ -44,7 +87,7 @@ export interface DashboardSidebarProps {
   onNavigate: (id: string) => void;
   /** "Founder" | "Developer" — shown under the profile name. */
   roleLabel: string;
-  profile: { firstName?: string; lastName?: string; avatarUrl?: string };
+  profile: { firstName?: string; lastName?: string; email?: string; avatarUrl?: string };
   /** Seed notifications for this role. */
   initialNotifs: AppNotif[];
   inboxCount?: number;
@@ -77,25 +120,74 @@ export function DashboardSidebar({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState<AppNotif[]>(initialNotifs);
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    DEFAULT_NOTIFICATION_PREFERENCES
+  );
 
   const profileRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const notifsRef = useRef(notifs);
+  const preferencesRef = useRef(notificationPreferences);
+  const notificationsLoadedRef = useRef(false);
 
-  // Fetch real notifications from API; fall back to initialNotifs on error.
   useEffect(() => {
-    fetchNotifications()
-      .then((items) => setNotifs(items))
-      .catch(() => {
-        /* keep initialNotifs as fallback */
-      });
+    notifsRef.current = notifs;
+  }, [notifs]);
+
+  useEffect(() => {
+    preferencesRef.current = notificationPreferences;
+  }, [notificationPreferences]);
+
+  const maybePlaySound = useCallback(() => {
+    if (preferencesRef.current.sound) playNotificationSound();
   }, []);
 
+  const refreshNotifications = useCallback(
+    async ({ playForNew = false }: { playForNew?: boolean } = {}) => {
+      const previousIds = new Set(notifsRef.current.map((notification) => notification.id));
+      try {
+        const items = await fetchNotifications();
+        notifsRef.current = items;
+        setNotifs(items);
+        const hasNewUnread = items.some(
+          (notification) => !notification.read && !previousIds.has(notification.id)
+        );
+        if (playForNew && notificationsLoadedRef.current && hasNewUnread) {
+          maybePlaySound();
+        }
+        notificationsLoadedRef.current = true;
+      } catch {
+        /* keep current notifications as fallback */
+      }
+    },
+    [maybePlaySound]
+  );
+
+  // Fetch real notifications/preferences from API; fall back to initialNotifs on error.
+  useEffect(() => {
+    const loadTimer = window.setTimeout(() => void refreshNotifications(), 0);
+    fetchNotificationPreferences()
+      .then((preferences) => setNotificationPreferences(preferences))
+      .catch(() => {
+        /* keep defaults as fallback */
+      });
+    return () => window.clearTimeout(loadTimer);
+  }, [refreshNotifications]);
+
   const unreadCount = notifs.filter((n) => !n.read).length;
+  const unreadByTab = notifs.reduce<Record<string, number>>((counts, notification) => {
+    if (!notification.read) {
+      counts[notification.tab] = (counts[notification.tab] ?? 0) + 1;
+    }
+    return counts;
+  }, {});
 
   const markAllRead = () => {
     // Optimistic update
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    const next = notifsRef.current.map((n) => ({ ...n, read: true }));
+    notifsRef.current = next;
+    setNotifs(next);
     markAllNotificationsRead().catch(() => {
       // Revert on failure by re-fetching
       fetchNotifications()
@@ -108,7 +200,9 @@ export function DashboardSidebar({
 
   const markRead = (id: string) => {
     // Optimistic update
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    const next = notifsRef.current.map((n) => (n.id === id ? { ...n, read: true } : n));
+    notifsRef.current = next;
+    setNotifs(next);
     markNotificationRead(id).catch(() => {
       // Revert on failure by re-fetching
       fetchNotifications()
@@ -118,6 +212,37 @@ export function DashboardSidebar({
         });
     });
   };
+
+  useEffect(() => {
+    const handleNotificationCreated = (event: Event) => {
+      const notification = (event as NotificationCreatedEvent).detail;
+      if (!notification?.id) {
+        void refreshNotifications({ playForNew: true });
+        return;
+      }
+
+      const current = notifsRef.current;
+      if (current.some((item) => item.id === notification.id)) return;
+
+      const next = [notification, ...current].slice(0, 50);
+      notifsRef.current = next;
+      setNotifs(next);
+      if (notificationsLoadedRef.current && !notification.read) {
+        maybePlaySound();
+      }
+    };
+
+    const handleNotificationRefresh = () => {
+      void refreshNotifications({ playForNew: true });
+    };
+
+    window.addEventListener(NOTIFICATION_CREATED_EVENT, handleNotificationCreated);
+    window.addEventListener(NOTIFICATION_REFRESH_EVENT, handleNotificationRefresh);
+    return () => {
+      window.removeEventListener(NOTIFICATION_CREATED_EVENT, handleNotificationCreated);
+      window.removeEventListener(NOTIFICATION_REFRESH_EVENT, handleNotificationRefresh);
+    };
+  }, [maybePlaySound, refreshNotifications]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -140,10 +265,15 @@ export function DashboardSidebar({
 
   const initials =
     `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase() || avatarFallback;
-  const displayName = `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || roleLabel;
+  const displayName =
+    `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || profile.email || "Your profile";
 
   const getBadge = (badge?: BadgeKey) =>
-    badge === "network" ? networkCount : badge === "inbox" ? inboxCount : 0;
+    badge === "network"
+      ? Math.max(networkCount, unreadByTab.network ?? 0)
+      : badge === "inbox"
+        ? Math.max(inboxCount, unreadByTab.inbox ?? 0)
+        : 0;
 
   const openProfile = () => {
     setProfileMenuOpen(false);
