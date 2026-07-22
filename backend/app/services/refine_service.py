@@ -173,11 +173,16 @@ async def _call_agent_for_section(
         return result.model_dump(by_alias=True)
 
     if section == "synthesis":
+        from app.services.generation.agents.scorecard import run_scorecard
         market_obj, competitor_obj = _reconstruct_market_competitor(agents)
         persona_obj = _reconstruct_persona(agents)
         product_obj = _reconstruct_product(agents)
         strategy_obj = _reconstruct_strategy(agents)
-        scorecard_obj = _reconstruct_scorecard(agents)
+        
+        # Always run or refresh scorecard agent so all 6 dimension scores & citations are generated
+        scorecard_obj = await run_scorecard(agent_brief, market_obj, competitor_obj, persona_obj, shared_research)
+        agents["scorecard"] = scorecard_obj.model_dump(by_alias=True)
+        
         result = await run_synthesis(
             agent_brief, market_obj, competitor_obj, persona_obj,
             product_obj, strategy_obj, scorecard_obj,
