@@ -105,6 +105,7 @@ async def _run_refine(db: Session, blueprint_id: UUID, section: str, feedback: s
         industry=industry,
         agents=agents,
         shared_research=shared_research,
+        feedback=feedback,
     )
 
     # Patch only the refined section into content_json
@@ -131,6 +132,7 @@ async def _call_agent_for_section(
     industry: str,
     agents: dict[str, Any],
     shared_research: str,
+    feedback: str = "",
 ) -> dict[str, Any]:
     """Dispatch to the correct agent and return its raw model_dump output."""
     if section == "market":
