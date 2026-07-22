@@ -49,6 +49,21 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def mark_refinement_started(db: Session, blueprint_id: UUID, section: str) -> None:
+    """Synchronously mark the blueprint refinement status as 'refining' in DB."""
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    if blueprint is None or blueprint.current_version is None:
+        return
+    content = dict(blueprint.current_version.content_json or {})
+    content["refinement"] = {
+        "section": section,
+        "status": "refining",
+        "refinedAt": _now(),
+    }
+    blueprint.current_version.content_json = content
+    db.commit()
+
+
 async def refine_section(
     blueprint_id: UUID,
     section: str,

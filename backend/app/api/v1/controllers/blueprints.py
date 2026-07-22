@@ -130,6 +130,7 @@ async def refine_blueprint(
     runs in the background (same pattern as /generate)."""
     # Verify the blueprint belongs to this founder before queuing the task
     blueprint_service.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+    refine_service.mark_refinement_started(db, blueprint_id, payload.section)
     background_tasks.add_task(
         refine_service.refine_section,
         blueprint_id,

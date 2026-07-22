@@ -40,7 +40,7 @@ interface Props {
   blueprintId: string;
   blueprintName: string;
   isFounder?: boolean;
-  onQueued?: () => void;
+  onQueued?: (section: string) => void;
 }
 
 export function RefineModal({ blueprintId, blueprintName, onQueued }: Props) {
@@ -79,9 +79,15 @@ export function RefineModal({ blueprintId, blueprintName, onQueued }: Props) {
       }
 
       setStatus("queued");
-      setMessage(data.message || "Refine queued. Refresh in ~15s.");
+      setMessage(data.message || "Refine queued.");
       setFeedback("");
-      onQueued?.();
+      onQueued?.(section);
+      // Auto-close modal after brief delay so user sees live banner on page
+      setTimeout(() => {
+        setOpen(false);
+        setStatus("idle");
+        setMessage("");
+      }, 800);
     } catch (err: unknown) {
       setStatus("error");
       setMessage(err instanceof Error ? err.message : "Something went wrong.");
