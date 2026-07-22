@@ -36,6 +36,16 @@ const SECTION_DESCRIPTIONS: Record<RefinableSection, string> = {
   synthesis: "Re-run the overall venture assessment, verdict, and executive summary.",
 };
 
+const SECTION_PLACEHOLDERS: Record<RefinableSection, string> = {
+  market: "Example: Focus analysis on the B2B enterprise market in Pakistan.",
+  competitor: "Example: Add AWS Comprehend and IBM Watson NLP as direct competitors.",
+  persona: "Example: Add CTO as an Economic Buyer persona.",
+  product: "Example: Add webhook integration and real-time chat to MVP Must-Haves.",
+  strategy: "Example: Target LinkedIn outreach as primary GTM acquisition channel.",
+  techStack: "Example: Use Python FastAPI for backend and PostgreSQL for database.",
+  synthesis: "Example: Re-evaluate venture risk considering high local market demand.",
+};
+
 type ModalStep = "form" | "refining" | "completed" | "error";
 
 interface Props {
@@ -293,7 +303,7 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                     <textarea
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
-                      placeholder={`Example: Add Python FastAPI for the backend layer and PostgreSQL for database.`}
+                      placeholder={SECTION_PLACEHOLDERS[section]}
                       rows={4}
                       style={{
                         width: "100%",
