@@ -198,7 +198,12 @@ def _build_refine_brief(intake: dict[str, Any], feedback: str) -> str:
         ("Constraints", intake.get("constraints", "")),
     ]
     brief = "\n".join(f"{label}: {value}" for label, value in parts if value)
-    return f"{brief}\n\nFounder refinement feedback: {feedback}"
+    return (
+        f"{brief}\n\n"
+        f"CRITICAL OVERRIDE INSTRUCTION FROM FOUNDER:\n"
+        f"The founder specifically requested the following refinement: \"{feedback}\".\n"
+        f"You MUST honor and incorporate this request into your choices and output schema."
+    )
 
 
 def _build_shared_research(agents: dict[str, Any]) -> str:

@@ -17,7 +17,7 @@ export function BlueprintActionBar({
   onBack,
   onCopyLink,
   onTogglePublish,
-  onRefineQueued,
+  onRefined,
 }: {
   bp: Blueprint;
   progress: number;
@@ -25,7 +25,7 @@ export function BlueprintActionBar({
   onBack: () => void;
   onCopyLink: () => void;
   onTogglePublish: () => void;
-  onRefineQueued?: (section: string) => void;
+  onRefined?: (updatedBp: Blueprint) => void;
 }) {
   return (
     <div className="blueprint-no-print border-bp-border relative z-20 border-b bg-[rgba(240,243,241,0.86)] backdrop-blur-[12px]">
@@ -65,7 +65,7 @@ export function BlueprintActionBar({
           </Chip>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <RefineModal blueprintId={bp.id} blueprintName={bp.name} onQueued={onRefineQueued} />
+          <RefineModal blueprintId={bp.id} blueprintName={bp.name} onRefined={onRefined} />
           {!bp.project && (
             <button onClick={onTogglePublish} className="bp-primary-btn">
               <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}

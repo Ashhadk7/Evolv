@@ -301,7 +301,10 @@ export function BlueprintDetail({
         onBack={handleBack}
         onCopyLink={copyLink}
         onTogglePublish={togglePublish}
-        onRefineQueued={(section) => startAutoPolling(section)}
+        onRefined={(updatedBp) => {
+          setCurrentBp(updatedBp);
+          onSave?.(updatedBp);
+        }}
       />
 
       {/* -- Scroll body -- */}
