@@ -30,7 +30,8 @@ export function useBlueprintEditor(
       setDraftFeatures(bp.features);
       setDraftCost(bp.cost);
     }
-  }, [content.techStack, bp.ideaDesc, bp.features, bp.cost, editing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bp.updatedAt, bp.id, editing]);
 
   const updateTechStackLayer = (key: StackLayerKey, value: string) =>
     setDraftTechStack((prev) => ({ ...prev, [key]: { ...prev[key], chosen: value } }));
