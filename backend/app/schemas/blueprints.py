@@ -110,7 +110,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    messages: list[ChatMessage] = Field(min_length=1, max_length=20)
+    messages: list[ChatMessage] = Field(min_length=1, max_length=30)
 
 
 class ChatResponse(BaseModel):
@@ -118,3 +118,35 @@ class ChatResponse(BaseModel):
 
     response: str = Field(min_length=1)
 
+
+# Sections a founder can request a targeted re-run for.
+# Each maps 1-to-1 with an agent name in the generation pipeline.
+RefinableSection = Literal[
+    "market",
+    "competitor",
+    "persona",
+    "product",
+    "strategy",
+    "techStack",
+    "synthesis",
+]
+
+
+class BlueprintRefineRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    section: RefinableSection
+    feedback: str = Field(
+        min_length=10,
+        max_length=1500,
+        description="Founder's feedback / instructions for the targeted re-run.",
+    )
+
+
+class BlueprintRefineResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blueprint_id: str
+    section: str
+    status: Literal["queued", "completed", "failed"]
+    message: str

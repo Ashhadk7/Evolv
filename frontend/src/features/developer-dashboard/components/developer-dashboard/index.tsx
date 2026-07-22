@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { StatCard } from "@/features/developer-dashboard/components/stat-card";
 import dashboardStyles from "@/features/developer-dashboard/components/developer-dashboard.module.css";
-import type { DeveloperPageProps } from "@/features/developer-dashboard/types";
+// import type { DeveloperPageProps } from "@/features/developer-dashboard/types";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import {
   listDiscoverBlueprints,
@@ -10,7 +10,7 @@ import {
   type DiscoverResponse,
 } from "@/features/developer-dashboard/lib/discover-api";
 import { getApiErrorMessage } from "@/lib/api";
-import { TopbarWithModal } from "./topbar-with-modal";
+// import { TopbarWithModal } from "./topbar-with-modal";
 
 function formatDate(value: string | null) {
   if (!value) return "Recently";
@@ -22,6 +22,18 @@ function formatDate(value: string | null) {
 function primaryRole(blueprint: DiscoverBlueprint) {
   return blueprint.appliedRole || blueprint.roles[0]?.role || "Role to be discussed";
 }
+import {
+  recentMatches,
+  applications,
+  projects,
+} from "@/features/developer-dashboard/data/dashboard-data";
+import { MODALS } from "@/features/developer-dashboard/data/developer-dashboard-modals";
+import type { DeveloperPageProps } from "@/features/developer-dashboard/types";
+import { useDeveloperDashboardStats } from "@/features/developer-dashboard/use-developer-dashboard-stats";
+import { TopbarWithModal } from "./topbar-with-modal";
+import { FeaturedMatchWithModal } from "./featured-match-with-modal";
+import { MatchCardWithModal } from "./match-card-with-modal";
+import { featuredMatch } from "@/features/developer-dashboard/data/discover-data";
 
 const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
   const profile = useDeveloperDashboardStore((state) => state.profile);
@@ -29,6 +41,9 @@ const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
   const [overview, setOverview] = useState<DiscoverResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Real KPI data from the backend (with graceful stub fallback)
+  const { kpis, loading: statsLoading } = useDeveloperDashboardStats();
 
   useEffect(() => {
     let cancelled = false;
