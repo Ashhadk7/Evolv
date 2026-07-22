@@ -9,17 +9,53 @@ import { getAccessToken } from "@/features/auth/lib/session";
 // Floating Blueprint AI assistant — feature-local, only used inside BlueprintDetail.
 type ChatMsg = { from: "ai" | "user"; text: string };
 
+const STORAGE_KEY = (id: string) => `evolv:chat:${id}`;
+const HISTORY_SEND_LIMIT = 14; // must match backend CHAT_HISTORY_LIMIT
+
+function loadHistory(blueprintId: string): ChatMsg[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY(blueprintId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as ChatMsg[];
+  } catch {
+    /* ignore corrupt storage */
+  }
+  return [];
+}
+
+function saveHistory(blueprintId: string, msgs: ChatMsg[]): void {
+  try {
+    // Keep last 40 messages in storage to cap localStorage usage
+    localStorage.setItem(STORAGE_KEY(blueprintId), JSON.stringify(msgs.slice(-40)));
+  } catch {
+    /* ignore storage quota errors */
+  }
+}
+
 export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: string }) {
+  const WELCOME: ChatMsg = {
+    from: "ai",
+    text: `I'm the blueprint assistant for ${bp.name}. Ask about the recommended stack, scope, budget, or what to build first.`,
+  };
+
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState<ChatMsg[]>([
-    {
-      from: "ai",
-      text: `I'm the blueprint assistant for ${bp.name}. Ask about the recommended stack, scope, budget, or what to build first.`,
-    },
-  ]);
+  const [msgs, setMsgs] = useState<ChatMsg[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const historyLoaded = useRef(false);
+
+  // Hydrate chat history from localStorage after mount (SSR-safe)
+  useEffect(() => {
+    if (historyLoaded.current) return;
+    historyLoaded.current = true;
+    const stored = loadHistory(blueprintId);
+    if (stored.length > 0) {
+      setMsgs([WELCOME, ...stored]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blueprintId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -28,7 +64,8 @@ export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: str
   const send = async () => {
     const text = input.trim();
     if (!text) return;
-    setMsgs((m) => [...m, { from: "user", text }]);
+    const newMsgs: ChatMsg[] = [...msgs, { from: "user", text }];
+    setMsgs(newMsgs);
     setInput("");
     setTyping(true);
 
@@ -48,14 +85,18 @@ export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: str
               content: m.text,
             })),
             { role: "user", content: text },
-          ].slice(-6), // Keep last 6 messages (3 turns) to prevent rate limits and payload bloat
+          ].slice(-HISTORY_SEND_LIMIT), // last 14 messages (7 turns) for deep context
         }),
       });
       if (!response.ok) {
         throw new Error("Failed to send message");
       }
       const data = await response.json();
-      setMsgs((m) => [...m, { from: "ai", text: data.response }]);
+      const aiMsg: ChatMsg = { from: "ai", text: data.response };
+      const finalMsgs: ChatMsg[] = [...newMsgs, aiMsg];
+      setMsgs(finalMsgs);
+      // Persist everything except the static welcome message
+      saveHistory(blueprintId, finalMsgs.slice(1));
     } catch (error) {
       console.error(error);
       setMsgs((m) => [...m, { from: "ai", text: "I'm sorry, I couldn't reach the chatbot API server." }]);
@@ -63,6 +104,7 @@ export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: str
       setTyping(false);
     }
   };
+
 
   return (
     <>

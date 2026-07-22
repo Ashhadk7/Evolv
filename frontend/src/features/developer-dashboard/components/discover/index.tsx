@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getAccessToken } from "@/features/auth/lib/session";
 
 import { Topbar } from "@/features/developer-dashboard/components/topbar";
 import { StatCard } from "@/features/developer-dashboard/components/stat-card";
@@ -25,11 +26,29 @@ const Discover = ({ onNavigate, profileComplete = true, onRequireProfile }: Deve
   const [filteredOpportunities, setFilteredOpportunities] = useState<Opportunity[]>(opportunities);
   const [activeFilters, setActiveFilters] = useState<DiscoverFilters>({});
 
-  const handleApply = () => {
+  const handleApply = async (blueprintId?: string) => {
     if (!profileComplete && onRequireProfile) {
       onRequireProfile(() => onNavigate("applications"));
       return;
     }
+
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      const token = getAccessToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const targetId = blueprintId || selectedStartup?.id || "9b178a4a-e642-4cb5-bfef-1c7370f4c807";
+
+      await fetch(`${API_BASE}/applications`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ blueprint_id: targetId }),
+      });
+    } catch (e) {
+      console.warn("Application creation error:", e);
+    }
+
     onNavigate("applications");
   };
 

@@ -10,11 +10,14 @@ import { MeterBar } from "@/components/shared/meter-bar";
 import { Reveal } from "@/components/shared/reveal";
 import { SectionHead } from "@/components/shared/section-head";
 import { ViabilityGauge } from "@/components/shared/viability-gauge";
+import { SourceChips } from "@/components/shared/source-evidence";
+import type { ResearchSourceRef } from "@/features/blueprints/blueprint-content";
 
 interface SubScore {
   label: string;
   value: number;
   note?: string;
+  sourceIndexes?: number[];
 }
 
 const VERDICT_TONE: Record<string, "mint" | "amber" | "red"> = {
@@ -33,6 +36,7 @@ export function BlueprintHeroSection({
   viabilityScore,
   viabilityReasoning,
   subScoreRow,
+  combinedSources,
 }: {
   bp: Blueprint;
   stageLabel: string;
@@ -43,6 +47,7 @@ export function BlueprintHeroSection({
   viabilityScore: number;
   viabilityReasoning: string;
   subScoreRow: SubScore[];
+  combinedSources?: ResearchSourceRef[];
 }) {
   return (
     <Reveal y={14}>
@@ -98,11 +103,21 @@ export function BlueprintHeroSection({
               {subScoreRow.map((score) => (
                 <div
                   key={score.label}
-                  className="flex flex-col gap-1.5"
-                  title={score.note || undefined}
+                  className="flex flex-col gap-1.5 cursor-help"
+                  title={score.note ? `LLM Critic Pass: "${score.note}"` : undefined}
                 >
-                  <span style={NUM} className="text-bp-ink text-base leading-none font-bold">
+                  <span style={NUM} className="text-bp-ink text-base leading-none font-bold flex items-center">
                     {score.value}
+                    {score.sourceIndexes && score.sourceIndexes.length > 0 && combinedSources && combinedSources.length > 0 ? (
+                      <SourceChips indexes={score.sourceIndexes} sources={combinedSources} />
+                    ) : (
+                      <sup
+                        className="ml-1 inline-block rounded bg-[#f5ebd6] px-1 text-[8px] leading-[13px] font-extrabold text-[#7a591c] no-underline"
+                        title="LLM Verification Flag: Uncited Claim — No external web source supports this dimension score"
+                      >
+                        Uncited
+                      </sup>
+                    )}
                   </span>
                   <MeterBar value={score.value} height={3} />
                   <span className="font-mono-app text-bp-label text-[9px] tracking-[0.06em] whitespace-nowrap uppercase">

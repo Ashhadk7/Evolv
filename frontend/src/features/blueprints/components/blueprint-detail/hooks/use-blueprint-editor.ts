@@ -2,7 +2,7 @@
 // detail view, extracted from blueprint-detail.tsx.
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   BlueprintContent,
   StackLayerKey,
@@ -21,6 +21,18 @@ export function useBlueprintEditor(
   const [draftFeatures, setDraftFeatures] = useState<string[]>(bp.features);
   const [draftCost, setDraftCost] = useState(bp.cost);
   const [draftTechStack, setDraftTechStack] = useState<TechStackModel>(() => content.techStack);
+
+  // Sync draft state whenever fresh content/bp arrives (e.g. after AI refinement)
+  const techStackKey = JSON.stringify(content.techStack);
+  useEffect(() => {
+    if (!editing) {
+      setDraftTechStack(content.techStack);
+      setDraftDesc(bp.ideaDesc);
+      setDraftFeatures(bp.features);
+      setDraftCost(bp.cost);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [techStackKey, bp.id, editing]);
 
   const updateTechStackLayer = (key: StackLayerKey, value: string) =>
     setDraftTechStack((prev) => ({ ...prev, [key]: { ...prev[key], chosen: value } }));

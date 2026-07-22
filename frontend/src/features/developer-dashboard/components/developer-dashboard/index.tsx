@@ -9,23 +9,26 @@ import { ProjectCard } from "@/features/developer-dashboard/components/project-c
 import { ApplicationCard } from "@/features/developer-dashboard/components/application-card";
 import dashboardStyles from "@/features/developer-dashboard/components/developer-dashboard.module.css";
 import {
-  statsData,
-  featuredMatch,
   recentMatches,
   applications,
   projects,
-} from "@/features/developer-dashboard/data/developer-data";
+} from "@/features/developer-dashboard/data/dashboard-data";
 import { MODALS } from "@/features/developer-dashboard/data/developer-dashboard-modals";
 import type { DeveloperPageProps } from "@/features/developer-dashboard/types";
+import { useDeveloperDashboardStats } from "@/features/developer-dashboard/use-developer-dashboard-stats";
 import { TopbarWithModal } from "./topbar-with-modal";
 import { FeaturedMatchWithModal } from "./featured-match-with-modal";
 import { MatchCardWithModal } from "./match-card-with-modal";
+import { featuredMatch } from "@/features/developer-dashboard/data/discover-data";
 
 const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
   const [modal, setModal] = useState<ActionModalData | null>(null);
   const [userName, setUserName] = useState("Sarah");
   const openModal = useCallback((cfg: ActionModalData) => setModal(cfg), []);
   const closeModal = useCallback(() => setModal(null), []);
+
+  // Real KPI data from the backend (with graceful stub fallback)
+  const { kpis, loading: statsLoading } = useDeveloperDashboardStats();
 
   useEffect(() => {
     try {
@@ -53,10 +56,14 @@ const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
         {/* Compact Horizontal AI Match Banner */}
         <FeaturedMatchWithModal data={featuredMatch} openModal={openModal} />
 
-        {/* Row 1: KPI Cards */}
+        {/* Row 1: KPI Cards — real data wired via useDeveloperDashboardStats */}
         <div className={dashboardStyles.kpiRow}>
-          {statsData.map((stat) => (
-            <StatCard key={stat.id} {...stat} />
+          {kpis.map((stat) => (
+            <StatCard
+              key={stat.id}
+              {...stat}
+              value={statsLoading ? "…" : stat.value}
+            />
           ))}
         </div>
 
