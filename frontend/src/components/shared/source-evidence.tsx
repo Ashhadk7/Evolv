@@ -17,14 +17,16 @@ export function SourceChips({
     <sup className="ml-1 inline-flex gap-0.5 align-super">
       {valid.map((n) => {
         const source = sources[n - 1];
+        const isInternal = !source?.url || source.url.includes("evolv.internal");
         return (
           <a
             key={n}
-            href={source.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={`${source.title} — ${source.domain}`}
-            className="text-bp-teal border-bp-border-soft bg-bp-tint hover:bg-bp-forest hover:text-white rounded border px-1 text-[9px] leading-[14px] font-bold no-underline"
+            href={isInternal ? "#" : source.url}
+            onClick={isInternal ? (e) => e.preventDefault() : undefined}
+            target={isInternal ? undefined : "_blank"}
+            rel={isInternal ? undefined : "noopener noreferrer"}
+            title={source ? `${source.title} — ${isInternal ? "Internal AI Research Signal" : source.domain}` : `Source ${n}`}
+            className="text-bp-teal border-bp-border-soft bg-bp-tint hover:bg-bp-forest hover:text-white rounded border px-1 text-[9px] leading-[14px] font-bold no-underline cursor-pointer"
           >
             {n}
           </a>
@@ -59,18 +61,22 @@ export function ResearchFooter({
       )}
       {sources.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-          {sources.map((source, i) => (
-            <a
-              key={source.url + i}
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={source.title}
-              className="text-bp-muted hover:text-bp-teal text-[10.5px] no-underline"
-            >
-              [{i + 1}] {source.domain || source.title}
-            </a>
-          ))}
+          {sources.map((source, i) => {
+            const isInternal = !source?.url || source.url.includes("evolv.internal");
+            return (
+              <a
+                key={(source.url || "") + i}
+                href={isInternal ? "#" : source.url}
+                onClick={isInternal ? (e) => e.preventDefault() : undefined}
+                target={isInternal ? undefined : "_blank"}
+                rel={isInternal ? undefined : "noopener noreferrer"}
+                title={`${source.title}${isInternal ? " — (Internal AI Research Signal)" : ""}`}
+                className="text-bp-muted hover:text-bp-teal text-[10.5px] no-underline cursor-pointer"
+              >
+                [{i + 1}] {source.domain || source.title}
+              </a>
+            );
+          })}
         </div>
       )}
       {assumptions.length > 0 && (
