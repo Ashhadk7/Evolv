@@ -43,14 +43,13 @@ interface Props {
   onQueued?: () => void;
 }
 
-export function RefineModal({ blueprintId, blueprintName, isFounder = true, onQueued }: Props) {
+export function RefineModal({ blueprintId, blueprintName, onQueued }: Props) {
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<RefinableSection>("market");
   const [feedback, setFeedback] = useState("");
   const [status, setStatus] = useState<RefineStatus>("idle");
   const [message, setMessage] = useState("");
 
-  if (!isFounder) return null;
 
   const handleSubmit = async () => {
     if (feedback.trim().length < 10) {

@@ -8,6 +8,8 @@ import {
 import type { Blueprint } from "@/features/blueprints/types";
 import { Chip } from "@/components/shared/chip";
 
+import { RefineModal } from "./refine-modal";
+
 export function BlueprintActionBar({
   bp,
   progress,
@@ -15,6 +17,7 @@ export function BlueprintActionBar({
   onBack,
   onCopyLink,
   onTogglePublish,
+  onRefineQueued,
 }: {
   bp: Blueprint;
   progress: number;
@@ -22,6 +25,7 @@ export function BlueprintActionBar({
   onBack: () => void;
   onCopyLink: () => void;
   onTogglePublish: () => void;
+  onRefineQueued?: () => void;
 }) {
   return (
     <div className="blueprint-no-print border-bp-border relative z-20 border-b bg-[rgba(240,243,241,0.86)] backdrop-blur-[12px]">
@@ -61,6 +65,7 @@ export function BlueprintActionBar({
           </Chip>
         )}
         <div className="ml-auto flex items-center gap-2">
+          <RefineModal blueprintId={bp.id} blueprintName={bp.name} onQueued={onRefineQueued} />
           {!bp.project && (
             <button onClick={onTogglePublish} className="bp-primary-btn">
               <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}

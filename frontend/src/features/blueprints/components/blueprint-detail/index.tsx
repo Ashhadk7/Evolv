@@ -220,6 +220,7 @@ export function BlueprintDetail({
         onBack={handleBack}
         onCopyLink={copyLink}
         onTogglePublish={togglePublish}
+        onRefineQueued={() => showToast("Refine queued — refresh in ~15s to see the updated section.")}
       />
 
       {/* -- Scroll body -- */}
@@ -333,12 +334,6 @@ export function BlueprintDetail({
       <DetailToast toast={toast} />
 
       <ChatPanel bp={bp} blueprintId={bp.id} />
-      <RefineModal
-        blueprintId={bp.id}
-        blueprintName={bp.name}
-        isFounder={profileComplete}
-        onQueued={() => showToast("Refine queued — refresh in ~15s to see the updated section.")}
-      />
     </motion.div>
   );
 }
