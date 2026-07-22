@@ -247,7 +247,7 @@ function derivePersonas(bp: Blueprint): Persona[] {
   const personaAgent = agentRecord(bp, "persona");
   const generatedPersonas = recordArray(personaAgent?.personas);
   if (generatedPersonas.length) {
-    return generatedPersonas.slice(0, 3).map((persona) => ({
+    return generatedPersonas.map((persona) => ({
       name: stringValue(persona.name, "Generated persona"),
       segment: (stringValue(persona.segment, "Primary user") as Persona["segment"]),
       about: stringValue(persona.context, stringValue(persona.role, "Core customer segment")),
