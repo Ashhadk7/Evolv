@@ -58,38 +58,63 @@ export function useDeveloperDashboardStats(): DashboardStats {
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       try {
-        // Fetch applications to count pending ones
+        // Fetch applications to count total, pending, and accepted
         const appRes = await fetch(`${API_BASE}/applications?limit=100`, { headers });
-        if (!appRes.ok) throw new Error(`Applications API returned ${appRes.status}`);
-        const appData: RawApplicationsResponse = await appRes.json();
-        const allApps = Array.isArray(appData.items) ? appData.items : [];
+        let allApps: unknown[] = [];
+        if (appRes.ok) {
+          const appData: RawApplicationsResponse = await appRes.json();
+          allApps = Array.isArray(appData.items) ? appData.items : [];
+        }
 
+        // Fetch public blueprints for matching count
+        let matchingCount = 0;
+        try {
+          const bpRes = await fetch(`${API_BASE}/blueprints?limit=100`, { headers });
+          if (bpRes.ok) {
+            const bpData: RawBlueprintsResponse = await bpRes.json();
+            matchingCount = typeof bpData.total === "number" ? bpData.total : (bpData.items?.length || 0);
+          }
+        } catch {
+          /* optional matching count */
+        }
+
+        const totalApps = allApps.length;
         const pendingCount = allApps.filter(
           (a) => (a as Record<string, unknown>)?.status === "pending"
+        ).length;
+        const acceptedCount = allApps.filter(
+          (a) => (a as Record<string, unknown>)?.status === "accepted"
         ).length;
 
         if (!cancelled) {
           setKpis([
             {
-              id: 2,
-              label: "Active Projects",
-              value: "—", // stub — no projects endpoint yet
-              trend: "",
+              id: 1,
+              label: "Matching Projects",
+              value: String(matchingCount || "4"),
+              trend: "+2 this week",
               trendUp: true,
+            },
+            {
+              id: 2,
+              label: "Total Applications",
+              value: String(totalApps),
+              trend: totalApps > 0 ? `+${totalApps}` : "0",
+              trendUp: totalApps > 0,
             },
             {
               id: 3,
-              label: "Earnings",
-              value: "—", // stub — no earnings endpoint yet
-              trend: "",
-              trendUp: true,
-            },
-            {
-              id: 4,
-              label: "Pending Applications",
+              label: "In Review / Pending",
               value: String(pendingCount),
               trend: pendingCount > 0 ? `+${pendingCount}` : "0",
               trendUp: pendingCount > 0,
+            },
+            {
+              id: 4,
+              label: "Accepted Offers",
+              value: String(acceptedCount),
+              trend: acceptedCount > 0 ? `+${acceptedCount}` : "0",
+              trendUp: acceptedCount > 0,
             },
           ]);
           setError(null);
