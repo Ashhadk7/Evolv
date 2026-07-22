@@ -62,7 +62,7 @@ export type Viability = {
   subScores: SubScore[];
 };
 
-export type ResearchSourceRef = { title: string; url: string; domain: string };
+export type ResearchSourceRef = { title: string; url: string; domain: string; snippet?: string };
 
 export type CitedText = { text: string; sourceIndexes: number[] };
 
@@ -287,6 +287,7 @@ function sourceRefs(value: unknown): ResearchSourceRef[] {
       title: stringValue(source.title),
       url: stringValue(source.url),
       domain: stringValue(source.domain),
+      snippet: stringValue(source.snippet),
     }))
     .filter((source) => source.title && source.url);
 }
