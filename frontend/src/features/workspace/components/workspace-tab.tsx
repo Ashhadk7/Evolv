@@ -12,6 +12,7 @@ import {
   pollGeneration,
   getBlueprint,
   blueprintGeneration,
+  setBlueprintVisibility,
 } from "@/features/blueprints/blueprints-api";
 import { getApiErrorMessage } from "@/lib/api";
 import { IdeaCard } from "./idea-card";
@@ -147,6 +148,27 @@ export function WorkspaceTab({
       // backend state (failed + error, or still generating).
       const latest = await getBlueprint(bp.id).catch(() => null);
       if (latest) applyOne(latest);
+    }
+  };
+
+  // Toggle public/private with an optimistic update + rollback, and persist to
+  // the backend so visibility survives reload. On failure, restore prior state.
+  const handleTogglePublic = async (bp: Blueprint) => {
+    const nextPublic = !bp.isPublic;
+    const prev = blueprints;
+    update(
+      blueprints.map((b) =>
+        b.id === bp.id
+          ? { ...b, isPublic: nextPublic, status: (nextPublic ? "PUBLISHED" : "DRAFT") as "DRAFT" | "PUBLISHED" }
+          : b
+      )
+    );
+    try {
+      const saved = await setBlueprintVisibility(bp.id, nextPublic);
+      update(prev.map((b) => (b.id === bp.id ? saved : b)));
+    } catch (err) {
+      update(prev);
+      alert(getApiErrorMessage(err));
     }
   };
 
@@ -329,20 +351,7 @@ export function WorkspaceTab({
                         onRetry={() => handleRetry(bp)}
                         canPublish={profileComplete}
                         onCompleteProfile={onCompleteProfile}
-                        onTogglePublic={() =>
-                          update(
-                            blueprints.map((b) =>
-                              b.id === bp.id
-                                ? {
-                                    ...b,
-                                    isPublic: !b.isPublic,
-                                    status: (b.isPublic ? "DRAFT" : "PUBLISHED") as
-                                      "DRAFT" | "PUBLISHED",
-                                  }
-                                : b
-                            )
-                          )
-                        }
+                        onTogglePublic={() => handleTogglePublic(bp)}
                       />
                     ))}
                   </AnimatePresence>

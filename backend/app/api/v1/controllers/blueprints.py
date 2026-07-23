@@ -12,6 +12,7 @@ from app.schemas.applications import (
 )
 from app.schemas.notifications import NotificationResponse
 from app.schemas.blueprints import (
+    BlueprintContentUpdate,
     BlueprintCreate,
     BlueprintGenerateRequest,
     BlueprintListResponse,
@@ -150,6 +151,17 @@ def update_blueprint(
                 notification.user_id,
                 NotificationResponse.model_validate(notification),
             )
+    return BlueprintResponse.model_validate(blueprint)
+
+
+@router.patch("/{blueprint_id}/content", response_model=BlueprintResponse)
+def update_blueprint_content(
+    blueprint_id: UUID,
+    payload: BlueprintContentUpdate,
+    db: DbSession,
+    current_user: CurrentFounder,
+) -> BlueprintResponse:
+    blueprint = blueprint_service.update_content(db, blueprint_id, current_user, payload)
     return BlueprintResponse.model_validate(blueprint)
 
 

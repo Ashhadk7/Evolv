@@ -94,6 +94,31 @@ export async function retryBlueprint(id: string): Promise<Blueprint> {
   return blueprintFromWire(data);
 }
 
+// Toggles a blueprint public/private on the backend (PATCH visibility).
+// Returns the updated blueprint (its status/visibility reflect the change).
+export async function setBlueprintVisibility(id: string, isPublic: boolean): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: { visibility: isPublic ? "public" : "private" },
+  });
+  return blueprintFromWire(data);
+}
+
+// Persists user-edited content (features, tech-stack choices) on the same row.
+// The backend merges these into content_json and returns the updated blueprint.
+export async function updateBlueprintContent(
+  id: string,
+  edits: { features?: string[]; techStack?: Record<string, string> }
+): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}/content`, {
+    method: "PATCH",
+    auth: true,
+    body: { features: edits.features, tech_stack: edits.techStack },
+  });
+  return blueprintFromWire(data);
+}
+
 export interface BlueprintGeneration {
   status: "generating" | "completed" | "failed";
   completedAgents: string[];
