@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, WebSocket
+from fastapi import APIRouter, BackgroundTasks, Query, WebSocket
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.messages import (
@@ -19,6 +19,8 @@ from app.schemas.messages import (
 )
 from app.services import message_websocket as message_websocket_service
 from app.services import messages as message_service
+from app.services import notifications_service
+from app.schemas.notifications import NotificationResponse
 
 router = APIRouter()
 
@@ -60,7 +62,17 @@ async def start_conversation(
 ) -> StartConversationResponse:
     result = message_service.start_conversation(db, payload=payload, current_user=current_user)
     if result.message is not None:
+        notification = notifications_service.notify_message_event(
+            db,
+            message=result.message,
+            sender=current_user,
+        )
         await message_websocket_service.publish_message_created(result.message)
+        if notification is not None:
+            await message_websocket_service.publish_notification_created(
+                notification.user_id,
+                NotificationResponse.model_validate(notification),
+            )
     return result
 
 
@@ -103,14 +115,27 @@ def mark_conversation_read(
 @router.post("/requests/{conversation_id}/accept", response_model=RequestActionResponse)
 def accept_request(
     conversation_id: UUID,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ) -> RequestActionResponse:
-    return message_service.accept_request(
+    response = message_service.accept_request(
         db,
         connection_id=conversation_id,
         current_user=current_user,
     )
+    notification = notifications_service.notify_connection_accepted(
+        db,
+        requester_id=response.conversation.participant.id,
+        accepter=current_user,
+    )
+    if notification is not None:
+        background_tasks.add_task(
+            message_websocket_service.publish_notification_created,
+            notification.user_id,
+            NotificationResponse.model_validate(notification),
+        )
+    return response
 
 
 @router.post("/requests/{conversation_id}/decline", response_model=RequestActionResponse)

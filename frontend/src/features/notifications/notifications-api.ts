@@ -1,7 +1,46 @@
 import { apiFetch } from "@/lib/api";
 import type { AppNotif, NotifType } from "./types";
 
-interface NotifWire {
+export type NotificationPreferenceKey =
+  | "newMatch"
+  | "developerMatch"
+  | "applicationReceived"
+  | "applicationUpdate"
+  | "messageReceived"
+  | "connectionRequest"
+  | "connectionAccepted"
+  | "blueprintPublished"
+  | "weeklyDigest"
+  | "founderViewed"
+  | "investorView"
+  | "blueprintComment"
+  | "billingAlerts"
+  | "marketingEmails"
+  | "productUpdates"
+  | "sound";
+
+export type NotificationPreferences = Record<NotificationPreferenceKey, boolean>;
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  newMatch: true,
+  developerMatch: true,
+  applicationReceived: true,
+  applicationUpdate: true,
+  messageReceived: true,
+  connectionRequest: true,
+  connectionAccepted: true,
+  blueprintPublished: true,
+  weeklyDigest: true,
+  founderViewed: false,
+  investorView: true,
+  blueprintComment: false,
+  billingAlerts: true,
+  marketingEmails: false,
+  productUpdates: false,
+  sound: true,
+};
+
+export interface NotifWire {
   id: string;
   type: NotifType;
   title: string;
@@ -19,7 +58,20 @@ interface NotifListWire {
   items: NotifWire[];
 }
 
-function fromWire(n: NotifWire): AppNotif {
+interface NotificationPreferencesWire {
+  preferences: Partial<Record<NotificationPreferenceKey, boolean>>;
+}
+
+export function normalizeNotificationPreferences(
+  preferences: Partial<Record<NotificationPreferenceKey, boolean>> | null | undefined
+): NotificationPreferences {
+  return {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...(preferences ?? {}),
+  };
+}
+
+export function notificationFromWire(n: NotifWire): AppNotif {
   const created = new Date(n.created_at);
   const now = new Date();
   const diffMs = now.getTime() - created.getTime();
@@ -54,7 +106,25 @@ export async function fetchNotifications(
     `/notifications?limit=${limit}&offset=${offset}`,
     { auth: true }
   );
-  return data.items.map(fromWire);
+  return data.items.map(notificationFromWire);
+}
+
+export async function fetchNotificationPreferences(): Promise<NotificationPreferences> {
+  const data = await apiFetch<NotificationPreferencesWire>("/notifications/preferences", {
+    auth: true,
+  });
+  return normalizeNotificationPreferences(data.preferences);
+}
+
+export async function updateNotificationPreferences(
+  preferences: Partial<NotificationPreferences>
+): Promise<NotificationPreferences> {
+  const data = await apiFetch<NotificationPreferencesWire>("/notifications/preferences", {
+    method: "PATCH",
+    auth: true,
+    body: { preferences },
+  });
+  return normalizeNotificationPreferences(data.preferences);
 }
 
 export async function markNotificationRead(id: string): Promise<void> {

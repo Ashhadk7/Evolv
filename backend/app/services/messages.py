@@ -31,7 +31,9 @@ from app.schemas.messages import (
 
 def list_inbox(db: Session, current_user: User) -> InboxResponse:
     ensure_user_can_use_messaging(current_user)
-    conversations = messages_repository.list_conversations_for_user(db, current_user.id)
+    conversations = filter_connected_message_conversations(
+        db, messages_repository.list_conversations_for_user(db, current_user.id)
+    )
     requests = messages_repository.list_incoming_requests(db, current_user.id)
     pending = messages_repository.list_outgoing_pending(db, current_user.id)
     return InboxResponse(
@@ -79,7 +81,8 @@ def start_conversation(
                 recipient_id=recipient.id,
                 body=payload.initial_message,
             )
-            connection.updated_at = datetime.now(UTC)
+            if connection.status == ConnectionStatus.ACCEPTED:
+                connection.updated_at = datetime.now(UTC)
 
         db.flush()
         if message is not None:
@@ -122,7 +125,8 @@ def send_message(
             recipient_id=recipient.id,
             body=payload.body,
         )
-        connection.updated_at = datetime.now(UTC)
+        if connection.status == ConnectionStatus.ACCEPTED:
+            connection.updated_at = datetime.now(UTC)
         db.flush()
         db.refresh(message)
         db.commit()
@@ -138,7 +142,9 @@ def send_message(
 
 def list_conversations(db: Session, current_user: User) -> ConversationListResponse:
     ensure_user_can_use_messaging(current_user)
-    connections = messages_repository.list_conversations_for_user(db, current_user.id)
+    connections = filter_connected_message_conversations(
+        db, messages_repository.list_conversations_for_user(db, current_user.id)
+    )
     return ConversationListResponse(
         items=build_conversation_summaries(db, connections, current_user)
     )
@@ -320,26 +326,50 @@ def get_or_create_openable_connection(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This message request was declined.",
             )
-        if connection.status == ConnectionStatus.ACCEPTED:
-            ensure_network_connection_status(
-                db,
-                requester_id=connection.requester_id,
-                addressee_id=connection.addressee_id,
-                status=NetworkConnectionStatus.ACCEPTED,
-                note=None,
-            )
-            return connection
         network_connection = connections_repository.get_active_connection(
             db,
-            connection.requester_id,
-            connection.addressee_id,
+            current_user.id,
+            recipient.id,
         )
+        if connection.status == ConnectionStatus.ACCEPTED:
+            if (
+                network_connection is not None
+                and network_connection.status == NetworkConnectionStatus.ACCEPTED
+            ):
+                return connection
+            if (
+                network_connection is not None
+                and network_connection.status
+                in {NetworkConnectionStatus.IGNORED, NetworkConnectionStatus.REJECTED}
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This connection request was declined.",
+                )
+            if initial_message is None:
+                return connection
+            return reopen_as_pending_request(
+                db,
+                connection=connection,
+                requester_id=current_user.id,
+                addressee_id=recipient.id,
+                note=initial_message,
+            )
+
         if (
             network_connection is not None
             and network_connection.status == NetworkConnectionStatus.ACCEPTED
         ):
             messages_repository.accept_connection(connection)
             return connection
+        if network_connection is None and initial_message is not None:
+            return reopen_as_pending_request(
+                db,
+                connection=connection,
+                requester_id=current_user.id,
+                addressee_id=recipient.id,
+                note=initial_message,
+            )
         if initial_message is not None and connection.requester_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -404,6 +434,31 @@ def get_or_create_openable_connection(
     return connection
 
 
+def reopen_as_pending_request(
+    db: Session,
+    *,
+    connection: MessageConnection,
+    requester_id: UUID,
+    addressee_id: UUID,
+    note: str | None,
+) -> MessageConnection:
+    connection.requester_id = requester_id
+    connection.addressee_id = addressee_id
+    connection.status = ConnectionStatus.PENDING
+    connection.accepted_at = None
+    connection.declined_at = None
+    connection.updated_at = datetime.now(UTC)
+    ensure_network_connection_status(
+        db,
+        requester_id=requester_id,
+        addressee_id=addressee_id,
+        status=NetworkConnectionStatus.PENDING,
+        note=note,
+    )
+    db.flush()
+    return connection
+
+
 def ensure_can_send_on_connection(
     db: Session,
     connection: MessageConnection,
@@ -428,6 +483,7 @@ def ensure_can_send_on_connection(
         db,
         connection_id=connection.id,
         sender_id=sender_id,
+        since=connection.updated_at,
     )
     if sent_count > 0:
         raise HTTPException(
@@ -469,6 +525,31 @@ def ensure_network_connection_status(
 
     if status == NetworkConnectionStatus.ACCEPTED:
         network_connection.status = NetworkConnectionStatus.ACCEPTED
+    elif status == NetworkConnectionStatus.PENDING:
+        network_connection.status = NetworkConnectionStatus.PENDING
+
+
+def has_accepted_network_connection(db: Session, connection: MessageConnection) -> bool:
+    network_connection = connections_repository.get_active_connection(
+        db,
+        connection.requester_id,
+        connection.addressee_id,
+    )
+    return (
+        network_connection is not None
+        and network_connection.status == NetworkConnectionStatus.ACCEPTED
+    )
+
+
+def filter_connected_message_conversations(
+    db: Session,
+    connections: list[MessageConnection],
+) -> list[MessageConnection]:
+    return [
+        connection
+        for connection in connections
+        if has_accepted_network_connection(db, connection)
+    ]
 
 
 def network_note(message: str | None) -> str | None:

@@ -3,7 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import CurrentUser, DbSession
-from app.schemas.notifications import NotificationListResponse, NotificationResponse
+from app.schemas.notifications import (
+    NotificationListResponse,
+    NotificationPreferencesResponse,
+    NotificationPreferencesUpdate,
+    NotificationResponse,
+)
 from app.services import notifications_service
 
 router = APIRouter()
@@ -25,6 +30,29 @@ def list_notifications(
         offset=offset,
         items=[NotificationResponse.model_validate(n) for n in items],
     )
+
+
+@router.get("/preferences", response_model=NotificationPreferencesResponse)
+def get_notification_preferences(
+    current_user: CurrentUser,
+) -> NotificationPreferencesResponse:
+    return NotificationPreferencesResponse(
+        preferences=notifications_service.get_preferences(current_user)
+    )
+
+
+@router.patch("/preferences", response_model=NotificationPreferencesResponse)
+def update_notification_preferences(
+    payload: NotificationPreferencesUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> NotificationPreferencesResponse:
+    preferences = notifications_service.update_preferences(
+        db,
+        current_user,
+        payload.preferences,
+    )
+    return NotificationPreferencesResponse(preferences=preferences)
 
 
 @router.patch("/{notification_id}", response_model=NotificationResponse)

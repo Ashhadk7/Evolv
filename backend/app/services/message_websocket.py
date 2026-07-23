@@ -11,6 +11,8 @@ from app.db.session import SessionLocal
 from app.models.user import User
 from app.repositories import users as users_repository
 from app.schemas.messages import MessageResponse, SendMessageRequest
+from app.schemas.notifications import NotificationResponse
+from app.services import notifications_service
 from app.services import messages as message_service
 from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
 from app.services.supabase_auth import SupabaseAuthClient
@@ -118,7 +120,17 @@ async def handle_websocket_message(
         return
 
     serialized_message = message.model_dump(mode="json")
+    notification = notifications_service.notify_message_event(
+        db,
+        message=message,
+        sender=current_user,
+    )
     await publish_message_created(message)
+    if notification is not None:
+        await publish_notification_created(
+            notification.user_id,
+            NotificationResponse.model_validate(notification),
+        )
     await websocket.send_json({"event": "message.sent", "message": serialized_message})
 
 
@@ -128,6 +140,19 @@ async def publish_message_created(message: MessageResponse) -> None:
         {
             "event": "message.created",
             "message": message.model_dump(mode="json"),
+        },
+    )
+
+
+async def publish_notification_created(
+    user_id: UUID,
+    notification: NotificationResponse,
+) -> None:
+    await message_websocket_manager.send_to_user(
+        user_id,
+        {
+            "event": "notification.created",
+            "notification": notification.model_dump(mode="json"),
         },
     )
 

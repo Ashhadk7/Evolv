@@ -9,12 +9,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { create } from "zustand";
 import type { FounderProfile } from "./types";
-import { DEFAULT_BLUEPRINTS } from "@/features/workspace/components/workspace-tab";
 import type { Blueprint } from "@/features/blueprints/types";
 import type { SettingsSection } from "@/features/settings/components/founder-settings-tab";
 import type { InboxLaunchContact } from "@/features/messaging/types/inbox-types";
 import { normalizeFounderProfileForSave } from "@/features/founder-dashboard/profile-utils";
-import { ApiError } from "@/lib/api";
 import { loadFounderProfile, saveFounderProfile } from "@/features/profiles/profile-api";
 import { getSession } from "@/features/auth/lib/session";
 import { listBlueprints } from "@/features/blueprints/blueprints-api";
@@ -64,12 +62,12 @@ interface FounderDashboardState {
 
 export const useFounderDashboardStore = create<FounderDashboardState>((set) => ({
   profile: DEFAULT_FOUNDER_PROFILE,
-  blueprints: DEFAULT_BLUEPRINTS,
+  blueprints: [],
   dataLoaded: false,
   openBlueprintId: null,
   triggerForge: false,
   networkRequestCount: 0,
-  inboxActiveContactId: "sarah",
+  inboxActiveContactId: "",
   networkInboxContacts: [],
   settingsSection: "profile",
   settingsEditSignal: 0,
@@ -90,11 +88,16 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
         const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
         if (storedBlueprints) set({ blueprints: JSON.parse(storedBlueprints) as Blueprint[] });
       }
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        const user = getSession()?.user;
-        set({ profile: { ...DEFAULT_FOUNDER_PROFILE, firstName: user?.firstName ?? "", lastName: user?.lastName ?? "", email: user?.email ?? "" } });
-      }
+    } catch {
+      const user = getSession()?.user;
+      set({
+        profile: {
+          ...DEFAULT_FOUNDER_PROFILE,
+          firstName: user?.firstName ?? "",
+          lastName: user?.lastName ?? "",
+          email: user?.email ?? "",
+        },
+      });
     }
     set({ dataLoaded: true });
   },

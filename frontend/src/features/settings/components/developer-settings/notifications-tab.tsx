@@ -11,7 +11,19 @@ const NOTIFICATION_ITEMS: Record<keyof DeveloperNotificationPrefs, { label: stri
     },
     applicationUpdate: {
       label: "Application Status Update",
-      sub: "When founders view or update your application status",
+      sub: "When your application is accepted or moved forward",
+    },
+    blueprintPublished: {
+      label: "New Blueprint Published",
+      sub: "When a founder publishes a public blueprint in Discover",
+    },
+    connectionRequest: {
+      label: "New Connection Request",
+      sub: "When someone sends you a connection or message request",
+    },
+    connectionAccepted: {
+      label: "Connection Accepted",
+      sub: "When someone accepts your connection request",
     },
     messageReceived: {
       label: "New Message Received",
@@ -28,6 +40,10 @@ const NOTIFICATION_ITEMS: Record<keyof DeveloperNotificationPrefs, { label: stri
     marketingEmails: {
       label: "Marketing & Product Updates",
       sub: "News, tips, and announcements from Evolv",
+    },
+    sound: {
+      label: "Notification Sound",
+      sub: "Play a short sound when a new notification arrives",
     },
   };
 

@@ -9,7 +9,6 @@ import {
 } from "@/features/developer-dashboard/profile-utils";
 import type { DeveloperInboxLaunchContact } from "@/features/messaging/types/developer-inbox-types";
 import { DEFAULT_DEVELOPER_PROFILE } from "./profile";
-import { ApiError } from "@/lib/api";
 import { getSession } from "@/features/auth/lib/session";
 import { loadDeveloperProfile, saveDeveloperProfile } from "@/features/profiles/profile-api";
 import type { SettingsTab } from "@/features/settings/components/developer-settings/developer-settings-types";
@@ -37,13 +36,26 @@ interface DeveloperDashboardState {
   setPendingProtectedAction: (fn: (() => void) | null) => void;
 }
 
+const profileFromSession = (): DeveloperProfile => {
+  const user = getSession()?.user;
+  return {
+    ...DEFAULT_DEVELOPER_PROFILE,
+    firstName: user?.firstName ?? "",
+    lastName: user?.lastName ?? "",
+    email: user?.email ?? "",
+  };
+};
+
+const profileDisplayName = (profile: DeveloperProfile): string =>
+  [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+
 export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, get) => ({
   profile: DEFAULT_DEVELOPER_PROFILE,
   dataLoaded: false,
   userName: "",
   showOnboarding: false,
   profilePromptDismissed: false,
-  inboxActiveContactId: "asad",
+  inboxActiveContactId: "",
   networkInboxContacts: [],
   networkRequestCount: 0,
   settingsTab: "profile",
@@ -52,12 +64,10 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
   loadData: async () => {
     try {
       const profile = await loadDeveloperProfile();
-      set({ profile, userName: [profile.firstName, profile.lastName].filter(Boolean).join(" ") });
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        const user = getSession()?.user;
-        set({ profile: { ...DEFAULT_DEVELOPER_PROFILE, firstName: user?.firstName ?? "", lastName: user?.lastName ?? "", email: user?.email ?? "" }, userName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") });
-      }
+      set({ profile, userName: profileDisplayName(profile) });
+    } catch {
+      const profile = profileFromSession();
+      set({ profile, userName: profileDisplayName(profile) });
     }
     set({ dataLoaded: true });
   },

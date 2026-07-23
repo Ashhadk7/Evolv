@@ -39,15 +39,15 @@ class AccountProfileResponse(BaseModel):
     role: SignupRole
     first_name: str
     last_name: str
-    phone: str
+    phone: str | None = None
     phone_verified: bool
-    country: str
-    country_code: str
-    state_province: str
-    city: str
-    dob: date
-    gender: str | None
-    avatar_url: str | None
+    country: str | None = None
+    country_code: str | None = None
+    state_province: str | None = None
+    city: str | None = None
+    dob: date | None = None
+    gender: str | None = None
+    avatar_url: str | None = None
 
 
 class AccountProfileUpdate(BaseModel):

@@ -56,6 +56,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
           profile={{
             firstName: profile.firstName,
             lastName: profile.lastName,
+            email: profile.email,
             avatarUrl: profile.avatarUrl,
           }}
           initialNotifs={[]}

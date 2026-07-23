@@ -7,11 +7,18 @@
  * and applies this class alongside them for the shared skin.
  */
 .button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   background: linear-gradient(180deg, #244b42 0%, #18382f 55%, #102b24 100%) !important;
   color: #9ff0cc !important;
   border: 1px solid rgba(5, 31, 25, 0.88) !important;
-  border-radius: 14px !important;
+  border-radius: 10px !important;
   font-weight: 700 !important;
+  line-height: 1.1;
+  white-space: nowrap;
   box-shadow:
     inset 0 1px 0 rgba(171, 255, 220, 0.18),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18),
@@ -31,4 +38,14 @@
 
 .button:active {
   transform: translateY(1px);
+}
+
+.button:disabled {
+  background: #dce5df !important;
+  border-color: #c7d4cd !important;
+  color: #68766f !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  filter: none;
+  text-shadow: none;
 }

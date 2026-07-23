@@ -12,9 +12,11 @@ export const StatCard = ({ label, value, trend, trendUp }: StatCardProps) => {
     <div className={styles.statCard}>
       <div className={styles.top}>
         <span className={styles.label}>{label}</span>
-        <span className={`${styles.trend} ${trendUp ? "" : styles.down}`}>
-          <i className={`fas fa-arrow-${trendUp ? "up" : "down"}`}></i> {trend}
-        </span>
+        {trend && (
+          <span className={`${styles.trend} ${trendUp ? "" : styles.down}`}>
+            <i className={`fas fa-arrow-${trendUp ? "up" : "down"}`}></i> {trend}
+          </span>
+        )}
       </div>
       <div className={styles.value}>{value}</div>
       <svg className={styles.sparkline} viewBox="0 0 120 36" preserveAspectRatio="none">

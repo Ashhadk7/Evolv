@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.application import Application, SavedBlueprint
+from app.models.blueprint import Blueprint, BlueprintVisibility
 from app.models.user import User, UserRole
 from app.repositories import applications as applications_repository
 from app.repositories import blueprints as blueprints_repository
@@ -37,6 +38,13 @@ def _require_founder_profile(user: User) -> UUID:
     return user.founder_profile.user_id
 
 
+def _get_public_blueprint(db: Session, blueprint_id: UUID) -> Blueprint:
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    if blueprint is None or blueprint.visibility != BlueprintVisibility.PUBLIC:
+        raise BlueprintNotFoundError("Blueprint not found.")
+    return blueprint
+
+
 def list_applications(
     db: Session, current_user: User, *, limit: int, offset: int
 ) -> tuple[list[Application], int]:
@@ -61,20 +69,32 @@ def list_blueprint_applications(
     )
 
 
-def create_application(db: Session, current_user: User, blueprint_id: UUID) -> Application:
+def create_application(
+    db: Session, current_user: User, blueprint_id: UUID, *, role: str | None = None
+) -> Application:
     developer_id = _require_developer_profile(current_user)
 
-    if blueprints_repository.get_blueprint_by_id(db, blueprint_id) is None:
-        raise BlueprintNotFoundError("Blueprint not found.")
+    _get_public_blueprint(db, blueprint_id)
 
     existing = applications_repository.get_application_by_developer_and_blueprint(
         db, developer_id, blueprint_id
     )
     if existing is not None:
+        if existing.status == "withdrawn":
+            try:
+                application = applications_repository.reactivate_application(db, existing, role)
+                db.commit()
+                db.refresh(application)
+            except SQLAlchemyError as exc:
+                db.rollback()
+                raise ApplicationPersistenceError("Application could not be created.") from exc
+            return application
         raise AlreadyAppliedError("You have already applied to this blueprint.")
 
     try:
-        application = applications_repository.create_application(db, developer_id, blueprint_id)
+        application = applications_repository.create_application(
+            db, developer_id, blueprint_id, role
+        )
         db.commit()
         db.refresh(application)
     except IntegrityError as exc:
@@ -117,7 +137,7 @@ def delete_application(db: Session, application_id: UUID, current_user: User) ->
         raise ApplicationAccessDeniedError("You do not have access to this application.")
 
     try:
-        applications_repository.delete_application(db, application)
+        applications_repository.withdraw_application(db, application)
         db.commit()
     except SQLAlchemyError as exc:
         db.rollback()
@@ -127,8 +147,7 @@ def delete_application(db: Session, application_id: UUID, current_user: User) ->
 def save_blueprint(db: Session, current_user: User, blueprint_id: UUID) -> SavedBlueprint:
     developer_id = _require_developer_profile(current_user)
 
-    if blueprints_repository.get_blueprint_by_id(db, blueprint_id) is None:
-        raise BlueprintNotFoundError("Blueprint not found.")
+    _get_public_blueprint(db, blueprint_id)
 
     existing = applications_repository.get_saved_blueprint(db, developer_id, blueprint_id)
     if existing is not None:

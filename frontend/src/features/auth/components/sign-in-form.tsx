@@ -10,34 +10,12 @@ import { Logo } from "./logo";
 import { InputField } from "./input-field";
 import { getApiErrorMessage } from "@/lib/api";
 import { signIn } from "@/features/auth/lib/auth-api";
-import { saveSession, type SessionUser } from "@/features/auth/lib/session";
+import { saveSession } from "@/features/auth/lib/session";
 import { EMAIL_REGEX } from "@/features/auth/lib/validation";
 
 const BRAND_INK = "#0f1c18";
 const BRAND_MID = "#428475";
 const BRAND_MINT = "#89d7b7";
-
-function writeLegacyProfileKeys(user: SessionUser): void {
-  const base = { firstName: user.firstName, lastName: user.lastName, email: user.email };
-  if (user.role === "founder") {
-    localStorage.setItem(
-      "evolv_founder_profile",
-      JSON.stringify({
-        ...base,
-        bio: "",
-        domains: [],
-        linkedin: "",
-        dob: "",
-        gender: "",
-        phone: "",
-        education: "",
-        description: "",
-      })
-    );
-  } else {
-    localStorage.setItem("evolv_user", JSON.stringify(base));
-  }
-}
 
 export function SignInForm() {
   const router = useRouter();
@@ -65,7 +43,6 @@ export function SignInForm() {
     try {
       const session = await signIn(email, password);
       saveSession(session, rememberMe);
-      writeLegacyProfileKeys(session.user);
       router.push(session.user.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
     } catch (err) {
       setError(getApiErrorMessage(err, (e) => (e.status === 401 ? "Invalid email or password." : undefined)));

@@ -33,6 +33,14 @@ import { NotificationsTab } from "./notifications-tab";
 import { SecurityTab } from "./security-tab";
 import { PreferencesTab } from "./preferences-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
+import { getApiErrorMessage } from "@/lib/api";
+import { uploadAvatar } from "@/features/profiles/profile-api";
+import {
+  fetchNotificationPreferences,
+  updateNotificationPreferences,
+} from "@/features/notifications/notifications-api";
+
+const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "profile", label: "Profile", icon: "user" },
@@ -62,21 +70,48 @@ const Settings = () => {
   const [notifications, setNotifications] = useState(defaultNotifications);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [notificationsSaved, setNotificationsSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [paySaved, setPaySaved] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [payData, setPayData] = useState<PaymentData>({
     method: "bank",
-    accountName: "Sarah Mitchell",
-    accountNumber: "****4821",
-    bankName: "HBL Pakistan",
+    accountName: "",
+    accountNumber: "",
+    bankName: "",
     currency: "USD",
-    paypal: "sarah.mitchell@evolv.dev",
+    paypal: "",
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     queueMicrotask(() => setProfile(hydrateDeveloperProfile(dashboardProfile)));
   }, [dashboardProfile]);
+
+  useEffect(() => {
+    let active = true;
+    fetchNotificationPreferences()
+      .then((preferences) => {
+        if (!active) return;
+        setNotifications({
+          newMatch: preferences.newMatch,
+          blueprintPublished: preferences.blueprintPublished,
+          applicationUpdate: preferences.applicationUpdate,
+          connectionRequest: preferences.connectionRequest,
+          connectionAccepted: preferences.connectionAccepted,
+          messageReceived: preferences.messageReceived,
+          weeklyDigest: preferences.weeklyDigest,
+          founderViewed: preferences.founderViewed,
+          marketingEmails: preferences.marketingEmails,
+          sound: preferences.sound,
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const profileTags = Array.isArray(profile.tags) ? profile.tags : [];
   const skillEntries = getDeveloperSkillEntries(profile);
@@ -94,7 +129,7 @@ const Settings = () => {
       ];
   const displayName = getProfileName(profile);
   const displayInitials = getProfileInitials(profile);
-  const displayRole = profile.role || profile.jobTitle || "Developer";
+  const displayRole = profile.role || profile.jobTitle || "Role not added";
   const displayPhoto = profile.avatarUrl || profile.photo || "";
   const displayLocation = profile.location || "";
   const ratingValue = Number(profile.rating) || 0;
@@ -126,10 +161,14 @@ const Settings = () => {
 
   const handleSave = async () => {
     setSaved(false);
+    setSaveError("");
     try {
-      const parts = profile.name.trim().split(" ");
-      const firstName = parts[0] || "";
-      const lastName = parts.slice(1).join(" ") || "";
+      const parts = profile.name.trim().split(/\s+/).filter(Boolean);
+      const firstName = parts[0] || profile.firstName || dashboardProfile.firstName || "";
+      const lastName =
+        parts.length > 1
+          ? parts.slice(1).join(" ")
+          : profile.lastName || dashboardProfile.lastName || "";
       const normalized = normalizeDeveloperProfileForSave({
         ...profile,
         firstName,
@@ -143,8 +182,9 @@ const Settings = () => {
       setSaved(true);
       setEditing(false);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
+    } catch (error) {
       setSaved(false);
+      setSaveError(getApiErrorMessage(error));
     }
   };
 
@@ -153,16 +193,33 @@ const Settings = () => {
     setEditing(false);
   };
 
-  const handlePhotoUpload = (file: File | null | undefined) => {
-    if (!file || !file.type || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        const dataUrl = reader.result;
-        setProfile((p) => ({ ...p, avatarUrl: dataUrl, photo: dataUrl }));
-      }
-    };
-    reader.readAsDataURL(file);
+  const handlePhotoUpload = async (file: File | null | undefined) => {
+    if (!file) return;
+    setSaveError("");
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      setSaveError("Please choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_PHOTO_BYTES) {
+      setSaveError("Your profile photo must be smaller than 2 MB.");
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const url = await uploadAvatar(file);
+      setProfile((p) => ({ ...p, avatarUrl: url, photo: url }));
+      useDeveloperDashboardStore.setState((state) => ({
+        profile: { ...state.profile, avatarUrl: url, photo: url },
+      }));
+    } catch (error) {
+      setSaveError(getApiErrorMessage(error));
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
   };
 
   const handleChangeField = (
@@ -173,6 +230,30 @@ const Settings = () => {
   const handlePaySave = () => {
     setPaySaved(true);
     setTimeout(() => setPaySaved(false), 2000);
+  };
+
+  const handleNotificationSave = async () => {
+    setNotificationsSaved(false);
+    setSaveError("");
+    try {
+      const savedPreferences = await updateNotificationPreferences(notifications);
+      setNotifications({
+        newMatch: savedPreferences.newMatch,
+        blueprintPublished: savedPreferences.blueprintPublished,
+        applicationUpdate: savedPreferences.applicationUpdate,
+        connectionRequest: savedPreferences.connectionRequest,
+        connectionAccepted: savedPreferences.connectionAccepted,
+        messageReceived: savedPreferences.messageReceived,
+        weeklyDigest: savedPreferences.weeklyDigest,
+        founderViewed: savedPreferences.founderViewed,
+        marketingEmails: savedPreferences.marketingEmails,
+        sound: savedPreferences.sound,
+      });
+      setNotificationsSaved(true);
+      setTimeout(() => setNotificationsSaved(false), 2000);
+    } catch (error) {
+      setSaveError(getApiErrorMessage(error));
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -326,6 +407,7 @@ const Settings = () => {
             >
               <h2 className={styles.pageTitle}>{sectionCopy.title}</h2>
               <p className={styles.pageSubtitle}>{sectionCopy.subtitle}</p>
+              {saveError && <p className={styles.saveError}>{saveError}</p>}
 
               {activeTab === "profile" &&
                 (editing ? (
@@ -336,6 +418,7 @@ const Settings = () => {
                     displayPhoto={displayPhoto}
                     photoInputRef={photoInputRef}
                     onPhotoUpload={handlePhotoUpload}
+                    photoUploading={photoUploading}
                     onChangeField={handleChangeField}
                     profileTags={profileTags}
                     onToggleTag={toggleTag}
@@ -391,8 +474,8 @@ const Settings = () => {
                   onToggle={(key) =>
                     setNotifications({ ...notifications, [key]: !notifications[key] })
                   }
-                  saved={saved}
-                  onSave={() => void handleSave()}
+                  saved={notificationsSaved}
+                  onSave={() => void handleNotificationSave()}
                 />
               )}
 

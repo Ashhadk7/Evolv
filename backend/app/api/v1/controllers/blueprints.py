@@ -8,17 +8,23 @@ from app.schemas.applications import (
     BlueprintApplicationResponse,
     SavedBlueprintResponse,
 )
+from app.schemas.notifications import NotificationResponse
 from app.schemas.blueprints import (
     BlueprintCreate,
     BlueprintGenerateRequest,
     BlueprintListResponse,
     BlueprintResponse,
     BlueprintUpdate,
+    BlueprintRefineRequest,
+    BlueprintRefineResponse,
     ChatRequest,
     ChatResponse,
 )
+from app.models.blueprint import BlueprintVisibility
 from app.services import application_service, blueprint_service, chat_service
 from app.services.generation import blueprint_generation_service
+from app.services import message_websocket as message_websocket_service
+from app.services import notifications_service, refine_service
 
 router = APIRouter()
 
@@ -77,9 +83,32 @@ def get_blueprint(
 
 @router.patch("/{blueprint_id}", response_model=BlueprintResponse)
 def update_blueprint(
-    blueprint_id: UUID, payload: BlueprintUpdate, db: DbSession, current_user: CurrentFounder
+    blueprint_id: UUID,
+    payload: BlueprintUpdate,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
 ) -> BlueprintResponse:
+    current_blueprint = blueprint_service.get_blueprint(
+        db,
+        blueprint_id,
+        current_user,
+        require_ownership=True,
+    )
+    was_private = current_blueprint.visibility != BlueprintVisibility.PUBLIC
     blueprint = blueprint_service.update_visibility(db, blueprint_id, current_user, payload)
+    if was_private and blueprint.visibility == BlueprintVisibility.PUBLIC:
+        notifications = notifications_service.notify_blueprint_published(
+            db,
+            blueprint_id=blueprint.id,
+            founder=current_user,
+        )
+        for notification in notifications:
+            background_tasks.add_task(
+                message_websocket_service.publish_notification_created,
+                notification.user_id,
+                NotificationResponse.model_validate(notification),
+            )
     return BlueprintResponse.model_validate(blueprint)
 
 
@@ -137,4 +166,32 @@ def list_blueprint_applications(
         limit=limit,
         offset=offset,
         items=[BlueprintApplicationResponse.model_validate(a) for a in items],
+    )
+
+
+@router.post("/{blueprint_id}/refine", response_model=BlueprintRefineResponse)
+async def refine_blueprint(
+    blueprint_id: UUID,
+    payload: BlueprintRefineRequest,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
+) -> BlueprintRefineResponse:
+    """Re-run a single targeted agent with founder feedback and patch the result
+    back into the blueprint's current version. Returns immediately; the agent
+    runs in the background (same pattern as /generate)."""
+    # Verify the blueprint belongs to this founder before queuing the task
+    blueprint_service.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+    refine_service.mark_refinement_started(db, blueprint_id, payload.section)
+    background_tasks.add_task(
+        refine_service.refine_section,
+        blueprint_id,
+        payload.section,
+        payload.feedback,
+    )
+    return BlueprintRefineResponse(
+        blueprint_id=str(blueprint_id),
+        section=payload.section,
+        status="queued",
+        message=f"Refining {payload.section!r} in the background. Refresh the blueprint in ~15s to see the update.",
     )

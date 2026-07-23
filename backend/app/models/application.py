@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Uuid, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Uuid, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -19,6 +19,10 @@ class Application(Base):
     __table_args__ = (
         UniqueConstraint(
             "developer_id", "blueprint_id", name="applications_developer_id_blueprint_id_key"
+        ),
+        CheckConstraint(
+            "status in ('applied', 'withdrawn')",
+            name="ck_applications_status",
         ),
     )
 
@@ -40,11 +44,14 @@ class Application(Base):
         index=True,
     )
     connection_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    role: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="applied")
     applied_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     developer: Mapped[DeveloperProfile] = relationship(back_populates="applications")
     blueprint: Mapped[Blueprint] = relationship()
