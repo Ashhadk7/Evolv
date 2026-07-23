@@ -112,19 +112,17 @@ export function DevelopersPanel({
         ))}
       </div>
 
-      {tab !== "applied" && (
-        <select
-          value={selectedPhase}
-          onChange={(e) => onSelectPhase(Number(e.target.value))}
-          className="text-bp-ink bg-bp-tint w-full text-[11.5px] font-semibold p-[7px_9px] rounded-lg border border-bp-border outline-none font-inherit mb-2.25"
-        >
-          {phases.map((p, i) => (
-            <option key={p.name} value={i}>
-              Staffing for: {p.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <select
+        value={selectedPhase}
+        onChange={(e) => onSelectPhase(Number(e.target.value))}
+        className="text-bp-ink bg-bp-tint w-full text-[11.5px] font-semibold p-[7px_9px] rounded-lg border border-bp-border outline-none font-inherit mb-2.25"
+      >
+        {phases.map((p, i) => (
+          <option key={p.name} value={i}>
+            Staffing for: {p.name}
+          </option>
+        ))}
+      </select>
 
       <div className="relative mb-2.75">
         <MagnifyingGlass
@@ -173,6 +171,27 @@ export function DevelopersPanel({
 
               const jobTitle = a.developer?.job_title;
 
+              const devProfile: FounderContactProfile = {
+                id: a.developer_id,
+                name: devName,
+                role: a.role || jobTitle || "Developer",
+                company: "Freelance",
+                type: "Developer",
+                initials: initials,
+                avatarColor: "#059669",
+                skills: a.developer?.skills || [],
+                experience: "3+ years",
+                mutual: 0,
+                location: "Remote",
+                connected: Boolean(connections[a.developer_id]),
+                match: 85,
+                availability: a.developer?.availability ? "Available" : "Busy",
+                focus: a.role || jobTitle || "Full Stack",
+                bio: `${devName} applied for this role.`,
+                highlights: a.developer?.skills || [],
+                online: true,
+              };
+
               return (
                 <motion.div
                   key={a.id}
@@ -181,7 +200,7 @@ export function DevelopersPanel({
                     borderColor: "#c5ddd0",
                     boxShadow: "0 8px 22px rgba(15,28,24,0.06)",
                   }}
-                  className="bg-bp-card p-[12px_14px] rounded-lg border border-bp-border-soft flex flex-col gap-2"
+                  className="bg-bp-card p-[12px_14px] rounded-lg border border-bp-border-soft flex flex-col gap-2.5"
                 >
                   <div className="flex items-start gap-2.5">
                     <Avatar initials={initials} size={34} />
@@ -194,20 +213,37 @@ export function DevelopersPanel({
                           {jobTitle}
                         </div>
                       )}
-                      {a.role && (
-                        <div className="text-bp-muted text-[11px] truncate">
-                          Role: <span className="font-semibold text-bp-ink">{a.role}</span>
-                        </div>
-                      )}
+                      <div className="flex gap-1.5 mt-1">
+                        <Chip tone="mint">
+                          {a.role ? `Role: ${a.role}` : "General Application"}
+                        </Chip>
+                      </div>
                       <div className="text-bp-label text-[10.5px] mt-0.5">
-                        {new Date(a.applied_at).toLocaleDateString("en-US", {
+                        Applied {new Date(a.applied_at).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
                         })}
                       </div>
                     </div>
-                    <Chip tone="mint">Applied</Chip>
+                  </div>
+
+                  <div className="flex gap-1.5 mt-0.5">
+                    <button
+                      onClick={() => onHire(selectedPhase, devProfile)}
+                      className="bp-primary-btn flex-1 text-[11px] font-bold py-1.75"
+                    >
+                      Add to phase
+                    </button>
+                    {onMessage && (
+                      <button
+                        onClick={() => messageDev(devProfile)}
+                        title="Message"
+                        className="bg-bp-tint w-[30px] flex items-center justify-center rounded-md border border-bp-border-soft cursor-pointer shrink-0"
+                      >
+                        <ChatCircleDots size={14} className="text-bp-teal" />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               );
