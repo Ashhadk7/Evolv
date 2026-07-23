@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Layers3 } from "lucide-react";
-import { getAccessToken } from "@/features/auth/lib/session";
 
 import { Topbar } from "@/features/developer-dashboard/components/topbar";
 import { StatCard } from "@/features/developer-dashboard/components/stat-card";
@@ -49,7 +48,6 @@ const Discover = ({ onNavigate, profileComplete = true, onRequireProfile }: Deve
   const [busyRole, setBusyRole] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-<<<<<<< HEAD
   const loadBlueprints = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -63,49 +61,6 @@ const Discover = ({ onNavigate, profileComplete = true, onRequireProfile }: Deve
       setTotalPublicCount(response.total);
       setDetailStartup((current) =>
         current ? (response.items.find((item) => item.id === current.id) ?? current) : null
-=======
-  const handleApply = async (blueprintId?: string) => {
-    if (!profileComplete && onRequireProfile) {
-      onRequireProfile(() => onNavigate("applications"));
-      return;
-    }
-
-    try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      const token = getAccessToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const targetId = blueprintId || selectedStartup?.id || "9b178a4a-e642-4cb5-bfef-1c7370f4c807";
-
-      await fetch(`${API_BASE}/applications`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ blueprint_id: targetId }),
-      });
-    } catch (e) {
-      console.warn("Application creation error:", e);
-    }
-
-    onNavigate("applications");
-  };
-
-  const applyFilters = (filters: DiscoverFilters) => {
-    let filtered = [...opportunities];
-    if (filters.industry) filtered = filtered.filter((o) => o.industry === filters.industry);
-    if (filters.fundingStage) filtered = filtered.filter((o) => o.stage === filters.fundingStage);
-    if (filters.matchScore) {
-      const min = parseInt(filters.matchScore);
-      filtered = filtered.filter((o) => ((o as Opportunity).matchScore || 0) >= min);
-    }
-    if (filters.viability) {
-      const [min, max] = filters.viability.split("-").map(Number);
-      filtered = filtered.filter((o) => (o.viability || 0) >= min && (o.viability || 0) <= max);
-    }
-    if (filters.techStack) {
-      filtered = filtered.filter(
-        (o) => o.techStack && o.techStack.includes(filters.techStack as string)
->>>>>>> b4aad8d6e6e70854d4052a381503bc04e43ca974
       );
     } catch (err) {
       setError(getApiErrorMessage(err));
