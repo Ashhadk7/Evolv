@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Plus } from "@phosphor-icons/react";
-import type { AIState, Blueprint } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import type { AIState } from "@/features/founder-dashboard/data/dashboard-overview-data";
+// Use the real Blueprint type (superset) — the store passes real blueprints and
+// buildBlueprintContent needs the full shape, not the local dashboard mock.
+import type { Blueprint } from "@/features/blueprints/types";
 import {
   computeMetrics,
   computePipeline,
