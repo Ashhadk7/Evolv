@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     PINECONE_API_KEY: SecretStr | None = None
     PINECONE_INDEX_NAME: str | None = None
     PINECONE_REGION: str | None = None
+    DB_POOL_SIZE: int = Field(default=3, ge=1, le=15)
+    DB_MAX_OVERFLOW: int = Field(default=0, ge=0, le=15)
+    DB_POOL_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)
+    DB_POOL_RECYCLE_SECONDS: int = Field(default=1800, ge=30, le=86400)
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

@@ -4,6 +4,8 @@ from fastapi import APIRouter, BackgroundTasks, Query, status
 
 from app.api.deps import CurrentFounder, CurrentUser, DbSession
 from app.schemas.applications import (
+    BlueprintApplicationCountResponse,
+    BlueprintApplicationCountsResponse,
     BlueprintApplicationListResponse,
     BlueprintApplicationResponse,
     SavedBlueprintResponse,
@@ -69,6 +71,28 @@ async def generate_blueprint(
         blueprint_generation_service.run_generation, blueprint.id, payload
     )
     return BlueprintResponse.model_validate(blueprint)
+
+
+@router.get("/application-counts", response_model=BlueprintApplicationCountsResponse)
+def count_blueprint_applications(
+    db: DbSession,
+    current_user: CurrentFounder,
+) -> BlueprintApplicationCountsResponse:
+    counts, in_conversation_counts, total, in_conversation = (
+        application_service.count_blueprint_applications(db, current_user)
+    )
+    return BlueprintApplicationCountsResponse(
+        total=total,
+        in_conversation=in_conversation,
+        items=[
+            BlueprintApplicationCountResponse(
+                blueprint_id=blueprint_id,
+                count=count,
+                in_conversation=in_conversation_counts.get(blueprint_id, 0),
+            )
+            for blueprint_id, count in sorted(counts.items(), key=lambda item: str(item[0]))
+        ],
+    )
 
 
 @router.get("/{blueprint_id}", response_model=BlueprintResponse)

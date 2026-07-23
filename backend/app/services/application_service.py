@@ -69,6 +69,13 @@ def list_blueprint_applications(
     )
 
 
+def count_blueprint_applications(
+    db: Session, current_user: User
+) -> tuple[dict[UUID, int], dict[UUID, int], int, int]:
+    founder_id = _require_founder_profile(current_user)
+    return applications_repository.count_applications_for_founder_blueprints(db, founder_id)
+
+
 def create_application(
     db: Session, current_user: User, blueprint_id: UUID, *, role: str | None = None
 ) -> Application:
