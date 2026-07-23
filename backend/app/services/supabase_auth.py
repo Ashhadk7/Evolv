@@ -9,15 +9,30 @@ from httpx import HTTPError
 from supabase import Client, create_client
 
 try:
-    from gotrue.errors import AuthApiError
+    from gotrue.errors import AuthApiError, AuthRetryableError
 except ModuleNotFoundError:
-    from supabase_auth.errors import AuthApiError
+    from supabase_auth.errors import AuthApiError, AuthRetryableError
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
-from app.services.exceptions import AuthProviderError, InvalidCredentialsError, InvalidTokenError
+from app.services.exceptions import (
+    AuthProviderError,
+    AuthServiceUnavailableError,
+    InvalidCredentialsError,
+    InvalidTokenError,
+)
 
+# Errors that mean "Supabase looked at this and rejected it" (bad credentials,
+# malformed/expired/revoked token). These are conclusive — safe to treat as a
+# real auth failure.
 SUPABASE_CLIENT_ERRORS = (AuthApiError, HTTPError)
+
+# Errors that mean "we couldn't actually reach/finish talking to Supabase" —
+# network blips, timeouts, connections dropped mid-response (httpx's
+# RemoteProtocolError is a subclass of HTTPError), or Supabase's own
+# AuthRetryableError. These say nothing about whether the token/credentials
+# are valid and must NEVER be classified as an auth rejection.
+SUPABASE_TRANSIENT_ERRORS = (AuthRetryableError, HTTPError)
 logger = logging.getLogger(__name__)
 
 
@@ -122,10 +137,33 @@ class SupabaseAuthClient:
         )
 
     def get_user(self, access_token: str) -> SupabaseAuthenticatedUser:
-        try:
-            response = self._public_client.auth.get_user(access_token)
-        except SUPABASE_CLIENT_ERRORS as exc:
-            raise InvalidTokenError("Invalid or expired access token.") from exc
+        # A pooled keep-alive connection can be closed by Supabase's side at
+        # the exact moment we try to reuse it — this shows up as a dropped
+        # "Server disconnected" error and tends to cluster whenever several
+        # requests reuse the shared client's connection pool at once. It says
+        # nothing about the token's validity, so retry a couple of times
+        # before surfacing a 503 — most of these resolve immediately on retry.
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                response = self._public_client.auth.get_user(access_token)
+                break
+            except AuthApiError as exc:
+                # Supabase actively rejected this token — conclusive, don't retry.
+                raise InvalidTokenError("Invalid or expired access token.") from exc
+            except SUPABASE_TRANSIENT_ERRORS as exc:
+                last_exc = exc
+                logger.warning(
+                    "Transient Supabase Auth failure while validating an access token "
+                    "(attempt %d/3): %s",
+                    attempt + 1,
+                    exc,
+                )
+        else:
+            raise AuthServiceUnavailableError(
+                "Could not verify your session with the authentication service right now. "
+                "Please try again shortly."
+            ) from last_exc
 
         user = self._read_user(response)
         user_id = self._read_value(user, "id")

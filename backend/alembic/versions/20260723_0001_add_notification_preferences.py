@@ -1,7 +1,7 @@
 """Add user notification preferences.
 
 Revision ID: 20260723_0001
-Revises: 20260722_0001
+Revises: 20260722_0002
 Create Date: 2026-07-23 00:00:00.000000
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260723_0001"
-down_revision: str | Sequence[str] | None = "20260722_0001"
+down_revision: str | Sequence[str] | None = "20260722_0002"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

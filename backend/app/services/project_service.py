@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
@@ -131,6 +131,16 @@ def create_project(
             "You can only create a project from your own blueprint."
         )
 
+    # Fast path: a project for this blueprint already exists (e.g. a retried
+    # request, a duplicate "Start Project" click that reached the server
+    # twice, or a refresh racing an in-flight create). Creation is idempotent
+    # per blueprint — return what's already there instead of erroring or
+    # inserting a second row.
+    existing = projects_repository.get_project_by_blueprint_id(db, payload.blueprint_id)
+    if existing is not None:
+        _assert_project_owner(existing, founder_id)
+        return existing
+
     try:
         project = projects_repository.create_project(
             db,
@@ -141,6 +151,18 @@ def create_project(
         )
         db.commit()
         db.refresh(project)
+    except IntegrityError:
+        # Two concurrent requests both passed the check above before either
+        # committed. The DB's unique constraint on blueprint_id is the real
+        # guard here — on conflict, roll back and return the row the other
+        # request created instead of surfacing a duplicate-key error.
+        db.rollback()
+        winner = projects_repository.get_project_by_blueprint_id(db, payload.blueprint_id)
+        if winner is None:
+            # Shouldn't happen, but don't swallow a genuine persistence issue.
+            raise ProjectPersistenceError("Project could not be created.")
+        _assert_project_owner(winner, founder_id)
+        return winner
     except SQLAlchemyError as exc:
         db.rollback()
         raise ProjectPersistenceError("Project could not be created.") from exc

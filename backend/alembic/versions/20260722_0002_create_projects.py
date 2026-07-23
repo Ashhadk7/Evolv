@@ -1,7 +1,7 @@
 """Create projects table.
 
-Revision ID: 20260722_0001
-Revises: 20260716_0001
+Revision ID: 20260722_0002
+Revises: 20260722_0001
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "20260722_0001"
-down_revision: str | None = "20260716_0001"
+revision: str = "20260722_0002"
+down_revision: str | None = "20260722_0001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -11,7 +11,6 @@ import {
   computeMetrics,
   computePipeline,
   computeAIContent,
-  type AIContentShape,
 } from "@/features/founder-dashboard/data/dashboard-overview-data";
 import { AIBriefingBanner } from "./ai-briefing-banner";
 import { StatCard } from "./stat-card";
@@ -20,7 +19,7 @@ import { VentureHealthWidget } from "./venture-health-widget";
 import { VentureRoadmapWidget } from "./venture-roadmap-widget";
 import { DevPipelineWidget } from "./dev-pipeline-widget";
 import { listProjects, deserialiseMilestones } from "@/features/projects/projects-api";
-import { fetchApplicationCounts } from "@/features/projects/applications-api";
+import { fetchApplicationSummary } from "@/features/projects/applications-api";
 import { loadNetworkConnections } from "@/features/network/lib/network-api";
 import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
 import { buildBlueprintContent, initProjectState } from "@/features/blueprints/blueprint-content";
@@ -73,11 +72,14 @@ export function DashboardOverview({
   const loadLiveStats = useCallback(async () => {
     // Each data source is fetched and applied independently — a failure in
     // one (e.g. a transient network error) must never wipe out stats that
-    // were successfully computed from the others.
+    // were successfully computed from the others. Errors are logged (not
+    // swallowed) so a real failure is visible instead of masquerading as a
+    // legitimate zero.
     let projects: Awaited<ReturnType<typeof listProjects>> = [];
     try {
       projects = await listProjects();
-    } catch {
+    } catch (err) {
+      console.error("[dashboard] Failed to load projects for pipeline stats:", err);
       projects = [];
     }
 
@@ -87,23 +89,19 @@ export function DashboardOverview({
     setActiveProjectCount(activeProjects.length);
 
     try {
-      const appCountMap = await fetchApplicationCounts(blueprints.map((b) => b.id));
-      let total = 0;
-      for (const count of appCountMap.values()) total += count;
-      setTotalApplications(total);
-      // "In conversation" = applications that have a connection_id
-      // fetchApplicationCounts only returns counts; inConversation not available here — set 0
-      setApplicationsInConversation(0);
-    } catch {
-      // Non-fatal — leave application counts at their last known value.
+      const applicationSummary = await fetchApplicationSummary(blueprints.map((b) => b.id));
+      setTotalApplications(applicationSummary.total);
+      setApplicationsInConversation(applicationSummary.inConversation);
+    } catch (err) {
+      console.error("[dashboard] Failed to load application summary:", err);
     }
 
     try {
       const connectionState = await loadNetworkConnections();
       setConnectedCount(connectionState.connectedIds.length);
       setIncomingCount(connectionState.incomingIds.length);
-    } catch {
-      // Non-fatal — leave connection counts at their last known value.
+    } catch (err) {
+      console.error("[dashboard] Failed to load network connections:", err);
     }
 
     // Hired = distinct developers actually assigned to a phase across active projects.
@@ -117,8 +115,8 @@ export function DashboardOverview({
         }
       }
       setHiredCount(hiredIds.size);
-    } catch {
-      // Non-fatal
+    } catch (err) {
+      console.error("[dashboard] Failed to compute hired developer count:", err);
     }
 
     // Matched = distinct developers matched (via /matching) against each active
@@ -137,19 +135,25 @@ export function DashboardOverview({
           try {
             const devs = await fetchMatchingDevelopers(skillset);
             devs.forEach((d) => matchedIds.add(d.id));
-          } catch {
-            // Non-fatal — skip this project's matches
+          } catch (err) {
+            console.error(
+              `[dashboard] Failed to fetch matches for project ${project.id}:`,
+              err
+            );
           }
         })
       );
       setMatchedCount(matchedIds.size);
-    } catch {
-      // Non-fatal
+    } catch (err) {
+      console.error("[dashboard] Failed to compute matched developer count:", err);
     }
   }, [blueprints]);
 
   useEffect(() => {
-    loadLiveStats();
+    const timeoutId = window.setTimeout(() => {
+      void loadLiveStats();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [loadLiveStats]);
 
   const liveData = {

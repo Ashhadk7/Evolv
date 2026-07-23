@@ -63,11 +63,22 @@ export function deserialiseMilestones(
   if (!milestones || milestones.length === 0) return null;
   const entry = milestones.find((m) => m.key === "projectState");
   if (!entry || !entry.value) return null;
-  try {
-    return entry.value as unknown as ProjectState;
-  } catch {
+  const value = entry.value as Record<string, unknown>;
+  // The cast below trusts the stored shape completely. If the persisted
+  // document is ever missing phaseStates (or it isn't an array), a naive
+  // cast lets a malformed ProjectState flow straight into normalizeProjectState
+  // downstream, which calls `.map` on phaseStates and throws — that render
+  // crash is what would actually produce an empty-looking "no projects" page
+  // after refresh, not a clean zero state. Guard against it explicitly and
+  // fall back to null (caller falls back to a fresh initProjectState) instead.
+  if (!Array.isArray(value.phaseStates)) {
+    console.error(
+      "[projects] Stored milestones are missing a valid phaseStates array; ignoring persisted state.",
+      value
+    );
     return null;
   }
+  return value as unknown as ProjectState;
 }
 
 // ─── API functions ────────────────────────────────────────────────────────────

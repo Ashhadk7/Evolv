@@ -71,7 +71,16 @@ class InvalidCredentialsError(SignupError):
 
 
 class InvalidTokenError(SignupError):
-    pass
+    """The access token is genuinely invalid, expired, or revoked."""
+
+
+class AuthServiceUnavailableError(SignupError):
+    """Supabase Auth could not be reached (transient network/transport failure).
+
+    Distinct from InvalidTokenError: the token itself may still be valid, we
+    simply couldn't verify it this time. Must never be treated as a session
+    expiry by callers.
+    """
 
 
 class EmailOtpError(SignupError):

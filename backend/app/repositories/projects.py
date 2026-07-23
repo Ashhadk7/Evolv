@@ -13,6 +13,10 @@ def get_project_by_id(db: Session, project_id: UUID) -> Project | None:
     return db.get(Project, project_id)
 
 
+def get_project_by_blueprint_id(db: Session, blueprint_id: UUID) -> Project | None:
+    return db.scalar(select(Project).where(Project.blueprint_id == blueprint_id))
+
+
 def list_projects_for_founder(
     db: Session,
     founder_id: UUID,
