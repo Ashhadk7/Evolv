@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Eye, PencilSimple, Sparkle } from "@phosphor-icons/react";
+import { Eye, PencilSimple, Sparkle, Trash } from "@phosphor-icons/react";
 import { PROJECT_STATUS_STYLE } from "@/features/blueprints/blueprint-content";
 import type { Blueprint } from "@/features/blueprints/types";
 import { StatusBadge } from "./status-badge";
@@ -9,6 +9,7 @@ export function IdeaCard({
   bp,
   idx,
   onView,
+  onDelete,
 }: {
   bp: Blueprint;
   idx: number;
@@ -233,6 +234,27 @@ export function IdeaCard({
             }}
           >
             <PencilSimple size={13} /> Edit
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.04, background: "#fdeceb", borderColor: "#f3c3bf" }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+            onClick={onDelete}
+            aria-label="Delete idea"
+            title="Delete idea"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "8px 12px",
+              borderRadius: 10,
+              background: "#f6f2f1",
+              color: "#c0554c",
+              border: "1px solid #e6d3d1",
+              cursor: "pointer",
+            }}
+          >
+            <Trash size={14} />
           </motion.button>
         </div>
       </div>

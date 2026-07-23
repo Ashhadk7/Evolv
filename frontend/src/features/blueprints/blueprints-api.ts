@@ -78,6 +78,12 @@ export async function getBlueprint(id: string): Promise<Blueprint> {
   return blueprintFromWire(data);
 }
 
+// Deletes a blueprint on the backend (owner-only, 204 No Content). Cascade
+// removes its versions. Callers update local state after this resolves.
+export async function deleteBlueprint(id: string): Promise<void> {
+  await apiFetch<void>(`/blueprints/${id}`, { method: "DELETE", auth: true });
+}
+
 export interface BlueprintGeneration {
   status: "generating" | "completed" | "failed";
   completedAgents: string[];

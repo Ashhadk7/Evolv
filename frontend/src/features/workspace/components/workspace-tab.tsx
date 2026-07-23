@@ -6,8 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MagnifyingGlass, CaretDown } from "@phosphor-icons/react";
 import type { Blueprint } from "@/features/blueprints/types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
+import { deleteBlueprint } from "@/features/blueprints/blueprints-api";
+import { getApiErrorMessage } from "@/lib/api";
 import { IdeaCard } from "./idea-card";
 import { ForgeModal } from "./forge-modal";
+import { DeleteIdeaModal } from "./delete-idea-modal";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { BlueprintDetail } from "@/features/blueprints/components/blueprint-detail";
 import {
@@ -52,6 +55,8 @@ export function WorkspaceTab({
   const searchParams = useSearchParams();
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Blueprint | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Use searchParams to initialize without flashing
   const bpParam = searchParams.get("blueprint");
@@ -92,6 +97,24 @@ export function WorkspaceTab({
     setBlueprints(bps);
     onBlueprintsChange?.(bps);
   };
+
+  // Delete server-side first, then drop it from the list — so the card only
+  // disappears once the row is actually gone. On error the card stays put.
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteBlueprint(pendingDelete.id);
+      update(blueprints.filter((b) => b.id !== pendingDelete.id));
+      if (viewingId === pendingDelete.id) setViewingId(null);
+      setPendingDelete(null);
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const viewingBP = blueprints.find((b) => b.id === viewingId);
 
   const filtered = blueprints.filter((bp) => {
@@ -264,10 +287,7 @@ export function WorkspaceTab({
                         bp={bp}
                         idx={idx}
                         onView={() => setViewingId(bp.id)}
-                        onDelete={() => {
-                          if (window.confirm("Delete this idea?"))
-                            update(blueprints.filter((b) => b.id !== bp.id));
-                        }}
+                        onDelete={() => setPendingDelete(bp)}
                         canPublish={profileComplete}
                         onCompleteProfile={onCompleteProfile}
                         onTogglePublic={() =>
@@ -319,6 +339,17 @@ export function WorkspaceTab({
           }}
         />
       )}
+
+      <AnimatePresence>
+        {pendingDelete && (
+          <DeleteIdeaModal
+            ideaName={pendingDelete.name}
+            deleting={deleting}
+            onConfirm={confirmDelete}
+            onClose={() => !deleting && setPendingDelete(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
