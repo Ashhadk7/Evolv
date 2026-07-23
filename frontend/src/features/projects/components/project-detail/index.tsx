@@ -200,6 +200,7 @@ export function ProjectDetail({
 
           <div id="dev-panel">
             <DevelopersPanel
+              blueprintId={bp.id}
               phases={content.phases}
               selectedPhase={viewedPhaseIdx}
               onSelectPhase={setViewedPhaseIdx}

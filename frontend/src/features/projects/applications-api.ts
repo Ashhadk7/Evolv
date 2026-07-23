@@ -5,7 +5,10 @@ export interface ApplicationWire {
   developer_id: string;
   blueprint_id: string;
   connection_id: string | null;
+  role: string | null;
+  status: string;
   applied_at: string;
+  withdrawn_at: string | null;
 }
 
 interface ApplicationListWire {
