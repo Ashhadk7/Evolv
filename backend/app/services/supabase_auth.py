@@ -137,22 +137,33 @@ class SupabaseAuthClient:
         )
 
     def get_user(self, access_token: str) -> SupabaseAuthenticatedUser:
-        try:
-            response = self._public_client.auth.get_user(access_token)
-        except AuthApiError as exc:
-            # Supabase actively rejected this token — conclusive.
-            raise InvalidTokenError("Invalid or expired access token.") from exc
-        except SUPABASE_TRANSIENT_ERRORS as exc:
-            # Could not reach / finish talking to Supabase (network blip,
-            # timeout, dropped connection mid-response, etc). The token may
-            # still be perfectly valid — this is NOT an auth rejection.
-            logger.warning(
-                "Transient Supabase Auth failure while validating an access token: %s", exc
-            )
+        # A pooled keep-alive connection can be closed by Supabase's side at
+        # the exact moment we try to reuse it — this shows up as a dropped
+        # "Server disconnected" error and tends to cluster whenever several
+        # requests reuse the shared client's connection pool at once. It says
+        # nothing about the token's validity, so retry a couple of times
+        # before surfacing a 503 — most of these resolve immediately on retry.
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                response = self._public_client.auth.get_user(access_token)
+                break
+            except AuthApiError as exc:
+                # Supabase actively rejected this token — conclusive, don't retry.
+                raise InvalidTokenError("Invalid or expired access token.") from exc
+            except SUPABASE_TRANSIENT_ERRORS as exc:
+                last_exc = exc
+                logger.warning(
+                    "Transient Supabase Auth failure while validating an access token "
+                    "(attempt %d/3): %s",
+                    attempt + 1,
+                    exc,
+                )
+        else:
             raise AuthServiceUnavailableError(
                 "Could not verify your session with the authentication service right now. "
                 "Please try again shortly."
-            ) from exc
+            ) from last_exc
 
         user = self._read_user(response)
         user_id = self._read_value(user, "id")
