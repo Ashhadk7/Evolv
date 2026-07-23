@@ -66,9 +66,15 @@ export function DevelopersPanel({
   ).slice(0, 8);
 
   const filteredApplicants = query.trim()
-    ? applicants.filter((a) =>
-        a.role?.toLowerCase().includes(query.toLowerCase())
-      )
+    ? applicants.filter((a) => {
+        const q = query.toLowerCase();
+        const name = a.developer?.full_name || (a.developer?.first_name ? `${a.developer.first_name} ${a.developer.last_name ?? ""}` : "");
+        return (
+          name.toLowerCase().includes(q) ||
+          a.developer?.job_title?.toLowerCase().includes(q) ||
+          a.role?.toLowerCase().includes(q)
+        );
+      })
     : applicants;
 
   const messageDev = (d: FounderContactProfile) => {
@@ -150,39 +156,62 @@ export function DevelopersPanel({
               No applications received yet.
             </div>
           ) : (
-            filteredApplicants.map((a) => (
-              <motion.div
-                key={a.id}
-                whileHover={{
-                  y: -2,
-                  borderColor: "#c5ddd0",
-                  boxShadow: "0 8px 22px rgba(15,28,24,0.06)",
-                }}
-                className="bg-bp-card p-[12px_14px] rounded-lg border border-bp-border-soft flex flex-col gap-2"
-              >
-                <div className="flex items-start gap-2.5">
-                  <Avatar initials="D" size={34} />
-                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <div className="text-bp-ink text-[12px] font-bold truncate">
-                      Developer #{a.developer_id.slice(0, 8)}
-                    </div>
-                    {a.role && (
-                      <div className="text-bp-muted text-[11px] truncate">
-                        Applied for: <span className="font-semibold text-bp-ink">{a.role}</span>
+            filteredApplicants.map((a) => {
+              const devName =
+                a.developer?.full_name ||
+                (a.developer?.first_name
+                  ? `${a.developer.first_name} ${a.developer.last_name ?? ""}`.trim()
+                  : null) ||
+                `Developer #${a.developer_id.slice(0, 8)}`;
+
+              const initials = devName
+                .split(/\s+/)
+                .map((w) => w[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "D";
+
+              const jobTitle = a.developer?.job_title;
+
+              return (
+                <motion.div
+                  key={a.id}
+                  whileHover={{
+                    y: -2,
+                    borderColor: "#c5ddd0",
+                    boxShadow: "0 8px 22px rgba(15,28,24,0.06)",
+                  }}
+                  className="bg-bp-card p-[12px_14px] rounded-lg border border-bp-border-soft flex flex-col gap-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Avatar initials={initials} size={34} />
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <div className="text-bp-ink text-[13px] font-bold truncate">
+                        {devName}
                       </div>
-                    )}
-                    <div className="text-bp-label text-[10.5px] mt-0.5">
-                      {new Date(a.applied_at).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {jobTitle && (
+                        <div className="text-bp-muted text-[11.5px] truncate">
+                          {jobTitle}
+                        </div>
+                      )}
+                      {a.role && (
+                        <div className="text-bp-muted text-[11px] truncate">
+                          Role: <span className="font-semibold text-bp-ink">{a.role}</span>
+                        </div>
+                      )}
+                      <div className="text-bp-label text-[10.5px] mt-0.5">
+                        {new Date(a.applied_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
                     </div>
+                    <Chip tone="mint">Applied</Chip>
                   </div>
-                  <Chip tone="mint">Applied</Chip>
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })
           )
         ) : (
           <>

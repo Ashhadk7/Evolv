@@ -207,6 +207,20 @@ class DeveloperProfile(Base):
         back_populates="developer",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def first_name(self) -> str | None:
+        return self.user.first_name if self.user else None
+
+    @property
+    def last_name(self) -> str | None:
+        return self.user.last_name if self.user else None
+
+    @property
+    def full_name(self) -> str:
+        if self.user:
+            return f"{self.user.first_name} {self.user.last_name}".strip()
+        return "Developer"
     applications: Mapped[list[Application]] = relationship(
         back_populates="developer",
         cascade="all, delete-orphan",

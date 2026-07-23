@@ -1,5 +1,16 @@
 import { apiFetch } from "@/lib/api";
 
+export interface DeveloperSummaryWire {
+  user_id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
+  job_title?: string | null;
+  skills: string[];
+  rating_avg: number;
+  availability: boolean;
+}
+
 export interface ApplicationWire {
   id: string;
   developer_id: string;
@@ -9,6 +20,7 @@ export interface ApplicationWire {
   status: string;
   applied_at: string;
   withdrawn_at: string | null;
+  developer?: DeveloperSummaryWire | null;
 }
 
 interface ApplicationListWire {

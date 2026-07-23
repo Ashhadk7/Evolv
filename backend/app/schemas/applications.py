@@ -63,6 +63,9 @@ class DeveloperSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     user_id: UUID
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None
     job_title: str | None = None
     skills: list[str] = Field(default_factory=list)
     rating_avg: float = 0.0
