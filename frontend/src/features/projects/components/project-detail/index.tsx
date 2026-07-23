@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Blueprint } from "@/features/blueprints/types";
 import { NetworkProfileDetailScreen } from "@/features/network/components/network-profile-detail";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
@@ -52,6 +52,9 @@ export function ProjectDetail({
     newDeliverable,
     setNewDeliverable,
     connections,
+    networkDevs,
+    matchedDevs,
+    matchLoading,
     toast,
     today,
     startPhase,
@@ -88,6 +91,31 @@ export function ProjectDetail({
 
   const openIssues = bp.project.issues.filter((i) => i.status !== "Resolved").length;
   const phaseNameFor = (phaseIndex: number) => content.phases[phaseIndex]?.name;
+
+  // ── Full-page developer profile view ──────────────────────────────────────
+  // Clicking a developer card navigates here instead of embedding the profile
+  // inside the matching panel. Pressing Back just clears selectedDeveloper —
+  // ProjectDetail (and its useProjectDetail state: selected phase, matched
+  // developers, connections, etc.) stays mounted throughout, so the founder
+  // returns to exactly where they left off.
+  if (selectedDeveloper) {
+    return (
+      <motion.div
+        className="blueprint-scroll mx-auto flex h-full max-w-[1240px] flex-col gap-3.5 overflow-y-auto pr-1"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <NetworkProfileDetailScreen
+          profile={selectedDeveloper}
+          onBack={() => setSelectedDeveloper(null)}
+          connected={Boolean(connections[selectedDeveloper.id])}
+          onToggleConnection={() => handleToggleDeveloperConnection(selectedDeveloper)}
+          onMessage={onMessage}
+        />
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -152,25 +180,6 @@ export function ProjectDetail({
         />
 
         <div className="flex flex-col gap-4">
-          <AnimatePresence mode="wait">
-            {selectedDeveloper && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, y: -10 }}
-                animate={{ opacity: 1, height: "auto", y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -10 }}
-                className="overflow-hidden"
-              >
-                <NetworkProfileDetailScreen
-                  profile={selectedDeveloper}
-                  onBack={() => setSelectedDeveloper(null)}
-                  connected={Boolean(connections[selectedDeveloper.id])}
-                  onToggleConnection={() => handleToggleDeveloperConnection(selectedDeveloper)}
-                  onMessage={onMessage}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <ProjectHealthCard health={health} completion={completion} verdictTone={verdictTone} />
 
           <IssuesPanel
@@ -195,6 +204,9 @@ export function ProjectDetail({
               selectedPhase={viewedPhaseIdx}
               onSelectPhase={setViewedPhaseIdx}
               connections={connections}
+              matchedDevs={matchedDevs}
+              networkDevs={networkDevs}
+              matchLoading={matchLoading}
               onConnect={requestConnect}
               onHire={(phaseIdx, dev) => modals.setAddDevTarget({ phaseIdx, dev })}
               onMessage={onMessage}

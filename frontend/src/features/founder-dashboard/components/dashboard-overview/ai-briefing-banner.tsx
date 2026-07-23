@@ -3,11 +3,20 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AI_CONTENT,
+  type AIContentShape,
   type AIState,
 } from "@/features/founder-dashboard/data/dashboard-overview-data";
 
-export function AIBriefingBanner({ state, onCta }: { state: AIState; onCta: () => void }) {
-  const c = AI_CONTENT[state];
+export function AIBriefingBanner({
+  state,
+  onCta,
+  overrideContent,
+}: {
+  state: AIState;
+  onCta: () => void;
+  overrideContent?: AIContentShape;
+}) {
+  const c = overrideContent ?? AI_CONTENT[state];
   return (
     <AnimatePresence mode="wait">
       <motion.div

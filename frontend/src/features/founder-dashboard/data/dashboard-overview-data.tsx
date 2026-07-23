@@ -2,6 +2,7 @@
 // features/founder-dashboard/components/dashboard-overview.tsx.
 "use client";
 
+import type { ReactNode } from "react";
 import { Lightning, Users, Warning } from "@phosphor-icons/react";
 
 export interface Blueprint {
@@ -257,3 +258,174 @@ export function getRoadmapForBlueprint(bp: Blueprint): RoadmapMilestone[] {
     },
   ];
 }
+
+// ─── Live-data compute functions ──────────────────────────────────────────────
+// These replace the static METRICS / PIPELINE / AI_CONTENT tags at runtime.
+// Every value is derived from actual backend data; no mock numbers.
+
+export interface DashboardLiveData {
+  blueprints: Blueprint[];
+  /** Total active (non-completed) project count from the backend. */
+  activeProjectCount: number;
+  /** Total application count across all blueprints. */
+  totalApplications: number;
+  /** Number of applications that have a connection_id (in conversation). */
+  applicationsInConversation: number;
+}
+
+/**
+ * Build live Metric cards from real data.
+ * Trend arrays are seeded with the one real data point — the UI sparkline
+ * will grow as real historical data is added later.
+ */
+export function computeMetrics(data: DashboardLiveData): Metric[] {
+  const { blueprints, activeProjectCount, totalApplications } = data;
+
+  const avgViability = blueprints.length
+    ? Math.round(blueprints.reduce((s, b) => s + b.viability, 0) / blueprints.length)
+    : 0;
+
+  return [
+    {
+      id: "viability",
+      label: "Avg Viability",
+      value: String(avgViability),
+      delta: `${avgViability}%`,
+      deltaUp: avgViability >= 50,
+      sub: `${blueprints.length} blueprint${blueprints.length !== 1 ? "s" : ""}`,
+      trend: [avgViability],
+      accentColor: "#428475",
+    },
+    {
+      id: "matches",
+      label: "Developer Matches",
+      value: String(totalApplications),
+      delta: `+${totalApplications}`,
+      deltaUp: totalApplications > 0,
+      sub: `${totalApplications} total`,
+      trend: [totalApplications],
+      accentColor: "#89d7b7",
+    },
+    {
+      id: "refinements",
+      label: "Total Impressions",
+      value: String(blueprints.reduce((s, b) => s + (b.views ?? 0), 0) || blueprints.length),
+      delta: `${blueprints.filter((b) => b.isPublic).length} public`,
+      deltaUp: blueprints.some((b) => b.isPublic),
+      sub: "Blueprint views",
+      trend: [blueprints.length],
+      accentColor: "#7C5CBF",
+    },
+    {
+      id: "milestones",
+      label: "Ongoing Projects",
+      value: String(activeProjectCount),
+      delta: activeProjectCount > 0 ? "Active" : "None",
+      deltaUp: activeProjectCount > 0,
+      sub: `${activeProjectCount} in motion`,
+      trend: [activeProjectCount],
+      accentColor: "#C4973A",
+    },
+  ];
+}
+
+/**
+ * Build a live pipeline widget row array from real project data:
+ * - matchedCount: developers matched (via /matching) against active projects' current phase skillsets
+ * - incomingCount: pending incoming connection requests
+ * - connectedCount: accepted connections
+ * - hiredCount: distinct developers actually assigned to a phase across active projects (from milestones)
+ */
+export function computePipeline(data: {
+  matchedCount: number;
+  incomingCount: number;
+  connectedCount: number;
+  hiredCount: number;
+}): PipelineRow[] {
+  const { matchedCount, incomingCount, connectedCount, hiredCount } = data;
+  return [
+    {
+      label: "Total Matches",
+      value: matchedCount,
+      badge: matchedCount > 0 ? "Active" : undefined,
+      badgeColor: "#89d7b7",
+    },
+    {
+      label: "Pending Requests",
+      value: incomingCount,
+      badge: incomingCount > 0 ? "New" : undefined,
+      badgeColor: "#C4973A",
+    },
+    { label: "Connected", value: connectedCount },
+    {
+      label: "Hired (Projects)",
+      value: hiredCount,
+      badge: hiredCount > 0 ? "Hired" : undefined,
+      badgeColor: "#428475",
+    },
+  ];
+}
+
+export interface AIContentShape {
+  icon: ReactNode;
+  heading: string;
+  body: string;
+  tags: string[];
+  cta: string;
+  accentBg: string;
+  accentText: string;
+  accentLabel: string;
+}
+
+/** Build AI briefing content with real numbers in the tags. */
+export function computeAIContent(
+  state: AIState,
+  data: { totalApplications: number; topViability: number; activeProjectCount: number }
+): AIContentShape {
+  const base = AI_CONTENT[state];
+  if (state === "recruiting") {
+    const count = data.totalApplications;
+    return {
+      icon: base.icon,
+      heading: base.heading,
+      cta: base.cta,
+      accentBg: base.accentBg,
+      accentText: base.accentText,
+      accentLabel: base.accentLabel,
+      body: `${count} developer${count !== 1 ? "s" : ""} have applied across your blueprints. Review their profiles to find your best match.`,
+      tags: [
+        `${count} applicant${count !== 1 ? "s" : ""}`,
+        `${data.activeProjectCount} active project${data.activeProjectCount !== 1 ? "s" : ""}`,
+      ],
+    };
+  }
+  if (state === "high_viability") {
+    const count = data.totalApplications;
+    return {
+      icon: base.icon,
+      heading: base.heading,
+      cta: base.cta,
+      accentBg: base.accentBg,
+      accentText: base.accentText,
+      accentLabel: base.accentLabel,
+      body: `Your top blueprint scores ${data.topViability} — developer demand is growing. Publishing it increases your match rate.`,
+      tags: [
+        `Top viability: ${data.topViability}`,
+        `${count} applicant${count !== 1 ? "s" : ""}`,
+      ],
+    };
+  }
+  // profile_incomplete — keep existing static content
+  return {
+    icon: base.icon,
+    heading: base.heading,
+    body: base.body,
+    tags: [...base.tags],
+    cta: base.cta,
+    accentBg: base.accentBg,
+    accentText: base.accentText,
+    accentLabel: base.accentLabel,
+  };
+}
+
+

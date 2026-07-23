@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.user import DeveloperProfile
@@ -28,6 +29,16 @@ PROFILE_EXCLUDE = {"educations", "certifications"}
 
 def get_developer_profile_by_user_id(db: Session, user_id: UUID) -> DeveloperProfile | None:
     return db.get(DeveloperProfile, user_id)
+
+
+def get_existing_developer_ids(db: Session, user_ids: set[UUID]) -> set[UUID]:
+    """Return the subset of user_ids that have a real developer profile."""
+    if not user_ids:
+        return set()
+    rows = db.execute(
+        select(DeveloperProfile.user_id).where(DeveloperProfile.user_id.in_(user_ids))
+    ).all()
+    return {row[0] for row in rows}
 
 
 def create_developer_profile(

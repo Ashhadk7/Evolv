@@ -1,16 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Plus } from "@phosphor-icons/react";
 import type { AIState, Blueprint } from "@/features/founder-dashboard/data/dashboard-overview-data";
-import { METRICS } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import {
+  computeMetrics,
+  computePipeline,
+  computeAIContent,
+  type AIContentShape,
+} from "@/features/founder-dashboard/data/dashboard-overview-data";
 import { AIBriefingBanner } from "./ai-briefing-banner";
 import { StatCard } from "./stat-card";
 import { IdeaCard } from "./idea-card";
 import { VentureHealthWidget } from "./venture-health-widget";
 import { VentureRoadmapWidget } from "./venture-roadmap-widget";
 import { DevPipelineWidget } from "./dev-pipeline-widget";
+import { listProjects, deserialiseMilestones } from "@/features/projects/projects-api";
+import { fetchApplicationCounts } from "@/features/projects/applications-api";
+import { loadNetworkConnections } from "@/features/network/lib/network-api";
+import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
+import { buildBlueprintContent, initProjectState } from "@/features/blueprints/blueprint-content";
+import { currentPhaseIndex } from "@/features/projects/lib/project-helpers";
 
 interface Props {
   profile: { firstName: string };
@@ -31,6 +42,15 @@ export function DashboardOverview({
   const [greeting, setGreeting] = useState("");
   const [cursorVisible, setCursorVisible] = useState(true);
 
+  // Live backend stats
+  const [activeProjectCount, setActiveProjectCount] = useState(0);
+  const [totalApplications, setTotalApplications] = useState(0);
+  const [applicationsInConversation, setApplicationsInConversation] = useState(0);
+  const [matchedCount, setMatchedCount] = useState(0);
+  const [incomingCount, setIncomingCount] = useState(0);
+  const [connectedCount, setConnectedCount] = useState(0);
+  const [hiredCount, setHiredCount] = useState(0);
+
   useEffect(() => {
     const h = new Date().getHours();
     const timeGreeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -47,12 +67,110 @@ export function DashboardOverview({
     return () => clearInterval(iv);
   }, [name]);
 
+  const loadLiveStats = useCallback(async () => {
+    // Each data source is fetched and applied independently — a failure in
+    // one (e.g. a transient network error) must never wipe out stats that
+    // were successfully computed from the others.
+    let projects: Awaited<ReturnType<typeof listProjects>> = [];
+    try {
+      projects = await listProjects();
+    } catch {
+      projects = [];
+    }
+
+    const activeProjects = projects.filter(
+      (p) => p.status === "active" || p.status === "paused"
+    );
+    setActiveProjectCount(activeProjects.length);
+
+    try {
+      const appCountMap = await fetchApplicationCounts(blueprints.map((b) => b.id));
+      let total = 0;
+      for (const count of appCountMap.values()) total += count;
+      setTotalApplications(total);
+      // "In conversation" = applications that have a connection_id
+      // fetchApplicationCounts only returns counts; inConversation not available here — set 0
+      setApplicationsInConversation(0);
+    } catch {
+      // Non-fatal — leave application counts at their last known value.
+    }
+
+    try {
+      const connectionState = await loadNetworkConnections();
+      setConnectedCount(connectionState.connectedIds.length);
+      setIncomingCount(connectionState.incomingIds.length);
+    } catch {
+      // Non-fatal — leave connection counts at their last known value.
+    }
+
+    // Hired = distinct developers actually assigned to a phase across active projects.
+    try {
+      const hiredIds = new Set<string>();
+      for (const project of activeProjects) {
+        const state = deserialiseMilestones(project.milestones);
+        if (!state) continue;
+        for (const ps of state.phaseStates) {
+          if (ps.assignment?.developerId) hiredIds.add(ps.assignment.developerId);
+        }
+      }
+      setHiredCount(hiredIds.size);
+    } catch {
+      // Non-fatal
+    }
+
+    // Matched = distinct developers matched (via /matching) against each active
+    // project's current phase skillset, sourced from the project's own blueprint.
+    try {
+      const matchedIds = new Set<string>();
+      await Promise.all(
+        activeProjects.map(async (project) => {
+          const blueprint = blueprints.find((b) => b.id === project.blueprint_id);
+          if (!blueprint) return;
+          const content = buildBlueprintContent(blueprint);
+          const state = deserialiseMilestones(project.milestones) ?? initProjectState(content);
+          const phaseIdx = currentPhaseIndex(state);
+          const skillset = content.phases[phaseIdx]?.skillset ?? [];
+          if (!skillset.length) return;
+          try {
+            const devs = await fetchMatchingDevelopers(skillset);
+            devs.forEach((d) => matchedIds.add(d.id));
+          } catch {
+            // Non-fatal — skip this project's matches
+          }
+        })
+      );
+      setMatchedCount(matchedIds.size);
+    } catch {
+      // Non-fatal
+    }
+  }, [blueprints]);
+
+  useEffect(() => {
+    loadLiveStats();
+  }, [loadLiveStats]);
+
+  const liveData = {
+    blueprints,
+    activeProjectCount,
+    totalApplications,
+    applicationsInConversation,
+  };
+
+  const metrics = computeMetrics(liveData);
+  const pipeline = computePipeline({ matchedCount, incomingCount, connectedCount, hiredCount });
+
   const topBlueprint = [...blueprints].sort((a, b) => b.viability - a.viability)[0];
   const aiState: AIState = !profileComplete
     ? "profile_incomplete"
     : topBlueprint?.viability >= 70
       ? "high_viability"
       : "recruiting";
+
+  const aiContent = computeAIContent(aiState, {
+    totalApplications,
+    topViability: topBlueprint?.viability ?? 0,
+    activeProjectCount,
+  });
 
   return (
     <div
@@ -110,8 +228,11 @@ export function DashboardOverview({
             <strong style={{ color: "#1a2e26" }}>
               {blueprints.length} venture{blueprints.length !== 1 ? "s" : ""}
             </strong>{" "}
-            in motion, <strong style={{ color: "#1a2e26" }}>12 developer matches</strong>, and
-            active building momentum.
+            in motion,{" "}
+            <strong style={{ color: "#1a2e26" }}>
+              {totalApplications} developer {totalApplications !== 1 ? "matches" : "match"}
+            </strong>
+            , and active building momentum.
           </p>
         </div>
 
@@ -146,6 +267,7 @@ export function DashboardOverview({
           onCta={() => {
             if (aiState !== "profile_incomplete") onNavigateWorkspace(false);
           }}
+          overrideContent={aiContent}
         />
       </div>
 
@@ -153,7 +275,7 @@ export function DashboardOverview({
       <div
         style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, flexShrink: 0 }}
       >
-        {METRICS.map((m, i) => (
+        {metrics.map((m, i) => (
           <StatCard key={m.id} metric={m} index={i} />
         ))}
       </div>
@@ -215,7 +337,7 @@ export function DashboardOverview({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, flexShrink: 0 }}>
         <VentureHealthWidget blueprints={blueprints} />
         <VentureRoadmapWidget blueprints={blueprints} />
-        <DevPipelineWidget />
+        <DevPipelineWidget pipeline={pipeline} />
       </div>
 
       {/* Footer note */}

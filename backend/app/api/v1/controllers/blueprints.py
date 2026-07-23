@@ -3,7 +3,11 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Query, status
 
 from app.api.deps import CurrentFounder, CurrentUser, DbSession
-from app.schemas.applications import SavedBlueprintResponse
+from app.schemas.applications import (
+    BlueprintApplicationListResponse,
+    BlueprintApplicationResponse,
+    SavedBlueprintResponse,
+)
 from app.schemas.blueprints import (
     BlueprintCreate,
     BlueprintGenerateRequest,
@@ -113,3 +117,24 @@ def blueprint_chat(
     reply = chat_service.get_chat_response(messages_list, blueprint_data)
     return ChatResponse(response=reply)
 
+
+@router.get(
+    "/{blueprint_id}/applications",
+    response_model=BlueprintApplicationListResponse,
+)
+def list_blueprint_applications(
+    blueprint_id: UUID,
+    db: DbSession,
+    current_user: CurrentFounder,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> BlueprintApplicationListResponse:
+    items, total = application_service.list_blueprint_applications(
+        db, blueprint_id, current_user, limit=limit, offset=offset
+    )
+    return BlueprintApplicationListResponse(
+        total=total,
+        limit=limit,
+        offset=offset,
+        items=[BlueprintApplicationResponse.model_validate(a) for a in items],
+    )

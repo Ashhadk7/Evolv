@@ -6,16 +6,17 @@ import { ArrowRight, ChatCircleDots, MagnifyingGlass, UsersThree } from "@phosph
 import { Avatar } from "@/components/shared/avatar";
 import { Chip } from "@/components/shared/chip";
 import type { BlueprintContent } from "@/features/blueprints/blueprint-content";
-import { FOUNDER_NETWORK_PROFILES } from "@/features/network/data";
 import type { FounderContactProfile } from "@/features/network/types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
-import { devsForSkillset } from "@/features/projects/lib/project-helpers";
 
 export function DevelopersPanel({
   phases,
   selectedPhase,
   onSelectPhase,
   connections,
+  matchedDevs,
+  networkDevs,
+  matchLoading,
   onConnect,
   onHire,
   onMessage,
@@ -26,6 +27,9 @@ export function DevelopersPanel({
   selectedPhase: number;
   onSelectPhase: (i: number) => void;
   connections: Record<string, boolean>;
+  matchedDevs: FounderContactProfile[];
+  networkDevs: FounderContactProfile[];
+  matchLoading?: boolean;
   onConnect: (dev: FounderContactProfile) => void;
   onHire: (phaseIdx: number, dev: FounderContactProfile) => void;
   onMessage?: (contact: FounderNetworkMessageTarget) => void;
@@ -34,10 +38,8 @@ export function DevelopersPanel({
 }) {
   const [tab, setTab] = useState<"matched" | "connected">("matched");
   const [query, setQuery] = useState("");
-  const phase = phases[selectedPhase];
-  const allDevs = FOUNDER_NETWORK_PROFILES.filter((p) => p.type === "Developer");
-  const matched = phase ? devsForSkillset(phase.skillset) : allDevs;
-  const connectedDevs = allDevs.filter((d) => connections[d.id]);
+  const matched = matchedDevs;
+  const connectedDevs = networkDevs.filter((d) => connections[d.id]);
   const base = tab === "matched" ? matched : connectedDevs;
   const filtered = (
     query.trim()
@@ -111,7 +113,7 @@ export function DevelopersPanel({
       <div className="blueprint-scroll flex flex-col gap-2.5 max-h-[380px] overflow-y-auto pr-1 pb-1">
         {filtered.map((d) => {
           const connected = Boolean(connections[d.id]);
-          const avail = d.availability === "Ready to start";
+          const avail = d.availability === "Available";
           return (
             <motion.div
               key={d.id}
@@ -192,9 +194,11 @@ export function DevelopersPanel({
         })}
         {filtered.length === 0 && (
           <div className="text-bp-muted bg-bp-tint text-[11.5px] text-center py-4 border border-dashed border-bp-border-soft rounded-lg">
-            {tab === "connected"
-              ? "No connections yet — connect with a matched developer first."
-              : "No matches — try a different search."}
+            {tab === "matched" && matchLoading
+              ? "Finding matches…"
+              : tab === "connected"
+                ? "No connections yet — connect with a matched developer first."
+                : "No matches — try a different search."}
           </div>
         )}
       </div>

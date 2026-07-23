@@ -281,7 +281,7 @@ export function NetworkProfileDetailScreen({
                     {connectionLabel ?? (connected ? "Connected" : "Connect")}
                   </motion.button>
                 )}
-                {onMessage && (
+                {onMessage && connected && (
                   <button
                     onClick={() => onMessage(profile)}
                     className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-semibold transition-colors hover:bg-[#e8ede9] text-[#0f1c18] border border-[#dde5e0]"

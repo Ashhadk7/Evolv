@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, SavedBlueprint
 
@@ -44,6 +44,34 @@ def list_applications_for_developer(
     )
     applications = list(db.scalars(statement).all())
     return applications, total
+
+
+def list_applications_for_blueprint(
+    db: Session,
+    blueprint_id: UUID,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[Application], int]:
+    """Return all applications for a specific blueprint (founder-facing)."""
+    count_statement = (
+        select(func.count())
+        .select_from(Application)
+        .where(Application.blueprint_id == blueprint_id)
+    )
+    total = db.scalar(count_statement) or 0
+
+    statement = (
+        select(Application)
+        .options(selectinload(Application.developer))
+        .where(Application.blueprint_id == blueprint_id)
+        .order_by(Application.applied_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    applications = list(db.scalars(statement).all())
+    return applications, total
+
 
 
 def create_application(db: Session, developer_id: UUID, blueprint_id: UUID) -> Application:

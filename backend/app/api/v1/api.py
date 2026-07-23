@@ -16,6 +16,7 @@ from app.api.v1.controllers import (
     messages,
     notifications,
     phone,
+    projects,
     skills,
     tags,
     users,
@@ -44,3 +45,4 @@ api_router.include_router(connections.router, prefix="/connections", tags=["conn
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(matching.router, tags=["matching"])
+api_router.include_router(projects.router, prefix="/projects", tags=["projects"])

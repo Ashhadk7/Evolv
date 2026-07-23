@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Blueprint } from "@/features/blueprints/types";
 import {
   buildBlueprintContent,
@@ -13,9 +13,11 @@ import {
   type ProjectState,
 } from "@/features/blueprints/blueprint-content";
 import {
-  readNetworkConnections,
-  writeNetworkConnection,
-} from "@/features/projects/lib/network-connections";
+  connectionApi,
+  loadNetworkConnections,
+  loadNetworkPeople,
+} from "@/features/network/lib/network-api";
+import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
 import type { FounderContactProfile } from "@/features/network/types";
 import type { ProjectBlueprint } from "./project-helpers";
 
@@ -40,10 +42,55 @@ export function useProjectDetail({
   const [budgetEditPhase, setBudgetEditPhase] = useState<number | null>(null);
   const [deadlineEditPhase, setDeadlineEditPhase] = useState<number | null>(null);
   const [newDeliverable, setNewDeliverable] = useState("");
-  const [connections, setConnections] = useState<Record<string, boolean>>(() =>
-    readNetworkConnections()
-  );
+  const [connections, setConnections] = useState<Record<string, boolean>>({});
+  const [connectionIdByUser, setConnectionIdByUser] = useState<Record<string, string>>({});
+  const [networkDevs, setNetworkDevs] = useState<FounderContactProfile[]>([]);
+  const [matchedDevs, setMatchedDevs] = useState<FounderContactProfile[]>([]);
+  const [matchLoading, setMatchLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadNetworkConnections()
+      .then((state) => {
+        if (cancelled) return;
+        setConnections(Object.fromEntries(state.connectedIds.map((id) => [id, true])));
+        setConnectionIdByUser(state.connectionIdByUser);
+      })
+      .catch(() => {
+        if (!cancelled) setConnections({});
+      });
+    loadNetworkPeople()
+      .then((people) => {
+        if (!cancelled) setNetworkDevs(people.filter((p) => p.type === "Developer"));
+      })
+      .catch(() => {
+        if (!cancelled) setNetworkDevs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const phase = content.phases[viewedPhaseIdx];
+    if (!phase) return;
+    let cancelled = false;
+    setMatchLoading(true);
+    fetchMatchingDevelopers(phase.skillset)
+      .then((devs) => {
+        if (!cancelled) setMatchedDevs(devs);
+      })
+      .catch(() => {
+        if (!cancelled) setMatchedDevs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMatchLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewedPhaseIdx, content.phases]);
 
   const showToast = (m: string) => {
     setToast(m);
@@ -185,15 +232,35 @@ export function useProjectDetail({
   };
 
   const requestConnect = (dev: FounderContactProfile) => {
-    writeNetworkConnection(dev.id);
-    setConnections((c) => ({ ...c, [dev.id]: true }));
-    showToast(`Connected with ${dev.name}`);
+    connectionApi
+      .send(dev.id)
+      .then((record) => {
+        setConnections((c) => ({ ...c, [dev.id]: true }));
+        setConnectionIdByUser((m) => ({ ...m, [dev.id]: record.id }));
+        showToast(`Connected with ${dev.name}`);
+      })
+      .catch(() => {
+        showToast(`Could not connect with ${dev.name}`);
+      });
   };
 
   const handleToggleDeveloperConnection = (dev: FounderContactProfile) => {
     const next = !connections[dev.id];
-    if (next) writeNetworkConnection(dev.id);
-    setConnections((c) => ({ ...c, [dev.id]: next }));
+    if (next) {
+      connectionApi
+        .send(dev.id)
+        .then((record) => {
+          setConnections((c) => ({ ...c, [dev.id]: true }));
+          setConnectionIdByUser((m) => ({ ...m, [dev.id]: record.id }));
+        })
+        .catch(() => {});
+    } else {
+      const connectionId = connectionIdByUser[dev.id];
+      setConnections((c) => ({ ...c, [dev.id]: false }));
+      if (connectionId) {
+        connectionApi.remove(connectionId).catch(() => {});
+      }
+    }
   };
 
   const updatePhaseBudget = (phaseIdx: number, amount: number) => {
@@ -309,6 +376,9 @@ export function useProjectDetail({
     newDeliverable,
     setNewDeliverable,
     connections,
+    networkDevs,
+    matchedDevs,
+    matchLoading,
     toast,
     today,
     startPhase,

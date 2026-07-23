@@ -15,8 +15,10 @@ from app.services.exceptions import (
     ApplicationAccessDeniedError,
     ApplicationNotFoundError,
     ApplicationPersistenceError,
+    BlueprintAccessDeniedError,
     BlueprintNotFoundError,
     DeveloperProfileRequiredError,
+    FounderProfileRequiredError,
     SavedBlueprintNotFoundError,
 )
 
@@ -27,12 +29,35 @@ def _require_developer_profile(user: User) -> UUID:
     return user.developer_profile.user_id
 
 
+def _require_founder_profile(user: User) -> UUID:
+    if user.role != UserRole.FOUNDER or user.founder_profile is None:
+        raise FounderProfileRequiredError(
+            "Only founders with a founder profile can view applications."
+        )
+    return user.founder_profile.user_id
+
+
 def list_applications(
     db: Session, current_user: User, *, limit: int, offset: int
 ) -> tuple[list[Application], int]:
     developer_id = _require_developer_profile(current_user)
     return applications_repository.list_applications_for_developer(
         db, developer_id, limit=limit, offset=offset
+    )
+
+
+def list_blueprint_applications(
+    db: Session, blueprint_id: UUID, current_user: User, *, limit: int, offset: int
+) -> tuple[list[Application], int]:
+    """Founder-facing: list all applicants to a blueprint the founder owns."""
+    founder_id = _require_founder_profile(current_user)
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    if blueprint is None:
+        raise BlueprintNotFoundError()
+    if blueprint.founder_id != founder_id:
+        raise BlueprintAccessDeniedError()
+    return applications_repository.list_applications_for_blueprint(
+        db, blueprint_id, limit=limit, offset=offset
     )
 
 

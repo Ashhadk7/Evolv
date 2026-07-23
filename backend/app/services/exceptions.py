@@ -31,6 +31,10 @@ class ErrorCode(StrEnum):
     NOTIFICATION_NOT_FOUND = "notification_not_found"
     NOTIFICATION_ACCESS_DENIED = "notification_access_denied"
     NOTIFICATION_PERSISTENCE = "notification_persistence"
+    PROJECT_NOT_FOUND = "project_not_found"
+    PROJECT_ACCESS_DENIED = "project_access_denied"
+    PROJECT_PERSISTENCE = "project_persistence"
+    PROJECT_INVALID_ASSIGNMENT = "project_invalid_assignment"
 
 
 class AppError(Exception):
@@ -227,3 +231,31 @@ class ConflictError(Exception):
 
 class ForbiddenError(Exception):
     """The current user is not allowed to perform this action."""
+
+
+class ProjectNotFoundError(AppError):
+    """The requested project does not exist."""
+
+    def __init__(self, message: str = "Project not found.") -> None:
+        super().__init__(ErrorCode.PROJECT_NOT_FOUND, message)
+
+
+class ProjectAccessDeniedError(AppError):
+    """The current user is not allowed to view or modify this project."""
+
+    def __init__(self, message: str = "You do not have access to this project.") -> None:
+        super().__init__(ErrorCode.PROJECT_ACCESS_DENIED, message)
+
+
+class ProjectPersistenceError(AppError):
+    """Project data could not be saved due to a database error."""
+
+    def __init__(self, message: str = "Project data could not be saved.") -> None:
+        super().__init__(ErrorCode.PROJECT_PERSISTENCE, message)
+
+
+class ProjectInvalidAssignmentError(AppError):
+    """A milestones payload references a developerId that is not a real developer."""
+
+    def __init__(self, message: str = "One or more assigned developers do not exist.") -> None:
+        super().__init__(ErrorCode.PROJECT_INVALID_ASSIGNMENT, message)
