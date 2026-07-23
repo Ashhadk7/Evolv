@@ -270,8 +270,40 @@ export function DeveloperBlueprintDetail({
                 </div>
               );
             })
+          ) : blueprint.applied && onWithdraw ? (
+            <div className={styles.roleCard}>
+              <div className={styles.roleCardMain}>
+                <div>
+                  <strong>General Application</strong>
+                  <span>Applied — no specific role required</span>
+                </div>
+                <button
+                  className={styles.roleWithdrawBtn}
+                  onClick={() => onWithdraw(blueprint)}
+                  disabled={withdrawing}
+                >
+                  <XCircle size={14} />
+                  {withdrawing ? "Withdrawing" : "Withdraw"}
+                </button>
+              </div>
+            </div>
           ) : (
-            <p>Founder has not published role needs yet.</p>
+            <div className={styles.roleCard}>
+              <div className={styles.roleCardMain}>
+                <div>
+                  <strong>General Application</strong>
+                  <span>No specific role defined by founder</span>
+                </div>
+                <button
+                  className={`${devPrimaryBtn.button} ${styles.roleApplyBtn}`}
+                  onClick={() => onApply(blueprint, "")}
+                  disabled={blueprint.applied || applying}
+                >
+                  {blueprint.applied ? <CheckCircle2 size={14} /> : applying ? <CheckCircle2 size={14} /> : <Send size={14} />}
+                  {blueprint.applied ? "Applied" : applying ? "Applying…" : "Apply"}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </section>

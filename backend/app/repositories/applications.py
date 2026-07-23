@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, SavedBlueprint
 from app.models.blueprint import Blueprint
-from app.models.user import FounderProfile
+from app.models.user import DeveloperProfile, FounderProfile
 
 
 def get_application_by_id(db: Session, application_id: UUID) -> Application | None:
@@ -89,7 +89,7 @@ def list_applications_for_blueprint(
 
     statement = (
         select(Application)
-        .options(selectinload(Application.developer))
+        .options(selectinload(Application.developer).selectinload(DeveloperProfile.user))
         .where(Application.blueprint_id == blueprint_id)
         .order_by(Application.applied_at.desc())
         .offset(offset)
