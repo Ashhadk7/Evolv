@@ -99,6 +99,33 @@ def list_applications_for_blueprint(
     return applications, total
 
 
+def count_applications_for_founder_blueprints(
+    db: Session, founder_id: UUID
+) -> tuple[dict[UUID, int], dict[UUID, int], int, int]:
+    statement = (
+        select(
+            Application.blueprint_id,
+            func.count(Application.id),
+            func.count(Application.connection_id),
+        )
+        .join(Blueprint, Blueprint.id == Application.blueprint_id)
+        .where(Blueprint.founder_id == founder_id)
+        .group_by(Application.blueprint_id)
+    )
+    counts: dict[UUID, int] = {}
+    in_conversation_counts: dict[UUID, int] = {}
+    for blueprint_id, count, in_conversation in db.execute(statement).all():
+        counts[blueprint_id] = int(count or 0)
+        in_conversation_counts[blueprint_id] = int(in_conversation or 0)
+
+    return (
+        counts,
+        in_conversation_counts,
+        sum(counts.values()),
+        sum(in_conversation_counts.values()),
+    )
+
+
 def list_application_blueprint_applied_at_by_developer(
     db: Session, developer_id: UUID
 ) -> dict[UUID, datetime]:

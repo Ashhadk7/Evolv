@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Plus } from "@phosphor-icons/react";
-import type { AIState, Blueprint } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import type { AIState } from "@/features/founder-dashboard/data/dashboard-overview-data";
+// Use the real Blueprint type (superset) — the store passes real blueprints and
+// buildBlueprintContent needs the full shape, not the local dashboard mock.
+import type { Blueprint } from "@/features/blueprints/types";
 import {
   computeMetrics,
   computePipeline,
   computeAIContent,
-  type AIContentShape,
 } from "@/features/founder-dashboard/data/dashboard-overview-data";
 import { AIBriefingBanner } from "./ai-briefing-banner";
 import { StatCard } from "./stat-card";
@@ -17,7 +19,7 @@ import { VentureHealthWidget } from "./venture-health-widget";
 import { VentureRoadmapWidget } from "./venture-roadmap-widget";
 import { DevPipelineWidget } from "./dev-pipeline-widget";
 import { listProjects, deserialiseMilestones } from "@/features/projects/projects-api";
-import { fetchApplicationCounts } from "@/features/projects/applications-api";
+import { fetchApplicationSummary } from "@/features/projects/applications-api";
 import { loadNetworkConnections } from "@/features/network/lib/network-api";
 import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
 import { buildBlueprintContent, initProjectState } from "@/features/blueprints/blueprint-content";
@@ -87,15 +89,11 @@ export function DashboardOverview({
     setActiveProjectCount(activeProjects.length);
 
     try {
-      const appCountMap = await fetchApplicationCounts(blueprints.map((b) => b.id));
-      let total = 0;
-      for (const count of appCountMap.values()) total += count;
-      setTotalApplications(total);
-      // "In conversation" = applications that have a connection_id
-      // fetchApplicationCounts only returns counts; inConversation not available here — set 0
-      setApplicationsInConversation(0);
+      const applicationSummary = await fetchApplicationSummary(blueprints.map((b) => b.id));
+      setTotalApplications(applicationSummary.total);
+      setApplicationsInConversation(applicationSummary.inConversation);
     } catch (err) {
-      console.error("[dashboard] Failed to load application counts:", err);
+      console.error("[dashboard] Failed to load application summary:", err);
     }
 
     try {
@@ -152,7 +150,10 @@ export function DashboardOverview({
   }, [blueprints]);
 
   useEffect(() => {
-    loadLiveStats();
+    const timeoutId = window.setTimeout(() => {
+      void loadLiveStats();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [loadLiveStats]);
 
   const liveData = {

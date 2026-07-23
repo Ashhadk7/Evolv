@@ -16,11 +16,14 @@ export function AreaSparkline({
   const W = 100;
   const H = height;
   const PAD = 4;
-  const max = Math.max(...data);
-  const min = Math.min(...data);
+  const values = data.filter((value) => Number.isFinite(value));
+  const points = values.length > 0 ? values : [0];
+  const max = Math.max(...points);
+  const min = Math.min(...points);
   const range = max - min || 1;
-  const pts = data.map((v, i) => ({
-    x: (i / (data.length - 1)) * W,
+  const xSteps = Math.max(points.length - 1, 1);
+  const pts = points.map((v, i) => ({
+    x: points.length === 1 ? W / 2 : (i / xSteps) * W,
     y: H - PAD - ((v - min) / range) * (H - PAD * 2),
   }));
   const lineParts = pts.map((p, i) => {

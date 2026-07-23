@@ -89,3 +89,19 @@ class BlueprintApplicationListResponse(BaseModel):
     limit: int
     offset: int
     items: list[BlueprintApplicationResponse]
+
+
+class BlueprintApplicationCountResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blueprint_id: UUID
+    count: int
+    in_conversation: int
+
+
+class BlueprintApplicationCountsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    total: int
+    in_conversation: int
+    items: list[BlueprintApplicationCountResponse]
