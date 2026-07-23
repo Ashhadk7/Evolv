@@ -11,6 +11,7 @@ import {
   retryBlueprint,
   pollGeneration,
   getBlueprint,
+  blueprintGeneration,
 } from "@/features/blueprints/blueprints-api";
 import { getApiErrorMessage } from "@/lib/api";
 import { IdeaCard } from "./idea-card";
@@ -168,9 +169,12 @@ export function WorkspaceTab({
 
   const pubCount = blueprints.filter((b) => b.status === "PUBLISHED").length;
   const totalInvViews = blueprints.reduce((s, b) => s + b.investorViews, 0);
+  // Only completed blueprints have a real viability score; failed/generating
+  // ones sit at 0 and would drag the average down, so exclude them.
+  const scored = blueprints.filter((b) => blueprintGeneration(b).status === "completed");
   const avgViability =
-    blueprints.length > 0
-      ? Math.round(blueprints.reduce((s, b) => s + b.viability, 0) / blueprints.length)
+    scored.length > 0
+      ? Math.round(scored.reduce((s, b) => s + b.viability, 0) / scored.length)
       : 0;
 
   const headerStats = [
