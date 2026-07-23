@@ -16,7 +16,12 @@ from app.models.blueprint import Blueprint, BlueprintVersion, VersionState
 from app.models.user import User
 from app.repositories import blueprints as blueprints_repository
 from app.schemas.blueprints import BlueprintGenerateRequest, BlueprintVersionCreate, LevelRating
-from app.services.exceptions import BlueprintPersistenceError, FounderProfileRequiredError
+from app.services.exceptions import (
+    BlueprintAgentInputError,
+    BlueprintPersistenceError,
+    BlueprintVersionNotFoundError,
+    FounderProfileRequiredError,
+)
 from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.agents.competitor import CompetitorOutput, run_competitor
 from app.services.generation.agents.market import MarketOutput, run_market
@@ -98,6 +103,33 @@ def start_generation(
     if saved is None:
         raise BlueprintPersistenceError("Blueprint could not be created.")
     return saved
+
+
+def retry_generation(db: Session, blueprint_id: UUID) -> tuple[Blueprint, BlueprintGenerateRequest]:
+    """Reset an existing blueprint to `generating` and return its original inputs.
+
+    Reuses the same row (no duplicate) by rebuilding the request from the intake
+    saved in content_json. The caller must have already authorized ownership;
+    it then schedules run_generation with the returned payload.
+    """
+    version = _current_version(db, blueprint_id)
+    if version is None:
+        raise BlueprintVersionNotFoundError()
+
+    intake = (version.content_json or {}).get("intake")
+    if not intake:
+        raise BlueprintAgentInputError("Cannot retry: the original inputs are missing.")
+    try:
+        payload = BlueprintGenerateRequest(**intake)
+    except ValidationError as exc:
+        raise BlueprintAgentInputError("Cannot retry: the saved inputs are invalid.") from exc
+
+    _update_generation(db, blueprint_id, status="generating", completedAgents=[], error=None)
+
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    if blueprint is None:
+        raise BlueprintPersistenceError("Blueprint could not be reloaded.")
+    return blueprint, payload
 
 
 async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) -> None:

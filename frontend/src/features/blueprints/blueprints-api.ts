@@ -84,6 +84,16 @@ export async function deleteBlueprint(id: string): Promise<void> {
   await apiFetch<void>(`/blueprints/${id}`, { method: "DELETE", auth: true });
 }
 
+// Re-runs generation on the SAME blueprint from its saved inputs (no duplicate).
+// Returns the blueprint reset to `generating`; poll with pollGeneration after.
+export async function retryBlueprint(id: string): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}/retry`, {
+    method: "POST",
+    auth: true,
+  });
+  return blueprintFromWire(data);
+}
+
 export interface BlueprintGeneration {
   status: "generating" | "completed" | "failed";
   completedAgents: string[];
@@ -100,6 +110,29 @@ export function blueprintGeneration(bp: Blueprint): BlueprintGeneration {
     completedAgents: stringArray(gen?.completedAgents),
     error: typeof gen?.error === "string" ? gen.error : undefined,
   };
+}
+
+// Polls a `generating` blueprint until the backend reports done/failed.
+// 12-min window: rate-limited free-tier AI can legitimately pause ~90s between
+// agents, so a short poll would report false failures. `onProgress` reports the
+// completed-agent list for a live progress bar. Throws on failure/timeout.
+export async function pollGeneration(
+  id: string,
+  onProgress?: (completedAgents: string[]) => void
+): Promise<Blueprint> {
+  for (let attempt = 0; attempt < 360; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const blueprint = await getBlueprint(id);
+    const generation = blueprintGeneration(blueprint);
+    onProgress?.(generation.completedAgents);
+    if (generation.status === "completed") return blueprint;
+    if (generation.status === "failed") {
+      throw new Error(generation.error ?? "Blueprint generation failed. Please try again.");
+    }
+  }
+  throw new Error(
+    "Generation is still running in the background. Check your workspace in a few minutes — do not start a second generation."
+  );
 }
 
 export function blueprintFromWire(data: BlueprintWire): Blueprint {

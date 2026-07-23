@@ -73,6 +73,23 @@ async def generate_blueprint(
     return BlueprintResponse.model_validate(blueprint)
 
 
+@router.post("/{blueprint_id}/retry", response_model=BlueprintResponse)
+async def retry_blueprint(
+    blueprint_id: UUID,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
+) -> BlueprintResponse:
+    # Re-run generation on the SAME blueprint (no duplicate). Authorize ownership
+    # first, then reset to `generating` and schedule the pipeline in the background.
+    blueprint_service.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+    blueprint, payload = blueprint_generation_service.retry_generation(db, blueprint_id)
+    background_tasks.add_task(
+        blueprint_generation_service.run_generation, blueprint.id, payload
+    )
+    return BlueprintResponse.model_validate(blueprint)
+
+
 @router.get("/application-counts", response_model=BlueprintApplicationCountsResponse)
 def count_blueprint_applications(
     db: DbSession,

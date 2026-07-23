@@ -6,7 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MagnifyingGlass, CaretDown } from "@phosphor-icons/react";
 import type { Blueprint } from "@/features/blueprints/types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
-import { deleteBlueprint } from "@/features/blueprints/blueprints-api";
+import {
+  deleteBlueprint,
+  retryBlueprint,
+  pollGeneration,
+  getBlueprint,
+} from "@/features/blueprints/blueprints-api";
 import { getApiErrorMessage } from "@/lib/api";
 import { IdeaCard } from "./idea-card";
 import { ForgeModal } from "./forge-modal";
@@ -123,6 +128,23 @@ export function WorkspaceTab({
       alert(getApiErrorMessage(err));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Retry re-runs generation on the same row. Update just this card via the
+  // functional form so the long poll can't clobber concurrent changes to other
+  // cards; the store cache reconciles on the next load from the backend.
+  const handleRetry = async (bp: Blueprint) => {
+    const applyOne = (updated: Blueprint) =>
+      setBlueprints((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    try {
+      applyOne(await retryBlueprint(bp.id)); // reset to `generating`
+      applyOne(await pollGeneration(bp.id)); // resolved `completed`
+    } catch {
+      // Poll threw (failed or timed out) — re-fetch so the card shows the real
+      // backend state (failed + error, or still generating).
+      const latest = await getBlueprint(bp.id).catch(() => null);
+      if (latest) applyOne(latest);
     }
   };
 
@@ -299,6 +321,7 @@ export function WorkspaceTab({
                         idx={idx}
                         onView={() => setViewingId(bp.id)}
                         onDelete={() => setPendingDelete(bp)}
+                        onRetry={() => handleRetry(bp)}
                         canPublish={profileComplete}
                         onCompleteProfile={onCompleteProfile}
                         onTogglePublic={() =>
