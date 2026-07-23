@@ -1,9 +1,31 @@
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_exception_handlers
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.db.session import SessionLocal
+from app.services.generation.blueprint_generation_service import fail_interrupted_generations
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # In-process generations die on restart, orphaning their card at
+    # `generating`. Clear those on boot so no blueprint shows as stuck.
+    db = SessionLocal()
+    try:
+        swept = fail_interrupted_generations(db)
+        if swept:
+            logger.info("Startup: marked %d interrupted generation(s) as failed", swept)
+    finally:
+        db.close()
+    yield
 
 
 def create_application() -> FastAPI:
@@ -12,6 +34,7 @@ def create_application() -> FastAPI:
         debug=settings.DEBUG,
         version="0.1.0",
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
+        lifespan=lifespan,
     )
 
     application.add_middleware(
