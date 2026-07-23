@@ -14,7 +14,11 @@ from app.schemas.messages import MessageResponse, SendMessageRequest
 from app.schemas.notifications import NotificationResponse
 from app.services import notifications_service
 from app.services import messages as message_service
-from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
+from app.services.exceptions import (
+    AuthProviderConfigurationError,
+    AuthServiceUnavailableError,
+    InvalidTokenError,
+)
 from app.services.supabase_auth import SupabaseAuthClient
 
 
@@ -164,6 +168,12 @@ def authenticate_websocket_user(db: Session, token: str | None) -> User | None:
     try:
         auth_user = SupabaseAuthClient().get_user(token)
     except (AuthProviderConfigurationError, InvalidTokenError):
+        return None
+    except AuthServiceUnavailableError:
+        # Supabase couldn't be reached right now. The token may well still be
+        # valid — this is NOT a rejection of the user's credentials — but we
+        # still fail closed on this connection attempt rather than accepting
+        # it unverified. The client's normal reconnect logic will retry.
         return None
 
     app_user = users_repository.get_user_by_id(db, auth_user.id)

@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.services.exceptions import AppError, ErrorCode
+from app.services.exceptions import AppError, AuthServiceUnavailableError, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,24 @@ def register_exception_handlers(application: FastAPI) -> None:
             status_code=status_code,
             content={"detail": detail, "code": exc.code.value},
             headers=ERROR_HEADERS_BY_CODE.get(exc.code),
+        )
+
+    @application.exception_handler(AuthServiceUnavailableError)
+    async def handle_auth_service_unavailable(
+        request: Request, exc: AuthServiceUnavailableError
+    ) -> JSONResponse:
+        logger.warning(
+            "Supabase Auth was unreachable on %s %s: %s", request.method, request.url.path, exc
+        )
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": (
+                    "Could not verify your session with the authentication service right now. "
+                    "Please try again shortly."
+                ),
+                "code": "auth_service_unavailable",
+            },
         )
 
     @application.exception_handler(Exception)

@@ -12,7 +12,11 @@ from app.repositories import users as users_repository
 from app.services.account_service import AccountService
 from app.services.auth_service import AuthService
 from app.services.email_sender import SmtpEmailSender
-from app.services.exceptions import AuthProviderConfigurationError, InvalidTokenError
+from app.services.exceptions import (
+    AuthProviderConfigurationError,
+    AuthServiceUnavailableError,
+    InvalidTokenError,
+)
 from app.services.supabase_auth import SupabaseAuthClient
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -73,6 +77,14 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token.",
             headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    except AuthServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Could not verify your session with the authentication service right now. "
+                "Please try again shortly."
+            ),
         ) from exc
 
     app_user = users_repository.get_user_by_id(db, auth_user.id)

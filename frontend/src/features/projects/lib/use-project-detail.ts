@@ -57,14 +57,16 @@ export function useProjectDetail({
         setConnections(Object.fromEntries(state.connectedIds.map((id) => [id, true])));
         setConnectionIdByUser(state.connectionIdByUser);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[projects] Failed to load network connections:", err);
         if (!cancelled) setConnections({});
       });
     loadNetworkPeople()
       .then((people) => {
         if (!cancelled) setNetworkDevs(people.filter((p) => p.type === "Developer"));
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[projects] Failed to load network people:", err);
         if (!cancelled) setNetworkDevs([]);
       });
     return () => {
@@ -81,7 +83,11 @@ export function useProjectDetail({
       .then((devs) => {
         if (!cancelled) setMatchedDevs(devs);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error(
+          `[projects] Failed to fetch matching developers for phase ${viewedPhaseIdx}:`,
+          err
+        );
         if (!cancelled) setMatchedDevs([]);
       })
       .finally(() => {
@@ -239,7 +245,8 @@ export function useProjectDetail({
         setConnectionIdByUser((m) => ({ ...m, [dev.id]: record.id }));
         showToast(`Connected with ${dev.name}`);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error(`[projects] Failed to send connection request to ${dev.id}:`, err);
         showToast(`Could not connect with ${dev.name}`);
       });
   };
@@ -253,12 +260,16 @@ export function useProjectDetail({
           setConnections((c) => ({ ...c, [dev.id]: true }));
           setConnectionIdByUser((m) => ({ ...m, [dev.id]: record.id }));
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error(`[projects] Failed to send connection request to ${dev.id}:`, err);
+        });
     } else {
       const connectionId = connectionIdByUser[dev.id];
       setConnections((c) => ({ ...c, [dev.id]: false }));
       if (connectionId) {
-        connectionApi.remove(connectionId).catch(() => {});
+        connectionApi.remove(connectionId).catch((err) => {
+          console.error(`[projects] Failed to remove connection ${connectionId}:`, err);
+        });
       }
     }
   };

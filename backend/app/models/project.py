@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid, func
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,7 +45,11 @@ class Project(Base):
     __tablename__ = "projects"
     __table_args__ = (
         Index("ix_projects_founder_id_created_at", "founder_id", "created_at"),
-        Index("ix_projects_blueprint_id", "blueprint_id"),
+        # A blueprint can only ever back one project. This is the actual guard
+        # against duplicate creation (retries, out-of-order requests, races
+        # between the existence check and the insert) — application-level
+        # checks alone cannot be relied upon under concurrency.
+        UniqueConstraint("blueprint_id", name="uq_projects_blueprint_id"),
     )
 
     id: Mapped[UUID] = mapped_column(

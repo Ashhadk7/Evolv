@@ -84,11 +84,16 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
         const apiBlueprints = await listBlueprints();
         set({ blueprints: apiBlueprints });
         localStorage.setItem(STORAGE_KEY_BLUEPRINTS, JSON.stringify(apiBlueprints));
-      } catch {
+      } catch (err) {
+        console.error(
+          "[founder-dashboard] Failed to load blueprints from the server; falling back to the last locally cached list. Active Projects may be stale until this succeeds.",
+          err
+        );
         const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
         if (storedBlueprints) set({ blueprints: JSON.parse(storedBlueprints) as Blueprint[] });
       }
-    } catch {
+    } catch (err) {
+      console.error("[founder-dashboard] Failed to load founder profile:", err);
       const user = getSession()?.user;
       set({
         profile: {

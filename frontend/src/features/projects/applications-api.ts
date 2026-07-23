@@ -24,7 +24,8 @@ export async function listBlueprintApplications(
       { auth: true }
     );
     return data.items;
-  } catch {
+  } catch (err) {
+    console.error(`[applications] Failed to load applications for blueprint ${blueprintId}:`, err);
     return [];
   }
 }

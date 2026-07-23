@@ -53,6 +53,17 @@ export function WorkspaceTab({
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
 
+  // initialBlueprints is only a seed for useState — it does not automatically
+  // keep this component in sync with later changes to the store (a project
+  // started elsewhere, a blueprint edited in another tab, a background
+  // refetch). Without this, `blueprints` — and anything derived from it —
+  // silently goes stale, and the next local edit's `update()` call would
+  // persist that stale snapshot back to the store, overwriting whatever
+  // changed in the meantime.
+  useEffect(() => {
+    setBlueprints(initialBlueprints);
+  }, [initialBlueprints]);
+
   // Use searchParams to initialize without flashing
   const bpParam = searchParams.get("blueprint");
   const [viewingId, setViewingId] = useState<string | null>(bpParam ?? openBlueprintId ?? null);
