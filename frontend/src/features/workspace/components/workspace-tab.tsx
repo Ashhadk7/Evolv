@@ -64,16 +64,17 @@ export function WorkspaceTab({
   const [pendingDelete, setPendingDelete] = useState<Blueprint | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // initialBlueprints is only a seed for useState — it does not automatically
-  // keep this component in sync with later changes to the store (a project
-  // started elsewhere, a blueprint edited in another tab, a background
-  // refetch). Without this, `blueprints` — and anything derived from it —
-  // silently goes stale, and the next local edit's `update()` call would
-  // persist that stale snapshot back to the store, overwriting whatever
-  // changed in the meantime.
-  useEffect(() => {
+  // Keep local state in sync when the store's blueprints change (a project
+  // started elsewhere, an edit in another tab, a background refetch). Without
+  // this, `blueprints` goes stale and the next local `update()` would persist
+  // that stale snapshot back over whatever changed. Adjust during render off
+  // the previous prop rather than in an effect — a single render pass instead
+  // of a cascading post-commit re-render (React "info from previous renders").
+  const [prevInitial, setPrevInitial] = useState(initialBlueprints);
+  if (initialBlueprints !== prevInitial) {
+    setPrevInitial(initialBlueprints);
     setBlueprints(initialBlueprints);
-  }, [initialBlueprints]);
+  }
 
   // Use searchParams to initialize without flashing
   const bpParam = searchParams.get("blueprint");
