@@ -1,4 +1,3 @@
-// Publish toggle + copy-link sharing for the blueprint detail view, extracted from blueprint-detail.tsx.
 "use client";
 
 import { apiFetch } from "@/lib/api";
@@ -25,7 +24,7 @@ export function useBlueprintPublishShare(
         document.execCommand("copy");
         document.body.removeChild(ta);
       } catch {
-        /* ignore */
+        // fallback ignored
       }
     };
     try {
@@ -42,7 +41,6 @@ export function useBlueprintPublishShare(
 
   const togglePublish = async () => {
     const newVisibility = published ? "private" : "public";
-    // Optimistically update UI immediately
     const updated: Blueprint = {
       ...bp,
       status: published ? "DRAFT" : "PUBLISHED",
@@ -51,7 +49,6 @@ export function useBlueprintPublishShare(
     onSave?.(updated);
     showToast(published ? "Blueprint unpublished" : "Blueprint published");
 
-    // Persist to the backend so it actually shows up in Discover
     try {
       await apiFetch(`/blueprints/${bp.id}`, {
         method: "PATCH",
@@ -60,7 +57,6 @@ export function useBlueprintPublishShare(
       });
     } catch (err) {
       console.error("[publish] Failed to update blueprint visibility:", err);
-      // Revert optimistic update on failure
       onSave?.(bp);
       showToast("Failed to update visibility. Please try again.");
     }
