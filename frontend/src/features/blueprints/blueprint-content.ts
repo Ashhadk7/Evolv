@@ -451,24 +451,35 @@ const PRIORITY_TIER: Record<string, string> = {
 
 // Parses the structured feature spec (real priority/module/user story/etc.).
 // Falls back to legacy string features with index-based priority so old
-// blueprints keep rendering.
+// blueprints keep rendering. A save from the name-only tech-stack editor can
+// reconcile into a MIXED array (rich objects + a plain string for a newly
+// added name) — treat any array containing at least one object as "rich
+// mode" and give bare strings within it a sensible default tier, rather than
+// dropping them (a pure all-strings array still uses the legacy fallback).
 export function deriveProductFeatures(bp: Blueprint): ProductFeature[] {
   const raw = agentRecord(bp, "product")?.features;
-  if (Array.isArray(raw)) {
-    const rich = raw
-      .map(asRecord)
-      .filter((f): f is Record<string, unknown> => f !== null)
-      .map((f) => ({
-        name: stringValue(f.name),
-        priority: PRIORITY_TIER[stringValue(f.priority)] ?? "Nice-to-have",
-        module: stringValue(f.module),
-        description: stringValue(f.description),
-        userStory: stringValue(f.userStory),
-        acceptanceCriteria: stringArray(f.acceptanceCriteria),
-        effort: stringValue(f.effort),
-        addresses: stringValue(f.addresses),
-      }))
-      .filter((f) => f.name);
+  const hasStructured = Array.isArray(raw) && raw.some((item) => asRecord(item) !== null);
+  if (hasStructured) {
+    const rich = (raw as unknown[])
+      .map((item): ProductFeature | null => {
+        const f = asRecord(item);
+        if (f) {
+          return {
+            name: stringValue(f.name),
+            priority: PRIORITY_TIER[stringValue(f.priority)] ?? "Nice-to-have",
+            module: stringValue(f.module),
+            description: stringValue(f.description),
+            userStory: stringValue(f.userStory),
+            acceptanceCriteria: stringArray(f.acceptanceCriteria),
+            effort: stringValue(f.effort),
+            addresses: stringValue(f.addresses),
+          };
+        }
+        return typeof item === "string" && item.trim()
+          ? { name: item, priority: "Should-have" }
+          : null;
+      })
+      .filter((f): f is ProductFeature => f !== null && Boolean(f.name));
     if (rich.length) return rich;
   }
   return bp.features.map((name, i) => ({

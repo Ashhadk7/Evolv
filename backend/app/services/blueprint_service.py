@@ -99,6 +99,25 @@ def update_visibility(
     return blueprint
 
 
+def _reconcile_features(existing: object, edited_names: list[str]) -> list[dict[str, object] | str]:
+    """Preserve rich feature specs (module, userStory, acceptanceCriteria, ...)
+    across an editor save, which only round-trips names.
+
+    The tech-stack/feature editor works on names only (BlueprintContentUpdate.features
+    is list[str]), but generation may have produced structured Feature objects. A
+    naive overwrite would silently replace that grounded spec with bare strings.
+    Reconcile by name instead: keep the rich object for any name still present,
+    and only add a plain string for names newly typed into the editor.
+    """
+    by_name: dict[str, object] = {}
+    if isinstance(existing, list):
+        for item in existing:
+            name = item.get("name") if isinstance(item, dict) else item
+            if isinstance(name, str) and name:
+                by_name[name] = item
+    return [by_name.get(name, name) for name in edited_names]
+
+
 def update_content(
     db: Session, blueprint_id: UUID, current_user: User, payload: BlueprintContentUpdate
 ) -> Blueprint:
@@ -115,7 +134,7 @@ def update_content(
         agents = dict(content.get("agents") or {})
         if payload.features is not None:
             product = dict(agents.get("product") or {})
-            product["features"] = payload.features
+            product["features"] = _reconcile_features(product.get("features"), payload.features)
             agents["product"] = product
         if payload.tech_stack is not None:
             tech_agent = dict(agents.get("techStack") or {})
