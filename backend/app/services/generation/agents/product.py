@@ -73,7 +73,9 @@ class ProductOutput(BaseModel):
         return self
 
 
-async def run_product(idea: str, positioning: str, persona: str) -> ProductOutput:
+async def run_product(
+    idea: str, positioning: str, persona: str, research: str = ""
+) -> ProductOutput:
     idea = clean(idea)
     positioning = clean(positioning)
     if not idea:
@@ -84,7 +86,13 @@ async def run_product(idea: str, positioning: str, persona: str) -> ProductOutpu
     return await call_agent(
         ProductOutput,
         load_prompt("product"),
-        render_prompt("product_user", idea=idea, positioning=positioning, persona=persona),
+        render_prompt(
+            "product_user",
+            idea=idea,
+            positioning=positioning,
+            persona=persona,
+            research=research,
+        ),
         # ponytail: a 6-15 feature client spec (user stories + acceptance criteria)
         # needs more room than the old 4-7 one-liners. This is the token dial —
         # raise the model to GROQ_MODEL if the fast model's spec quality is weak.

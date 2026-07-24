@@ -121,6 +121,7 @@ export type ProductFeature = {
   userStory?: string;
   acceptanceCriteria?: string[];
   effort?: string;
+  addresses?: string; // the persona pain / research signal this feature serves
 };
 
 export type StackLayerKey =
@@ -465,6 +466,7 @@ export function deriveProductFeatures(bp: Blueprint): ProductFeature[] {
         userStory: stringValue(f.userStory),
         acceptanceCriteria: stringArray(f.acceptanceCriteria),
         effort: stringValue(f.effort),
+        addresses: stringValue(f.addresses),
       }))
       .filter((f) => f.name);
     if (rich.length) return rich;

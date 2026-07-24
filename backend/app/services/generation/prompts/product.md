@@ -14,6 +14,8 @@ For EACH feature return:
 
 Grounding rule: every feature MUST name a real persona pain or job in `addresses`. If a feature serves no stated persona need, DROP it — never invent filler. Prefer 6-10 well-grounded features over padding to 15.
 
+Use the market and competitor research as supporting evidence for what to build; where a signal backs a feature, reference it in `addresses`. Never invent evidence, statistics, or sources.
+
 Group related features under the same module and cover the core user journey end to end, not just the headline feature. Avoid generic startup boilerplate and platform plumbing unless it directly creates user value.
 
 outOfScope: items that protect focus and delay expensive work until after MVP validation.

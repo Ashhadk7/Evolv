@@ -93,6 +93,11 @@ export function BlueprintProductScopeSection({
                           ))}
                         </ul>
                       ) : null}
+                      {feature.addresses ? (
+                        <div className="text-bp-label mt-2 ml-6 text-[10.5px] leading-[1.5]">
+                          &#8627; Serves: {feature.addresses}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

@@ -144,7 +144,9 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         product, strategy, scorecard = await gather_stage(
             track(
                 "product",
-                run_product(agent_brief, competitor.positioning_angle, persona_context),
+                run_product(
+                    agent_brief, competitor.positioning_angle, persona_context, shared_research
+                ),
             ),
             track(
                 "strategy",
