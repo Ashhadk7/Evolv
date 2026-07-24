@@ -1,6 +1,6 @@
-// Publish toggle + copy-link sharing for the blueprint detail view, extracted from blueprint-detail.tsx.
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import type { Blueprint } from "@/features/blueprints/types";
 
 export function useBlueprintPublishShare(
@@ -24,7 +24,7 @@ export function useBlueprintPublishShare(
         document.execCommand("copy");
         document.body.removeChild(ta);
       } catch {
-        /* ignore */
+        // fallback ignored
       }
     };
     try {
@@ -39,9 +39,27 @@ export function useBlueprintPublishShare(
     showToast("Link copied to clipboard");
   };
 
-  const togglePublish = () => {
-    onSave?.({ ...bp, status: published ? "DRAFT" : "PUBLISHED", isPublic: !published });
+  const togglePublish = async () => {
+    const newVisibility = published ? "private" : "public";
+    const updated: Blueprint = {
+      ...bp,
+      status: published ? "DRAFT" : "PUBLISHED",
+      isPublic: !published,
+    };
+    onSave?.(updated);
     showToast(published ? "Blueprint unpublished" : "Blueprint published");
+
+    try {
+      await apiFetch(`/blueprints/${bp.id}`, {
+        method: "PATCH",
+        auth: true,
+        body: { visibility: newVisibility },
+      });
+    } catch (err) {
+      console.error("[publish] Failed to update blueprint visibility:", err);
+      onSave?.(bp);
+      showToast("Failed to update visibility. Please try again.");
+    }
   };
 
   return { published, copyLink, togglePublish };

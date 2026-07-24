@@ -6,8 +6,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MagnifyingGlass, CaretDown } from "@phosphor-icons/react";
 import type { Blueprint } from "@/features/blueprints/types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
+import {
+  deleteBlueprint,
+  retryBlueprint,
+  pollGeneration,
+  getBlueprint,
+  blueprintGeneration,
+  setBlueprintVisibility,
+} from "@/features/blueprints/blueprints-api";
+import { getApiErrorMessage } from "@/lib/api";
 import { IdeaCard } from "./idea-card";
 import { ForgeModal } from "./forge-modal";
+import { DeleteIdeaModal } from "./delete-idea-modal";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { BlueprintDetail } from "@/features/blueprints/components/blueprint-detail";
 import {
@@ -52,17 +62,20 @@ export function WorkspaceTab({
   const searchParams = useSearchParams();
   const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
   const [forgeOpen, setForgeOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Blueprint | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // initialBlueprints is only a seed for useState — it does not automatically
-  // keep this component in sync with later changes to the store (a project
-  // started elsewhere, a blueprint edited in another tab, a background
-  // refetch). Without this, `blueprints` — and anything derived from it —
-  // silently goes stale, and the next local edit's `update()` call would
-  // persist that stale snapshot back to the store, overwriting whatever
-  // changed in the meantime.
-  useEffect(() => {
+  // Keep local state in sync when the store's blueprints change (a project
+  // started elsewhere, an edit in another tab, a background refetch). Without
+  // this, `blueprints` goes stale and the next local `update()` would persist
+  // that stale snapshot back over whatever changed. Adjust during render off
+  // the previous prop rather than in an effect — a single render pass instead
+  // of a cascading post-commit re-render (React "info from previous renders").
+  const [prevInitial, setPrevInitial] = useState(initialBlueprints);
+  if (initialBlueprints !== prevInitial) {
+    setPrevInitial(initialBlueprints);
     setBlueprints(initialBlueprints);
-  }, [initialBlueprints]);
+  }
 
   // Use searchParams to initialize without flashing
   const bpParam = searchParams.get("blueprint");
@@ -103,6 +116,62 @@ export function WorkspaceTab({
     setBlueprints(bps);
     onBlueprintsChange?.(bps);
   };
+
+  // Delete server-side first, then drop it from the list — so the card only
+  // disappears once the row is actually gone. On error the card stays put.
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteBlueprint(pendingDelete.id);
+      update(blueprints.filter((b) => b.id !== pendingDelete.id));
+      if (viewingId === pendingDelete.id) setViewingId(null);
+      setPendingDelete(null);
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Retry re-runs generation on the same row. Update just this card via the
+  // functional form so the long poll can't clobber concurrent changes to other
+  // cards; the store cache reconciles on the next load from the backend.
+  const handleRetry = async (bp: Blueprint) => {
+    const applyOne = (updated: Blueprint) =>
+      setBlueprints((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    try {
+      applyOne(await retryBlueprint(bp.id)); // reset to `generating`
+      applyOne(await pollGeneration(bp.id)); // resolved `completed`
+    } catch {
+      // Poll threw (failed or timed out) — re-fetch so the card shows the real
+      // backend state (failed + error, or still generating).
+      const latest = await getBlueprint(bp.id).catch(() => null);
+      if (latest) applyOne(latest);
+    }
+  };
+
+  // Toggle public/private with an optimistic update + rollback, and persist to
+  // the backend so visibility survives reload. On failure, restore prior state.
+  const handleTogglePublic = async (bp: Blueprint) => {
+    const nextPublic = !bp.isPublic;
+    const prev = blueprints;
+    update(
+      blueprints.map((b) =>
+        b.id === bp.id
+          ? { ...b, isPublic: nextPublic, status: (nextPublic ? "PUBLISHED" : "DRAFT") as "DRAFT" | "PUBLISHED" }
+          : b
+      )
+    );
+    try {
+      const saved = await setBlueprintVisibility(bp.id, nextPublic);
+      update(prev.map((b) => (b.id === bp.id ? saved : b)));
+    } catch (err) {
+      update(prev);
+      alert(getApiErrorMessage(err));
+    }
+  };
+
   const viewingBP = blueprints.find((b) => b.id === viewingId);
 
   const filtered = blueprints.filter((bp) => {
@@ -123,9 +192,12 @@ export function WorkspaceTab({
 
   const pubCount = blueprints.filter((b) => b.status === "PUBLISHED").length;
   const totalInvViews = blueprints.reduce((s, b) => s + b.investorViews, 0);
+  // Only completed blueprints have a real viability score; failed/generating
+  // ones sit at 0 and would drag the average down, so exclude them.
+  const scored = blueprints.filter((b) => blueprintGeneration(b).status === "completed");
   const avgViability =
-    blueprints.length > 0
-      ? Math.round(blueprints.reduce((s, b) => s + b.viability, 0) / blueprints.length)
+    scored.length > 0
+      ? Math.round(scored.reduce((s, b) => s + b.viability, 0) / scored.length)
       : 0;
 
   const headerStats = [
@@ -275,26 +347,11 @@ export function WorkspaceTab({
                         bp={bp}
                         idx={idx}
                         onView={() => setViewingId(bp.id)}
-                        onDelete={() => {
-                          if (window.confirm("Delete this idea?"))
-                            update(blueprints.filter((b) => b.id !== bp.id));
-                        }}
+                        onDelete={() => setPendingDelete(bp)}
+                        onRetry={() => handleRetry(bp)}
                         canPublish={profileComplete}
                         onCompleteProfile={onCompleteProfile}
-                        onTogglePublic={() =>
-                          update(
-                            blueprints.map((b) =>
-                              b.id === bp.id
-                                ? {
-                                    ...b,
-                                    isPublic: !b.isPublic,
-                                    status: (b.isPublic ? "DRAFT" : "PUBLISHED") as
-                                      "DRAFT" | "PUBLISHED",
-                                  }
-                                : b
-                            )
-                          )
-                        }
+                        onTogglePublic={() => handleTogglePublic(bp)}
                       />
                     ))}
                   </AnimatePresence>
@@ -330,6 +387,17 @@ export function WorkspaceTab({
           }}
         />
       )}
+
+      <AnimatePresence>
+        {pendingDelete && (
+          <DeleteIdeaModal
+            ideaName={pendingDelete.name}
+            deleting={deleting}
+            onConfirm={confirmDelete}
+            onClose={() => !deleting && setPendingDelete(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

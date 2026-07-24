@@ -12,6 +12,7 @@ from app.schemas.applications import (
 )
 from app.schemas.notifications import NotificationResponse
 from app.schemas.blueprints import (
+    BlueprintContentUpdate,
     BlueprintCreate,
     BlueprintGenerateRequest,
     BlueprintListResponse,
@@ -67,6 +68,23 @@ async def generate_blueprint(
     # Return the blueprint in a `generating` state right away; the agent pipeline
     # runs in the background so this request doesn't block (and can't time out).
     blueprint = blueprint_generation_service.start_generation(db, current_user, payload)
+    background_tasks.add_task(
+        blueprint_generation_service.run_generation, blueprint.id, payload
+    )
+    return BlueprintResponse.model_validate(blueprint)
+
+
+@router.post("/{blueprint_id}/retry", response_model=BlueprintResponse)
+async def retry_blueprint(
+    blueprint_id: UUID,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
+) -> BlueprintResponse:
+    # Re-run generation on the SAME blueprint (no duplicate). Authorize ownership
+    # first, then reset to `generating` and schedule the pipeline in the background.
+    blueprint_service.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+    blueprint, payload = blueprint_generation_service.retry_generation(db, blueprint_id)
     background_tasks.add_task(
         blueprint_generation_service.run_generation, blueprint.id, payload
     )
@@ -133,6 +151,17 @@ def update_blueprint(
                 notification.user_id,
                 NotificationResponse.model_validate(notification),
             )
+    return BlueprintResponse.model_validate(blueprint)
+
+
+@router.patch("/{blueprint_id}/content", response_model=BlueprintResponse)
+def update_blueprint_content(
+    blueprint_id: UUID,
+    payload: BlueprintContentUpdate,
+    db: DbSession,
+    current_user: CurrentFounder,
+) -> BlueprintResponse:
+    blueprint = blueprint_service.update_content(db, blueprint_id, current_user, payload)
     return BlueprintResponse.model_validate(blueprint)
 
 

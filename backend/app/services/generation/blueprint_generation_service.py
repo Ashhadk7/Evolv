@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -15,7 +16,13 @@ from app.models.blueprint import Blueprint, BlueprintVersion, VersionState
 from app.models.user import User
 from app.repositories import blueprints as blueprints_repository
 from app.schemas.blueprints import BlueprintGenerateRequest, BlueprintVersionCreate, LevelRating
-from app.services.exceptions import BlueprintPersistenceError, FounderProfileRequiredError
+from app.services.exceptions import (
+    BlueprintAgentInputError,
+    BlueprintPersistenceError,
+    BlueprintVersionNotFoundError,
+    FounderProfileRequiredError,
+)
+from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.agents.competitor import CompetitorOutput, run_competitor
 from app.services.generation.agents.market import MarketOutput, run_market
 from app.services.generation.agents.persona import PersonaOutput, run_persona
@@ -29,7 +36,6 @@ from app.services.generation.agents.scorecard import (
 from app.services.generation.agents.strategy import StrategyOutput, run_strategy
 from app.services.generation.agents.synthesis import SynthesisOutput, run_synthesis
 from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_stack
-from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.enrichment import EnrichmentError, sources_to_prompt_block
 
 logger = logging.getLogger(__name__)
@@ -45,6 +51,37 @@ ALL_AGENTS = [
     "techStack",
     "synthesis",
 ]
+
+
+def fail_interrupted_generations(db: Session) -> int:
+    """Mark generations orphaned by a server restart as failed.
+
+    Generation runs in-process (BackgroundTasks), so a restart kills any
+    in-flight pipeline and leaves its version stuck at `generating` forever.
+    On boot nothing is really running, so every `generating` row is provably
+    dead — flip it to `failed` so the UI shows an honest, retryable state.
+
+    ponytail: loads matching rows and updates in Python (fine at low volume);
+    switch to a single jsonb_set UPDATE if the generating backlog ever grows.
+    """
+    versions = db.scalars(
+        select(BlueprintVersion).where(
+            BlueprintVersion.content_json["generation"]["status"].astext == "generating"
+        )
+    ).all()
+    for version in versions:
+        content = dict(version.content_json or {})
+        content["generation"] = {
+            **content.get("generation", {}),
+            "status": "failed",
+            "error": "Generation was interrupted — please retry.",
+            "updatedAt": _now(),
+        }
+        content["updatedAt"] = _now()
+        version.content_json = content
+    if versions:
+        db.commit()
+    return len(versions)
 
 
 def start_generation(
@@ -66,6 +103,33 @@ def start_generation(
     if saved is None:
         raise BlueprintPersistenceError("Blueprint could not be created.")
     return saved
+
+
+def retry_generation(db: Session, blueprint_id: UUID) -> tuple[Blueprint, BlueprintGenerateRequest]:
+    """Reset an existing blueprint to `generating` and return its original inputs.
+
+    Reuses the same row (no duplicate) by rebuilding the request from the intake
+    saved in content_json. The caller must have already authorized ownership;
+    it then schedules run_generation with the returned payload.
+    """
+    version = _current_version(db, blueprint_id)
+    if version is None:
+        raise BlueprintVersionNotFoundError()
+
+    intake = (version.content_json or {}).get("intake")
+    if not intake:
+        raise BlueprintAgentInputError("Cannot retry: the original inputs are missing.")
+    try:
+        payload = BlueprintGenerateRequest(**intake)
+    except ValidationError as exc:
+        raise BlueprintAgentInputError("Cannot retry: the saved inputs are invalid.") from exc
+
+    _update_generation(db, blueprint_id, status="generating", completedAgents=[], error=None)
+
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    if blueprint is None:
+        raise BlueprintPersistenceError("Blueprint could not be reloaded.")
+    return blueprint, payload
 
 
 async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) -> None:

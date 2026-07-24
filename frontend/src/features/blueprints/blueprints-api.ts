@@ -78,6 +78,47 @@ export async function getBlueprint(id: string): Promise<Blueprint> {
   return blueprintFromWire(data);
 }
 
+// Deletes a blueprint on the backend (owner-only, 204 No Content). Cascade
+// removes its versions. Callers update local state after this resolves.
+export async function deleteBlueprint(id: string): Promise<void> {
+  await apiFetch<void>(`/blueprints/${id}`, { method: "DELETE", auth: true });
+}
+
+// Re-runs generation on the SAME blueprint from its saved inputs (no duplicate).
+// Returns the blueprint reset to `generating`; poll with pollGeneration after.
+export async function retryBlueprint(id: string): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}/retry`, {
+    method: "POST",
+    auth: true,
+  });
+  return blueprintFromWire(data);
+}
+
+// Toggles a blueprint public/private on the backend (PATCH visibility).
+// Returns the updated blueprint (its status/visibility reflect the change).
+export async function setBlueprintVisibility(id: string, isPublic: boolean): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: { visibility: isPublic ? "public" : "private" },
+  });
+  return blueprintFromWire(data);
+}
+
+// Persists user-edited content (features, tech-stack choices) on the same row.
+// The backend merges these into content_json and returns the updated blueprint.
+export async function updateBlueprintContent(
+  id: string,
+  edits: { features?: string[]; techStack?: Record<string, string> }
+): Promise<Blueprint> {
+  const data = await apiFetch<BlueprintWire>(`/blueprints/${id}/content`, {
+    method: "PATCH",
+    auth: true,
+    body: { features: edits.features, tech_stack: edits.techStack },
+  });
+  return blueprintFromWire(data);
+}
+
 export interface BlueprintGeneration {
   status: "generating" | "completed" | "failed";
   completedAgents: string[];
@@ -94,6 +135,29 @@ export function blueprintGeneration(bp: Blueprint): BlueprintGeneration {
     completedAgents: stringArray(gen?.completedAgents),
     error: typeof gen?.error === "string" ? gen.error : undefined,
   };
+}
+
+// Polls a `generating` blueprint until the backend reports done/failed.
+// 12-min window: rate-limited free-tier AI can legitimately pause ~90s between
+// agents, so a short poll would report false failures. `onProgress` reports the
+// completed-agent list for a live progress bar. Throws on failure/timeout.
+export async function pollGeneration(
+  id: string,
+  onProgress?: (completedAgents: string[]) => void
+): Promise<Blueprint> {
+  for (let attempt = 0; attempt < 360; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const blueprint = await getBlueprint(id);
+    const generation = blueprintGeneration(blueprint);
+    onProgress?.(generation.completedAgents);
+    if (generation.status === "completed") return blueprint;
+    if (generation.status === "failed") {
+      throw new Error(generation.error ?? "Blueprint generation failed. Please try again.");
+    }
+  }
+  throw new Error(
+    "Generation is still running in the background. Check your workspace in a few minutes — do not start a second generation."
+  );
 }
 
 export function blueprintFromWire(data: BlueprintWire): Blueprint {
