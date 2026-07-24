@@ -38,8 +38,11 @@ RETRY_BUDGET_SECONDS = 300.0
 
 # Groq free-tier limits are per-minute token budgets. Parallel pipeline stages
 # must not burst all their calls at once, or every call 429s and the retries
-# re-collide. Two concurrent calls keeps some parallelism without the burst.
-_GROQ_CONCURRENCY = asyncio.Semaphore(2)
+# re-collide. On the free tier each agent call is large enough that even TWO
+# concurrent calls exceed the per-minute token window and keep re-blowing it as
+# soon as it resets, so the pipeline never makes progress. Serialize to 1 so a
+# single call fits under the window; raise this on a paid key with higher TPM.
+_GROQ_CONCURRENCY = asyncio.Semaphore(1)
 
 
 class AgentServiceError(RuntimeError):

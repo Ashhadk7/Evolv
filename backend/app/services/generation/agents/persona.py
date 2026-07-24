@@ -70,5 +70,5 @@ async def run_persona(idea: str, industry: str, research: str) -> PersonaOutput:
         PersonaOutput,
         load_prompt("persona"),
         render_prompt("persona_user", idea=idea, industry=industry, research=research),
-        max_tokens=1200,
+        max_tokens=2400,
     )
