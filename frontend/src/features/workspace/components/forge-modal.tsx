@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
-import {
-  blueprintGeneration,
-  generateBlueprint,
-  getBlueprint,
-} from "@/features/blueprints/blueprints-api";
+import { generateBlueprint, pollGeneration } from "@/features/blueprints/blueprints-api";
 import type { Blueprint } from "@/features/blueprints/types";
 import { FORGE_AGENTS, WORKSPACE_INDUSTRIES } from "@/features/workspace/data/workspace-data";
 import { getApiErrorMessage } from "@/lib/api";
@@ -57,34 +53,13 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
         monetization,
         constraints,
       });
-      const blueprint = await pollGeneration(pending.id);
+      const blueprint = await pollGeneration(pending.id, setCompletedAgents);
       setGeneratedBlueprint(blueprint);
       setPhase("done");
     } catch (error) {
       setGenerationError(getApiErrorMessage(error));
       setPhase("input");
     }
-  };
-
-  // The blueprint is created immediately in a `generating` state; poll the real
-  // backend status (no fake timer) until the agent pipeline reports done/failed.
-  // 12 minutes: on rate-limited free-tier AI keys the pipeline legitimately
-  // pauses up to 90s between agents, so a short poll window reports false
-  // failures while the backend is still working.
-  const pollGeneration = async (id: string): Promise<Blueprint> => {
-    for (let attempt = 0; attempt < 360; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      const blueprint = await getBlueprint(id);
-      const generation = blueprintGeneration(blueprint);
-      setCompletedAgents(generation.completedAgents);
-      if (generation.status === "completed") return blueprint;
-      if (generation.status === "failed") {
-        throw new Error(generation.error ?? "Blueprint generation failed. Please try again.");
-      }
-    }
-    throw new Error(
-      "Generation is still running in the background. Close this dialog and check your workspace in a few minutes — do not start a second generation."
-    );
   };
 
   const handleAccept = () => {

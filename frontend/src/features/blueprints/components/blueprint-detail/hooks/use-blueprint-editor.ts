@@ -9,6 +9,8 @@ import type {
   TechStackModel,
 } from "@/features/blueprints/blueprint-content";
 import type { Blueprint } from "@/features/blueprints/types";
+import { updateBlueprintContent } from "@/features/blueprints/blueprints-api";
+import { getApiErrorMessage } from "@/lib/api";
 
 export function useBlueprintEditor(
   bp: Blueprint,
@@ -37,24 +39,27 @@ export function useBlueprintEditor(
   const updateTechStackLayer = (key: StackLayerKey, value: string) =>
     setDraftTechStack((prev) => ({ ...prev, [key]: { ...prev[key], chosen: value } }));
 
-  const saveEdits = () => {
-    onSave?.({
-      ...bp,
-      ideaDesc: draftDesc,
-      features: draftFeatures,
-      cost: draftCost,
-      techStack: {
-        frontend: draftTechStack.frontend.chosen,
-        backend: draftTechStack.backend.chosen,
-        ai: draftTechStack.aiProvider.chosen,
-        db: draftTechStack.database.chosen,
-        vectorDb: draftTechStack.vectorDb.chosen,
-        aiProvider: draftTechStack.aiProvider.chosen,
-        hosting: draftTechStack.hosting.chosen,
-      },
-    });
-    setEditing(false);
-    showToast("Changes saved");
+  const saveEdits = async () => {
+    // Persist to the backend first, then sync local state to what it returns —
+    // so edits survive reload and the toast only claims success on success.
+    try {
+      const updated = await updateBlueprintContent(bp.id, {
+        features: draftFeatures,
+        techStack: {
+          frontend: draftTechStack.frontend.chosen,
+          backend: draftTechStack.backend.chosen,
+          aiProvider: draftTechStack.aiProvider.chosen,
+          database: draftTechStack.database.chosen,
+          vectorDb: draftTechStack.vectorDb.chosen,
+          hosting: draftTechStack.hosting.chosen,
+        },
+      });
+      onSave?.(updated);
+      setEditing(false);
+      showToast("Changes saved");
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
   };
 
   const cancelEdits = () => {

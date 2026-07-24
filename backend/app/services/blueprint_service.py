@@ -8,12 +8,23 @@ from sqlalchemy.orm import Session
 from app.models.blueprint import Blueprint, VersionState
 from app.models.user import User, UserRole
 from app.repositories import blueprints as blueprints_repository
-from app.schemas.blueprints import BlueprintCreate, BlueprintUpdate, BlueprintVersionCreate
+from app.schemas.blueprints import (
+    BlueprintContentUpdate,
+    BlueprintCreate,
+    BlueprintUpdate,
+)
 from app.services.exceptions import (
     BlueprintAccessDeniedError,
     BlueprintNotFoundError,
     BlueprintPersistenceError,
+    BlueprintVersionNotFoundError,
     FounderProfileRequiredError,
+)
+
+# Tech-stack layer keys a founder may edit; anything else is ignored so the
+# client can't inject arbitrary keys into content_json.
+_EDITABLE_LAYERS = frozenset(
+    {"frontend", "backend", "aiProvider", "database", "vectorDb", "hosting"}
 )
 
 
@@ -84,6 +95,44 @@ def update_visibility(
     except SQLAlchemyError as exc:
         db.rollback()
         raise BlueprintPersistenceError("Blueprint could not be updated.") from exc
+
+    return blueprint
+
+
+def update_content(
+    db: Session, blueprint_id: UUID, current_user: User, payload: BlueprintContentUpdate
+) -> Blueprint:
+    """Persist user-edited content (features, tech-stack choices) onto the current
+    version's content_json. Merges into fixed paths so the client can't overwrite
+    the whole document — only the fields the editor exposes."""
+    blueprint = get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+    version = blueprint.current_version
+    if version is None:
+        raise BlueprintVersionNotFoundError()
+
+    try:
+        content = dict(version.content_json or {})
+        agents = dict(content.get("agents") or {})
+        if payload.features is not None:
+            product = dict(agents.get("product") or {})
+            product["features"] = payload.features
+            agents["product"] = product
+        if payload.tech_stack is not None:
+            tech_agent = dict(agents.get("techStack") or {})
+            layers = dict(tech_agent.get("techStack") or {})
+            for key, chosen in payload.tech_stack.items():
+                if key not in _EDITABLE_LAYERS:
+                    continue
+                layers[key] = {**dict(layers.get(key) or {}), "chosen": chosen}
+            tech_agent["techStack"] = layers
+            agents["techStack"] = tech_agent
+        content["agents"] = agents
+        version.content_json = content
+        db.commit()
+        db.refresh(blueprint)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise BlueprintPersistenceError("Blueprint content could not be updated.") from exc
 
     return blueprint
 

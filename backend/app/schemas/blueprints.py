@@ -80,6 +80,17 @@ class BlueprintUpdate(BaseModel):
     visibility: BlueprintVisibility
 
 
+class BlueprintContentUpdate(BaseModel):
+    """User-editable content fields. The service merges these into the version's
+    content_json at fixed, whitelisted paths — the client never sends raw JSON."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    features: list[str] | None = Field(default=None, max_length=40)
+    # layer key -> chosen value; unknown keys are ignored by the service.
+    tech_stack: dict[str, str] | None = None
+
+
 class BlueprintResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
