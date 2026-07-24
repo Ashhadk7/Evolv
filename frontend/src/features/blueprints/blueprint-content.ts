@@ -111,6 +111,18 @@ export type MvpPlan = {
   outOfScope: string[];
 };
 
+// A client-spec feature. Rich fields are optional so legacy string-only
+// blueprints (and the name-only editing path) still fit the type.
+export type ProductFeature = {
+  name: string;
+  priority: string; // tier label: "Must-have" | "Should-have" | "Nice-to-have"
+  module?: string;
+  description?: string;
+  userStory?: string;
+  acceptanceCriteria?: string[];
+  effort?: string;
+};
+
 export type StackLayerKey =
   "frontend" | "backend" | "database" | "vectorDb" | "aiProvider" | "hosting";
 export type TechStackLayer = {
@@ -430,12 +442,48 @@ function deriveCompetitorInsight(bp: Blueprint): CompetitorInsight {
 }
 
 
+const PRIORITY_TIER: Record<string, string> = {
+  Must: "Must-have",
+  Should: "Should-have",
+  Could: "Nice-to-have",
+};
+
+// Parses the structured feature spec (real priority/module/user story/etc.).
+// Falls back to legacy string features with index-based priority so old
+// blueprints keep rendering.
+export function deriveProductFeatures(bp: Blueprint): ProductFeature[] {
+  const raw = agentRecord(bp, "product")?.features;
+  if (Array.isArray(raw)) {
+    const rich = raw
+      .map(asRecord)
+      .filter((f): f is Record<string, unknown> => f !== null)
+      .map((f) => ({
+        name: stringValue(f.name),
+        priority: PRIORITY_TIER[stringValue(f.priority)] ?? "Nice-to-have",
+        module: stringValue(f.module),
+        description: stringValue(f.description),
+        userStory: stringValue(f.userStory),
+        acceptanceCriteria: stringArray(f.acceptanceCriteria),
+        effort: stringValue(f.effort),
+      }))
+      .filter((f) => f.name);
+    if (rich.length) return rich;
+  }
+  return bp.features.map((name, i) => ({
+    name,
+    priority: i < 2 ? "Must-have" : i < 4 ? "Should-have" : "Nice-to-have",
+  }));
+}
+
 function deriveMvpPlan(bp: Blueprint, totalWeeks: number): MvpPlan {
   const productAgent = agentRecord(bp, "product");
+  const features = deriveProductFeatures(bp);
+  const namesFor = (tier: string) =>
+    features.filter((f) => f.priority === tier).map((f) => f.name);
   return {
-    mustHave: bp.features.slice(0, 2),
-    shouldHave: bp.features.slice(2, 4),
-    niceToHave: bp.features.slice(4),
+    mustHave: namesFor("Must-have"),
+    shouldHave: namesFor("Should-have"),
+    niceToHave: namesFor("Nice-to-have"),
     timelineWeeks: totalWeeks,
     outOfScope: stringArray(productAgent?.outOfScope),
   };

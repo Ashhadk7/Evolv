@@ -148,7 +148,7 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
         }))
       : [{ name: "Comparable player", type: "Direct" }],
     differentiator: version.differentiator ?? "Focused AI-guided execution for early teams",
-    features: stringArray(productAgent?.features),
+    features: featureNames(productAgent?.features),
     techStack: {
       frontend: layerChosen(techStackLayers, "frontend"),
       backend: layerChosen(techStackLayers, "backend"),
@@ -191,6 +191,15 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
     : [];
+}
+
+// Feature names for the editor / list view. Handles both the new structured
+// features (objects with a `name`) and legacy string features.
+function featureNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item : stringValue(asRecord(item)?.name, "")))
+    .filter((name) => name.trim());
 }
 
 function stringValue(value: unknown, fallback: string): string {

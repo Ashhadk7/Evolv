@@ -165,7 +165,11 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         # Stage 4 — tech stack needs product features; synthesis reviews the
         # whole file (it does not need the tech stack, so they run together).
         tech_stack, synthesis = await gather_stage(
-            track("techStack", run_tech_stack(agent_brief, payload.industry, product.features)),
+            track(
+                "techStack",
+                # features are now structured objects; tech stack only needs the names
+                run_tech_stack(agent_brief, payload.industry, [f.name for f in product.features]),
+            ),
             track(
                 "synthesis",
                 run_synthesis(

@@ -5,6 +5,7 @@ import { getAccessToken } from "@/features/auth/lib/session";
 import {
   buildArchitecture,
   buildBlueprintContent,
+  deriveProductFeatures,
   fmtMoney,
   type BlueprintContent,
   type Phase,
@@ -247,7 +248,9 @@ export function BlueprintDetail({
 
   const personas = content.personas;
 
-  const featureItems = buildFeatureItems(editing ? draftFeatures : bp.features);
+  // Editing works on names only (draftFeatures); the read view shows the full
+  // structured spec (module, user story, acceptance criteria, real priority).
+  const featureItems = editing ? buildFeatureItems(draftFeatures) : deriveProductFeatures(bp);
 
   const stack = deriveStack(draftTechStack);
 
