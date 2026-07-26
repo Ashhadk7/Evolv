@@ -26,7 +26,16 @@ function contactFrom(conversation: Conversation, direction: "incoming" | "outgoi
 
 function uiMessage(message: ApiMessage, currentUserId: string): Message {
   const created = new Date(message.created_at);
-  return { id: message.id, from: message.sender_id === currentUserId ? "me" : "them", text: message.body, time: created.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), date: created.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) };
+  const sender = String(message.sender_id || "").toLowerCase();
+  const current = String(currentUserId || "").toLowerCase();
+  const isMe = Boolean(current && sender && sender === current);
+  return {
+    id: message.id,
+    from: isMe ? "me" : "them",
+    text: message.body,
+    time: created.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    date: created.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }),
+  };
 }
 
 function profileFromContact(contact: Contact): FounderContactProfile {
@@ -114,9 +123,30 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
         socket.onopen = () => { setSocketReady(true); setError(""); };
         socket.onmessage = (event) => {
           const payload = JSON.parse(event.data) as { event: string; message?: ApiMessage; detail?: unknown; online_user_ids?: string[]; user_id?: string; online?: boolean };
-          if ((payload.event === "message.created" || payload.event === "message.sent") && payload.message && userId) {
-            const message = uiMessage(payload.message, userId);
-            setMessages((old) => ({ ...old, [payload.message!.conversation_id]: old[payload.message!.conversation_id]?.some((item) => item.id === message.id) ? old[payload.message!.conversation_id] : [...(old[payload.message!.conversation_id] ?? []), message] }));
+          const activeUserId = userId || getSession()?.user.id || "";
+          if ((payload.event === "message.created" || payload.event === "message.sent") && payload.message) {
+            const message = uiMessage(payload.message, activeUserId);
+            setMessages((old) => {
+              const convId = payload.message!.conversation_id;
+              const currentThread = old[convId] ?? [];
+              const exists = currentThread.some(
+                (item) => item.id === message.id || (item.text === message.text && item.from === message.from)
+              );
+              if (exists) {
+                return {
+                  ...old,
+                  [convId]: currentThread.map((item) =>
+                    item.id === message.id || (item.text === message.text && item.from === message.from)
+                      ? message
+                      : item
+                  ),
+                };
+              }
+              return {
+                ...old,
+                [convId]: [...currentThread, message],
+              };
+            });
             const isActive = payload.message.conversation_id === activeIdRef.current;
             if (isActive) {
               void messagingApi.read(payload.message.conversation_id);
@@ -129,7 +159,7 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
                 ...existing,
                 last_message: payload.message,
                 unread_count:
-                  payload.message.recipient_id === userId && !isActive
+                  payload.message.recipient_id === activeUserId && !isActive
                     ? existing.unread_count + 1
                     : 0,
                 updated_at: payload.message.created_at,
@@ -211,8 +241,19 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
       return;
     }
     setLoadingConversationId(id);
-    try { const data = await messagingApi.messages(id); if (userId) setMessages((old) => ({ ...old, [id]: data.items.map((m) => uiMessage(m, userId)) })); await messagingApi.read(id); markConversationReadLocal(id); } catch (err) { setError(getApiErrorMessage(err)); } finally { setLoadingConversationId(null); }
+    try {
+      const data = await messagingApi.messages(id);
+      const currentId = userId || getSession()?.user.id || "";
+      setMessages((old) => ({ ...old, [id]: data.items.map((m) => uiMessage(m, currentId)) }));
+      await messagingApi.read(id);
+      markConversationReadLocal(id);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoadingConversationId(null);
+    }
   }, [markConversationReadLocal, messages, onActiveContactChange, userId]);
+
   useEffect(() => {
     if (!activeId || loadingChats || profileOpen || Object.hasOwn(messages, activeId)) return;
     let active = true;
@@ -223,7 +264,14 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
       active = false;
     };
   }, [activeId, loadingChats, messages, profileOpen, select]);
-  useLayoutEffect(() => { if (loadingConversationId === activeId) return; const frame = requestAnimationFrame(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }); return () => cancelAnimationFrame(frame); }, [activeId, loadingConversationId, profileOpen, thread.length]);
+
+  useLayoutEffect(() => {
+    if (loadingConversationId === activeId) return;
+    const frame = requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeId, loadingConversationId, profileOpen, thread.length]);
 
   const visible = contacts.filter((c) => filter === "requests" ? c.requestDirection === "incoming" : filter === "pending" ? c.requestDirection === "outgoing" : filter === "unread" ? !c.requestDirection && c.unread > 0 : !c.requestDirection);
   const tabs: { id: InboxFilter; label: string; count: number }[] = [{ id: "general", label: "General", count: contacts.filter((c) => !c.requestDirection).length }, { id: "unread", label: "Unread", count: contacts.filter((c) => !c.requestDirection && c.unread > 0).length }, { id: "requests", label: "Requests", count: contacts.filter((c) => c.requestDirection === "incoming").length }, { id: "pending", label: "Pending", count: contacts.filter((c) => c.requestDirection === "outgoing").length }];
@@ -231,8 +279,29 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
 
   const sendTo = (recipientId: string, body: string) => {
     const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) { setError("Reconnecting to messaging. Please wait a moment."); return false; }
-    socket.send(JSON.stringify({ recipient_id: recipientId, body })); setError(""); return true;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setError("Reconnecting to messaging. Please wait a moment.");
+      return false;
+    }
+    socket.send(JSON.stringify({ recipient_id: recipientId, body }));
+    setError("");
+
+    if (activeId) {
+      const now = new Date();
+      const optMsg: Message = {
+        id: `opt-${Date.now()}`,
+        from: "me",
+        text: body,
+        time: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        date: now.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }),
+      };
+      setMessages((old) => ({
+        ...old,
+        [activeId]: [...(old[activeId] ?? []).filter((m) => m.id !== optMsg.id), optMsg],
+      }));
+    }
+
+    return true;
   };
   const send = () => { if (!contact?.participantId || !draft.trim() || locked) return; if (sendTo(contact.participantId, draft.trim())) setDraft(""); };
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } };
