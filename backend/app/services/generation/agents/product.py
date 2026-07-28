@@ -4,7 +4,6 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.core.config import get_settings
 from app.services.generation.agent_service import call_agent
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
@@ -12,10 +11,23 @@ from app.services.generation.text import clean
 ShortScopeCut = Annotated[str, Field(min_length=1, max_length=140)]
 ShortDeliverable = Annotated[str, Field(min_length=1, max_length=100)]
 ShortCriterion = Annotated[str, Field(min_length=1, max_length=110)]
-FeatureCriterion = Annotated[str, Field(min_length=1, max_length=140)]
+# Given/When/Then acceptance criteria run longer than the old one-liners.
+FeatureCriterion = Annotated[str, Field(min_length=1, max_length=180)]
+FeatureName = Annotated[str, Field(min_length=1, max_length=80)]
+EntityField = Annotated[str, Field(min_length=1, max_length=60)]
+NonFunctional = Annotated[str, Field(min_length=1, max_length=140)]
 
 Priority = Literal["Must", "Should", "Could"]
 Effort = Literal["S", "M", "L"]
+
+
+class DataEntity(BaseModel):
+    """A core domain object the build revolves around — the data model at a glance."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=40)
+    fields: list[EntityField] = Field(min_length=2, max_length=8)
 
 
 class Feature(BaseModel):
@@ -29,9 +41,12 @@ class Feature(BaseModel):
     user_story: str = Field(alias="userStory", min_length=1, max_length=200)
     priority: Priority
     acceptance_criteria: list[FeatureCriterion] = Field(
-        alias="acceptanceCriteria", min_length=1, max_length=3
+        alias="acceptanceCriteria", min_length=1, max_length=5
     )
     effort: Effort
+    # Other feature names this one depends on, so a dev can sequence the build.
+    # Unknown/self references are dropped in ProductOutput's validator, not trusted.
+    dependencies: list[FeatureName] = Field(default_factory=list, max_length=4)
     # Grounding guard (B1): the persona pain/job-to-be-done or research signal
     # this feature serves. A feature that can't name one is likely invented —
     # the prompt is told to drop it, and the schema makes the trace mandatory.
@@ -55,6 +70,8 @@ class ProductOutput(BaseModel):
 
     features: list[Feature] = Field(min_length=6, max_length=15)
     out_of_scope: list[ShortScopeCut] = Field(alias="outOfScope", min_length=2, max_length=5)
+    data_entities: list[DataEntity] = Field(alias="dataEntities", min_length=2, max_length=8)
+    non_functional: list[NonFunctional] = Field(alias="nonFunctional", min_length=2, max_length=6)
     phases: list[ProductPhase] = Field(min_length=3, max_length=6)
 
     @model_validator(mode="after")
@@ -70,6 +87,14 @@ class ProductOutput(BaseModel):
             raise ValueError("No Must-have feature — the MVP has no core.")
         if priorities == {"Must"}:
             raise ValueError("Every feature is marked Must — the spec is not prioritized.")
+        # Dependencies are ordering hints, not core content: a hallucinated
+        # reference is dropped (not retried) rather than failing the whole spec.
+        valid = set(names)
+        for feature in self.features:
+            feature.dependencies = [
+                dep for dep in feature.dependencies
+                if dep.strip().lower() in valid and dep.strip().lower() != feature.name.strip().lower()
+            ]
         return self
 
 
@@ -93,9 +118,8 @@ async def run_product(
             persona=persona,
             research=research,
         ),
-        # ponytail: a 6-15 feature client spec (user stories + acceptance criteria)
-        # needs more room than the old 4-7 one-liners. This is the token dial —
-        # raise the model to GROQ_MODEL if the fast model's spec quality is weak.
-        max_tokens=3000,
-        model=get_settings().GROQ_FAST_MODEL,
+        # A client-grade handoff spec (Given/When/Then criteria, dependencies,
+        # data model, NFRs) is reasoning-heavy, so it runs on the large model.
+        # ponytail: token dial — drop to GROQ_FAST_MODEL only if quota forces it.
+        max_tokens=4000,
     )

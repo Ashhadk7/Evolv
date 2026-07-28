@@ -6,7 +6,7 @@ import { Chip } from "@/components/shared/chip";
 import { Label } from "@/components/shared/label";
 import { Reveal } from "@/components/shared/reveal";
 import { SectionHead } from "@/components/shared/section-head";
-import type { ProductFeature } from "@/features/blueprints/blueprint-content";
+import type { DataEntity, ProductFeature } from "@/features/blueprints/blueprint-content";
 
 function priorityTone(priority: string) {
   return (
@@ -23,9 +23,13 @@ const TIERS = ["Must-have", "Should-have", "Nice-to-have"];
 export function BlueprintProductScopeSection({
   featureItems,
   outOfScope,
+  dataEntities,
+  nonFunctional,
 }: {
   featureItems: ProductFeature[];
   outOfScope: string[];
+  dataEntities: DataEntity[];
+  nonFunctional: string[];
 }) {
   return (
     <Reveal>
@@ -93,6 +97,11 @@ export function BlueprintProductScopeSection({
                           ))}
                         </ul>
                       ) : null}
+                      {feature.dependencies?.length ? (
+                        <div className="text-bp-label mt-2 ml-6 text-[10.5px] leading-[1.5]">
+                          &#8627; Depends on: {feature.dependencies.join(", ")}
+                        </div>
+                      ) : null}
                       {feature.addresses ? (
                         <div className="text-bp-label mt-2 ml-6 text-[10.5px] leading-[1.5]">
                           &#8627; Serves: {feature.addresses}
@@ -105,6 +114,39 @@ export function BlueprintProductScopeSection({
             );
           })}
         </div>
+        {dataEntities.length ? (
+          <div className="mt-5">
+            <Label>Data model</Label>
+            <div className="flex flex-col gap-2">
+              {dataEntities.map((entity, index) => (
+                <div
+                  key={index}
+                  className="border-bp-border-soft bg-bp-tint flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5"
+                >
+                  <span className="text-bp-ink text-[12.5px] font-semibold">{entity.name}</span>
+                  {entity.fields.map((field, j) => (
+                    <Chip key={j} tone="neutral">
+                      {field}
+                    </Chip>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {nonFunctional.length ? (
+          <div className="mt-5">
+            <Label>Non-functional requirements</Label>
+            <div className="flex flex-col gap-2">
+              {nonFunctional.map((item, index) => (
+                <div key={index} className="flex items-start gap-[9px]">
+                  <CheckCircle size={15} weight="fill" className="text-bp-label mt-px shrink-0" />
+                  <span className="text-bp-muted text-[12.5px] leading-[1.5]">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {outOfScope.length ? (
           <div className="mt-5">
             <Label>Out of scope for v1</Label>

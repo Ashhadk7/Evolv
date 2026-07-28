@@ -103,12 +103,16 @@ export type CompetitorInsight = {
   retrievedAt: string;
 };
 
+export type DataEntity = { name: string; fields: string[] };
+
 export type MvpPlan = {
   mustHave: string[];
   shouldHave: string[];
   niceToHave: string[];
   timelineWeeks: number;
   outOfScope: string[];
+  dataEntities: DataEntity[];
+  nonFunctional: string[];
 };
 
 // A client-spec feature. Rich fields are optional so legacy string-only
@@ -121,6 +125,7 @@ export type ProductFeature = {
   userStory?: string;
   acceptanceCriteria?: string[];
   effort?: string;
+  dependencies?: string[]; // names of other features this one must ship after
   addresses?: string; // the persona pain / research signal this feature serves
 };
 
@@ -472,6 +477,7 @@ export function deriveProductFeatures(bp: Blueprint): ProductFeature[] {
             userStory: stringValue(f.userStory),
             acceptanceCriteria: stringArray(f.acceptanceCriteria),
             effort: stringValue(f.effort),
+            dependencies: stringArray(f.dependencies),
             addresses: stringValue(f.addresses),
           };
         }
@@ -493,12 +499,17 @@ function deriveMvpPlan(bp: Blueprint, totalWeeks: number): MvpPlan {
   const features = deriveProductFeatures(bp);
   const namesFor = (tier: string) =>
     features.filter((f) => f.priority === tier).map((f) => f.name);
+  const dataEntities = recordArray(productAgent?.dataEntities)
+    .map((entity) => ({ name: stringValue(entity.name), fields: stringArray(entity.fields) }))
+    .filter((entity) => entity.name && entity.fields.length);
   return {
     mustHave: namesFor("Must-have"),
     shouldHave: namesFor("Should-have"),
     niceToHave: namesFor("Nice-to-have"),
     timelineWeeks: totalWeeks,
     outOfScope: stringArray(productAgent?.outOfScope),
+    dataEntities,
+    nonFunctional: stringArray(productAgent?.nonFunctional),
   };
 }
 

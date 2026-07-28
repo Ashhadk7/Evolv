@@ -406,6 +406,8 @@ export function BlueprintDetail({
           <BlueprintProductScopeSection
             featureItems={featureItems}
             outOfScope={content.mvpPlan.outOfScope}
+            dataEntities={content.mvpPlan.dataEntities}
+            nonFunctional={content.mvpPlan.nonFunctional}
           />
           <BlueprintTechStackSection
             editing={editing}
