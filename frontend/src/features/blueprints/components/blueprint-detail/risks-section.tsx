@@ -10,7 +10,7 @@ import { sevTone } from "./blueprint-detail-data";
 export function RisksSection({
   riskRows,
 }: {
-  riskRows: { risk: string; sev: string; mit: string }[];
+  riskRows: { risk: string; sev: string; mit: string; basis?: string }[];
 }) {
   return (
     <Reveal>
@@ -31,7 +31,10 @@ export function RisksSection({
               key={i}
               className="border-bp-border-soft grid grid-cols-[1.4fr_0.5fr_1.8fr] items-start gap-2.5 border-t px-[18px] py-3.5 text-[13px]"
             >
-              <span className="text-bp-ink leading-[1.45] font-semibold">{r.risk}</span>
+              <span className="text-bp-ink flex flex-wrap items-center gap-1.5 leading-[1.45] font-semibold">
+                {r.risk}
+                {r.basis === "assumption" ? <Chip tone="neutral">Assumption</Chip> : null}
+              </span>
               <span>
                 <Chip tone={sevTone(r.sev)}>{r.sev}</Chip>
               </span>

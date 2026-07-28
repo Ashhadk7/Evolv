@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.services.generation.agent_service import call_agent
+from app.services.generation.agents.common import EvidenceClaim
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
 
@@ -12,7 +13,6 @@ PersonaSegment = Literal["Primary user", "Economic buyer", "Gatekeeper"]
 ShortGoal = Annotated[str, Field(min_length=1, max_length=120)]
 ShortPain = Annotated[str, Field(min_length=1, max_length=130)]
 ShortTrigger = Annotated[str, Field(min_length=1, max_length=130)]
-ShortObjection = Annotated[str, Field(min_length=1, max_length=130)]
 ShortChannel = Annotated[str, Field(min_length=1, max_length=80)]
 ShortRisk = Annotated[str, Field(min_length=1, max_length=140)]
 
@@ -28,7 +28,9 @@ class PersonaCard(BaseModel):
     pains: list[ShortPain] = Field(min_length=2, max_length=4)
     jobs_to_be_done: list[ShortGoal] = Field(alias="jobsToBeDone", min_length=2, max_length=3)
     buying_triggers: list[ShortTrigger] = Field(alias="buyingTriggers", min_length=2, max_length=3)
-    objections: list[ShortObjection] = Field(min_length=2, max_length=3)
+    # Objections are the classic fabrication vector — a plausible-sounding worry
+    # the agent invented. Tag each so an unsourced one is visible, not implied fact.
+    objections: list[EvidenceClaim] = Field(min_length=2, max_length=3)
     success_metric: str = Field(alias="successMetric", min_length=1, max_length=130)
     acquisition_channels: list[ShortChannel] = Field(
         alias="acquisitionChannels", min_length=2, max_length=4

@@ -78,11 +78,17 @@ def persona_context_from_agents(agents: dict[str, Any]) -> str:
     primary_segment = persona_data.get("primaryPersona", "")
     primary = next((p for p in personas if p.get("segment") == primary_segment), personas[0] if personas else {})
     channels = sorted({c for p in personas for c in p.get("acquisitionChannels", [])})
+    # Objections are {text, basis} objects on schema 6+, plain strings on legacy
+    # blueprints — normalise both to text for the digest.
+    objections = [
+        o.get("text", "") if isinstance(o, dict) else o
+        for o in primary.get("objections", [])
+    ]
     return json.dumps({
         "primaryRole": primary.get("role", ""),
         "pains": primary.get("pains", []),
         "jobsToBeDone": primary.get("jobsToBeDone", []),
-        "objections": primary.get("objections", []),
+        "objections": objections,
         "acquisitionChannels": channels,
     }, ensure_ascii=True)
 

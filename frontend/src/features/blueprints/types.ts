@@ -25,14 +25,18 @@ export interface BlueprintStrategyItem {
   text: string;
 }
 
+export type EvidenceBasis = "sourced" | "assumption";
+
 export interface BlueprintStrategyAddition extends BlueprintStrategyItem {
   impact: string;
+  basis?: EvidenceBasis;
 }
 
 export interface BlueprintStrategyRisk {
   risk: string;
   severity: BlueprintRiskSeverity;
   mitigation: string;
+  basis?: EvidenceBasis;
 }
 
 export interface BlueprintStrategy {

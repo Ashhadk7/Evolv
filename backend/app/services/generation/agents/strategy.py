@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
+from app.services.generation.agents.common import EvidenceBasis
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agent_service import call_agent
@@ -25,6 +26,8 @@ class StrategyItem(BaseModel):
 
 class StrategyAddition(StrategyItem):
     impact: str = Field(min_length=1, max_length=40)
+    # sourced = a research signal backs this; assumption = the agent's own call.
+    basis: EvidenceBasis
 
 
 class StrategyRisk(BaseModel):
@@ -33,6 +36,8 @@ class StrategyRisk(BaseModel):
     risk: ShortText
     severity: Literal["High", "Medium", "Low"]
     mitigation: ShortText
+    # sourced = a research signal backs this risk; assumption = the agent's own call.
+    basis: EvidenceBasis
 
 
 class StrategyOutput(BaseModel):

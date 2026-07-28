@@ -167,6 +167,7 @@ export function buildRiskRows(bp: Blueprint) {
       risk: risk.risk,
       sev: risk.severity,
       mit: risk.mitigation,
+      basis: risk.basis,
     }))
     .sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
 }

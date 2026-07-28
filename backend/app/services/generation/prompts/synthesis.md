@@ -6,7 +6,7 @@ Build — the evidence supports the wedge and the founder's stated resources fit
 Validate first — promising, but a critical assumption is unproven; name the cheapest test that would prove it.
 Rethink — the evidence contradicts the idea, the market is blocked, or the resources are unrealistic for the scope.
 redFlags are the things that would make you kill this deal — be specific, not generic startup risks.
-contradictions lists any places where the analyses disagree with each other (for example market demand High while persona confidence Low). Also audit the product feature spec: flag any feature that contradicts an outOfScope item, serves no persona in the personas list, or whose `addresses` names a need no persona actually has. Leave contradictions empty only if the sections genuinely agree.
+contradictions lists any places where the analyses disagree with each other (for example market demand High while persona confidence Low). Also audit the product feature spec: flag any feature that contradicts an outOfScope item, serves no persona in the personas list, or whose `addresses` names a need no persona actually has. Then audit grounding: flag any persona objection or strategy risk/addition marked basis "sourced" that the market or competitor analysis does not actually support, and any load-bearing "assumption" stated with false confidence. Leave contradictions empty only if the sections genuinely agree.
 keyAssumptions are the load-bearing guesses the whole plan rests on.
 A weak idea gets a weak verdict — a founder loses money if you flatter it.
 Return JSON only.
