@@ -3,7 +3,7 @@
 This document explains how Evolv turns a founder's raw startup idea into a fully
 researched, evidence-cited blueprint. It covers **what** each stage does, **how**
 it does it, and **why** it is built the way it is. It reflects the code in
-`backend/app/services/generation/` at `CONTENT_SCHEMA_VERSION = 5`.
+`backend/app/services/generation/` at `CONTENT_SCHEMA_VERSION = 6`.
 
 ---
 
@@ -163,6 +163,13 @@ produces the single most important output for downstream stages — the
 > `[1]`, `[2]`… in the rendered research block. The schema constrains those
 > indexes (`ge=1, le=10` for market) so a model can't cite a source that
 > doesn't exist. This is what powers the clickable citations in the UI.
+>
+> **Runtime clamp (not just schema bounds).** The schema ceiling is static, but
+> the real research often returns *fewer* sources than that ceiling — so after
+> each research agent returns, `keep_cited_indexes` drops any index past the
+> number of sources actually shown to the model (market/competitor/scorecard).
+> A citation to a source that wasn't in the prompt is a fabricated footnote;
+> dropping it turns "cites nothing" into an honest empty citation.
 
 > **Token discipline here matters most.** Market and competitor carry the
 > biggest prompts (many sources × long snippets). They send **trimmed** research
@@ -175,7 +182,8 @@ produces the single most important output for downstream stages — the
 
 **What:** Produces exactly **3 personas** — one Primary user, one Economic buyer,
 one Gatekeeper — each with goals, pains, jobs-to-be-done, buying triggers,
-objections, and acquisition channels. Plus an adoption path and messaging angles.
+objections (each tagged `sourced`/`assumption`), and acquisition channels. Plus
+an adoption path and messaging angles.
 
 **How:** `run_persona` consumes a **shared research block** built from the top 5
 market + top 5 competitor sources (trimmed to 300-char snippets). It does **not**
@@ -191,15 +199,20 @@ enforces the exact 3-role composition via a model validator, so downstream code
 
 Three agents, all depending only on stages 1–2, run **concurrently**.
 
-**Product** (`run_product`): scopes an MVP — 4–7 **features**, 2–5 explicit
-**out-of-scope** cuts, and 3–6 build **phases** (each with weeks, deliverables,
-acceptance criteria, primary skill). Grounded in the competitor
-`positioning_angle` and a compact persona digest. Runs on the **fast model** —
-it's structured planning, not deep reasoning.
+**Product** (`run_product`): scopes a **client-grade MVP spec** — 6–15
+**features** (each with module, user story, Given/When/Then acceptance criteria,
+priority, effort, `dependencies` on other features, and the persona need it
+`addresses`), 2–5 **out-of-scope** cuts, the **data entities** the build revolves
+around, the **non-functional requirements**, and 3–6 build **phases**. Grounded
+in the competitor `positioning_angle` and a compact persona digest. Runs on the
+**large model** — a real handoff spec is reasoning-heavy. A model validator drops
+any `dependencies` reference that isn't a real feature name (hallucination guard).
 
 **Strategy** (`run_strategy`): what the market lacks, recommended additions with
 impact, path-to-complete, risks with severity + mitigation, and GTM channels +
-sequence grounded in persona acquisition channels. Large model.
+sequence grounded in persona acquisition channels. Each risk and addition carries
+an evidence **`basis`** (`sourced`/`assumption`) so an invented judgement call is
+labelled, not passed as fact. Large model.
 
 **Scorecard** (`run_scorecard`): rates **6 anchored dimensions** 0–100 — problem
 severity, market quality, competition, differentiation, execution feasibility,
@@ -224,7 +237,11 @@ stack without knowing what you're building). Fast model.
 assembled file and produces the blueprint's identity and verdict — **brand name**
 (becomes the title), tagline, executive summary, a **verdict**
 (Build / Validate first / Rethink) with reasoning, red flags with severity,
-contradictions it noticed across agents, and key assumptions.
+contradictions it noticed across agents, and key assumptions. Its
+`contradictions` audit also **checks grounding**: it flags any persona objection
+or strategy risk/addition marked `sourced` that the market/competitor analysis
+doesn't actually support — the one place fabrication in the ungrounded agents
+gets caught.
 
 > **Why these two run together.** Tech stack needs product; synthesis needs
 > everything *except* tech stack (a founder's build stack doesn't change the
@@ -356,7 +373,7 @@ failure now ends *cleanly and immediately* instead of trailing background 429s.
 
 ```jsonc
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "intake": { /* non-empty intake fields */ },
   "agents": {
     "market":     { /* MarketAnalysis + sources + researchMetadata + bottomUpSam */ },
