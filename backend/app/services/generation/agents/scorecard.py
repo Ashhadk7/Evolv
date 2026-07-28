@@ -9,6 +9,7 @@ from app.services.generation.agent_service import call_agent
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agents.persona import PersonaOutput
+from app.services.generation.enrichment import keep_cited_indexes
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean, clip
 
@@ -66,12 +67,13 @@ async def run_scorecard(
     competitor: CompetitorOutput,
     persona: PersonaOutput,
     research: str,
+    source_count: int,
 ) -> ScorecardOutput:
     brief = clean(brief)
     if not brief:
         raise ValueError("Scorecard agent requires a startup brief.")
 
-    return await call_agent(
+    output = await call_agent(
         ScorecardOutput,
         load_prompt("scorecard"),
         render_prompt(
@@ -84,6 +86,12 @@ async def run_scorecard(
         ),
         max_tokens=1200,
     )
+    # source_count = sources in the shared block the orchestrator showed; drop
+    # any dimension citation past it so a score can't footnote a phantom source.
+    for dimension in VIABILITY_WEIGHTS:
+        dim = getattr(output, dimension)
+        dim.source_indexes = keep_cited_indexes(dim.source_indexes, source_count)
+    return output
 
 
 def _agent_json(payload: BaseModel) -> str:

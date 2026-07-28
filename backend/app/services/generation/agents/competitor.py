@@ -9,6 +9,7 @@ from app.services.generation.enrichment import (
     ResearchSource,
     attach_research,
     enrich_competitor_context,
+    keep_cited_indexes,
 )
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean, clip
@@ -78,4 +79,8 @@ async def run_competitor(
     analysis = await call_agent(
         CompetitorAnalysis, load_prompt("competitor"), user_prompt, max_tokens=1500
     )
+    # The prompt showed only the first 8 sources; drop any citation past that.
+    shown = min(8, len(research.sources))
+    for card in analysis.competitors:
+        card.source_indexes = keep_cited_indexes(card.source_indexes, shown)
     return CompetitorOutput.model_validate(attach_research(analysis, research))

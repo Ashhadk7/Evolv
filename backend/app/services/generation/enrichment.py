@@ -157,38 +157,15 @@ async def _collect_research(
     sources = _filter_relevant(_dedupe_sources(collected), _relevance_tokens(idea, industry))[
         :max_sources
     ]
-    notes: list[str] = []
 
     if not sources:
-        # Fall back to internal evidence bundle so refinement and generation
-        # succeed reliably even if Tavily API key is invalid/401 or offline.
-        sources = [
-            ResearchSource(
-                provider="tavily",
-                kind="web",
-                title=f"{industry} Market Signals",
-                url="https://searchenrichment.evolv.internal",
-                domain="evolv.internal",
-                snippet=f"Market research signals for {idea} in {industry}.",
-            ),
-            ResearchSource(
-                provider="tavily",
-                kind="web",
-                title=f"{industry} Competitive Intelligence",
-                url="https://searchenrichment.evolv.internal",
-                domain="evolv.internal",
-                snippet=f"Competitive landscape data for {idea}.",
-            ),
-            ResearchSource(
-                provider="tavily",
-                kind="web",
-                title=f"{industry} Industry Benchmarks",
-                url="https://searchenrichment.evolv.internal",
-                domain="evolv.internal",
-                snippet=f"Industry benchmarks and customer signals for {industry}.",
-            ),
-        ]
-        notes.append("Live web search unavailable; using internal evidence bundle.")
+        # Honest failure over fabricated evidence: no real source means nothing
+        # to ground on. Surface the true cause (bad key, 401, outage) so it's
+        # fixable — never invent placeholder sources that would flow into the
+        # citations UI as if real and skew every downstream agent (AGENT_FLOW.md
+        # Mode 4). Refinement already tolerates zero stored sources.
+        detail = "; ".join(provider_errors) or "no results returned"
+        raise EnrichmentError(f"Web research unavailable ({kind}: {detail})")
 
     return ResearchBundle(
         kind=kind,
@@ -196,8 +173,6 @@ async def _collect_research(
         queries=[query for query, _ in queries],
         sources=sources,
         providerErrors=provider_errors,
-        notes=notes,
-
         creditsUsed=credits_used,
     )
 
@@ -276,6 +251,18 @@ def _source_from_mapping(item: dict[str, Any]) -> ResearchSource | None:
         domain=_domain_for(url),
         publishedAt=_published_at_for(item),
     )
+
+
+def keep_cited_indexes(indexes: list[int], shown_count: int) -> list[int]:
+    """Drop 1-based citation indexes the model could not actually have read.
+
+    Source indexes point into the research block shown to the agent; the schema
+    bounds them with a static ceiling, but the real research often returns fewer
+    sources than that ceiling. An index above the count actually shown is a
+    fabricated citation — dropping it turns "cites a source that doesn't exist"
+    into an honest "no citation" instead of a phantom footnote.
+    """
+    return [i for i in indexes if 1 <= i <= shown_count]
 
 
 def sources_to_prompt_block(

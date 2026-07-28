@@ -9,6 +9,7 @@ from app.services.generation.enrichment import (
     ResearchSource,
     attach_research,
     enrich_market_context,
+    keep_cited_indexes,
 )
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean, clip
@@ -85,4 +86,8 @@ async def run_market(
         research=research.to_prompt_block(max_sources=6, snippet_chars=450),
     )
     analysis = await call_agent(MarketAnalysis, load_prompt("market"), user_prompt, max_tokens=1500)
+    # The prompt showed only the first 6 sources; drop any citation past that.
+    shown = min(6, len(research.sources))
+    for signal in analysis.demand_signals:
+        signal.source_indexes = keep_cited_indexes(signal.source_indexes, shown)
     return MarketOutput.model_validate(attach_research(analysis, research))

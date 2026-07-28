@@ -40,7 +40,7 @@ from app.services.generation.enrichment import EnrichmentError, sources_to_promp
 
 logger = logging.getLogger(__name__)
 
-CONTENT_SCHEMA_VERSION = 5
+CONTENT_SCHEMA_VERSION = 6
 ALL_AGENTS = [
     "market",
     "competitor",
@@ -195,9 +195,8 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         # Stage 2 — persona grounds itself in the stage-1 sources (no extra
         # searches). Second-hand consumers get a trimmed block (top 5 sources
         # each, short snippets) — full snippets live with market/competitor.
-        shared_research = sources_to_prompt_block(
-            market.sources[:5] + competitor.sources[:5], snippet_chars=300
-        )
+        shared_sources = market.sources[:5] + competitor.sources[:5]
+        shared_research = sources_to_prompt_block(shared_sources, snippet_chars=300)
         persona = await track(
             "persona", run_persona(agent_brief, payload.industry, shared_research)
         )
@@ -224,7 +223,9 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             ),
             track(
                 "scorecard",
-                run_scorecard(agent_brief, market, competitor, persona, shared_research),
+                run_scorecard(
+                    agent_brief, market, competitor, persona, shared_research, len(shared_sources)
+                ),
             ),
         )
 
@@ -444,7 +445,7 @@ def _persona_context(persona: PersonaOutput) -> str:
             "primaryRole": primary.role,
             "pains": primary.pains,
             "jobsToBeDone": primary.jobs_to_be_done,
-            "objections": primary.objections,
+            "objections": [objection.text for objection in primary.objections],
             "acquisitionChannels": channels,
         },
         ensure_ascii=True,
