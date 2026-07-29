@@ -57,7 +57,10 @@ class ProductPhase(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=60)
-    weeks: int = Field(ge=1, le=8)
+    # Ceiling raised from 8 so a 6-12 month timeline is representable. At 8 the
+    # model had to shrink a long phase to pass validation, which biased every
+    # roadmap short — and the build cost is priced off these weeks.
+    weeks: int = Field(ge=1, le=12)
     deliverables: list[ShortDeliverable] = Field(min_length=2, max_length=4)
     acceptance_criteria: list[ShortCriterion] = Field(
         alias="acceptanceCriteria", min_length=1, max_length=2
@@ -99,7 +102,7 @@ class ProductOutput(BaseModel):
 
 
 async def run_product(
-    idea: str, positioning: str, persona: str, research: str = ""
+    idea: str, positioning: str, persona: str, research: str = "", timeline_weeks: int = 0
 ) -> ProductOutput:
     idea = clean(idea)
     positioning = clean(positioning)
@@ -117,9 +120,28 @@ async def run_product(
             positioning=positioning,
             persona=persona,
             research=research,
+            timeline=_timeline_budget(timeline_weeks),
         ),
         # A client-grade handoff spec (Given/When/Then criteria, dependencies,
         # data model, NFRs) is reasoning-heavy, so it runs on the large model.
         # ponytail: token dial — drop to GROQ_FAST_MODEL only if quota forces it.
-        max_tokens=4000,
+        max_tokens=6000,
+    )
+
+
+def _timeline_budget(weeks: int) -> str:
+    """The phase-week budget line for the prompt.
+
+    The founder's timeline reaches the model as one line inside the brief and
+    nothing tells it that `phases[].weeks` must add up to that. Restating it as
+    an explicit budget is what keeps the derived build cost honest, because the
+    frontend prices the build straight off the sum of these weeks.
+    """
+    if weeks <= 0:
+        return "The founder gave no usable timeline — size the phases to the scope."
+    return (
+        f"The founder's stated timeline is about {weeks} weeks. Your phase weeks "
+        f"MUST sum to roughly {weeks} (within ~20%) — scope the phases to fit it, "
+        "and if the scope genuinely cannot fit, cut features to 'Could' rather "
+        "than pretending the build is shorter than it is."
     )

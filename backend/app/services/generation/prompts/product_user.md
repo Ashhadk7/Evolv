@@ -1,6 +1,8 @@
 Idea: {idea}
 Positioning: {positioning}
 
+Build timeline: {timeline}
+
 Primary persona — ground every feature in these pains and jobs:
 {persona}
 
@@ -13,4 +15,4 @@ Build the MVP feature specification a dev team could start from on day one:
 - Write acceptanceCriteria as testable Given/When/Then checks, and list feature `dependencies` by name so the build can be sequenced.
 - Mark MVP-critical features "Must", strong-v1 "Should", and later ones "Could".
 
-Then return outOfScope items that should wait until after MVP validation, the dataEntities and their key fields, the nonFunctional requirements this product must meet, and the build phases.
+Then return outOfScope items that should wait until after MVP validation, the dataEntities and their key fields, the nonFunctional requirements this product must meet, and the build phases whose weeks fit the build timeline stated above.

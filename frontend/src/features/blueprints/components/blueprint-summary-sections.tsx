@@ -39,6 +39,7 @@ export function BlueprintExecutiveSummarySection({
   bp,
   executiveSummary,
   keyAssumptions,
+  contradictions,
   totalBuildCost,
   timelineLabel,
   phaseCount,
@@ -48,15 +49,20 @@ export function BlueprintExecutiveSummarySection({
   bp: Blueprint;
   executiveSummary?: string;
   keyAssumptions?: string[];
+  contradictions?: string[];
   totalBuildCost: string;
   timelineLabel: string;
   phaseCount: number;
   roleCount: number;
   mvpFeatureCount: number;
 }) {
+  // The founder's own timeline sits next to the derived one: build cost is
+  // priced off the roadmap's weeks, so if the two disagree the founder must be
+  // able to see it rather than read the derived number as agreed fact.
   const snapshotRows = [
     ["Total build cost", totalBuildCost],
     ["Build time", timelineLabel],
+    ...(bp.intake?.timeline ? [["Founder's timeline", bp.intake.timeline]] : []),
     ["Milestones", `${phaseCount} phases`],
     ["Roles needed", `${roleCount}`],
     ["MVP features", `${mvpFeatureCount} core`],
@@ -87,6 +93,21 @@ export function BlueprintExecutiveSummarySection({
               <ul className="text-bp-body m-0 list-disc pl-4 text-[12.5px] leading-[1.6]">
                 {keyAssumptions.map((assumption) => (
                   <li key={assumption}>{assumption}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* The synthesis agent's cross-agent audit — where the sections
+              disagree with each other or with the brief. It was being computed
+              and never shown, which made the whole check pointless. */}
+          {contradictions && contradictions.length > 0 && (
+            <div className="border-bp-amber/40 mt-3 rounded-xl border bg-[#fef6e4] px-4 py-3">
+              <div className="font-mono-app mb-1.5 text-[10px] font-bold tracking-[0.1em] text-[#a66a10] uppercase">
+                Review flags — the analyses disagree here
+              </div>
+              <ul className="text-bp-body m-0 list-disc pl-4 text-[12.5px] leading-[1.6]">
+                {contradictions.map((contradiction) => (
+                  <li key={contradiction}>{contradiction}</li>
                 ))}
               </ul>
             </div>

@@ -27,4 +27,6 @@ nonFunctional: the non-functional requirements that scope the build — authenti
 
 Also plan phases: the build roadmap for exactly this product, derived from the feature list — never a generic template. Each phase has a name, weeks (realistic for a small team), 2-4 concrete deliverables, 1-2 acceptance criteria a founder can verify, and the primarySkill needed (for example "Frontend", "Backend", "AI/ML", "DevOps"). Only include phases this product actually needs.
 
+Phase weeks are load-bearing: the founder's build cost is calculated from them, so a roadmap shorter than the stated timeline under-quotes the project. Make the weeks add up to the build timeline you were given.
+
 Return JSON only.
