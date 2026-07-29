@@ -151,7 +151,7 @@ def test_market_output_round_trips_through_stored_json():
     stored = MarketOutput(
         size="$500M", sizeBasis="sourced", cagr="18%", cagrBasis="assumption",
         customerCount=12000, customerCountBasis="source 2", priceAnnualUsd=600,
-        priceBasis="benchmark", barriers="Moderate", score=70, demandLevel="High",
+        priceBasis="benchmark", barriers="Moderate", demandLevel="High",
         timing="Now", whyNow="Rates dropped", insight="A wedge exists.",
         demandSignals=[{"text": "a", "sourceIndexes": [1]}, {"text": "b"}, {"text": "c"}],
         headwinds=["h1", "h2"], assumptions=["a1", "a2"], confidence="Medium",
@@ -208,6 +208,99 @@ def test_start_generation_gates_before_persisting():
     assert inspect.iscoroutinefunction(service.start_generation)
     body = inspect.getsource(service.start_generation)
     assert body.index("run_intake_critic") < body.index("create_blueprint")
+
+
+def _expect_rejected(build, label: str):
+    try:
+        build()
+    except ValueError:
+        return
+    raise AssertionError(label)
+
+
+def test_dependency_cycles_are_rejected():
+    cyclic = [
+        _feature("Payments", ["Wallet"], "Must"),
+        _feature("Wallet", ["Payments"], "Should"),
+        _feature("Profile", [], "Could"),
+        _feature("Search", [], "Should"),
+        _feature("Notify", [], "Could"),
+        _feature("Export", [], "Should"),
+    ]
+    _expect_rejected(lambda: _product(cyclic), "A->B->A dependency cycle should be rejected")
+
+
+def test_phase_weeks_must_match_the_founder_timeline():
+    from app.services.generation.agents.product import _fits_timeline
+
+    spec = _product([_feature(n, [], "Must" if n == "A" else "Should") for n in "ABCDEF"])
+    assert sum(p.weeks for p in spec.phases) == 6
+
+    assert _fits_timeline(0) is None
+    _fits_timeline(7)(spec)
+    _expect_rejected(
+        lambda: _fits_timeline(17)(spec), "a 6-week roadmap on a 17-week timeline should fail"
+    )
+
+
+def test_market_figures_must_be_machine_readable():
+    from app.services.generation.agents.market import MarketAnalysis
+
+    def build(size: str, cagr: str):
+        return MarketAnalysis(
+            size=size, sizeBasis="sourced", cagr=cagr, cagrBasis="assumption",
+            customerCount=1200, customerCountBasis="src 1", priceAnnualUsd=600,
+            priceBasis="bench", barriers="Moderate", demandLevel="High",
+            timing="Now", whyNow="Shift", insight="A wedge exists.",
+            demandSignals=[{"text": "a"}, {"text": "b"}, {"text": "c"}],
+            headwinds=["h1", "h2"], assumptions=["a1", "a2"], confidence="Medium",
+            analysis="x" * 200,
+        )
+
+    assert build("$500M", "18%").size == "$500M"
+    assert build("$1,200", "-3.5%").cagr == "-3.5%"
+    _expect_rejected(lambda: build("roughly half a billion", "18%"), "prose size should fail")
+    _expect_rejected(lambda: build("$500M", "high growth"), "prose cagr should fail")
+
+
+def test_developer_rate_parsing_covers_real_profile_text():
+    from app.services.developer_rates import median_weekly_usd, parse_rate
+
+    pkr = parse_rate("PKR 80,000/month")
+    assert (pkr.amount, pkr.period, pkr.currency) == (80000, "month", "PKR")
+    usd = parse_rate("$5k")
+    assert (usd.amount, usd.period, usd.currency) == (5000, "month", "USD")
+    hourly = parse_rate("$45 / hr")
+    assert (hourly.amount, hourly.period, hourly.currency) == (45, "hour", "USD")
+
+    assert parse_rate("negotiable") is None
+    assert parse_rate("") is None
+    assert parse_rate(None) is None
+
+    assert round(parse_rate("$45/hr").weekly_usd()) == 1800
+    assert median_weekly_usd([]) is None
+    rates = [parse_rate("$40/hr"), parse_rate("$60/hr"), parse_rate("$200/hr")]
+    assert median_weekly_usd(rates) == 2400
+
+
+def test_market_no_longer_carries_a_rival_score():
+    from app.services.generation.agents.market import MarketAnalysis
+
+    assert "score" not in MarketAnalysis.model_fields
+
+
+def test_tech_stack_is_sized_on_committed_features_only():
+    from app.services.generation.blueprint_generation_service import _committed_features
+
+    spec = _product([
+        _feature("Login", [], "Must"),
+        _feature("Search", [], "Should"),
+        _feature("Referrals", [], "Could"),
+        _feature("Profile", [], "Should"),
+        _feature("Notify", [], "Could"),
+        _feature("Export", [], "Should"),
+    ])
+    assert _committed_features(spec) == ["Login", "Search", "Profile", "Export"]
 
 
 if __name__ == "__main__":

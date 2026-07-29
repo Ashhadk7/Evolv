@@ -17,6 +17,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Integer,
     Numeric,
     JSON,
     SmallInteger,
@@ -194,6 +195,9 @@ class DeveloperProfile(Base):
     availability: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     open_to_remote: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     preferred_budget: Mapped[str | None] = mapped_column(String)
+    rate_amount: Mapped[int | None] = mapped_column(Integer)
+    rate_period: Mapped[str | None] = mapped_column(String(10))
+    rate_currency: Mapped[str | None] = mapped_column(String(3))
     github: Mapped[str | None] = mapped_column(String)
     linkedin: Mapped[str | None] = mapped_column(String)
     portfolio_link: Mapped[str | None] = mapped_column(String)

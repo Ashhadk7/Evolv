@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.educations import EducationCreate, EducationResponse
@@ -18,6 +20,9 @@ class DeveloperProfileBase(BaseModel):
     availability: bool = True
     open_to_remote: bool = False
     preferred_budget: str | None = Field(None, max_length=100)
+    rate_amount: int | None = Field(None, gt=0, le=10_000_000)
+    rate_period: Literal["hour", "day", "week", "month", "year"] | None = None
+    rate_currency: Literal["USD", "PKR", "INR", "GBP", "EUR", "AED"] | None = None
     github: str | None = Field(None, max_length=255)
     linkedin: str | None = Field(None, max_length=255)
     portfolio_link: str | None = Field(None, max_length=255)
@@ -39,6 +44,9 @@ class DeveloperProfileUpdate(BaseModel):
     availability: bool | None = None
     open_to_remote: bool | None = None
     preferred_budget: str | None = Field(None, max_length=100)
+    rate_amount: int | None = Field(None, gt=0, le=10_000_000)
+    rate_period: Literal["hour", "day", "week", "month", "year"] | None = None
+    rate_currency: Literal["USD", "PKR", "INR", "GBP", "EUR", "AED"] | None = None
     github: str | None = Field(None, max_length=255)
     linkedin: str | None = Field(None, max_length=255)
     portfolio_link: str | None = Field(None, max_length=255)
