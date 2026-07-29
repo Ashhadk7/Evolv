@@ -89,7 +89,8 @@ export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: str
         }),
       });
       if (!response.ok) {
-        throw new Error("Failed to send message");
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.detail || "reach");
       }
       const data = await response.json();
       const aiMsg: ChatMsg = { from: "ai", text: data.response };
@@ -99,7 +100,13 @@ export function ChatPanel({ bp, blueprintId }: { bp: Blueprint; blueprintId: str
       saveHistory(blueprintId, finalMsgs.slice(1));
     } catch (error) {
       console.error(error);
-      setMsgs((m) => [...m, { from: "ai", text: "I'm sorry, I couldn't reach the chatbot API server." }]);
+      // Show the backend's curated message (rate-limit wait, AI unavailable);
+      // fall back to generic for network failures (fetch throws TypeError).
+      const text =
+        error instanceof Error && error.message !== "reach" && !(error instanceof TypeError)
+          ? error.message
+          : "I'm sorry, I couldn't reach the chatbot API server.";
+      setMsgs((m) => [...m, { from: "ai", text }]);
     } finally {
       setTyping(false);
     }

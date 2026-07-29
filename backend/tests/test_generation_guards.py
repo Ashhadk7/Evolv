@@ -89,6 +89,37 @@ def test_extract_features_handles_structured_and_legacy_features():
     assert extract_features({}) == []
 
 
+def test_refine_call_sites_match_agent_signatures():
+    # F4/F5 class: refine_service passes positional args to the agents. A
+    # round-trip test can't catch an arg-count/name drift here — binding the
+    # real signature to what refine passes does, before any network call.
+    import inspect
+
+    from app.services.generation.agents.product import run_product
+    from app.services.generation.agents.scorecard import run_scorecard
+    from app.services.generation.agents.strategy import run_strategy
+
+    # refine_service._call_agent_for_section, section "synthesis"
+    inspect.signature(run_scorecard).bind("brief", object(), object(), object(), "research", 3)
+    # section "product"
+    inspect.signature(run_product).bind("brief", "positioning", "persona", "research", 12)
+    # section "strategy"
+    inspect.signature(run_strategy).bind(object(), object(), "positioning", "research", "persona")
+
+
+def test_chat_features_summary_handles_structured_and_legacy():
+    # The assistant lost the whole feature list when features became objects:
+    # _string_list kept only str items, so a dict feature summarised to nothing.
+    from app.services.chat_service import _features
+
+    assert _features([{"name": "Login", "module": "Accounts", "priority": "Must"}], 7) == [
+        {"name": "Login", "module": "Accounts", "priority": "Must"}
+    ]
+    assert _features(["Legacy feature"], 7) == [{"name": "Legacy feature"}]  # founder-edited
+    assert _features([{"module": "x"}], 7) == []  # no name → dropped, not a blank card
+    assert _features(None, 7) == []
+
+
 def test_market_output_round_trips_through_stored_json():
     # A stored blueprint must validate back into MarketOutput or refine silently
     # runs against an empty market analysis.

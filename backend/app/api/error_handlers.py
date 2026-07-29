@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from app.services.exceptions import AppError, AuthServiceUnavailableError, ErrorCode
+from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,28 @@ def register_exception_handlers(application: FastAPI) -> None:
                     "Please try again shortly."
                 ),
                 "code": "auth_service_unavailable",
+            },
+        )
+
+    @application.exception_handler(AgentRateLimitError)
+    async def handle_agent_rate_limit(request: Request, exc: AgentRateLimitError) -> JSONResponse:
+        # The message already states the real wait ("Try again in ~N min") — safe
+        # and useful to show, unlike a generic AgentServiceError.
+        logger.warning("AI provider rate-limited on %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"detail": str(exc), "code": "ai_rate_limited"},
+        )
+
+    @application.exception_handler(AgentServiceError)
+    async def handle_agent_service_error(request: Request, exc: AgentServiceError) -> JSONResponse:
+        # Provider/parse failures may carry internal detail — log it, show generic.
+        logger.warning("AI provider failed on %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={
+                "detail": "The AI service is unavailable right now. Please try again shortly.",
+                "code": "ai_unavailable",
             },
         )
 

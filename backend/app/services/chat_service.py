@@ -110,7 +110,7 @@ def _agent_summary(agents: dict[str, Any]) -> dict[str, Any]:
             ),
             "product": _compact(
                 {
-                    "features": _string_list(product.get("features"), 7),
+                    "features": _features(product.get("features"), 7),
                     "outOfScope": _string_list(product.get("outOfScope"), 5),
                 }
             ),
@@ -187,6 +187,25 @@ def _string_list(value: Any, limit: int) -> list[str]:
     if not isinstance(value, list):
         return []
     return [item.strip() for item in value[:limit] if isinstance(item, str) and item.strip()]
+
+
+def _features(value: Any, limit: int) -> list[dict[str, Any]]:
+    # Features are objects on schema 6+ (name/module/priority/…) and bare strings
+    # on legacy or founder-edited specs — summarise both so the assistant can
+    # answer "what to build first" instead of silently seeing an empty list.
+    if not isinstance(value, list):
+        return []
+    features: list[dict[str, Any]] = []
+    for item in value[:limit]:
+        if isinstance(item, str) and item.strip():
+            features.append({"name": item.strip()})
+        elif isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"].strip():
+            features.append(
+                _compact(
+                    {"name": item["name"].strip(), "module": item.get("module"), "priority": item.get("priority")}
+                )
+            )
+    return features
 
 
 def _records(value: Any) -> list[dict[str, Any]]:
