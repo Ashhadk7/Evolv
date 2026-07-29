@@ -170,7 +170,7 @@ async def _call_agent_for_section(
         return result.model_dump(by_alias=True)
 
     if section == "persona":
-        result = await run_persona(agent_brief, industry, shared_research)
+        result = await run_persona(agent_brief, industry, shared_research, source_count)
         return result.model_dump(by_alias=True)
 
     if section == "product":
@@ -191,7 +191,7 @@ async def _call_agent_for_section(
         positioning_angle = agents.get("competitor", {}).get("positioningAngle", "")
         persona_context = persona_context_from_agents(agents)
         result = await run_strategy(
-            market_obj, competitor_obj, positioning_angle, shared_research, persona_context
+            market_obj, competitor_obj, positioning_angle, shared_research, persona_context, source_count
         )
         return result.model_dump(by_alias=True)
 

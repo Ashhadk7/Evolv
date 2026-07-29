@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.services.generation.agent_service import call_agent
-from app.services.generation.agents.common import EvidenceClaim
+from app.services.generation.agents.common import EvidenceClaim, verify_grounding
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
 
@@ -60,7 +60,9 @@ class PersonaOutput(BaseModel):
         return self
 
 
-async def run_persona(idea: str, industry: str, research: str) -> PersonaOutput:
+async def run_persona(
+    idea: str, industry: str, research: str, source_count: int = 0
+) -> PersonaOutput:
     idea = clean(idea)
     industry = clean(industry)
     if not idea:
@@ -68,9 +70,13 @@ async def run_persona(idea: str, industry: str, research: str) -> PersonaOutput:
     if not industry:
         raise ValueError("Persona agent requires an industry/domain.")
 
-    return await call_agent(
+    result = await call_agent(
         PersonaOutput,
         load_prompt("persona"),
         render_prompt("persona_user", idea=idea, industry=industry, research=research),
         max_tokens=2400,
     )
+    for card in result.personas:
+        for objection in card.objections:
+            verify_grounding(objection, source_count)
+    return result

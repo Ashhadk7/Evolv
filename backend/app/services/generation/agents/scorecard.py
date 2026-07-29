@@ -5,7 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.services.generation.agent_service import call_agent
-from app.services.generation.agents.common import agent_json
+from app.services.generation.agents.common import SourceIndex, agent_json
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agents.persona import PersonaOutput
@@ -15,9 +15,6 @@ from app.services.generation.text import clean, clip
 
 # Free-form justification — clipped, never hard-failed, when the model runs long.
 Justification = Annotated[str, BeforeValidator(clip(240)), Field(min_length=1, max_length=240)]
-# Indexes reference the shared research block the orchestrator builds: up to 5
-# market sources then up to 5 competitor sources. Bounded to that real ceiling.
-SourceIndex = Annotated[int, Field(ge=1, le=10)]
 
 
 class ScoreDimension(BaseModel):

@@ -4,7 +4,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from app.services.generation.agents.common import EvidenceBasis, agent_json
+from app.services.generation.agents.common import (
+    EvidenceBasis,
+    SourceIndex,
+    agent_json,
+    verify_grounding,
+)
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agent_service import call_agent
@@ -27,6 +32,9 @@ class StrategyAddition(StrategyItem):
     impact: str = Field(min_length=1, max_length=40)
     # sourced = a research signal backs this; assumption = the agent's own call.
     basis: EvidenceBasis
+    source_indexes: list[SourceIndex] = Field(
+        default_factory=list, alias="sourceIndexes", max_length=3
+    )
 
 
 class StrategyRisk(BaseModel):
@@ -37,6 +45,9 @@ class StrategyRisk(BaseModel):
     mitigation: ShortText
     # sourced = a research signal backs this risk; assumption = the agent's own call.
     basis: EvidenceBasis
+    source_indexes: list[SourceIndex] = Field(
+        default_factory=list, alias="sourceIndexes", max_length=3
+    )
 
 
 class StrategyOutput(BaseModel):
@@ -62,12 +73,13 @@ async def run_strategy(
     differentiator: str,
     research: str,
     personas: str,
+    source_count: int = 0,
 ) -> StrategyOutput:
     differentiator = clean(differentiator)
     if not differentiator:
         raise ValueError("Strategy agent requires a differentiator.")
 
-    return await call_agent(
+    result = await call_agent(
         StrategyOutput,
         load_prompt("strategy"),
         render_prompt(
@@ -80,3 +92,6 @@ async def run_strategy(
         ),
         max_tokens=1700,
     )
+    for claim in (*result.risks, *result.recommended_additions):
+        verify_grounding(claim, source_count)
+    return result
