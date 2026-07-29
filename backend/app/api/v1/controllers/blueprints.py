@@ -67,7 +67,7 @@ async def generate_blueprint(
 ) -> BlueprintResponse:
     # Return the blueprint in a `generating` state right away; the agent pipeline
     # runs in the background so this request doesn't block (and can't time out).
-    blueprint = blueprint_generation_service.start_generation(db, current_user, payload)
+    blueprint = await blueprint_generation_service.start_generation(db, current_user, payload)
     background_tasks.add_task(
         blueprint_generation_service.run_generation, blueprint.id, payload
     )

@@ -95,6 +95,7 @@ def test_refine_call_sites_match_agent_signatures():
     # real signature to what refine passes does, before any network call.
     import inspect
 
+    from app.services.generation.agents.persona import run_persona
     from app.services.generation.agents.product import run_product
     from app.services.generation.agents.scorecard import run_scorecard
     from app.services.generation.agents.strategy import run_strategy
@@ -104,7 +105,9 @@ def test_refine_call_sites_match_agent_signatures():
     # section "product"
     inspect.signature(run_product).bind("brief", "positioning", "persona", "research", 12)
     # section "strategy"
-    inspect.signature(run_strategy).bind(object(), object(), "positioning", "research", "persona")
+    inspect.signature(run_strategy).bind(object(), object(), "positioning", "research", "persona", 3)
+    # section "persona"
+    inspect.signature(run_persona).bind("brief", "industry", "research", 3)
 
 
 def test_chat_features_summary_handles_structured_and_legacy():
@@ -118,6 +121,26 @@ def test_chat_features_summary_handles_structured_and_legacy():
     assert _features(["Legacy feature"], 7) == [{"name": "Legacy feature"}]  # founder-edited
     assert _features([{"module": "x"}], 7) == []  # no name → dropped, not a blank card
     assert _features(None, 7) == []
+
+
+def test_verify_grounding_downgrades_unsupported_sourced_claims():
+    from types import SimpleNamespace
+
+    from app.services.generation.agents.common import verify_grounding
+
+    unsupported = SimpleNamespace(basis="sourced", source_indexes=[])
+    verify_grounding(unsupported, 5)
+    assert unsupported.basis == "assumption"
+
+    partly_valid = SimpleNamespace(basis="sourced", source_indexes=[2, 9])
+    verify_grounding(partly_valid, 5)
+    assert partly_valid.source_indexes == [2]
+    assert partly_valid.basis == "sourced"
+
+    all_fabricated = SimpleNamespace(basis="sourced", source_indexes=[9, 12])
+    verify_grounding(all_fabricated, 5)
+    assert all_fabricated.source_indexes == []
+    assert all_fabricated.basis == "assumption"
 
 
 def test_market_output_round_trips_through_stored_json():
@@ -135,6 +158,56 @@ def test_market_output_round_trips_through_stored_json():
         analysis="x" * 200, bottomUpSam="$7.2M",
     ).model_dump(by_alias=True)
     assert MarketOutput.model_validate(stored).bottom_up_sam == "$7.2M"
+
+
+def test_intake_critic_shows_empty_fields_to_the_model():
+    from app.services.generation.agents.intake_critic import INTAKE_FIELDS, render_intake
+
+    block = render_intake({"idea": "A booking tool for Lahore dental clinics", "problem": ""})
+    assert "idea: A booking tool for Lahore dental clinics" in block
+    assert "problem: (not provided)" in block
+    assert len(block.splitlines()) == len(INTAKE_FIELDS)
+
+
+def test_intake_rejection_carries_the_verdict_to_the_client():
+    from app.services.exceptions import ErrorCode, IntakeRejectedError
+    from app.services.generation.agents.intake_critic import IntakeVerdict
+
+    verdict = IntakeVerdict(
+        verdict="ask",
+        reason="The problem describes a pain the idea does not address.",
+        gaps=[
+            {
+                "field": "target_customer",
+                "issue": "No segment named",
+                "question": "Who specifically would use this?",
+                "suggestion": "Name a job title or business type, not a general audience.",
+            }
+        ],
+        conflicts=[
+            {
+                "fields": ["idea", "problem"],
+                "conflict": "Idea is restaurant pricing; problem is patient wait times.",
+                "question": "Which one is the venture?",
+            }
+        ],
+    )
+    error = IntakeRejectedError(verdict)
+    assert error.code is ErrorCode.INTAKE_REJECTED
+    assert error.message == verdict.reason
+    assert error.extra["intake"]["verdict"] == "ask"
+    assert error.extra["intake"]["conflicts"][0]["fields"] == ["idea", "problem"]
+    assert error.extra["intake"]["gaps"][0]["field"] == "target_customer"
+
+
+def test_start_generation_gates_before_persisting():
+    import inspect
+
+    from app.services.generation import blueprint_generation_service as service
+
+    assert inspect.iscoroutinefunction(service.start_generation)
+    body = inspect.getsource(service.start_generation)
+    assert body.index("run_intake_critic") < body.index("create_blueprint")
 
 
 if __name__ == "__main__":

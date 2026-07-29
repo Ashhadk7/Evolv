@@ -20,6 +20,7 @@ class ErrorCode(StrEnum):
     BLUEPRINT_VERSION_NOT_FOUND = "blueprint_version_not_found"
     BLUEPRINT_AGENT_INPUT = "blueprint_agent_input"
     BLUEPRINT_GENERATION = "blueprint_generation"
+    INTAKE_REJECTED = "intake_rejected"
     FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
     DEVELOPER_PROFILE_REQUIRED = "developer_profile_required"
     ALREADY_APPLIED = "already_applied"
@@ -38,12 +39,19 @@ class ErrorCode(StrEnum):
 
 
 class AppError(Exception):
-    """Base class for application errors carrying a machine-readable code."""
+    """Base class for application errors carrying a machine-readable code.
 
-    def __init__(self, code: ErrorCode, message: str) -> None:
+    `extra` is merged into the JSON error body, so an error can carry structured
+    data the client acts on rather than a message it can only display.
+    """
+
+    def __init__(
+        self, code: ErrorCode, message: str, extra: dict[str, object] | None = None
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.extra = extra or {}
 
 
 class SignupError(Exception):
@@ -149,6 +157,18 @@ class BlueprintAgentInputError(AppError):
 
     def __init__(self, message: str = "Blueprint agent input is incomplete.") -> None:
         super().__init__(ErrorCode.BLUEPRINT_AGENT_INPUT, message)
+
+
+class IntakeRejectedError(AppError):
+    """The intake critic judged the input unable to produce a useful blueprint.
+
+    Carries the full verdict so the client can render the critic's questions
+    against the fields they belong to, instead of a dead-end error message.
+    """
+
+    def __init__(self, verdict: object) -> None:
+        payload = verdict.model_dump(by_alias=True)  # type: ignore[attr-defined]
+        super().__init__(ErrorCode.INTAKE_REJECTED, payload["reason"], {"intake": payload})
 
 
 class BlueprintGenerationError(AppError):

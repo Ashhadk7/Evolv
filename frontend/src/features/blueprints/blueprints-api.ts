@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import type {
   Blueprint,
   BlueprintAgentOutputs,
@@ -58,6 +58,37 @@ interface BlueprintListWire {
   limit: number;
   offset: number;
   items: BlueprintWire[];
+}
+
+export type IntakeFieldName = keyof GenerateBlueprintInput;
+
+export interface IntakeGap {
+  field: IntakeFieldName;
+  issue: string;
+  question: string;
+  suggestion: string;
+}
+
+export interface IntakeConflict {
+  fields: IntakeFieldName[];
+  conflict: string;
+  question: string;
+}
+
+export interface IntakeReview {
+  verdict: "ask" | "block";
+  reason: string;
+  gaps: IntakeGap[];
+  conflicts: IntakeConflict[];
+}
+
+// The intake critic rejects before any blueprint row exists, returning the
+// questions it wants answered rather than a dead-end message. Anything else is
+// an ordinary error the caller shows as text.
+export function intakeReviewFrom(error: unknown): IntakeReview | null {
+  if (!(error instanceof ApiError) || error.code !== "intake_rejected") return null;
+  const review = (error.data as { intake?: IntakeReview } | null)?.intake;
+  return review?.verdict ? review : null;
 }
 
 export async function generateBlueprint(input: GenerateBlueprintInput): Promise<Blueprint> {

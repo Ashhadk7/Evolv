@@ -27,6 +27,7 @@ ERROR_STATUS_BY_CODE = {
     ErrorCode.BLUEPRINT_VERSION_NOT_FOUND: status.HTTP_404_NOT_FOUND,
     ErrorCode.BLUEPRINT_AGENT_INPUT: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ErrorCode.BLUEPRINT_GENERATION: status.HTTP_502_BAD_GATEWAY,
+    ErrorCode.INTAKE_REJECTED: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ErrorCode.FOUNDER_PROFILE_REQUIRED: status.HTTP_403_FORBIDDEN,
     ErrorCode.DEVELOPER_PROFILE_REQUIRED: status.HTTP_403_FORBIDDEN,
     ErrorCode.ALREADY_APPLIED: status.HTTP_409_CONFLICT,
@@ -66,7 +67,7 @@ def register_exception_handlers(application: FastAPI) -> None:
             )
         return JSONResponse(
             status_code=status_code,
-            content={"detail": detail, "code": exc.code.value},
+            content={"detail": detail, "code": exc.code.value, **exc.extra},
             headers=ERROR_HEADERS_BY_CODE.get(exc.code),
         )
 

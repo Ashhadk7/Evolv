@@ -21,9 +21,11 @@ from app.services.exceptions import (
     BlueprintPersistenceError,
     BlueprintVersionNotFoundError,
     FounderProfileRequiredError,
+    IntakeRejectedError,
 )
 from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.agents.competitor import CompetitorOutput, run_competitor
+from app.services.generation.agents.intake_critic import run_intake_critic
 from app.services.generation.agents.market import MarketOutput, run_market
 from app.services.generation.agents.persona import PersonaOutput, run_persona
 from app.services.generation.agents.product import ProductOutput, run_product
@@ -85,15 +87,25 @@ def fail_interrupted_generations(db: Session) -> int:
     return len(versions)
 
 
-def start_generation(
+async def start_generation(
     db: Session, current_user: User, payload: BlueprintGenerateRequest
 ) -> Blueprint:
-    """Create the blueprint immediately in a `generating` state and return it.
+    """Gate the intake, then create the blueprint in a `generating` state.
+
+    The critic runs here rather than in the controller so no caller can reach
+    the pipeline without passing it. It costs one small call against the ~40k
+    tokens and dozen web searches a junk run would otherwise spend, and nothing
+    is persisted until it passes.
 
     The slow agent pipeline runs afterwards in a background task (run_generation),
-    so the HTTP request returns in milliseconds instead of blocking for a minute.
+    so the HTTP request returns quickly instead of blocking for a minute.
     """
     founder_id = _require_founder_profile(current_user)
+
+    verdict = await run_intake_critic(payload.model_dump(mode="json"))
+    if verdict.verdict != "proceed":
+        raise IntakeRejectedError(verdict)
+
     blueprint = blueprints_repository.create_blueprint(db, founder_id, payload.visibility)
     blueprints_repository.create_version(
         db, blueprint.id, VersionState.CURRENT, _pending_version(payload)
@@ -199,7 +211,7 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         shared_sources = market.sources[:5] + competitor.sources[:5]
         shared_research = sources_to_prompt_block(shared_sources, snippet_chars=300)
         persona = await track(
-            "persona", run_persona(agent_brief, payload.industry, shared_research)
+            "persona", run_persona(agent_brief, payload.industry, shared_research, len(shared_sources))
         )
 
         # Stage 3 — product scopes to persona pains, strategy grounds GTM in
@@ -224,6 +236,7 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
                     competitor.positioning_angle,
                     shared_research,
                     persona_context,
+                    len(shared_sources),
                 ),
             ),
             track(

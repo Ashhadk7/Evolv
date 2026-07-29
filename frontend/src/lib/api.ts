@@ -21,7 +21,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly detail: string,
-    public readonly code: string | null = null
+    public readonly code: string | null = null,
+    public readonly data: unknown = null
   ) {
     super(detail);
     this.name = "ApiError";
@@ -112,7 +113,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!response.ok) {
     if (auth && response.status === 401) handleExpiredSession();
-    throw new ApiError(response.status, extractErrorDetail(data), data?.code ?? null);
+    throw new ApiError(response.status, extractErrorDetail(data), data?.code ?? null, data);
   }
 
   return data as T;

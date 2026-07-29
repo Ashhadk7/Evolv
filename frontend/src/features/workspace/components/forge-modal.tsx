@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
-import { generateBlueprint, pollGeneration } from "@/features/blueprints/blueprints-api";
+import {
+  generateBlueprint,
+  intakeReviewFrom,
+  pollGeneration,
+} from "@/features/blueprints/blueprints-api";
+import type {
+  IntakeFieldName,
+  IntakeReview,
+} from "@/features/blueprints/blueprints-api";
 import type { Blueprint } from "@/features/blueprints/types";
 import { FORGE_AGENTS, WORKSPACE_INDUSTRIES } from "@/features/workspace/data/workspace-data";
 import { getApiErrorMessage } from "@/lib/api";
@@ -28,6 +36,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
   const [constraints, setConstraints] = useState("");
   const [generatedBlueprint, setGeneratedBlueprint] = useState<Blueprint | null>(null);
   const [generationError, setGenerationError] = useState("");
+  const [intakeReview, setIntakeReview] = useState<IntakeReview | null>(null);
   const [completedAgents, setCompletedAgents] = useState<string[]>([]);
 
   const progress = Math.round((completedAgents.length / FORGE_AGENTS.length) * 100);
@@ -35,6 +44,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
   const startGeneration = async () => {
     if (!idea.trim() || !industry) return;
     setGenerationError("");
+    setIntakeReview(null);
     setGeneratedBlueprint(null);
     setCompletedAgents([]);
     setPhase("generating");
@@ -57,7 +67,9 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
       setGeneratedBlueprint(blueprint);
       setPhase("done");
     } catch (error) {
-      setGenerationError(getApiErrorMessage(error));
+      const review = intakeReviewFrom(error);
+      if (review) setIntakeReview(review);
+      else setGenerationError(getApiErrorMessage(error));
       setPhase("input");
     }
   };
@@ -106,6 +118,8 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     {generationError}
                   </div>
                 )}
+
+                {intakeReview && <IntakeReviewPanel review={intakeReview} />}
 
                 <div>
                   <label className="mb-2 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
@@ -313,6 +327,73 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
           </AnimatePresence>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+const INTAKE_FIELD_LABEL: Record<IntakeFieldName, string> = {
+  idea: "Startup idea",
+  industry: "Industry",
+  target_customer: "Target customer",
+  problem: "Problem",
+  solution: "Solution",
+  stage: "Stage",
+  budget: "Budget",
+  timeline: "Timeline",
+  region: "Region",
+  monetization: "Monetization",
+  constraints: "Constraints",
+};
+
+const fieldLabel = (field: IntakeFieldName) => INTAKE_FIELD_LABEL[field] ?? field;
+
+function ReviewItem({ tag, headline, hint }: { tag: string; headline: string; hint: string }) {
+  return (
+    <li className="border-t border-[#efe2c4] pt-2.5 first:border-t-0 first:pt-0">
+      <div className="text-[10px] font-bold tracking-[0.06em] text-[#a98436] uppercase">{tag}</div>
+      <p className="mt-1 mb-0 text-[12.5px] leading-[1.5] font-semibold text-[#4a3c1d]">
+        {headline}
+      </p>
+      <p className="mt-1 mb-0 text-[12px] leading-[1.5] text-[#7a6a45]">{hint}</p>
+    </li>
+  );
+}
+
+function IntakeReviewPanel({ review }: { review: IntakeReview }) {
+  const blocked = review.verdict === "block";
+  return (
+    <div
+      className={`rounded-xl border px-3.5 py-3 ${
+        blocked ? "border-[#f1d3c7] bg-[#fff6f2]" : "border-[#f0e0bd] bg-[#fdf8ec]"
+      }`}
+    >
+      <p
+        className={`m-0 text-[12.5px] leading-[1.5] font-semibold ${
+          blocked ? "text-[#9b4a2f]" : "text-[#8a6516]"
+        }`}
+      >
+        {review.reason}
+      </p>
+      {(review.conflicts.length > 0 || review.gaps.length > 0) && (
+        <ul className="m-0 mt-3 flex list-none flex-col gap-2.5 p-0">
+          {review.conflicts.map((conflict, index) => (
+            <ReviewItem
+              key={`conflict-${index}`}
+              tag={conflict.fields.map(fieldLabel).join("  vs  ")}
+              headline={conflict.conflict}
+              hint={conflict.question}
+            />
+          ))}
+          {review.gaps.map((gap, index) => (
+            <ReviewItem
+              key={`gap-${index}`}
+              tag={fieldLabel(gap.field)}
+              headline={gap.question}
+              hint={gap.suggestion}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
