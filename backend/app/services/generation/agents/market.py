@@ -18,7 +18,9 @@ ShortSignal = Annotated[str, Field(min_length=1, max_length=130)]
 ShortHeadwind = Annotated[str, Field(min_length=1, max_length=130)]
 ShortAssumption = Annotated[str, Field(min_length=1, max_length=150)]
 ShortBasis = Annotated[str, Field(min_length=1, max_length=150)]
-SourceIndex = Annotated[int, Field(ge=1, le=10)]
+# Bounded to the number of sources the prompt actually renders (see run_market),
+# so the schema never invites a citation that keep_cited_indexes would delete.
+SourceIndex = Annotated[int, Field(ge=1, le=6)]
 EvidenceBasis = Literal["sourced", "assumption"]
 
 
@@ -61,6 +63,10 @@ class MarketAnalysis(BaseModel):
 class MarketOutput(MarketAnalysis):
     sources: list[ResearchSource] = Field(default_factory=list, max_length=10)
     research_metadata: dict[str, Any] = Field(default_factory=dict, alias="researchMetadata")
+    # customer_count x price_annual_usd, computed below — the LLM estimates the
+    # two inputs, never the product. Declared here (not bolted onto the dump)
+    # so the stored blueprint validates back into this model on refine.
+    bottom_up_sam: str = Field(default="", alias="bottomUpSam")
 
 
 async def run_market(
@@ -90,4 +96,13 @@ async def run_market(
     shown = min(6, len(research.sources))
     for signal in analysis.demand_signals:
         signal.source_indexes = keep_cited_indexes(signal.source_indexes, shown)
-    return MarketOutput.model_validate(attach_research(analysis, research))
+    enriched = attach_research(analysis, research)
+    enriched["bottomUpSam"] = _fmt_usd(analysis.customer_count * analysis.price_annual_usd)
+    return MarketOutput.model_validate(enriched)
+
+
+def _fmt_usd(value: int) -> str:
+    for threshold, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "K")):
+        if value >= threshold:
+            return f"${value / threshold:.1f}{suffix}".replace(".0", "")
+    return f"${value}"

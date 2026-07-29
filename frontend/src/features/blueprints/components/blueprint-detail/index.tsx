@@ -250,7 +250,10 @@ export function BlueprintDetail({
 
   // Editing works on names only (draftFeatures); the read view shows the full
   // structured spec (module, user story, acceptance criteria, real priority).
-  const featureItems = editing ? buildFeatureItems(draftFeatures) : deriveProductFeatures(bp);
+  const derivedFeatures = deriveProductFeatures(bp);
+  const featureItems = editing
+    ? buildFeatureItems(draftFeatures, derivedFeatures)
+    : derivedFeatures;
 
   const stack = deriveStack(draftTechStack);
 
@@ -267,10 +270,14 @@ export function BlueprintDetail({
   const analytics = buildAnalytics(bp);
   const aiRecs = buildAiRecs(bp);
 
-  // Combined source pool for F5 scorecard verification chips.
-  // Scorecard's sourceIndexes reference the shared research block: first 5
-  // market sources (indexes 1-5) then first 5 competitor sources (indexes 6-10).
-  const verificationSources = content.marketAnalysis.sources.slice(0, 10);
+  // Source pool for the scorecard verification chips. Scorecard cites the
+  // shared research block the backend built: first 5 market sources (1-5) then
+  // first 5 competitor sources (6-10) — it must be rebuilt the same way here,
+  // or every citation past 5 resolves to a source the agent never read.
+  const verificationSources = [
+    ...content.marketAnalysis.sources.slice(0, 5),
+    ...content.competitorInsight.sources.slice(0, 5),
+  ];
 
   if (selectedDeveloper) {
     return (
@@ -392,6 +399,7 @@ export function BlueprintDetail({
             bp={bp}
             executiveSummary={content.synthesis.executiveSummary}
             keyAssumptions={content.synthesis.keyAssumptions}
+            contradictions={content.synthesis.contradictions}
             totalBuildCost={fmtMoney(cost.total)}
             timelineLabel={cost.timelineLabel}
             phaseCount={phases.length}

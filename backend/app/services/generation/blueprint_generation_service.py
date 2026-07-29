@@ -37,6 +37,7 @@ from app.services.generation.agents.strategy import StrategyOutput, run_strategy
 from app.services.generation.agents.synthesis import SynthesisOutput, run_synthesis
 from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_stack
 from app.services.generation.enrichment import EnrichmentError, sources_to_prompt_block
+from app.services.generation.text import weeks_from_timeline
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +209,11 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             track(
                 "product",
                 run_product(
-                    agent_brief, competitor.positioning_angle, persona_context, shared_research
+                    agent_brief,
+                    competitor.positioning_angle,
+                    persona_context,
+                    shared_research,
+                    weeks_from_timeline(payload.timeline),
                 ),
             ),
             track(
@@ -257,16 +262,15 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             synthesis=synthesis,
         )
         _finalize(db, blueprint_id, content)
-    except ValueError as exc:
-        _update_generation(db, blueprint_id, status="failed", error=str(exc))
     except (AgentRateLimitError, EnrichmentError) as exc:
         # Rate limits and research outages are actionable — show the real
         # cause (wait time / provider error) instead of the generic message.
         logger.warning("Blueprint generation blocked for %s: %s", blueprint_id, exc)
         _update_generation(db, blueprint_id, status="failed", error=str(exc))
     except (AgentServiceError, ValidationError):
-        # Log the real cause (provider error / schema mismatch) — the user-facing
-        # message stays generic, but a failed generation must be diagnosable.
+        # Must stay ABOVE the bare ValueError below: pydantic's ValidationError
+        # IS a ValueError, so the wrong order leaks a full schema dump into the
+        # user-facing error field. The real cause is logged instead.
         logger.warning("Blueprint generation failed for %s", blueprint_id, exc_info=True)
         _update_generation(
             db,
@@ -274,6 +278,9 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             status="failed",
             error="Blueprint generation could not complete. Check provider keys and limits.",
         )
+    except ValueError as exc:
+        # Our own guard clauses (missing idea/industry/positioning) — safe to show.
+        _update_generation(db, blueprint_id, status="failed", error=str(exc))
     except Exception:
         logger.exception("Unexpected blueprint generation failure for %s", blueprint_id)
         _update_generation(
@@ -355,16 +362,13 @@ def _build_blueprint_content_payload(
     scorecard: ScorecardOutput,
     synthesis: SynthesisOutput,
 ) -> BlueprintVersionCreate:
-    # Bottom-up SAM is computed in code from the agent's two estimates — the
-    # LLM judges the inputs, never the arithmetic.
-    market_dump = market.model_dump(by_alias=True)
-    market_dump["bottomUpSam"] = _fmt_usd(market.customer_count * market.price_annual_usd)
-
     content_json = {
         "schemaVersion": CONTENT_SCHEMA_VERSION,
         "intake": _intake_json(payload),
         "agents": {
-            "market": market_dump,
+            # bottomUpSam is computed inside run_market — the LLM judges the two
+            # inputs, never the arithmetic.
+            "market": market.model_dump(by_alias=True),
             "competitor": competitor.model_dump(by_alias=True),
             "persona": persona.model_dump(by_alias=True),
             "product": product.model_dump(by_alias=True),
@@ -397,20 +401,33 @@ def _build_blueprint_content_payload(
     )
 
 
+BRIEF_FIELDS = (
+    ("Startup idea", "idea"),
+    ("Target customer", "target_customer"),
+    ("Problem", "problem"),
+    ("Proposed solution", "solution"),
+    ("Stage", "stage"),
+    ("Estimated budget", "budget"),
+    ("Timeline", "timeline"),
+    ("Region/market", "region"),
+    ("Monetization", "monetization"),
+    ("Constraints", "constraints"),
+)
+
+
+def build_brief(intake: dict[str, Any]) -> str:
+    """The founder's intake as the `Label: value` block every agent reads.
+
+    Shared with refine (refine_helpers) so a re-run sees exactly the same brief
+    the original generation did — two copies of this list drift apart.
+    """
+    return "\n".join(
+        f"{label}: {intake[key]}" for label, key in BRIEF_FIELDS if intake.get(key)
+    )
+
+
 def _build_agent_brief(payload: BlueprintGenerateRequest) -> str:
-    parts = [
-        ("Startup idea", payload.idea),
-        ("Target customer", payload.target_customer),
-        ("Problem", payload.problem),
-        ("Proposed solution", payload.solution),
-        ("Stage", payload.stage),
-        ("Estimated budget", payload.budget),
-        ("Timeline", payload.timeline),
-        ("Region/market", payload.region),
-        ("Monetization", payload.monetization),
-        ("Constraints", payload.constraints),
-    ]
-    return "\n".join(f"{label}: {value}" for label, value in parts if value)
+    return build_brief(payload.model_dump(mode="json"))
 
 
 def _intake_json(payload: BlueprintGenerateRequest) -> dict[str, Any]:
@@ -450,10 +467,3 @@ def _persona_context(persona: PersonaOutput) -> str:
         },
         ensure_ascii=True,
     )
-
-
-def _fmt_usd(value: int) -> str:
-    for threshold, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "K")):
-        if value >= threshold:
-            return f"${value / threshold:.1f}{suffix}".replace(".0", "")
-    return f"${value}"

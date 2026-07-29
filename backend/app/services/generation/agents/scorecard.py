@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.services.generation.agent_service import call_agent
+from app.services.generation.agents.common import agent_json
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agents.persona import PersonaOutput
@@ -15,8 +15,9 @@ from app.services.generation.text import clean, clip
 
 # Free-form justification — clipped, never hard-failed, when the model runs long.
 Justification = Annotated[str, BeforeValidator(clip(240)), Field(min_length=1, max_length=240)]
-# Indexes reference the combined research block: market sources first, then competitor sources.
-SourceIndex = Annotated[int, Field(ge=1, le=22)]
+# Indexes reference the shared research block the orchestrator builds: up to 5
+# market sources then up to 5 competitor sources. Bounded to that real ceiling.
+SourceIndex = Annotated[int, Field(ge=1, le=10)]
 
 
 class ScoreDimension(BaseModel):
@@ -79,9 +80,9 @@ async def run_scorecard(
         render_prompt(
             "scorecard_user",
             brief=brief,
-            market=_agent_json(market),
-            competitors=_agent_json(competitor),
-            personas=_agent_json(persona),
+            market=agent_json(market),
+            competitors=agent_json(competitor),
+            personas=agent_json(persona),
             research=research,
         ),
         max_tokens=1200,
@@ -92,8 +93,3 @@ async def run_scorecard(
         dim = getattr(output, dimension)
         dim.source_indexes = keep_cited_indexes(dim.source_indexes, source_count)
     return output
-
-
-def _agent_json(payload: BaseModel) -> str:
-    data = payload.model_dump(by_alias=True, exclude={"sources", "research_metadata"})
-    return json.dumps(data, ensure_ascii=True)

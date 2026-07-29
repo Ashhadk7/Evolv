@@ -18,7 +18,8 @@ ShortStrength = Annotated[str, Field(min_length=1, max_length=120)]
 ShortWeakness = Annotated[str, Field(min_length=1, max_length=120)]
 ShortGap = Annotated[str, Field(min_length=1, max_length=170)]
 ShortAssumption = Annotated[str, Field(min_length=1, max_length=150)]
-SourceIndex = Annotated[int, Field(ge=1, le=12)]
+# Bounded to the number of sources the prompt actually renders (see run_competitor).
+SourceIndex = Annotated[int, Field(ge=1, le=8)]
 
 
 class CompetitorCard(BaseModel):

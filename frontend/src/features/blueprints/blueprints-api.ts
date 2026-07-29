@@ -9,6 +9,7 @@ import type {
   BlueprintStrategyAddition,
   BlueprintStrategyItem,
   BlueprintStrategyRisk,
+  EvidenceBasis,
 } from "./types";
 
 type LevelRating = "High" | "Medium" | "Low";
@@ -317,6 +318,7 @@ function strategyAdditionFromRecord(item: Record<string, unknown>): BlueprintStr
   return {
     ...strategyItemFromRecord(item),
     impact: stringValue(item.impact, ""),
+    basis: basisValue(item.basis),
   };
 }
 
@@ -325,7 +327,14 @@ function strategyRiskFromRecord(item: Record<string, unknown>): BlueprintStrateg
     risk: stringValue(item.risk, ""),
     severity: severityValue(item.severity),
     mitigation: stringValue(item.mitigation, ""),
+    basis: basisValue(item.basis),
   };
+}
+
+// The agent tags each risk/addition `sourced` or `assumption`. Dropping it here
+// silently disabled the "Assumption" chip the risks table already renders.
+function basisValue(value: unknown): EvidenceBasis | undefined {
+  return value === "sourced" || value === "assumption" ? value : undefined;
 }
 
 function severityValue(value: unknown): BlueprintRiskSeverity {
