@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Blueprint } from "./types";
+import type { Blueprint, EvidenceBasis } from "./types";
 
 /* ═══════════════════════════════════════════════════════ */
 /* Shared pure helpers (moved out of WorkspaceTab so both    */
@@ -47,9 +47,13 @@ export function fmtDate(iso: string): string {
 export type Persona = {
   name: string;
   segment: "Primary user" | "Economic buyer" | "Gatekeeper";
+  role: string;
   about: string;
   goals: string;
   pains: string;
+  objections: { text: string; basis?: EvidenceBasis }[];
+  channels: string[];
+  successMetric: string;
 };
 
 export type SubScore = { label: string; value: number; note: string; sourceIndexes: number[] };
@@ -261,6 +265,24 @@ function fmtMarketMoney(n: number): string {
   return "$" + Math.round(n);
 }
 
+function deriveObjections(value: unknown): { text: string; basis?: EvidenceBasis }[] {
+  if (!Array.isArray(value)) return [];
+  const objections: { text: string; basis?: EvidenceBasis }[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && item.trim()) {
+      objections.push({ text: item.trim() });
+      continue;
+    }
+    const record = asRecord(item);
+    const text = stringValue(record?.text);
+    if (text) {
+      const basis = stringValue(record?.basis);
+      objections.push(basis ? { text, basis: basis as EvidenceBasis } : { text });
+    }
+  }
+  return objections;
+}
+
 function derivePersonas(bp: Blueprint): Persona[] {
   const personaAgent = agentRecord(bp, "persona");
   const generatedPersonas = recordArray(personaAgent?.personas);
@@ -268,9 +290,13 @@ function derivePersonas(bp: Blueprint): Persona[] {
     return generatedPersonas.map((persona) => ({
       name: stringValue(persona.name, "Generated persona"),
       segment: (stringValue(persona.segment, "Primary user") as Persona["segment"]),
-      about: stringValue(persona.context, stringValue(persona.role, "Core customer segment")),
+      role: stringValue(persona.role),
+      about: stringValue(persona.context, "Core customer segment"),
       goals: sentenceList(persona.goals, "Achieve the core outcome faster."),
       pains: sentenceList(persona.pains, "Current workflows are slow or unreliable."),
+      objections: deriveObjections(persona.objections),
+      channels: stringArray(persona.acquisitionChannels),
+      successMetric: stringValue(persona.successMetric),
     }));
   }
 

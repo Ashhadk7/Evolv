@@ -98,16 +98,61 @@ export function BlueprintPersonasSection({ personas }: { personas: Persona[] }) 
               <div className="text-bp-ink text-[15px] font-extrabold tracking-[-0.01em]">
                 {persona.name}
               </div>
+              {persona.role ? (
+                <div className="font-mono-app text-bp-label mt-1 text-[10.5px] font-bold tracking-[0.06em] uppercase">
+                  {persona.role}
+                </div>
+              ) : null}
               <p className="text-bp-muted mt-1.5 mb-4 text-[12.5px] leading-[1.55]">
                 {persona.about}
               </p>
-              <div className="mb-3">
-                <Label>What they need</Label>
-                <p className="text-bp-body m-0 text-[12.5px] leading-[1.55]">{persona.goals}</p>
-              </div>
-              <div>
-                <Label>What&apos;s stopping them today</Label>
-                <p className="text-bp-body m-0 text-[12.5px] leading-[1.55]">{persona.pains}</p>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <Label>What they need</Label>
+                  <p className="text-bp-body m-0 text-[12.5px] leading-[1.55]">{persona.goals}</p>
+                </div>
+                <div>
+                  <Label>What&apos;s stopping them today</Label>
+                  <p className="text-bp-body m-0 text-[12.5px] leading-[1.55]">{persona.pains}</p>
+                </div>
+                {persona.objections.length ? (
+                  <div>
+                    <Label>Why they hesitate</Label>
+                    <ul className="m-0 mt-1 flex list-none flex-col gap-1.5 p-0">
+                      {persona.objections.map((objection, i) => (
+                        <li
+                          key={i}
+                          className="text-bp-body flex flex-wrap items-center gap-1.5 text-[12.5px] leading-[1.5]"
+                        >
+                          {objection.text}
+                          {objection.basis === "assumption" ? (
+                            <Chip tone="neutral">Assumption</Chip>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {persona.channels.length ? (
+                  <div>
+                    <Label>Where to reach them</Label>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {persona.channels.map((channel, i) => (
+                        <Chip key={i} tone="mint">
+                          {channel}
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {persona.successMetric ? (
+                  <div>
+                    <Label>Success looks like</Label>
+                    <p className="text-bp-body m-0 text-[12.5px] leading-[1.55]">
+                      {persona.successMetric}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </motion.div>
           );
