@@ -123,16 +123,21 @@ def reconstruct_strategy(agents: dict[str, Any]):
     return StrategyOutput.model_validate(agents.get("strategy", {}))
 
 
-def patch_refine_status(db: Session, blueprint_id: UUID, section: str, status: str) -> None:
+def patch_refine_status(
+    db: Session, blueprint_id: UUID, section: str, status: str, message: str = ""
+) -> None:
     blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
     if blueprint is None or blueprint.current_version is None:
         return
     content = dict(blueprint.current_version.content_json or {})
-    content["refinement"] = {
+    refinement = {
         "section": section,
         "status": status,
         "refinedAt": get_now_iso(),
     }
+    if message:
+        refinement["message"] = message
+    content["refinement"] = refinement
     content["updatedAt"] = get_now_iso()
     blueprint.current_version.content_json = content
     db.commit()

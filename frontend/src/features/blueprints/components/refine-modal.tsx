@@ -124,6 +124,13 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
             const contentJson = versionObj?.content_json || versionObj?.contentJson || {};
             const refState = contentJson.refinement || {};
 
+            if (refState.status === "failed") {
+              cleanupTimers();
+              setErrorMessage(refState.message || "Refinement failed. Please try again.");
+              setStep("error");
+              return;
+            }
+
             if (refState.status === "completed" || attempts >= 15) {
               cleanupTimers();
               setProgress(100);

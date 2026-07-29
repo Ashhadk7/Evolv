@@ -59,9 +59,19 @@ async def refine_section(
     db = SessionLocal()
     try:
         await _run_refine(db, blueprint_id, section, feedback)
+    except AgentRateLimitError as exc:
+        patch_refine_status(db, blueprint_id, section, "failed", str(exc))
+    except ValidationError:
+        patch_refine_status(
+            db,
+            blueprint_id,
+            section,
+            "failed",
+            "This blueprint predates the current format. Regenerate it to refine sections.",
+        )
     except Exception:
         logger.exception("Refine failed for blueprint %s section %s", blueprint_id, section)
-        patch_refine_status(db, blueprint_id, section, "failed")
+        patch_refine_status(db, blueprint_id, section, "failed", "Refinement failed. Please try again.")
     finally:
         db.close()
 
