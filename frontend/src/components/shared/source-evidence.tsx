@@ -4,6 +4,104 @@ import { useState } from "react";
 import { X, CheckCircle, ArrowSquareOut } from "@phosphor-icons/react";
 import type { ResearchSourceRef } from "@/features/blueprints/blueprint-content";
 
+type ActiveSource = { source: ResearchSourceRef; num: number } | null;
+
+/* The citation detail dialog. Shared by both entry points below — it used to be
+   copy-pasted into each, so a fix to one silently missed the other. */
+function CitationModal({
+  active,
+  onClose,
+}: {
+  active: ActiveSource;
+  onClose: () => void;
+}) {
+  if (!active) return null;
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 999,
+        background: "rgba(10,26,20,0.65)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 440,
+          background: "#102820",
+          border: "1px solid rgba(137,215,183,0.3)",
+          borderRadius: 16,
+          padding: "24px",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+          color: "#e8f4ef",
+          position: "relative",
+        }}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close citation"
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            background: "transparent",
+            border: "none",
+            color: "rgba(232,244,239,0.5)",
+            cursor: "pointer",
+          }}
+        >
+          <X size={18} weight="bold" />
+        </button>
+
+        <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#89d7b7] uppercase">
+          <CheckCircle size={16} weight="fill" className="text-[#5bc8a0]" />
+          Verified Citation [{active.num}]
+        </div>
+
+        <h3 className="mt-2 text-base leading-snug font-extrabold text-white">
+          {active.source.title}
+        </h3>
+
+        <div className="mt-1 font-mono text-xs text-[#89d7b7]/70">
+          {active.source.domain || "evolv.internal"}
+        </div>
+
+        <div className="mt-3.5 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-white/80">
+          {active.source.snippet || "Evidence signal verified by LLM Scorecard Critic pass."}
+        </div>
+
+        <div className="mt-5 flex items-center justify-end gap-3">
+          {active.source.url && !active.source.url.includes("evolv.internal") ? (
+            <a
+              href={active.source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#89d7b7] px-4 py-2 text-xs font-bold text-[#0a1a14] no-underline transition-colors hover:bg-[#a2ebd0]"
+            >
+              Visit External Source <ArrowSquareOut size={14} weight="bold" />
+            </a>
+          ) : (
+            <button
+              onClick={onClose}
+              className="cursor-pointer rounded-xl border border-[#89d7b7]/30 bg-[#89d7b7]/15 px-4 py-2 text-xs font-bold text-[#89d7b7] transition-colors hover:bg-[#89d7b7]/25"
+            >
+              Close Evidence Detail
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SourceChips({
   indexes,
   sources,
@@ -11,7 +109,7 @@ export function SourceChips({
   indexes: number[];
   sources: ResearchSourceRef[];
 }) {
-  const [activeSource, setActiveSource] = useState<{ source: ResearchSourceRef; num: number } | null>(null);
+  const [activeSource, setActiveSource] = useState<ActiveSource>(null);
   const valid = indexes.filter((n) => n >= 1 && n <= sources.length);
   if (!valid.length) return null;
 
@@ -39,89 +137,7 @@ export function SourceChips({
         })}
       </sup>
 
-      {activeSource && (
-        <div
-          onClick={() => setActiveSource(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 999,
-            background: "rgba(10,26,20,0.65)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 440,
-              background: "#102820",
-              border: "1px solid rgba(137,215,183,0.3)",
-              borderRadius: 16,
-              padding: "24px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-              color: "#e8f4ef",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={() => setActiveSource(null)}
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                background: "transparent",
-                border: "none",
-                color: "rgba(232,244,239,0.5)",
-                cursor: "pointer",
-              }}
-            >
-              <X size={18} weight="bold" />
-            </button>
-
-            <div className="flex items-center gap-2 text-xs font-bold text-[#89d7b7] uppercase tracking-wider">
-              <CheckCircle size={16} weight="fill" className="text-[#5bc8a0]" />
-              Verified Citation [{activeSource.num}]
-            </div>
-
-            <h3 className="mt-2 text-base font-extrabold text-white leading-snug">
-              {activeSource.source.title}
-            </h3>
-
-            <div className="mt-1 text-xs font-mono text-[#89d7b7]/70">
-              {activeSource.source.domain || "evolv.internal"}
-            </div>
-
-            <div className="mt-3.5 p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 leading-relaxed">
-              {activeSource.source.snippet || "Evidence signal verified by LLM Scorecard Critic pass."}
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-3">
-              {activeSource.source.url && !activeSource.source.url.includes("evolv.internal") ? (
-                <a
-                  href={activeSource.source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#89d7b7] text-[#0a1a14] text-xs font-bold no-underline hover:bg-[#a2ebd0] transition-colors"
-                >
-                  Visit External Source <ArrowSquareOut size={14} weight="bold" />
-                </a>
-              ) : (
-                <button
-                  onClick={() => setActiveSource(null)}
-                  className="px-4 py-2 rounded-xl bg-[#89d7b7]/15 text-[#89d7b7] border border-[#89d7b7]/30 text-xs font-bold cursor-pointer hover:bg-[#89d7b7]/25 transition-colors"
-                >
-                  Close Evidence Detail
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CitationModal active={activeSource} onClose={() => setActiveSource(null)} />
     </>
   );
 }
@@ -137,7 +153,7 @@ export function ResearchFooter({
   confidence: string;
   assumptions: string[];
 }) {
-  const [activeSource, setActiveSource] = useState<{ source: ResearchSourceRef; num: number } | null>(null);
+  const [activeSource, setActiveSource] = useState<ActiveSource>(null);
 
   if (!sources.length && !assumptions.length) return null;
   return (
@@ -172,89 +188,7 @@ export function ResearchFooter({
         )}
       </div>
 
-      {activeSource && (
-        <div
-          onClick={() => setActiveSource(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 999,
-            background: "rgba(10,26,20,0.65)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 440,
-              background: "#102820",
-              border: "1px solid rgba(137,215,183,0.3)",
-              borderRadius: 16,
-              padding: "24px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-              color: "#e8f4ef",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={() => setActiveSource(null)}
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                background: "transparent",
-                border: "none",
-                color: "rgba(232,244,239,0.5)",
-                cursor: "pointer",
-              }}
-            >
-              <X size={18} weight="bold" />
-            </button>
-
-            <div className="flex items-center gap-2 text-xs font-bold text-[#89d7b7] uppercase tracking-wider">
-              <CheckCircle size={16} weight="fill" className="text-[#5bc8a0]" />
-              Verified Citation [{activeSource.num}]
-            </div>
-
-            <h3 className="mt-2 text-base font-extrabold text-white leading-snug">
-              {activeSource.source.title}
-            </h3>
-
-            <div className="mt-1 text-xs font-mono text-[#89d7b7]/70">
-              {activeSource.source.domain || "evolv.internal"}
-            </div>
-
-            <div className="mt-3.5 p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 leading-relaxed">
-              {activeSource.source.snippet || "Evidence signal verified by LLM Scorecard Critic pass."}
-            </div>
-
-            <div className="mt-5 flex items-center justify-end gap-3">
-              {activeSource.source.url && !activeSource.source.url.includes("evolv.internal") ? (
-                <a
-                  href={activeSource.source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#89d7b7] text-[#0a1a14] text-xs font-bold no-underline hover:bg-[#a2ebd0] transition-colors"
-                >
-                  Visit External Source <ArrowSquareOut size={14} weight="bold" />
-                </a>
-              ) : (
-                <button
-                  onClick={() => setActiveSource(null)}
-                  className="px-4 py-2 rounded-xl bg-[#89d7b7]/15 text-[#89d7b7] border border-[#89d7b7]/30 text-xs font-bold cursor-pointer hover:bg-[#89d7b7]/25 transition-colors"
-                >
-                  Close Evidence Detail
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CitationModal active={activeSource} onClose={() => setActiveSource(null)} />
     </>
   );
 }

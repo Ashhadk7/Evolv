@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from app.services.generation.agents.common import EvidenceBasis
+from app.services.generation.agents.common import EvidenceBasis, agent_json
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agent_service import call_agent
@@ -73,19 +72,11 @@ async def run_strategy(
         load_prompt("strategy"),
         render_prompt(
             "strategy_user",
-            market=_agent_json(market),
-            competitors=_agent_json(competitor),
+            market=agent_json(market),
+            competitors=agent_json(competitor),
             differentiator=differentiator,
             research=research,
             personas=personas,
         ),
         max_tokens=1700,
     )
-
-
-def _agent_json(payload: BaseModel) -> str:
-    data = payload.model_dump(
-        by_alias=True,
-        exclude={"sources", "research_metadata"},
-    )
-    return json.dumps(data, ensure_ascii=True)

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.services.generation.agent_service import call_agent
+from app.services.generation.agents.common import agent_json
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agents.persona import PersonaOutput
@@ -63,17 +63,12 @@ async def run_synthesis(
         render_prompt(
             "synthesis_user",
             brief=brief,
-            market=_agent_json(market),
-            competitors=_agent_json(competitor),
-            personas=_agent_json(persona),
-            product=_agent_json(product),
-            strategy=_agent_json(strategy),
-            scorecard=_agent_json(scorecard),
+            market=agent_json(market),
+            competitors=agent_json(competitor),
+            personas=agent_json(persona),
+            product=agent_json(product),
+            strategy=agent_json(strategy),
+            scorecard=agent_json(scorecard),
         ),
         max_tokens=1200,
     )
-
-
-def _agent_json(payload: BaseModel) -> str:
-    data = payload.model_dump(by_alias=True, exclude={"sources", "research_metadata"})
-    return json.dumps(data, ensure_ascii=True)

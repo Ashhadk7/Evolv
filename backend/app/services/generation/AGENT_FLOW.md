@@ -161,8 +161,9 @@ produces the single most important output for downstream stages — the
 
 > **Why source indexes?** Each agent cites evidence by referencing
 > `[1]`, `[2]`… in the rendered research block. The schema constrains those
-> indexes (`ge=1, le=10` for market) so a model can't cite a source that
-> doesn't exist. This is what powers the clickable citations in the UI.
+> indexes to the number of sources the prompt actually renders (`le=6` for
+> market, `le=8` competitor, `le=10` scorecard) so a model can't cite a source
+> that doesn't exist. This is what powers the clickable citations in the UI.
 >
 > **Runtime clamp (not just schema bounds).** The schema ceiling is static, but
 > the real research often returns *fewer* sources than that ceiling — so after
@@ -195,7 +196,7 @@ blueprint internally coherent and saves two rounds of Tavily calls. The schema
 enforces the exact 3-role composition via a model validator, so downstream code
 (`_persona_context`) can safely assume the structure.
 
-### Stage 3 — Product, Strategy, Scorecard  *(product on fast model; strategy & scorecard on large model)*
+### Stage 3 — Product, Strategy, Scorecard  *(all three on the large model)*
 
 Three agents, all depending only on stages 1–2, run **concurrently**.
 
@@ -203,7 +204,15 @@ Three agents, all depending only on stages 1–2, run **concurrently**.
 **features** (each with module, user story, Given/When/Then acceptance criteria,
 priority, effort, `dependencies` on other features, and the persona need it
 `addresses`), 2–5 **out-of-scope** cuts, the **data entities** the build revolves
-around, the **non-functional requirements**, and 3–6 build **phases**. Grounded
+around, the **non-functional requirements**, and 3–6 build **phases**.
+
+> **Why the phases carry a week budget.** `weeks_from_timeline` turns the
+> founder's free-text timeline ("4 months") into a concrete week count in
+> Python, and the prompt tells the agent its phase weeks must sum to it. This is
+> load-bearing, not cosmetic: the frontend prices the entire build as
+> `Σ phase.weeks × contractor rate`, so an unanchored roadmap silently halves
+> the quoted cost and pulls break-even months forward. Same principle as
+> `derive_viability` — the model judges the shape, code fixes the number. Grounded
 in the competitor `positioning_angle` and a compact persona digest. Runs on the
 **large model** — a real handoff spec is reasoning-heavy. A model validator drops
 any `dependencies` reference that isn't a real feature name (hallucination guard).
@@ -273,9 +282,9 @@ the reliability logic lives, so each agent stays a thin schema + prompt wrapper.
    `gpt-oss` reasoning models, sets `reasoning_effort: "low"` so the model
    doesn't spend its whole `max_tokens` budget on hidden reasoning and truncate
    the JSON.
-4. **Concurrency cap** — a module-level `asyncio.Semaphore(2)` ensures no more
-   than 2 Groq calls are in flight at once, so parallel stages don't burst every
-   call simultaneously and trip the per-minute limit in unison.
+4. **Concurrency cap** — a module-level `asyncio.Semaphore(1)` serialises Groq calls, because on the
+   free tier even two concurrent calls blow the per-minute token window and
+   keep re-blowing it on reset. Raise it on a paid key with higher TPM.
 5. **Rate-limit handling** (see section 7).
 6. **Corrective retries** — if a response fails JSON parsing or schema
    validation, the *next* retry appends a message telling the model exactly what
@@ -286,8 +295,9 @@ the reliability logic lives, so each agent stays a thin schema + prompt wrapper.
    models add despite JSON mode.
 
 **Model selection:** defaults to `GROQ_MODEL` (large); agents that pass
-`model=GROQ_FAST_MODEL` (planner, product, tech stack) run on the cheaper model
-with its separate quota.
+`model=GROQ_FAST_MODEL` (planner, tech stack) run on the cheaper model with its
+separate quota. Product stays on the large model — a handoff spec is the most
+reasoning-heavy call in the pipeline.
 
 ---
 
@@ -341,7 +351,9 @@ failure now ends *cleanly and immediately* instead of trailing background 429s.
   is stored on the blueprint (`status="failed"`, `error=…`).
 - Generic `AgentServiceError` / `ValidationError` → a safe generic message
   ("could not complete — check provider keys and limits"), with the true cause
-  logged server-side for debugging.
+  logged server-side for debugging. **This tier must stay above the bare
+  `except ValueError`**: pydantic's `ValidationError` subclasses `ValueError`,
+  so the reverse order leaks a full schema dump into the user-facing field.
 - Any unexpected `Exception` → logged with full traceback, generic user message.
 
 ---

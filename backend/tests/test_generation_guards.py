@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from app.services.generation.agents.product import DataEntity, Feature, ProductOutput, ProductPhase
 from app.services.generation.enrichment import keep_cited_indexes
+from app.services.generation.text import weeks_from_timeline
+from app.services.refine_helpers import extract_features
 
 
 def _feature(name: str, deps: list[str], priority: str) -> Feature:
@@ -67,6 +69,41 @@ def test_prioritization_guards_reject_bad_specs():
         pass
     else:
         raise AssertionError("all-Must spec should be rejected as unprioritized")
+
+
+def test_weeks_from_timeline_anchors_the_build_budget():
+    # The founder's timeline is what the frontend prices the build from — an
+    # unparsed one (0) must mean "no constraint", never a short default.
+    assert weeks_from_timeline("4 months") == 17
+    assert weeks_from_timeline("6 weeks") == 6
+    assert weeks_from_timeline("1 year") == 52
+    assert weeks_from_timeline("3-6 months") == 26  # range -> outer bound
+    assert weeks_from_timeline("ASAP") == 0
+    assert weeks_from_timeline("") == 0
+
+
+def test_extract_features_handles_structured_and_legacy_features():
+    # Structured features would crash run_tech_stack's clean() as raw dicts.
+    assert extract_features({"product": {"features": [{"name": "Login"}]}}) == ["Login"]
+    assert extract_features({"product": {"features": ["Login"]}}) == ["Login"]
+    assert extract_features({}) == []
+
+
+def test_market_output_round_trips_through_stored_json():
+    # A stored blueprint must validate back into MarketOutput or refine silently
+    # runs against an empty market analysis.
+    from app.services.generation.agents.market import MarketOutput
+
+    stored = MarketOutput(
+        size="$500M", sizeBasis="sourced", cagr="18%", cagrBasis="assumption",
+        customerCount=12000, customerCountBasis="source 2", priceAnnualUsd=600,
+        priceBasis="benchmark", barriers="Moderate", score=70, demandLevel="High",
+        timing="Now", whyNow="Rates dropped", insight="A wedge exists.",
+        demandSignals=[{"text": "a", "sourceIndexes": [1]}, {"text": "b"}, {"text": "c"}],
+        headwinds=["h1", "h2"], assumptions=["a1", "a2"], confidence="Medium",
+        analysis="x" * 200, bottomUpSam="$7.2M",
+    ).model_dump(by_alias=True)
+    assert MarketOutput.model_validate(stored).bottom_up_sam == "$7.2M"
 
 
 if __name__ == "__main__":

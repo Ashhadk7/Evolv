@@ -13,7 +13,7 @@ import {
   UsersThree,
   Warning,
 } from "@phosphor-icons/react";
-import type { BlueprintContent } from "@/features/blueprints/blueprint-content";
+import type { BlueprintContent, ProductFeature } from "@/features/blueprints/blueprint-content";
 import type { Blueprint } from "@/features/blueprints/types";
 import { FOUNDER_NETWORK_PROFILES } from "@/features/network/data";
 import type { FounderContactProfile } from "@/features/network/types";
@@ -217,11 +217,17 @@ export function buildAiRecs(bp: Blueprint) {
   ].filter((item) => item.text);
 }
 
-export function buildFeatureItems(features: string[]) {
-  return features.map((f, i) => ({
-    name: f,
-    priority: i < 2 ? "Must-have" : i < 4 ? "Should-have" : "Nice-to-have",
-  }));
+// The editor round-trips feature NAMES only. Look each one back up in the
+// generated spec so editing doesn't repaint priorities with a positional guess
+// (mirrors _reconcile_features on the backend, which preserves the same way).
+export function buildFeatureItems(
+  names: string[],
+  known: ProductFeature[]
+): ProductFeature[] {
+  const byName = new Map(known.map((feature) => [feature.name, feature] as const));
+  return names.map(
+    (name) => byName.get(name) ?? { name, priority: "Should-have" }
+  );
 }
 
 export type { BlueprintContent };

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,3 +18,16 @@ class EvidenceClaim(BaseModel):
 
     text: str = Field(min_length=1, max_length=140)
     basis: EvidenceBasis
+
+
+def agent_json(payload: BaseModel) -> str:
+    """One agent's output as prompt input for a downstream agent.
+
+    Sources and research metadata are excluded: the orchestrator passes the
+    research block separately, and duplicating it here would double the prompt
+    for no extra signal.
+    """
+    return json.dumps(
+        payload.model_dump(by_alias=True, exclude={"sources", "research_metadata"}),
+        ensure_ascii=True,
+    )
