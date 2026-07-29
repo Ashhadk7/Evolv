@@ -5,6 +5,7 @@ import json
 import logging
 import random
 import time
+from collections.abc import Callable
 from typing import TypeVar
 
 import httpx
@@ -26,22 +27,10 @@ SchemaT = TypeVar("SchemaT", bound=BaseModel)
 MAX_ATTEMPTS = 6
 CHAT_MAX_ATTEMPTS = 5
 
-# A 429 with a short retry-after is a per-minute burst — waiting works. A long
-# one means the daily token budget is spent and no in-request retry can ever
-# succeed, so fail fast and tell the user the real wait instead of hanging.
 RETRY_FAIL_FAST_SECONDS = 120.0
 
-# Bursts are ridden out against wall-clock time, not an attempt count: when
-# parallel agents saturate the per-minute window, a call may need several
-# short waits in a row, and counting them as failures gives up too early.
 RETRY_BUDGET_SECONDS = 300.0
 
-# Groq free-tier limits are per-minute token budgets. Parallel pipeline stages
-# must not burst all their calls at once, or every call 429s and the retries
-# re-collide. On the free tier each agent call is large enough that even TWO
-# concurrent calls exceed the per-minute token window and keep re-blowing it as
-# soon as it resets, so the pipeline never makes progress. Serialize to 1 so a
-# single call fits under the window; raise this on a paid key with higher TPM.
 _GROQ_CONCURRENCY = asyncio.Semaphore(1)
 
 
@@ -68,7 +57,15 @@ async def call_agent(
     *,
     max_tokens: int | None = None,
     model: str | None = None,
+    verify: Callable[[SchemaT], None] | None = None,
 ) -> SchemaT:
+    """Call an agent and return its schema-valid output.
+
+    `verify` runs after schema validation for rules the schema cannot express
+    (totals that must reconcile, graphs that must stay acyclic). Raising
+    ValueError from it re-enters the same corrective-retry loop a schema
+    failure uses, so a semantic rejection reaches the model as feedback.
+    """
     settings = get_settings()
     headers = groq_headers()
     if not headers["Authorization"].removeprefix("Bearer ").strip():
@@ -93,8 +90,6 @@ async def call_agent(
     }
     if max_tokens is not None:
         payload["max_tokens"] = max_tokens
-    # gpt-oss models spend reasoning tokens out of max_tokens before writing
-    # content; at default effort that can truncate the JSON mid-object.
     if "gpt-oss" in payload["model"]:
         payload["reasoning_effort"] = "low"
 
@@ -109,10 +104,6 @@ async def call_agent(
                 async with _GROQ_CONCURRENCY:
                     response = await client.post(url, headers=headers, json=payload)
                 if response.status_code == 429:
-                    # Rate limits are precisely signaled (retry-after /
-                    # ratelimit-reset). Short waits are worth riding out
-                    # against the wall-clock budget; a long one means the
-                    # daily budget is gone — fail fast either way.
                     delay = _retry_delay(response, attempt)
                     if delay > RETRY_FAIL_FAST_SECONDS or time.monotonic() + delay > deadline:
                         raise _rate_limit_error(payload["model"], delay)
@@ -122,22 +113,19 @@ async def call_agent(
                         delay,
                         deadline - time.monotonic(),
                     )
-                    # Jitter keeps parallel agents from all retrying at the
-                    # same window reset and re-colliding.
                     await asyncio.sleep(delay + random.uniform(0.5, 2.5))
                     continue
                 response.raise_for_status()
                 content = response.json()["choices"][0]["message"]["content"]
-                return _parse_agent_json(schema, content)
+                result = _parse_agent_json(schema, content)
+                if verify is not None:
+                    verify(result)
+                return result
             except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
                 last_error = exc
                 attempt += 1
                 if attempt < MAX_ATTEMPTS:
-                    if isinstance(exc, (ValidationError, json.JSONDecodeError)):
-                        # Retrying the identical prompt at low temperature just
-                        # repeats the same bad output (e.g. echoing the schema
-                        # back) — tell the model what was rejected. Slice to
-                        # keep exactly one corrective message across retries.
+                    if isinstance(exc, ValueError):
                         payload["messages"] = payload["messages"][:2] + [
                             {
                                 "role": "user",
@@ -162,24 +150,20 @@ def _slim_schema(schema: dict) -> dict:
     """
     if isinstance(schema, dict):
         return {
-            key: _slim_schema(value)  # type: ignore[arg-type]
+            key: _slim_schema(value)
             for key, value in schema.items()
             if key != "title"
         }
     if isinstance(schema, list):
-        return [_slim_schema(item) for item in schema]  # type: ignore[return-value]
+        return [_slim_schema(item) for item in schema]
     return schema
 
 
 def _parse_agent_json(schema: type[SchemaT], content: str) -> SchemaT:
-    # Some providers wrap JSON in markdown fences despite json_object mode
-    # (or ignore the mode entirely) — strip them before parsing.
     text = content.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else text
         text = text.rsplit("```", 1)[0].strip()
-    # json.JSONDecodeError propagates as-is: it is a ValueError, so the retry
-    # loop catches it (wrapping it in AgentServiceError skipped retries).
     return schema.model_validate(json.loads(text))
 
 
@@ -261,7 +245,3 @@ def generate_chat(system: str, messages: list[dict[str, str]]) -> str:
                     time.sleep(2.0 * (attempt + 1))
                     continue
     raise AgentServiceError(f"Groq returned an invalid chat response: {last_error}") from last_error
-
-
-
-

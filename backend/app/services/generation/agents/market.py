@@ -14,12 +14,12 @@ from app.services.generation.enrichment import (
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean, clip
 
+MoneyAmount = Annotated[str, Field(pattern=r"^\$\d[\d,]*(\.\d+)?[KMBT]?$", max_length=32)]
+GrowthRate = Annotated[str, Field(pattern=r"^-?\d+(\.\d+)?%$", max_length=16)]
 ShortSignal = Annotated[str, Field(min_length=1, max_length=130)]
 ShortHeadwind = Annotated[str, Field(min_length=1, max_length=130)]
 ShortAssumption = Annotated[str, Field(min_length=1, max_length=150)]
 ShortBasis = Annotated[str, Field(min_length=1, max_length=150)]
-# Bounded to the number of sources the prompt actually renders (see run_market),
-# so the schema never invites a citation that keep_cited_indexes would delete.
 SourceIndex = Annotated[int, Field(ge=1, le=6)]
 EvidenceBasis = Literal["sourced", "assumption"]
 
@@ -36,16 +36,15 @@ class DemandSignal(BaseModel):
 class MarketAnalysis(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
-    size: str = Field(min_length=1, max_length=32)
+    size: MoneyAmount
     size_basis: EvidenceBasis = Field(alias="sizeBasis")
-    cagr: str = Field(min_length=1, max_length=16)
+    cagr: GrowthRate
     cagr_basis: EvidenceBasis = Field(alias="cagrBasis")
     customer_count: int = Field(alias="customerCount", ge=1)
     customer_count_basis: ShortBasis = Field(alias="customerCountBasis")
     price_annual_usd: int = Field(alias="priceAnnualUsd", ge=1)
     price_basis: ShortBasis = Field(alias="priceBasis")
     barriers: str = Field(min_length=1, max_length=80)
-    score: int = Field(ge=0, le=100)
     demand_level: Literal["High", "Medium", "Low"] = Field(alias="demandLevel")
     timing: str = Field(min_length=1, max_length=180)
     why_now: str = Field(alias="whyNow", min_length=1, max_length=240)
@@ -54,7 +53,6 @@ class MarketAnalysis(BaseModel):
     headwinds: list[ShortHeadwind] = Field(min_length=2, max_length=4)
     assumptions: list[ShortAssumption] = Field(min_length=2, max_length=4)
     confidence: Literal["High", "Medium", "Low"]
-    # Free-form paragraph — clipped, never hard-failed, when the model runs long.
     analysis: Annotated[str, BeforeValidator(clip(1200))] = Field(
         min_length=120, max_length=1200
     )
@@ -63,17 +61,12 @@ class MarketAnalysis(BaseModel):
 class MarketOutput(MarketAnalysis):
     sources: list[ResearchSource] = Field(default_factory=list, max_length=10)
     research_metadata: dict[str, Any] = Field(default_factory=dict, alias="researchMetadata")
-    # customer_count x price_annual_usd, computed below — the LLM estimates the
-    # two inputs, never the product. Declared here (not bolted onto the dump)
-    # so the stored blueprint validates back into this model on refine.
     bottom_up_sam: str = Field(default="", alias="bottomUpSam")
 
 
 async def run_market(
     brief: str, idea: str, industry: str, queries: list[str] | None = None
 ) -> MarketOutput:
-    # brief (full intake) feeds the LLM; idea (short field) feeds the fallback
-    # search templates — never send the multi-field brief to a search engine.
     brief = clean(brief)
     idea = clean(idea)
     industry = clean(industry)
@@ -87,12 +80,9 @@ async def run_market(
         "market_user",
         idea=brief,
         industry=industry,
-        # Free-tier per-minute token budgets fit roughly one full-fat call —
-        # trimming the research block nearly doubles pipeline throughput.
         research=research.to_prompt_block(max_sources=6, snippet_chars=450),
     )
     analysis = await call_agent(MarketAnalysis, load_prompt("market"), user_prompt, max_tokens=1500)
-    # The prompt showed only the first 6 sources; drop any citation past that.
     shown = min(6, len(research.sources))
     for signal in analysis.demand_signals:
         signal.source_indexes = keep_cited_indexes(signal.source_indexes, shown)

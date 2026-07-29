@@ -42,7 +42,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
   const progress = Math.round((completedAgents.length / FORGE_AGENTS.length) * 100);
 
   const startGeneration = async () => {
-    if (!idea.trim() || !industry) return;
+    if (!idea.trim() || !industry.trim()) return;
     setGenerationError("");
     setIntakeReview(null);
     setGeneratedBlueprint(null);
@@ -134,13 +134,20 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                 </div>
 
                 <div>
-                  <label className="mb-2.5 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
-                    Select industry
+                  <label className="mb-2 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
+                    Industry
                   </label>
+                  <input
+                    value={industry}
+                    onChange={(event) => setIndustry(event.target.value)}
+                    placeholder="Restaurant tech, LogisticsTech, AgriTech…"
+                    className="mb-2.5 h-11 w-full rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-3.5 font-[inherit] text-[13px] text-[#1a2e26] outline-none"
+                  />
                   <div className="flex flex-wrap gap-2">
                     {WORKSPACE_INDUSTRIES.map((ind) => (
                       <button
                         key={ind}
+                        type="button"
                         onClick={() => setIndustry(ind)}
                         className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 ${
                           industry === ind
@@ -220,8 +227,8 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                 <motion.button
                   onClick={startGeneration}
                   disabled={!idea.trim() || !industry}
-                  whileHover={idea.trim() && industry ? { scale: 1.01 } : {}}
-                  whileTap={idea.trim() && industry ? { scale: 0.98 } : {}}
+                  whileHover={idea.trim() && industry.trim() ? { scale: 1.01 } : {}}
+                  whileTap={idea.trim() && industry.trim() ? { scale: 0.98 } : {}}
                   className="bp-primary-btn w-full disabled:opacity-40"
                 >
                   <Sparkle size={14} weight="fill" /> Generate Blueprint

@@ -167,9 +167,6 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         return result
 
     async def gather_stage(*coros):
-        # asyncio.gather leaves sibling tasks running when one fails — they'd
-        # keep retrying rate limits (burning quota) and writing progress onto a
-        # blueprint already marked failed. Cancel them with the stage.
         tasks = [asyncio.ensure_future(coro) for coro in coros]
         try:
             return await asyncio.gather(*tasks)
@@ -182,9 +179,6 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
     try:
         agent_brief = _build_agent_brief(payload)
 
-        # Stage 0 — plan idea-specific research queries. Planner failure falls
-        # back to the template queries inside enrichment, so generation never
-        # gets worse than the pre-planner behavior.
         market_queries: list[str] | None = None
         competitor_queries: list[str] | None = None
         try:
@@ -196,7 +190,6 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
                 "Research planner failed for %s; using template queries", blueprint_id
             )
 
-        # Stage 1 — market and competitor research + analysis run together.
         market, competitor = await gather_stage(
             track("market", run_market(agent_brief, payload.idea, payload.industry, market_queries)),
             track(
@@ -205,17 +198,12 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             ),
         )
 
-        # Stage 2 — persona grounds itself in the stage-1 sources (no extra
-        # searches). Second-hand consumers get a trimmed block (top 5 sources
-        # each, short snippets) — full snippets live with market/competitor.
         shared_sources = market.sources[:5] + competitor.sources[:5]
         shared_research = sources_to_prompt_block(shared_sources, snippet_chars=300)
         persona = await track(
             "persona", run_persona(agent_brief, payload.industry, shared_research, len(shared_sources))
         )
 
-        # Stage 3 — product scopes to persona pains, strategy grounds GTM in
-        # persona channels, scorecard judges the assembled evidence.
         persona_context = _persona_context(persona)
         product, strategy, scorecard = await gather_stage(
             track(
@@ -247,13 +235,10 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             ),
         )
 
-        # Stage 4 — tech stack needs product features; synthesis reviews the
-        # whole file (it does not need the tech stack, so they run together).
         tech_stack, synthesis = await gather_stage(
             track(
                 "techStack",
-                # features are now structured objects; tech stack only needs the names
-                run_tech_stack(agent_brief, payload.industry, [f.name for f in product.features]),
+                run_tech_stack(agent_brief, payload.industry, _committed_features(product)),
             ),
             track(
                 "synthesis",
@@ -276,14 +261,9 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         )
         _finalize(db, blueprint_id, content)
     except (AgentRateLimitError, EnrichmentError) as exc:
-        # Rate limits and research outages are actionable — show the real
-        # cause (wait time / provider error) instead of the generic message.
         logger.warning("Blueprint generation blocked for %s: %s", blueprint_id, exc)
         _update_generation(db, blueprint_id, status="failed", error=str(exc))
     except (AgentServiceError, ValidationError):
-        # Must stay ABOVE the bare ValueError below: pydantic's ValidationError
-        # IS a ValueError, so the wrong order leaks a full schema dump into the
-        # user-facing error field. The real cause is logged instead.
         logger.warning("Blueprint generation failed for %s", blueprint_id, exc_info=True)
         _update_generation(
             db,
@@ -292,7 +272,6 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             error="Blueprint generation could not complete. Check provider keys and limits.",
         )
     except ValueError as exc:
-        # Our own guard clauses (missing idea/industry/positioning) — safe to show.
         _update_generation(db, blueprint_id, status="failed", error=str(exc))
     except Exception:
         logger.exception("Unexpected blueprint generation failure for %s", blueprint_id)
@@ -334,8 +313,6 @@ def _current_version(db: Session, blueprint_id: UUID) -> BlueprintVersion | None
     return blueprint.current_version if blueprint else None
 
 
-# One write path for both progress updates and failures — merges the given
-# fields into the version's `generation` block.
 def _update_generation(db: Session, blueprint_id: UUID, **changes: Any) -> None:
     version = _current_version(db, blueprint_id)
     if version is None:
@@ -379,16 +356,12 @@ def _build_blueprint_content_payload(
         "schemaVersion": CONTENT_SCHEMA_VERSION,
         "intake": _intake_json(payload),
         "agents": {
-            # bottomUpSam is computed inside run_market — the LLM judges the two
-            # inputs, never the arithmetic.
             "market": market.model_dump(by_alias=True),
             "competitor": competitor.model_dump(by_alias=True),
             "persona": persona.model_dump(by_alias=True),
             "product": product.model_dump(by_alias=True),
             "techStack": tech_stack.model_dump(by_alias=True),
             "strategy": strategy.model_dump(by_alias=True),
-            # sourceIndexes here refer to the trimmed shared block: indexes 1-5
-            # map to the first 5 market sources, 6-10 to the first 5 competitor sources.
             "scorecard": scorecard.model_dump(by_alias=True),
             "synthesis": synthesis.model_dump(by_alias=True),
         },
@@ -408,7 +381,7 @@ def _build_blueprint_content_payload(
         differentiator=competitor.positioning_angle,
         ai_recommend=f"{synthesis.verdict}: {synthesis.verdict_reasoning}",
         viability=viability,
-        market_potential=market.score,
+        market_potential=scorecard.market_quality.score,
         developer_demand=_derive_developer_demand(market, persona),
         content_json=content_json,
     )
@@ -461,6 +434,15 @@ def _derive_developer_demand(market: MarketOutput, persona: PersonaOutput) -> Le
     if market.demand_level == "Low" or persona.confidence == "Low":
         return LevelRating.LOW
     return LevelRating.MEDIUM
+
+
+def _committed_features(product: ProductOutput) -> list[str]:
+    """Feature names the stack must actually support.
+
+    "Could" features are explicitly deferred, so sizing infrastructure and
+    hiring around them inflates both against work that may never ship.
+    """
+    return [feature.name for feature in product.features if feature.priority != "Could"]
 
 
 def _persona_context(persona: PersonaOutput) -> str:

@@ -12,5 +12,5 @@ Use confidence="Low" when sources are thin, old, or only adjacent to the idea.
 Use confidence="Medium" when sources support the category but not the exact wedge.
 Use confidence="High" only when sources strongly support the exact product category.
 Keep every sentence short enough for dashboard cards.
-Exception: analysis is the full paragraph a market analyst would write — explain the reasoning behind the size, score, and timing, reference sources by index like [2], and name what would change the conclusion. Several sentences are expected there, but stay under 150 words.
+Exception: analysis is the full paragraph a market analyst would write — explain the reasoning behind the size, demand level, and timing, reference sources by index like [2], and name what would change the conclusion. Several sentences are expected there, but stay under 150 words.
 Return JSON only.

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from graphlib import CycleError, TopologicalSorter
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -11,7 +13,6 @@ from app.services.generation.text import clean
 ShortScopeCut = Annotated[str, Field(min_length=1, max_length=140)]
 ShortDeliverable = Annotated[str, Field(min_length=1, max_length=100)]
 ShortCriterion = Annotated[str, Field(min_length=1, max_length=110)]
-# Given/When/Then acceptance criteria run longer than the old one-liners.
 FeatureCriterion = Annotated[str, Field(min_length=1, max_length=180)]
 FeatureName = Annotated[str, Field(min_length=1, max_length=80)]
 EntityField = Annotated[str, Field(min_length=1, max_length=60)]
@@ -44,12 +45,7 @@ class Feature(BaseModel):
         alias="acceptanceCriteria", min_length=1, max_length=5
     )
     effort: Effort
-    # Other feature names this one depends on, so a dev can sequence the build.
-    # Unknown/self references are dropped in ProductOutput's validator, not trusted.
     dependencies: list[FeatureName] = Field(default_factory=list, max_length=4)
-    # Grounding guard (B1): the persona pain/job-to-be-done or research signal
-    # this feature serves. A feature that can't name one is likely invented —
-    # the prompt is told to drop it, and the schema makes the trace mandatory.
     addresses: str = Field(min_length=1, max_length=160)
 
 
@@ -57,9 +53,6 @@ class ProductPhase(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=60)
-    # Ceiling raised from 8 so a 6-12 month timeline is representable. At 8 the
-    # model had to shrink a long phase to pass validation, which biased every
-    # roadmap short — and the build cost is priced off these weeks.
     weeks: int = Field(ge=1, le=12)
     deliverables: list[ShortDeliverable] = Field(min_length=2, max_length=4)
     acceptance_criteria: list[ShortCriterion] = Field(
@@ -79,9 +72,6 @@ class ProductOutput(BaseModel):
 
     @model_validator(mode="after")
     def _check_feature_quality(self) -> ProductOutput:
-        # B2 guards: cross-field checks the schema can't express. A failure here
-        # raises ValidationError, which call_agent already retries — so a bad
-        # spec never reaches the user without a fresh attempt first.
         names = [f.name.strip().lower() for f in self.features]
         if len(names) != len(set(names)):
             raise ValueError("Duplicate feature names in product spec.")
@@ -90,14 +80,27 @@ class ProductOutput(BaseModel):
             raise ValueError("No Must-have feature — the MVP has no core.")
         if priorities == {"Must"}:
             raise ValueError("Every feature is marked Must — the spec is not prioritized.")
-        # Dependencies are ordering hints, not core content: a hallucinated
-        # reference is dropped (not retried) rather than failing the whole spec.
+
         valid = set(names)
         for feature in self.features:
+            key = feature.name.strip().lower()
             feature.dependencies = [
-                dep for dep in feature.dependencies
-                if dep.strip().lower() in valid and dep.strip().lower() != feature.name.strip().lower()
+                dep
+                for dep in feature.dependencies
+                if dep.strip().lower() in valid and dep.strip().lower() != key
             ]
+
+        graph = {
+            f.name.strip().lower(): {d.strip().lower() for d in f.dependencies}
+            for f in self.features
+        }
+        try:
+            TopologicalSorter(graph).prepare()
+        except CycleError as exc:
+            raise ValueError(
+                "Feature dependencies form a cycle, so the build order cannot be followed. "
+                "Break the loop so every feature can be built after the ones it needs."
+            ) from exc
         return self
 
 
@@ -122,11 +125,35 @@ async def run_product(
             research=research,
             timeline=_timeline_budget(timeline_weeks),
         ),
-        # A client-grade handoff spec (Given/When/Then criteria, dependencies,
-        # data model, NFRs) is reasoning-heavy, so it runs on the large model.
-        # ponytail: token dial — drop to GROQ_FAST_MODEL only if quota forces it.
         max_tokens=6000,
+        verify=_fits_timeline(timeline_weeks),
     )
+
+
+PHASE_WEEK_TOLERANCE = 0.2
+
+
+def _fits_timeline(weeks: int) -> Callable[[ProductOutput], None] | None:
+    """Reject a roadmap whose phases do not add up to the founder's timeline.
+
+    The frontend prices the build as the sum of these weeks, so a roadmap that
+    silently runs short quotes the founder a fraction of the real cost. The
+    model is asked to hit the budget in the prompt; this is what makes it true.
+    """
+    if weeks <= 0:
+        return None
+
+    low, high = weeks * (1 - PHASE_WEEK_TOLERANCE), weeks * (1 + PHASE_WEEK_TOLERANCE)
+
+    def check(spec: ProductOutput) -> None:
+        planned = sum(phase.weeks for phase in spec.phases)
+        if not low <= planned <= high:
+            raise ValueError(
+                f"Phase weeks total {planned} but the founder's timeline is about "
+                f"{weeks} weeks. Re-scope the phases so they sum to roughly {weeks}."
+            )
+
+    return check
 
 
 def _timeline_budget(weeks: int) -> str:
