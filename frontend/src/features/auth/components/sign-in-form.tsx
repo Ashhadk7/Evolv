@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
 import { Logo } from "./logo";
 import { InputField } from "./input-field";
-import { getApiErrorMessage } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { signIn } from "@/features/auth/lib/auth-api";
 import { saveSession } from "@/features/auth/lib/session";
 import { EMAIL_REGEX } from "@/features/auth/lib/validation";
@@ -44,8 +44,15 @@ export function SignInForm() {
       const session = await signIn(email, password);
       saveSession(session, rememberMe);
       router.push(session.user.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
-    } catch (err) {
-      setError(getApiErrorMessage(err, (e) => (e.status === 401 ? "Invalid email or password." : undefined)));
+    } catch (err: unknown) {
+      // A true network failure (status === 0) means the server is down.
+      // Everything else (401, 400, 422, any other) during sign-in = wrong credentials.
+      const isNetworkError = err instanceof ApiError && err.status === 0;
+      if (isNetworkError) {
+        setError("We can't reach the server right now. Please try again shortly.");
+      } else {
+        setError("Invalid email or password.");
+      }
     } finally {
       setIsSubmitting(false);
     }

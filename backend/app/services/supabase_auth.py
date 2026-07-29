@@ -100,10 +100,15 @@ class SupabaseAuthClient:
         except AuthApiError as exc:
             raise InvalidCredentialsError("Invalid email or password.") from exc
         except HTTPError as exc:
-            logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
-            raise AuthProviderError(
-                "Could not reach the authentication service. Please try again shortly."
-            ) from exc
+            # httpx.ConnectError / DNS failure = Supabase is truly unreachable.
+            # Any other HTTP error (e.g. 400 Bad Request from Supabase) = bad credentials.
+            from httpx import ConnectError as HttpxConnectError
+            if isinstance(exc, HttpxConnectError):
+                logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
+                raise AuthProviderError(
+                    "Could not reach the authentication service. Please try again shortly."
+                ) from exc
+            raise InvalidCredentialsError("Invalid email or password.") from exc
 
         user = self._read_user(response)
         session = self._read_session(response)
