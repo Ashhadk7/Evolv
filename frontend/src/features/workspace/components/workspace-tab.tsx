@@ -96,6 +96,14 @@ export function WorkspaceTab({
     if (openBlueprintId) queueMicrotask(() => setViewingId(openBlueprintId));
   }, [openBlueprintId]);
 
+  // Resync FROM the URL when it changes without an unmount — e.g. the browser
+  // Back/Forward buttons, which update `searchParams` in place rather than
+  // remounting this component. Without this, closing the blueprint via Back
+  // only changed the URL; the view stayed visually open.
+  useEffect(() => {
+    setViewingId(bpParam ?? null);
+  }, [bpParam]);
+
   // Sync to URL to persist across refreshes
   useEffect(() => {
     const p = new URLSearchParams(searchParams.toString());

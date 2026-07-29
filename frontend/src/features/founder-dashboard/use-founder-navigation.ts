@@ -33,8 +33,12 @@ export function useFounderNavigation() {
   };
 
   const handleViewBlueprint = (id: string) => {
+    // Push the blueprint id in the SAME navigation as the tab change (one
+    // history entry) instead of a bare tab push followed by a second push
+    // for the query param — the two-step version left an extra entry that
+    // ate one of the user's Back presses without going anywhere.
     useFounderDashboardStore.getState().setOpenBlueprintId(id);
-    go("workspace");
+    router.push(`/founder/workspace?blueprint=${encodeURIComponent(id)}`);
   };
 
   const handleOpenNetworkMessage = (contact: FounderNetworkMessageTarget) => {
