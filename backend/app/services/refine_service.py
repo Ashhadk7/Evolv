@@ -5,20 +5,23 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
+from app.models.blueprint import BlueprintVersion
 from app.repositories import blueprints as blueprints_repository
 from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.agents.competitor import run_competitor
 from app.services.generation.agents.market import run_market
 from app.services.generation.agents.persona import run_persona
 from app.services.generation.agents.product import run_product
+from app.services.generation.agents.scorecard import ScorecardOutput, derive_viability, run_scorecard
 from app.services.generation.agents.strategy import run_strategy
 from app.services.generation.agents.synthesis import run_synthesis
 from app.services.generation.agents.tech_stack import run_tech_stack
+from app.services.generation.text import weeks_from_timeline
 from app.services.refine_helpers import (
-    SECTION_DISPLAY,
     build_refine_brief,
     build_shared_research,
     extract_features,
@@ -76,20 +79,23 @@ async def _run_refine(db: Session, blueprint_id: UUID, section: str, feedback: s
     industry = intake.get("industry", "")
 
     agent_brief = build_refine_brief(intake, feedback)
-    shared_research = build_shared_research(agents)
+    shared_research, source_count = build_shared_research(agents)
 
     new_agent_output = await _call_agent_for_section(
         section=section,
         agent_brief=agent_brief,
         idea=idea,
         industry=industry,
+        intake=intake,
         agents=agents,
         shared_research=shared_research,
+        source_count=source_count,
         feedback=feedback,
     )
 
     agents[section] = new_agent_output
     content["agents"] = agents
+    _sync_derived(blueprint.current_version, agents)
     content["refinement"] = {
         "section": section,
         "feedback": feedback[:300],
@@ -103,14 +109,44 @@ async def _run_refine(db: Session, blueprint_id: UUID, section: str, feedback: s
     logger.info("Refine completed for blueprint %s section %s", blueprint_id, section)
 
 
+def _sync_derived(version: BlueprintVersion, agents: dict[str, Any]) -> None:
+    """Recompute the version's denormalised columns from the patched agents.
+
+    These columns are what the dashboard cards and viability gauge read. Without
+    this a refined section updates the document but leaves the headline numbers
+    showing the previous run's values.
+    """
+    market = agents.get("market") or {}
+    competitor = agents.get("competitor") or {}
+    scorecard = agents.get("scorecard") or {}
+    synthesis = agents.get("synthesis") or {}
+
+    if isinstance(market.get("score"), int):
+        version.market_potential = market["score"]
+    if competitor.get("positioningAngle"):
+        version.differentiator = competitor["positioningAngle"]
+    if synthesis.get("brandName"):
+        version.name = synthesis["brandName"]
+        version.ai_recommend = f"{synthesis['verdict']}: {synthesis['verdictReasoning']}"
+    if scorecard:
+        try:
+            version.viability = derive_viability(ScorecardOutput.model_validate(scorecard))
+        except ValidationError:
+            # A legacy/unparseable scorecard must not fail an unrelated refine.
+            # Keeping the previous score is honest; inventing one is not.
+            logger.warning("Scorecard unreadable for %s; viability left unchanged", version.id)
+
+
 async def _call_agent_for_section(
     *,
     section: str,
     agent_brief: str,
     idea: str,
     industry: str,
+    intake: dict[str, Any],
     agents: dict[str, Any],
     shared_research: str,
+    source_count: int,
     feedback: str = "",
 ) -> dict[str, Any]:
     if section == "market":
@@ -131,7 +167,13 @@ async def _call_agent_for_section(
         competitor_data = agents.get("competitor", {})
         positioning_angle = competitor_data.get("positioningAngle", "")
         persona_context = persona_context_from_agents(agents)
-        result = await run_product(agent_brief, positioning_angle, persona_context)
+        result = await run_product(
+            agent_brief,
+            positioning_angle,
+            persona_context,
+            shared_research,
+            weeks_from_timeline(intake.get("timeline", "")),
+        )
         return result.model_dump(by_alias=True)
 
     if section == "strategy":
@@ -149,15 +191,16 @@ async def _call_agent_for_section(
         return result.model_dump(by_alias=True)
 
     if section == "synthesis":
-        from app.services.generation.agents.scorecard import run_scorecard
         market_obj, competitor_obj = reconstruct_market_competitor(agents)
         persona_obj = reconstruct_persona(agents)
         product_obj = reconstruct_product(agents)
         strategy_obj = reconstruct_strategy(agents)
-        
-        scorecard_obj = await run_scorecard(agent_brief, market_obj, competitor_obj, persona_obj, shared_research)
+
+        scorecard_obj = await run_scorecard(
+            agent_brief, market_obj, competitor_obj, persona_obj, shared_research, source_count
+        )
         agents["scorecard"] = scorecard_obj.model_dump(by_alias=True)
-        
+
         result = await run_synthesis(
             agent_brief, market_obj, competitor_obj, persona_obj,
             product_obj, strategy_obj, scorecard_obj,
