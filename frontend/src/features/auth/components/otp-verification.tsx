@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { getApiErrorMessage } from "@/lib/api";
 
@@ -33,6 +33,7 @@ export function OtpVerification({
   const [isResending, setIsResending] = useState(false);
   // A code was just sent when this screen mounts, so start locked.
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const resendInFlightRef = useRef(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -59,9 +60,10 @@ export function OtpVerification({
   };
 
   const handleResend = async () => {
-    if (cooldown > 0 || isResending) return;
+    if (cooldown > 0 || isResending || resendInFlightRef.current) return;
     setError("");
     setNotice("");
+    resendInFlightRef.current = true;
     setIsResending(true);
     try {
       await onResend();
@@ -71,6 +73,7 @@ export function OtpVerification({
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
+      resendInFlightRef.current = false;
       setIsResending(false);
     }
   };

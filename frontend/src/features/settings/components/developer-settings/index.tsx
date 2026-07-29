@@ -31,7 +31,6 @@ import { ProfileTabEdit } from "./profile-tab-edit";
 import { PaymentTab } from "./payment-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { SecurityTab } from "./security-tab";
-import { PreferencesTab } from "./preferences-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { getApiErrorMessage } from "@/lib/api";
 import { uploadAvatar } from "@/features/profiles/profile-api";
@@ -47,7 +46,6 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "payment", label: "Payment", icon: "credit-card" },
   { id: "notifications", label: "Notifications", icon: "bell" },
   { id: "security", label: "Security", icon: "lock" },
-  { id: "preferences", label: "Preferences", icon: "sliders-h" },
 ];
 
 const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
@@ -55,10 +53,6 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
   payment: { title: "Payment", subtitle: "Manage payout details, billing method, and earnings." },
   notifications: { title: "Notifications", subtitle: "Control which notifications you receive." },
   security: { title: "Security", subtitle: "Protect your developer account and login access." },
-  preferences: {
-    title: "Preferences",
-    subtitle: "Tune your startup match and opportunity preferences.",
-  },
 };
 
 const Settings = () => {
@@ -70,6 +64,7 @@ const Settings = () => {
   const [notifications, setNotifications] = useState(defaultNotifications);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [notificationsSaved, setNotificationsSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -84,6 +79,12 @@ const Settings = () => {
     paypal: "",
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const activeTabExists = TABS.some((tab) => tab.id === activeTab);
+  const visibleTab: SettingsTab = activeTabExists ? activeTab : "profile";
+
+  useEffect(() => {
+    if (!activeTabExists) setActiveTab("profile");
+  }, [activeTabExists, setActiveTab]);
 
   useEffect(() => {
     queueMicrotask(() => setProfile(hydrateDeveloperProfile(dashboardProfile)));
@@ -160,8 +161,10 @@ const Settings = () => {
   ];
 
   const handleSave = async () => {
+    if (saving) return;
     setSaved(false);
     setSaveError("");
+    setSaving(true);
     try {
       const parts = profile.name.trim().split(/\s+/).filter(Boolean);
       const firstName = parts[0] || profile.firstName || dashboardProfile.firstName || "";
@@ -185,10 +188,13 @@ const Settings = () => {
     } catch (error) {
       setSaved(false);
       setSaveError(getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
     }
   };
 
   const cancelEditing = () => {
+    if (saving) return;
     setProfile(hydrateDeveloperProfile(dashboardProfile));
     setEditing(false);
   };
@@ -388,7 +394,7 @@ const Settings = () => {
     reader.readAsDataURL(file);
   };
 
-  const sectionCopy = SECTION_COPY[activeTab];
+  const sectionCopy = SECTION_COPY[visibleTab];
 
   return (
     <div className={styles.container}>
@@ -396,20 +402,20 @@ const Settings = () => {
         <div className={styles.settingsLayout}>
           <SettingsSidebarNav
             tabs={TABS}
-            activeTab={activeTab}
+            activeTab={visibleTab}
             onSelectTab={setActiveTab}
             onDeleteAccount={handleDeleteAccount}
           />
 
           <div className={styles.contentCol}>
             <div
-              className={`${styles.contentInner} ${activeTab === "profile" ? styles.contentInnerWide : ""}`}
+              className={`${styles.contentInner} ${visibleTab === "profile" ? styles.contentInnerWide : ""}`}
             >
               <h2 className={styles.pageTitle}>{sectionCopy.title}</h2>
               <p className={styles.pageSubtitle}>{sectionCopy.subtitle}</p>
               {saveError && <p className={styles.saveError}>{saveError}</p>}
 
-              {activeTab === "profile" &&
+              {visibleTab === "profile" &&
                 (editing ? (
                   <ProfileTabEdit
                     profile={profile}
@@ -436,6 +442,7 @@ const Settings = () => {
                     onRemoveCertification={removeCertification}
                     onCertificationImage={handleCertificationImage}
                     saved={saved}
+                    saving={saving}
                     onCancel={cancelEditing}
                     onSave={() => void handleSave()}
                   />
@@ -459,7 +466,7 @@ const Settings = () => {
                   />
                 ))}
 
-              {activeTab === "payment" && (
+              {visibleTab === "payment" && (
                 <PaymentTab
                   payData={payData}
                   onChangePayData={(patch) => setPayData((prev) => ({ ...prev, ...patch }))}
@@ -468,7 +475,7 @@ const Settings = () => {
                 />
               )}
 
-              {activeTab === "notifications" && (
+              {visibleTab === "notifications" && (
                 <NotificationsTab
                   notifications={notifications}
                   onToggle={(key) =>
@@ -479,20 +486,7 @@ const Settings = () => {
                 />
               )}
 
-              {activeTab === "security" && <SecurityTab />}
-
-              {activeTab === "preferences" && (
-                <PreferencesTab
-                  preferredBudget={profile.preferredBudget}
-                  experienceYears={profile.experienceYears}
-                  onChangeBudget={(value) => setProfile({ ...profile, preferredBudget: value })}
-                  onChangeExperienceYears={(value) =>
-                    setProfile({ ...profile, experienceYears: value })
-                  }
-                  saved={saved}
-                  onSave={() => void handleSave()}
-                />
-              )}
+              {visibleTab === "security" && <SecurityTab />}
             </div>
           </div>
         </div>

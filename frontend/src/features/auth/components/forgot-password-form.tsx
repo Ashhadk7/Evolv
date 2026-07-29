@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, CheckCircle, Eye, EyeSlash } from "@phosphor-icons/react";
@@ -28,9 +28,11 @@ export function ForgotPasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const requestInFlightRef = useRef(false);
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (requestInFlightRef.current) return;
     setError("");
     if (!email) {
       setError("Please enter your email address.");
@@ -40,6 +42,7 @@ export function ForgotPasswordForm() {
       setError("Please enter a valid email address.");
       return;
     }
+    requestInFlightRef.current = true;
     setIsSubmitting(true);
     try {
       await forgotPassword(email);
@@ -47,6 +50,7 @@ export function ForgotPasswordForm() {
     } catch (err) {
       setError(resolveForgotPasswordError(err));
     } finally {
+      requestInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };

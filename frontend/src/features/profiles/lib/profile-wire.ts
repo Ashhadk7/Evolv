@@ -1,4 +1,5 @@
 import type { FounderEducation } from "@/features/founder-dashboard/profile-utils";
+import type { DeveloperCertification } from "@/features/developer-dashboard/profile-utils";
 
 // Shared "wire" shapes: the exact JSON the backend serializes for education,
 // certifications, and reviews. These come from a single Pydantic schema on the
@@ -20,6 +21,7 @@ export interface WireCertification {
   issue_date?: string | null;
   credential_id?: string | null;
   credential_url?: string | null;
+  image_url?: string | null;
 }
 
 export interface WireReview {
@@ -38,6 +40,15 @@ export const educationFromWire = (items: WireEducation[] = []): FounderEducation
     degree: item.degree ?? "",
     customDegree: item.custom_degree ?? "",
     school: item.school,
+  }));
+
+export const certificationFromWire = (
+  items: WireCertification[] = []
+): DeveloperCertification[] =>
+  items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    image: item.image_url ?? "",
   }));
 
 export const reviewFromWire = (items: WireReview[] = []) =>

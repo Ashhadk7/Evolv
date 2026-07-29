@@ -17,6 +17,23 @@ function handleExpiredSession(): void {
   }
 }
 
+function isExpiredSessionResponse(
+  response: Response,
+  detail: string,
+  code: string | null
+): boolean {
+  if (response.headers.has("WWW-Authenticate")) return true;
+  if (code === "no_session" || code === "invalid_token") return true;
+
+  const normalized = detail.toLowerCase();
+  return (
+    normalized.includes("access token") ||
+    normalized.includes("bearer") ||
+    normalized.includes("not signed in") ||
+    normalized.includes("not registered in the application")
+  );
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -111,8 +128,12 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    if (auth && response.status === 401) handleExpiredSession();
-    throw new ApiError(response.status, extractErrorDetail(data), data?.code ?? null);
+    const detail = extractErrorDetail(data);
+    const code = data?.code ?? null;
+    if (auth && response.status === 401 && isExpiredSessionResponse(response, detail, code)) {
+      handleExpiredSession();
+    }
+    throw new ApiError(response.status, detail, code);
   }
 
   return data as T;

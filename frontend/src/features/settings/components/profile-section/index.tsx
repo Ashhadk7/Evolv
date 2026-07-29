@@ -29,11 +29,9 @@ import { ProfileEditor } from "./profile-editor";
 export function ProfileSection({
   profile,
   onSave,
-  startEditingSignal = 0,
 }: {
   profile: FounderProfile;
   onSave: (p: FounderProfile) => Promise<void>;
-  startEditingSignal?: number;
 }) {
   const [local, setLocal] = useState<FounderProfile>(profile);
   const [editing, setEditing] = useState(false);
@@ -90,19 +88,6 @@ export function ProfileSection({
       active = false;
     };
   }, [editing, profile]);
-
-  useEffect(() => {
-    if (startEditingSignal <= 0) return;
-    let active = true;
-    queueMicrotask(() => {
-      if (!active) return;
-      setLocal(profile);
-      setEditing(true);
-    });
-    return () => {
-      active = false;
-    };
-  }, [profile, startEditingSignal]);
 
   const toggleDomain = (d: string) =>
     setLocal((p) => {

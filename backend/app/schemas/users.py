@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.schemas.auth import SignupRole
 from app.schemas.certifications import CertificationResponse
+from app.schemas.developer_profiles import DeveloperSkillEntry
 from app.schemas.developer_reviews import DeveloperReviewCreate, DeveloperReviewResponse
 from app.schemas.educations import EducationResponse
 
@@ -75,6 +76,8 @@ class PublicDeveloperProfile(BaseModel):
     linkedin: str | None = None
     portfolio_link: str | None = None
     skills: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    skill_entries: list[DeveloperSkillEntry] = Field(default_factory=list)
     rating_avg: float
     profile_complete: bool
     educations: list[EducationResponse] = Field(default_factory=list)

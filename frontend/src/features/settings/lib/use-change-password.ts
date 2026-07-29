@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api";
 import { getPasswordStrengthError } from "@/features/auth/lib/validation";
 import { changePassword } from "./account-api";
@@ -27,6 +27,7 @@ export function useChangePassword() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const resetEmailRequestInFlightRef = useRef(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -40,6 +41,7 @@ export function useChangePassword() {
   };
 
   const startForgotFlow = async () => {
+    if (resetEmailRequestInFlightRef.current) return;
     setError("");
     setNotice("");
     const session = getSession();
@@ -49,6 +51,7 @@ export function useChangePassword() {
       return;
     }
 
+    resetEmailRequestInFlightRef.current = true;
     setIsSubmitting(true);
     try {
       await forgotPassword(email);
@@ -58,12 +61,13 @@ export function useChangePassword() {
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
+      resetEmailRequestInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   const resendOtp = async () => {
-    if (cooldown > 0 || isResending) return;
+    if (cooldown > 0 || isResending || resetEmailRequestInFlightRef.current) return;
     setError("");
     setNotice("");
     const session = getSession();
@@ -73,6 +77,7 @@ export function useChangePassword() {
       return;
     }
 
+    resetEmailRequestInFlightRef.current = true;
     setIsResending(true);
     try {
       await forgotPassword(email);
@@ -82,6 +87,7 @@ export function useChangePassword() {
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
+      resetEmailRequestInFlightRef.current = false;
       setIsResending(false);
     }
   };

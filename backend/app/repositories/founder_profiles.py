@@ -18,8 +18,15 @@ FOUNDER_PROFILE_FIELDS = (
     "primary_goal",
     "domains",
     "profile_complete",
+    "stripe_connected",
+    "billing_plan",
+    "billing_email",
+    "billing_currency",
+    "billing_budget_range",
+    "payment_method",
+    "billing_company_name",
 )
-FOUNDER_DEFAULTS = {"primary_goal": "not_selected"}
+FOUNDER_DEFAULTS = {"primary_goal": "not_selected", "stripe_connected": False}
 EDUCATION_EXCLUDE = {"educations"}
 
 
@@ -38,7 +45,6 @@ def create_founder_profile(
     )
     profile = FounderProfile(
         user_id=user_id,
-        stripe_connected=False,
         **profile_values,
     )
     db.add(profile)
