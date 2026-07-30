@@ -9,7 +9,6 @@ import { Reveal } from "@/components/shared/reveal";
 import { SectionHead } from "@/components/shared/section-head";
 import { Chip } from "@/components/shared/chip";
 import { Avatar } from "@/components/shared/avatar";
-import { devsForPhase } from "./blueprint-detail-data";
 
 export function RoadmapSection({
   phases,
@@ -36,7 +35,7 @@ export function RoadmapSection({
   setPhaseHires: React.Dispatch<React.SetStateAction<Record<number, string>>>;
   totalWeeks: number;
   reduce: boolean | null;
-  /** Live-matched developers from GET /blueprints/{id}/matches. Falls back to [] gracefully. */
+
   matchedDevelopers?: import("@/features/network/types").FounderContactProfile[];
 }) {
   return (
@@ -180,7 +179,13 @@ export function RoadmapSection({
                           className="overflow-hidden"
                         >
                           <div className="mt-3 flex flex-col gap-2">
-                            {(matchedDevelopers.length > 0 ? matchedDevelopers : devsForPhase(ph.skillset)).map((d) => (
+                            {matchedDevelopers.length === 0 && (
+                              <p className="text-bp-muted border-bp-border-soft bg-bp-tint m-0 rounded-[11px] border px-3 py-2.5 text-[12px] leading-[1.5]">
+                                No developers match this blueprint yet. Publish it so developers
+                                can find and apply to it.
+                              </p>
+                            )}
+                            {matchedDevelopers.map((d) => (
                               <div
                                 key={d.name}
                                 className="border-bp-border-soft bg-bp-card flex items-center gap-3 rounded-[11px] border px-3 py-2.5"
@@ -188,7 +193,9 @@ export function RoadmapSection({
                                 <Avatar initials={d.initials} size={34} />
                                 <div className="min-w-0 flex-1">
                                   <div className="text-bp-ink text-[13px] font-bold">{d.name}</div>
-                                  <div className="text-bp-muted mt-px text-[11px]">{d.role}</div>
+                                  <div className="text-bp-muted mt-px text-[11px]">
+                                    {d.rateLabel ? `${d.role} · ${d.rateLabel}` : d.role}
+                                  </div>
                                 </div>
                                 <span
                                   style={NUM}

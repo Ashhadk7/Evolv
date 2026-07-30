@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.repositories import matching as matching_repository
+from app.services.developer_rates import median_weekly_usd, rate_of
 from app.schemas.matching import (
     BlueprintMatchesResponse,
     MatchedDeveloperResponse,
@@ -25,7 +26,7 @@ RULE_SCORE_WEIGHT = 0.5
 SEMANTIC_SCORE_WEIGHT = 0.5
 
 
-def _parse_role_skills(raw_skills: object) -> list[str]:
+def parse_role_skills(raw_skills: object) -> list[str]:
     """Blueprint roles store skills as a comma-separated string (e.g. 'React, Node.js, ...'),
     but tolerate a list too in case the generator output shape changes."""
     if isinstance(raw_skills, str):
@@ -73,6 +74,7 @@ def _build_match(
         availability=profile.availability,
         open_to_remote=profile.open_to_remote,
         rating_avg=float(profile.rating_avg or 0),
+        rate=rate_of(profile),
         match_score=match_score,
         semantic_score=semantic_score,
     )
@@ -92,6 +94,23 @@ def _score_all(
         scored.append(_build_match(user, profile, score))
     scored.sort(key=lambda item: item.match_score, reverse=True)
     return scored
+
+
+RATE_SAMPLE_LIMIT = 10
+
+
+def rate_anchor_for_skills(db: Session, required_skills: list[str]) -> tuple[int | None, int]:
+    """Median weekly USD of the developers who would actually be matched here.
+
+    Uses the same scoring that produces the founder's match list, so the build
+    cost is anchored to the people shown on the page rather than a fixed rate
+    card. Returns the anchor and how many developers it came from; a None anchor
+    means nobody matched with a usable rate.
+    """
+    developers = matching_repository.list_available_developers(db)
+    matches = _score_all(developers, required_skills, 0)[:RATE_SAMPLE_LIMIT]
+    rates = [match.rate for match in matches if match.rate is not None]
+    return median_weekly_usd(rates), len(rates)
 
 
 def _fallback_rule_based(
@@ -132,7 +151,7 @@ def get_matches_for_blueprint_roles(
         title = str(
             role.get("role") or role.get("title") or role.get("role_title") or "Unspecified Role"
         )
-        skills = _parse_role_skills(role.get("skills"))
+        skills = parse_role_skills(role.get("skills"))
         scored = _score_all(developers, skills, min_experience)
         role_matches.append(
             RoleMatchResponse(

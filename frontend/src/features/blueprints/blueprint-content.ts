@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
 import type { Blueprint, EvidenceBasis } from "./types";
 
-/* ═══════════════════════════════════════════════════════ */
-/* Shared pure helpers (moved out of WorkspaceTab so both    */
-/* the view and this content model can use them)             */
-/* ═══════════════════════════════════════════════════════ */
 export function parseBudget(s: string): number {
   const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kKmM])?/);
   if (!m) return 80000;
@@ -41,9 +37,6 @@ export function fmtDate(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/* ═══════════════════════════════════════════════════════ */
-/* Types — shaped like the future 8-agent pipeline output    */
-/* ═══════════════════════════════════════════════════════ */
 export type Persona = {
   name: string;
   segment: "Primary user" | "Economic buyer" | "Gatekeeper";
@@ -62,7 +55,7 @@ export type Viability = {
   score: number;
   grade: string;
   reasoning: string;
-  verdict: string; // "Build" | "Validate first" | "Rethink" | "" for legacy blueprints
+  verdict: string;
   subScores: SubScore[];
 };
 
@@ -73,21 +66,22 @@ export type CitedText = { text: string; sourceIndexes: number[] };
 export type MarketAnalysis = {
   demandLevel: "High" | "Medium" | "Low";
   totalMarket: string;
-  totalMarketBasis: string; // "sourced" | "assumption" | ""
-  bottomUpSam: string; // customers × price, computed by the backend ("" for legacy)
+  totalMarketBasis: string;
+  bottomUpSam: string;
   bottomUpBasis: string;
   cagr: string;
   cagrBasis: string;
   timing: string;
   whyNow: string;
   insight: string;
-  analysis: string; // long-form analyst paragraph ("" for legacy blueprints)
+  analysis: string;
   demandSignals: CitedText[];
   headwinds: string[];
   confidence: string;
   assumptions: string[];
   sources: ResearchSourceRef[];
   retrievedAt: string;
+  researchedTheIdea: boolean;
 };
 
 export type CompetitorRow = {
@@ -105,6 +99,7 @@ export type CompetitorInsight = {
   assumptions: string[];
   sources: ResearchSourceRef[];
   retrievedAt: string;
+  researchedTheIdea: boolean;
 };
 
 export type DataEntity = { name: string; fields: string[] };
@@ -119,18 +114,16 @@ export type MvpPlan = {
   nonFunctional: string[];
 };
 
-// A client-spec feature. Rich fields are optional so legacy string-only
-// blueprints (and the name-only editing path) still fit the type.
 export type ProductFeature = {
   name: string;
-  priority: string; // tier label: "Must-have" | "Should-have" | "Nice-to-have"
+  priority: string;
   module?: string;
   description?: string;
   userStory?: string;
   acceptanceCriteria?: string[];
   effort?: string;
-  dependencies?: string[]; // names of other features this one must ship after
-  addresses?: string; // the persona pain / research signal this feature serves
+  dependencies?: string[];
+  addresses?: string;
 };
 
 export type StackLayerKey =
@@ -158,25 +151,22 @@ export type Phase = {
   acceptanceCriteria: string[];
   skillset: string[];
   primarySkill: string;
-  weeklyRate: number; // market contractor rate for this phase's skill
-  cost: number; // weeklyRate × weeks — the founder's payment for this milestone
+  weeklyRate: number;
+  cost: number;
   status: "In Progress" | "Planned";
   assignedDeveloper?: string;
 };
 
-/* Cost is derived bottom-up from each phase's skill × market rate ×
-   weeks — never a hardcoded budget. This is the "agent analyzed what
-   developers actually charge" logic. */
 export type CostModel = {
-  devTotal: number; // Σ phase.cost — total paid through milestones
-  platformFeePct: number; // Evolv's commission, taken from each milestone
+  devTotal: number;
+  platformFeePct: number;
   platformFee: number;
-  devTakeHome: number; // what developers actually receive
+  devTakeHome: number;
   infraDuringBuild: number;
   contingency: number;
-  total: number; // total build cost the founder should plan for
+  total: number;
   buildWeeks: number;
-  timelineLabel: string; // derived from phase weeks — no more 6mo/14wk clash
+  timelineLabel: string;
   monthlyRunCost: string;
   composition: { label: string; value: number; tone: string }[];
 };
@@ -189,8 +179,8 @@ export type Financials = {
   year1: { month: number; users: number; mrr: number; cumulative: number }[];
   eoyMrr: number;
   eoyArr: number;
-  breakEvenMonth: number | null; // null → not within 24 months
-  assumptions: string[]; // every input to this illustrative model, stated plainly
+  breakEvenMonth: number | null;
+  assumptions: string[];
 };
 
 export type StackCat = {
@@ -220,13 +210,11 @@ export type BlueprintContent = {
   mvpPlan: MvpPlan;
   techStack: TechStackModel;
   costModel: CostModel;
+  rateBasis: RateBasis;
   financials: Financials;
   phases: Phase[];
 };
 
-/* ═══════════════════════════════════════════════════════ */
-/* Derivation helpers                                         */
-/* ═══════════════════════════════════════════════════════ */
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -300,8 +288,6 @@ function derivePersonas(bp: Blueprint): Persona[] {
     }));
   }
 
-  // No agent data → no personas. Fabricated archetypes erode trust in the
-  // sections that ARE researched; the section renders an unavailable state.
   return [];
 }
 
@@ -336,13 +322,16 @@ function sourceRefs(value: unknown): ResearchSourceRef[] {
     .filter((source) => source.title && source.url);
 }
 
+function researchedTheIdea(agent: Record<string, unknown> | null): boolean {
+  const matched = asRecord(agent?.researchMetadata)?.matchedIdea;
+  return matched !== false;
+}
+
 function retrievedAtOf(agent: Record<string, unknown> | null): string {
   const generatedAt = stringValue(asRecord(agent?.researchMetadata)?.generatedAt);
   return generatedAt ? generatedAt.slice(0, 10) : "";
 }
 
-// The six scorecard dimensions, in display order. Values come from the
-// backend's rubric-scored agent — nothing is re-derived on the client.
 const SCORECARD_DIMENSIONS: { key: string; label: string }[] = [
   { key: "problemSeverity", label: "Problem" },
   { key: "marketQuality", label: "Market" },
@@ -355,8 +344,7 @@ const SCORECARD_DIMENSIONS: { key: string; label: string }[] = [
 function scorecardSubScores(bp: Blueprint): SubScore[] {
   const scorecard = agentRecord(bp, "scorecard");
   if (!scorecard) {
-    // Legacy blueprint (schema <= 4): the market score is the only real
-    // sub-score that exists — show it alone rather than inventing three more.
+
     return [{ label: "Market", value: bp.market.score, note: "", sourceIndexes: [] }];
   }
   return SCORECARD_DIMENSIONS.map(({ key, label }) => {
@@ -439,12 +427,12 @@ function deriveMarketAnalysis(bp: Blueprint): MarketAnalysis {
     assumptions: stringArray(marketAgent?.assumptions),
     sources: sourceRefs(marketAgent?.sources),
     retrievedAt: retrievedAtOf(marketAgent),
+    researchedTheIdea: researchedTheIdea(marketAgent),
   };
 }
 
 function deriveCompetitors(bp: Blueprint): CompetitorRow[] {
-  // Agent data only. Fabricating pricing or strengths for real companies is
-  // the fastest possible credibility kill — no agent data, no table.
+
   const competitorAgent = agentRecord(bp, "competitor");
   return recordArray(competitorAgent?.competitors).map((competitor) => ({
     name: stringValue(competitor.name, "Competitor"),
@@ -470,9 +458,9 @@ function deriveCompetitorInsight(bp: Blueprint): CompetitorInsight {
     assumptions: stringArray(competitorAgent?.assumptions),
     sources: sourceRefs(competitorAgent?.sources),
     retrievedAt: retrievedAtOf(competitorAgent),
+    researchedTheIdea: researchedTheIdea(competitorAgent),
   };
 }
-
 
 const PRIORITY_TIER: Record<string, string> = {
   Must: "Must-have",
@@ -480,13 +468,6 @@ const PRIORITY_TIER: Record<string, string> = {
   Could: "Nice-to-have",
 };
 
-// Parses the structured feature spec (real priority/module/user story/etc.).
-// Falls back to legacy string features with index-based priority so old
-// blueprints keep rendering. A save from the name-only tech-stack editor can
-// reconcile into a MIXED array (rich objects + a plain string for a newly
-// added name) — treat any array containing at least one object as "rich
-// mode" and give bare strings within it a sensible default tier, rather than
-// dropping them (a pure all-strings array still uses the legacy fallback).
 export function deriveProductFeatures(bp: Blueprint): ProductFeature[] {
   const raw = agentRecord(bp, "product")?.features;
   const hasStructured = Array.isArray(raw) && raw.some((item) => asRecord(item) !== null);
@@ -563,9 +544,6 @@ function stackLayer(layers: Record<string, unknown> | null, key: StackLayerKey):
   };
 }
 
-/* Architecture is derived live from whatever tech stack is currently
-   selected (including founder edits), so the diagram always matches
-   the editable stack — it is not baked into the static content model. */
 const DIAGRAM_NODE_ORDER: {
   id: string;
   kind: ArchitectureNode["kind"];
@@ -607,8 +585,6 @@ export function buildArchitecture(techStack: TechStackModel): {
   return { nodes, edges: DIAGRAM_EDGES };
 }
 
-/* Market contractor rates (blended, USD/week) by skill. This is the
-   table the "cost agent" reasons over — what developers actually charge. */
 const WEEKLY_RATES: Record<string, number> = {
   "ai/ml": 5500,
   "full stack": 4200,
@@ -620,9 +596,25 @@ const WEEKLY_RATES: Record<string, number> = {
   qa: 2800,
   default: 3800,
 };
-function rateForSkill(skill: string): number {
+function rateForSkill(skill: string, scale = 1): number {
   const key = Object.keys(WEEKLY_RATES).find((k) => skill.toLowerCase().includes(k));
-  return WEEKLY_RATES[key || "default"];
+  return Math.round(WEEKLY_RATES[key || "default"] * scale);
+}
+
+export type RateBasis = { source: string; weeklyUsd: number; sampleSize: number };
+
+function deriveRateCard(bp: Blueprint): RateBasis {
+  const card = asRecord((bp.contentJson as Record<string, unknown> | undefined)?.rateCard);
+  const anchor = numberValue(card?.anchorWeeklyUsd);
+  const sampleSize = numberValue(card?.sampleSize);
+  if (!anchor) {
+    return { source: "Market default rates", weeklyUsd: WEEKLY_RATES.default, sampleSize: 0 };
+  }
+  return {
+    source: `Median of ${sampleSize} matched developer${sampleSize === 1 ? "" : "s"}`,
+    weeklyUsd: anchor,
+    sampleSize,
+  };
 }
 function parseMonthly(s: string): number {
   const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kK])?/);
@@ -634,7 +626,7 @@ function parseMonthly(s: string): number {
 
 const PALETTE = { mint: "#89d7b7", teal: "#428475", mintSoft: "#a8dfc9", faint: "#cfe3d8" };
 
-function buildPhases(bp: Blueprint): Phase[] {
+function buildPhases(bp: Blueprint, rateScale: number): Phase[] {
   const productAgent = agentRecord(bp, "product");
   const agentPhases = recordArray(productAgent?.phases);
   const raw: Omit<Phase, "primarySkill" | "weeklyRate" | "cost">[] = agentPhases.length
@@ -653,14 +645,11 @@ function buildPhases(bp: Blueprint): Phase[] {
     : legacyPhases(bp);
   return raw.map((p) => {
     const primarySkill = p.skillset[0];
-    const weeklyRate = rateForSkill(primarySkill);
+    const weeklyRate = rateForSkill(primarySkill, rateScale);
     return { ...p, primarySkill, weeklyRate, cost: weeklyRate * p.weeks };
   });
 }
 
-/* Fallback roadmap for blueprints generated before the product agent planned
-   phases (schema <= 4). Generic scaffolding, not idea-specific — new
-   generations never hit this path. */
 function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" | "cost">[] {
   return [
     {
@@ -748,15 +737,14 @@ function buildCostModel(bp: Blueprint, phases: Phase[]): CostModel {
 
 function deriveFinancials(bp: Blueprint, buildCost: number): Financials {
   const marketAgent = agentRecord(bp, "market");
-  // Price comes from the market agent's researched wedge price when present;
-  // the legacy $49 default only applies to pre-scorecard blueprints.
+
   const priceAnnual = numberValue(marketAgent?.priceAnnualUsd);
   const price = priceAnnual ? Math.max(1, Math.round(priceAnnual / 12)) : 49;
   const priceBasis = stringValue(marketAgent?.priceBasis);
   const startingUsers = Math.round(20 + bp.marketPotential * 0.6);
-  const monthlyGrowthPct = Math.round((0.08 + (bp.viability / 100) * 0.08) * 100); // 8–16%/mo
+  const monthlyGrowthPct = Math.round((0.08 + (bp.viability / 100) * 0.08) * 100);
   const g = monthlyGrowthPct / 100;
-  // Compute month-by-month for 24 months so break-even can be found beyond year 1.
+
   let users = startingUsers;
   let cumulative = 0;
   const all: { month: number; users: number; mrr: number; cumulative: number }[] = [];
@@ -791,11 +779,9 @@ function deriveFinancials(bp: Blueprint, buildCost: number): Financials {
   };
 }
 
-/* ═══════════════════════════════════════════════════════ */
-/* Public entry point                                         */
-/* ═══════════════════════════════════════════════════════ */
 export function buildBlueprintContent(bp: Blueprint): BlueprintContent {
-  const phases = buildPhases(bp);
+  const rateBasis = deriveRateCard(bp);
+  const phases = buildPhases(bp, rateBasis.weeklyUsd / WEEKLY_RATES.default);
   const totalWeeks = phases.reduce((s, p) => s + p.weeks, 0) || 1;
   const costModel = buildCostModel(bp, phases);
   const synthesis = deriveSynthesis(bp);
@@ -809,17 +795,12 @@ export function buildBlueprintContent(bp: Blueprint): BlueprintContent {
     mvpPlan: deriveMvpPlan(bp, totalWeeks),
     techStack: deriveTechStack(bp),
     costModel,
+    rateBasis,
     financials: deriveFinancials(bp, costModel.total),
     phases,
   };
 }
 
-/* ═══════════════════════════════════════════════════════ */
-/* Project management — runtime state for a started project  */
-/* (kept separate from the static agent-generated spec       */
-/* above; lives on Blueprint.project once a founder commits   */
-/* to actually building it, not just pitching it)             */
-/* ═══════════════════════════════════════════════════════ */
 export type ProjectStatus = "ONBOARDING" | "IN_DEVELOPMENT" | "COMPLETED";
 
 export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -837,38 +818,31 @@ export type PhaseAssignment = {
   developerId: string;
   developerName: string;
   developerInitials: string;
-  hiredAt: string; // ISO date (YYYY-MM-DD)
-  amountAgreed: number; // confirmed by the founder when hiring, pre-filled from phase.budget, editable at that moment
-  amountPaid: number; // running total actually paid — "Not paid" / "Partially paid" / "Paid in full" is derived from this vs amountAgreed, never stored
-  payments: { amount: number; date: string }[]; // the ledger — real usage is incremental (weekly, partial work), not one all-or-nothing release
+  hiredAt: string;
+  amountAgreed: number;
+  amountPaid: number;
+  payments: { amount: number; date: string }[];
 };
 
-/* Permanent audit trail — if a founder removes a developer mid-phase,
-   the reason and amount paid at that moment are recorded and never
-   cleared. This is the platform's record if a dispute is ever reported. */
 export type DeveloperRemoval = {
   developerId: string;
   developerName: string;
-  reason: string; // required, non-empty
-  amountPaid: number; // pulled from the assignment at the moment of removal — not editable
-  date: string; // ISO date
+  reason: string;
+  amountPaid: number;
+  date: string;
 };
 
 export type ProjectPhaseState = {
-  deliverables: { text: string; done: boolean }[]; // founder can add/remove; seeded from the blueprint spec but no longer index-locked to it
-  deadline: string | null; // founder-set, independent of any assignment; null until the founder sets one
+  deliverables: { text: string; done: boolean }[];
+  deadline: string | null;
   assignment: PhaseAssignment | null;
   status: "Not Started" | "In Progress" | "In Review" | "Complete";
   history: { label: string; date: string }[];
-  removals: DeveloperRemoval[]; // permanent — never cleared, even across multiple hire/remove cycles on the same phase
-  totalPaid: number; // sunk cost — survives removing/replacing the assignment, so budget burn never forgets money already released
-  budget: number; // founder-editable planned spend for this phase; defaults to phase.cost, adjustable regardless of who's assigned
+  removals: DeveloperRemoval[];
+  totalPaid: number;
+  budget: number;
 };
 
-/* Every dollar spent on the project — developer payouts (auto-logged on
-   release, never typed by hand) plus whatever the founder logs manually
-   for hosting, domains, tools, and API costs. This is the single ledger
-   behind "Total Spent". */
 export type ExpenseCategory =
   "Developer Payment" | "Hosting" | "Domain" | "Tools & Services" | "API Costs" | "Other";
 export type ProjectExpense = {
@@ -876,19 +850,18 @@ export type ProjectExpense = {
   label: string;
   category: ExpenseCategory;
   amount: number;
-  date: string; // ISO date
-  phaseIndex: number | null; // linked phase for dev payments; null for general project costs
+  date: string;
+  phaseIndex: number | null;
 };
 
-/* GitHub-Issues-style: what's wrong with what was built, not what to build. */
 export type ProjectIssue = {
   id: string;
   title: string;
   description: string;
-  priority: "High" | "Medium" | "Low"; // danger scale — High is red, same convention as risk severity
+  priority: "High" | "Medium" | "Low";
   status: "Open" | "In Progress" | "Resolved";
-  phaseIndex: number | null; // optional link to a specific phase; null = project-wide
-  createdAt: string; // ISO date
+  phaseIndex: number | null;
+  createdAt: string;
   history: { label: string; date: string }[];
 };
 
@@ -904,8 +877,8 @@ export type ProjectDeadline = {
 
 export type ProjectState = {
   status: ProjectStatus;
-  startedAt: string; // ISO date
-  phaseStates: ProjectPhaseState[]; // index-aligned with content.phases
+  startedAt: string;
+  phaseStates: ProjectPhaseState[];
   issues: ProjectIssue[];
   deadlines: ProjectDeadline[];
   expenses: ProjectExpense[];
@@ -931,11 +904,6 @@ export function initProjectState(content: BlueprintContent): ProjectState {
   };
 }
 
-/* Backfills fields added to the schema after some projects were already
-   started (e.g. persisted in localStorage from an earlier session) —
-   old records won't have `expenses`, a per-phase `budget`, the newer
-   deliverables/deadline/removals shape, or the payment ledger yet. Call
-   this on any ProjectState read from storage before trusting its shape. */
 export function normalizeProjectState(
   content: BlueprintContent,
   project: ProjectState
@@ -982,8 +950,6 @@ export function normalizeProjectState(
   };
 }
 
-/* Status is always derived from phase state, never hand-set — so it can
-   never drift out of sync with what's actually assigned/complete. */
 export function deriveProjectStatus(project: ProjectState): ProjectStatus {
   if (project.phaseStates.length > 0 && project.phaseStates.every((ps) => ps.status === "Complete"))
     return "COMPLETED";
@@ -1040,13 +1006,11 @@ export function computeProjectHealth(
     }
   });
 
-  // Budget is the founder-editable phase-wise sum, not the fixed cost-model estimate.
-  // Falls back to the phase's derived cost for records saved before `budget` existed.
   const total = project.phaseStates.reduce(
     (s, ps, i) => s + (ps.budget ?? content.phases[i]?.cost ?? 0),
     0
   );
-  // Spend is the single ledger — auto-logged payments + whatever the founder recorded manually.
+
   const spent = (project.expenses ?? []).reduce((s, e) => s + e.amount, 0);
   const verdict: ProjectHealth["verdict"] =
     delayedCount === 0 ? "On track" : delayedCount === 1 ? "Attention needed" : "At risk";

@@ -30,17 +30,12 @@ export function TeamTalentSection({
   activeRoleFilter: string;
   onRoleFilterChange: (role: string) => void;
   onSelectDeveloper: (profile: FounderContactProfile) => void;
-  /** Live-matched developers from GET /blueprints/{id}/matches. Falls back to [] gracefully. */
+
   matchedDevelopers?: FounderContactProfile[];
 }) {
   const visibleMatchedRoles =
     activeRoleFilter === "all" ? roles : roles.filter((role) => role.role === activeRoleFilter);
 
-  /**
-   * For each role, pick developers from the API-matched list whose skills
-   * overlap with the role's required skills. Falls back to any available dev
-   * if no matches found for a specific role.
-   */
   function devsForRoleApi(role: { role: string; skills: string }): FounderContactProfile[] {
     if (matchedDevelopers.length === 0) return [];
     const terms = `${role.role} ${role.skills}`
@@ -159,6 +154,7 @@ export function TeamTalentSection({
                               {developerRoleText(d)}
                             </div>
                           </div>
+                          {d.rateLabel && <Chip tone="neutral">{d.rateLabel}</Chip>}
                           <Chip tone={avail ? "mint" : "amber"}>
                             {avail ? "Available" : d.availability}
                           </Chip>

@@ -4,7 +4,6 @@ import type {
   DeveloperSkillEntry,
 } from "@/features/developer-dashboard/profile-utils";
 
-// ── Network profile types and data ────────────────────────────────────────────
 export type NetworkType = "Developer" | "Founder";
 
 export interface NetworkReview {
@@ -47,13 +46,11 @@ export interface FounderContactProfile {
   certifications?: Array<string | DeveloperCertification>;
   highlights: string[];
   rating?: number;
+  rateLabel?: string;
   reviews?: NetworkReview[];
   online?: boolean;
 }
 
-// Target passed from Network → Inbox when starting a conversation with a contact.
-// Identical for both roles, so founder/developer call sites share one shape;
-// the two names are kept as aliases so neither role has to change its imports.
 export interface NetworkMessageTarget {
   id: string;
   conversationId?: string;
@@ -75,10 +72,6 @@ export interface NetworkMessageTarget {
 export type FounderNetworkMessageTarget = NetworkMessageTarget;
 export type DeveloperNetworkMessageTarget = NetworkMessageTarget;
 
-// ── Shared network tab state ──────────────────────────────────────────────────
-// Identical between the founder and developer network tabs; role differences
-// live in the storage config (see features/network/lib/network-storage.ts),
-// not in this shape.
 export type NetworkTabFilter = "all" | "developers" | "founders";
 
 export interface StoredNetworkState {

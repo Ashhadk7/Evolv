@@ -1,8 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type { FounderContactProfile } from "@/features/network/types";
 
-// ── Wire types matching the backend schemas/matching.py ───────────────────────
-
 interface MatchedDeveloperResponse {
   user_id: string;
   first_name: string;
@@ -14,6 +12,7 @@ interface MatchedDeveloperResponse {
   availability: boolean;
   open_to_remote: boolean;
   rating_avg: number;
+  rate: { amount: number; period: string; currency: string } | null;
   match_score: number;
   semantic_score?: number | null;
 }
@@ -37,10 +36,13 @@ export interface BlueprintMatchesResponse {
   roles: RoleMatchResponse[];
 }
 
-// ── Conversion helpers ────────────────────────────────────────────────────────
-
 function initialsFor(first: string, last: string) {
   return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() || "D";
+}
+
+function formatRate(rate: MatchedDeveloperResponse["rate"]): string | undefined {
+  if (!rate) return undefined;
+  return `${rate.currency} ${rate.amount.toLocaleString("en-US")}/${rate.period}`;
 }
 
 export function matchedDeveloperToProfile(dev: MatchedDeveloperResponse): FounderContactProfile {
@@ -65,6 +67,7 @@ export function matchedDeveloperToProfile(dev: MatchedDeveloperResponse): Founde
       experience: experienceLabel,
     })),
     experience: experienceLabel,
+    rateLabel: formatRate(dev.rate),
     experienceYears: dev.experience_years?.toString(),
     mutual: 0,
     location: dev.open_to_remote ? "Remote" : "",
@@ -80,12 +83,6 @@ export function matchedDeveloperToProfile(dev: MatchedDeveloperResponse): Founde
   };
 }
 
-// ── API functions ─────────────────────────────────────────────────────────────
-
-/**
- * GET /matching?skills=...&min_experience=...&limit=...
- * Returns general developer matches for the given skills.
- */
 export async function fetchMatchingDevelopers(
   skills: string[],
   options: { minExperience?: number; limit?: number } = {}
@@ -102,10 +99,6 @@ export async function fetchMatchingDevelopers(
   return response.items.map(matchedDeveloperToProfile);
 }
 
-/**
- * GET /blueprints/{blueprint_id}/matches?min_experience=...&limit=...
- * Returns developer matches grouped by role from a specific blueprint.
- */
 export async function fetchBlueprintMatches(
   blueprintId: string,
   options: { minExperience?: number; limit?: number } = {}

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -40,6 +41,7 @@ from app.services.generation.agents.synthesis import SynthesisOutput, run_synthe
 from app.services.generation.agents.tech_stack import TechStackOutput, run_tech_stack
 from app.services.generation.enrichment import EnrichmentError, sources_to_prompt_block
 from app.services.generation.text import weeks_from_timeline
+from app.services.matching_service import parse_role_skills, rate_anchor_for_skills
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +252,7 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
 
         content = _build_blueprint_content_payload(
             payload=payload,
+            rate_card=_build_rate_card(db, tech_stack),
             market=market,
             competitor=competitor,
             persona=persona,
@@ -343,6 +346,7 @@ def _require_founder_profile(user: User) -> UUID:
 def _build_blueprint_content_payload(
     *,
     payload: BlueprintGenerateRequest,
+    rate_card: dict[str, Any],
     market: MarketOutput,
     competitor: CompetitorOutput,
     persona: PersonaOutput,
@@ -355,6 +359,7 @@ def _build_blueprint_content_payload(
     content_json = {
         "schemaVersion": CONTENT_SCHEMA_VERSION,
         "intake": _intake_json(payload),
+        "rateCard": rate_card,
         "agents": {
             "market": market.model_dump(by_alias=True),
             "competitor": competitor.model_dump(by_alias=True),
@@ -434,6 +439,30 @@ def _derive_developer_demand(market: MarketOutput, persona: PersonaOutput) -> Le
     if market.demand_level == "Low" or persona.confidence == "Low":
         return LevelRating.LOW
     return LevelRating.MEDIUM
+
+
+def _build_rate_card(db: Session, tech_stack: TechStackOutput) -> dict[str, Any]:
+    """Anchor the build cost to the rates of developers who match this blueprint.
+
+    Snapshotted with the blueprint rather than recomputed on read: a founder's
+    phase budgets are seeded from these figures, so a quote that moved whenever
+    the developer pool changed would not be a quote. `anchorWeeklyUsd` is None
+    when nobody matched with a usable rate, and the frontend then falls back to
+    its own rate card.
+    """
+    skills = [
+        skill for role in tech_stack.roles for skill in parse_role_skills(role.skills)
+    ]
+    try:
+        anchor, sample_size = rate_anchor_for_skills(db, skills)
+    except SQLAlchemyError:
+        logger.warning("Rate anchor lookup failed; falling back to the default rate card")
+        anchor, sample_size = None, 0
+    return {
+        "anchorWeeklyUsd": anchor,
+        "sampleSize": sample_size,
+        "basis": "matchedDevelopers" if anchor else "default",
+    }
 
 
 def _committed_features(product: ProductOutput) -> list[str]:

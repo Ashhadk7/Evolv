@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.services.developer_rates import DeveloperRate
+
 
 class MatchedDeveloperResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra="forbid")
@@ -18,6 +20,7 @@ class MatchedDeveloperResponse(BaseModel):
     availability: bool
     open_to_remote: bool
     rating_avg: float
+    rate: DeveloperRate | None = None
     match_score: int
     semantic_score: int | None = None
 

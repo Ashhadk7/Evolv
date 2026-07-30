@@ -1,4 +1,3 @@
-// Pure derived data + helpers for the blueprint detail view, extracted from blueprint-detail.tsx.
 "use client";
 
 import {
@@ -15,7 +14,6 @@ import {
 } from "@phosphor-icons/react";
 import type { BlueprintContent, ProductFeature } from "@/features/blueprints/blueprint-content";
 import type { Blueprint } from "@/features/blueprints/types";
-import { FOUNDER_NETWORK_PROFILES } from "@/features/network/data";
 import type { FounderContactProfile } from "@/features/network/types";
 
 export const TOC_SECTIONS = [
@@ -37,9 +35,7 @@ export const TOC_SECTIONS = [
 ];
 
 export function buildVentureAssessment(bp: Blueprint, content: BlueprintContent) {
-  // Strengths = the scorecard's best-scoring dimensions, in the agent's own
-  // words. Risks = the synthesis agent's red flags. Nothing is invented here;
-  // legacy blueprints without scorecard data show what actually exists.
+
   const strengths = content.viability.subScores
     .filter((s) => s.note && s.value >= 60)
     .sort((a, b) => b.value - a.value)
@@ -122,42 +118,11 @@ export function buildTeamRoles(bp: Blueprint) {
   return bp.roles ?? [];
 }
 
-export const developerProfiles = FOUNDER_NETWORK_PROFILES.filter(
-  (profile) => profile.type === "Developer"
-);
-
 export const developerRoleText = (developer: FounderContactProfile) =>
   `${developer.role} · ${developer.skills.slice(0, 2).join(" · ")} · ${developer.experience}`;
 
 export const isDeveloperAvailable = (developer: FounderContactProfile) =>
   /open|available/i.test(developer.availability);
-
-export function devsForPhase(skillset: string[]) {
-  const matched = developerProfiles.filter((d) =>
-    skillset.some((s) =>
-      d.skills.some(
-        (sk) =>
-          sk.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(sk.toLowerCase())
-      )
-    )
-  );
-  return matched.length ? matched : developerProfiles;
-}
-
-export function devsForRole(role: { role: string; skills: string }) {
-  const terms = `${role.role} ${role.skills}`
-    .toLowerCase()
-    .split(/[^a-z0-9+.#]+/)
-    .filter(Boolean);
-  const matched = developerProfiles.filter((d) =>
-    terms.some(
-      (term) =>
-        d.role.toLowerCase().includes(term) ||
-        d.skills.some((sk) => sk.toLowerCase().includes(term) || term.includes(sk.toLowerCase()))
-    )
-  );
-  return (matched.length ? matched : developerProfiles).slice(0, 3);
-}
 
 const SEV_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
 
@@ -172,12 +137,11 @@ export function buildRiskRows(bp: Blueprint) {
     .sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
 }
 
-// Severity = danger scale: High risk is red, low risk is safe (mint).
 export const sevTone = (s: string) =>
   (s === "High" ? "red" : s === "Medium" ? "amber" : "mint") as "red" | "amber" | "mint";
 
 export function buildAnalytics(bp: Blueprint) {
-  // Real platform counts only — no invented trends or padded numbers.
+
   const lit = (n: number) => Math.min(8, n);
   return [
     {
@@ -217,9 +181,6 @@ export function buildAiRecs(bp: Blueprint) {
   ].filter((item) => item.text);
 }
 
-// The editor round-trips feature NAMES only. Look each one back up in the
-// generated spec so editing doesn't repaint priorities with a positional guess
-// (mirrors _reconcile_features on the backend, which preserves the same way).
 export function buildFeatureItems(
   names: string[],
   known: ProductFeature[]

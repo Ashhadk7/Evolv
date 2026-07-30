@@ -462,7 +462,13 @@ export function BlueprintDetail({
 
           <GoToMarketSection gtmChannels={gtmChannels} gtmPhases={gtmPhases} />
 
-          <FinancialsSection cost={cost} fin={fin} phases={phases} reduce={reduce} />
+          <FinancialsSection
+            cost={cost}
+            fin={fin}
+            phases={phases}
+            rateBasis={content.rateBasis}
+            reduce={reduce}
+          />
 
           <RisksSection riskRows={riskRows} />
 

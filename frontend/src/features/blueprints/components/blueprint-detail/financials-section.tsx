@@ -2,7 +2,12 @@
 
 import { motion } from "framer-motion";
 import { Calculator, ChartBar, Clock, CloudArrowUp, Lock, Money } from "@phosphor-icons/react";
-import type { CostModel, Financials, Phase } from "@/features/blueprints/blueprint-content";
+import type {
+  CostModel,
+  Financials,
+  Phase,
+  RateBasis,
+} from "@/features/blueprints/blueprint-content";
 import { fmtMoney } from "@/features/blueprints/blueprint-content";
 import { cardStyle, EASE, NUM } from "@/components/shared/card-style";
 import { Reveal } from "@/components/shared/reveal";
@@ -13,11 +18,13 @@ export function FinancialsSection({
   cost,
   fin,
   phases,
+  rateBasis,
   reduce,
 }: {
   cost: CostModel;
   fin: Financials;
   phases: Phase[];
+  rateBasis: RateBasis;
   reduce: boolean | null;
 }) {
   return (
@@ -29,14 +36,14 @@ export function FinancialsSection({
         desc="What it costs to build — estimated from real market developer rates for each phase's skills — how developers are paid per milestone, and when the product earns that investment back."
       />
 
-      {/* COST TO BUILD */}
+      {}
       <div style={cardStyle({ padding: "28px 30px", marginBottom: 18 })}>
         <div className="border-bp-border-soft bg-bp-tint mb-[18px] flex gap-[9px] rounded-[11px] border px-3.5 py-2.5">
           <Calculator size={14} weight="duotone" className="text-bp-teal mt-px shrink-0" />
           <span className="text-bp-muted text-[11.5px] leading-[1.5]">
-            Estimated bottom-up: each phase&apos;s required skill is matched to current market
-            contractor rates and multiplied by its duration. This is a data-driven estimate, not a
-            fixed budget.
+            Estimated bottom-up: each phase&apos;s required skill is priced at{" "}
+            {fmtMoney(rateBasis.weeklyUsd)}/week and multiplied by its duration.{" "}
+            {rateBasis.source}. This is an estimate, not a fixed budget.
           </span>
         </div>
         <div className="mb-[22px] grid grid-cols-4 gap-3.5">
@@ -77,7 +84,7 @@ export function FinancialsSection({
           ))}
         </div>
         <div className="grid grid-cols-[1fr_1.35fr] gap-[22px]">
-          {/* composition */}
+          {}
           <div>
             <Label>Where the money goes</Label>
             <div className="mb-3.5 flex h-3 overflow-hidden rounded-full">
@@ -105,7 +112,7 @@ export function FinancialsSection({
               ))}
             </div>
           </div>
-          {/* milestone schedule with per-phase rate math */}
+          {}
           <div>
             <Label>Milestone payments to developers</Label>
             <div className="border-bp-border-soft overflow-hidden rounded-xl border">
@@ -150,7 +157,7 @@ export function FinancialsSection({
         </div>
       </div>
 
-      {/* REVENUE & BREAK-EVEN */}
+      {}
       <div style={cardStyle({ padding: "28px 30px" })}>
         <Label>Revenue &amp; break-even</Label>
         <p className="text-bp-muted mb-2.5 text-[13px] leading-[1.65]">

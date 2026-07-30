@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from statistics import median
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+RatePeriod = Literal["hour", "day", "week", "month", "year"]
+RateCurrency = Literal["USD", "PKR", "INR", "GBP", "EUR", "AED"]
 
 WEEKS_PER_MONTH = 4.33
 WEEKS_PER_YEAR = 52.0
@@ -42,14 +47,29 @@ _PERIOD_ALIASES = {
 }
 
 
-@dataclass(frozen=True)
-class DeveloperRate:
-    amount: int
-    period: str
-    currency: str
+class DeveloperRate(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    amount: int = Field(gt=0)
+    period: RatePeriod
+    currency: RateCurrency
 
     def weekly_usd(self) -> float:
         return self.amount * PERIOD_TO_WEEKLY[self.period] * _CURRENCY_TO_USD[self.currency]
+
+
+def rate_of(profile: object) -> DeveloperRate | None:
+    """The structured rate on a developer profile, or None when unset.
+
+    Falls back to parsing the legacy free-text field so a developer who has not
+    revisited their settings since the columns were added still prices honestly.
+    """
+    amount = getattr(profile, "rate_amount", None)
+    period = getattr(profile, "rate_period", None)
+    currency = getattr(profile, "rate_currency", None)
+    if amount and period and currency:
+        return DeveloperRate(amount=amount, period=period, currency=currency)
+    return parse_rate(getattr(profile, "preferred_budget", None))
 
 
 def parse_rate(text: str | None) -> DeveloperRate | None:
