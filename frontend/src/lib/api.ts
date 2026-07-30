@@ -1,6 +1,6 @@
 import { clearSession, getAccessToken } from "@/features/auth/lib/session";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // A 401 on an authenticated call means the session is dead (expired, revoked,
 // or the account no longer exists) — the token can never become valid again by
