@@ -15,8 +15,9 @@ from app.services.exceptions import BlueprintBusyError
 from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.agents.competitor import run_competitor
 from app.services.generation.agents.market import run_market
+from app.services.generation.blueprint_generation_service import _build_rate_card
 from app.services.generation.agents.persona import run_persona
-from app.services.generation.agents.product import run_product
+from app.services.generation.agents.product import ProductOutput, run_product
 from app.services.generation.agents.research_planner import run_research_planner
 from app.services.generation.agents.scorecard import ScorecardOutput, derive_viability, run_scorecard
 from app.services.generation.agents.strategy import run_strategy
@@ -118,6 +119,8 @@ async def _run_refine(db: Session, blueprint_id: UUID, section: str, feedback: s
 
     agents[section] = new_agent_output
     content["agents"] = agents
+    if section == "techStack":
+        content["rateCard"] = _build_rate_card(db, reconstruct_tech_stack(agents))
     _sync_derived(blueprint.current_version, agents)
     content["refinement"] = {
         "section": section,
@@ -175,6 +178,34 @@ async def _replan_research(agent_brief: str):
         return None
 
 
+async def _rescore(
+    agent_brief: str,
+    agents: dict[str, Any],
+    product_obj: ProductOutput,
+    shared_research: str,
+    source_count: int,
+) -> ScorecardOutput:
+    """Re-run the scorecard against a product spec and write it back into `agents`.
+
+    Execution feasibility is 15% of viability and is judged from the product
+    spec, so a refined roadmap that is not rescored leaves the gauge reporting
+    the previous scope. `agents` is mutated in place because the caller syncs
+    the version's derived columns from it after this returns.
+    """
+    market_obj, competitor_obj = reconstruct_market_competitor(agents)
+    scorecard_obj = await run_scorecard(
+        agent_brief,
+        market_obj,
+        competitor_obj,
+        reconstruct_persona(agents),
+        product_obj,
+        shared_research,
+        source_count,
+    )
+    agents["scorecard"] = scorecard_obj.model_dump(by_alias=True)
+    return scorecard_obj
+
+
 async def _call_agent_for_section(
     *,
     section: str,
@@ -212,6 +243,7 @@ async def _call_agent_for_section(
             shared_research,
             weeks_from_timeline(intake.get("timeline", "")),
         )
+        await _rescore(agent_brief, agents, result, shared_research, source_count)
         return result.model_dump(by_alias=True)
 
     if section == "strategy":
@@ -232,17 +264,14 @@ async def _call_agent_for_section(
         market_obj, competitor_obj = reconstruct_market_competitor(agents)
         persona_obj = reconstruct_persona(agents)
         product_obj = reconstruct_product(agents)
-        strategy_obj = reconstruct_strategy(agents)
-
-        scorecard_obj = await run_scorecard(
-            agent_brief, market_obj, competitor_obj, persona_obj, product_obj,
-            shared_research, source_count,
+        scorecard_obj = await _rescore(
+            agent_brief, agents, product_obj, shared_research, source_count
         )
-        agents["scorecard"] = scorecard_obj.model_dump(by_alias=True)
 
         result = await run_synthesis(
             agent_brief, market_obj, competitor_obj, persona_obj,
-            product_obj, strategy_obj, scorecard_obj, reconstruct_tech_stack(agents),
+            product_obj, reconstruct_strategy(agents), scorecard_obj,
+            reconstruct_tech_stack(agents),
         )
         return result.model_dump(by_alias=True)
 
