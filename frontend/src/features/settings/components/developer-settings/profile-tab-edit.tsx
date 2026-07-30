@@ -40,6 +40,7 @@ export function ProfileTabEdit({
   onRemoveCertification,
   onCertificationImage,
   saved,
+  saving,
   onCancel,
   onSave,
 }: {
@@ -70,6 +71,7 @@ export function ProfileTabEdit({
   onRemoveCertification: (id: string) => void;
   onCertificationImage: (id: string, file: File | null | undefined) => void;
   saved: boolean;
+  saving: boolean;
   onCancel: () => void;
   onSave: () => void;
 }) {
@@ -413,22 +415,29 @@ export function ProfileTabEdit({
         </section>
 
         <div className={`${styles.cardFooter} ${styles.profileFooter}`}>
-          <button className={styles.secondaryBtn} onClick={onCancel}>
+          <button className={styles.secondaryBtn} onClick={onCancel} disabled={saving}>
             Cancel
           </button>
           <button
-            className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""}`}
+            className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""} ${saving ? styles.saveBtnLoading : ""}`}
             onClick={onSave}
+            disabled={saving}
           >
-            {saved ? (
-              <>
-                <i className="fas fa-check" /> Saved!
-              </>
-            ) : (
-              <>
-                <i className="fas fa-save" /> Save Changes
-              </>
-            )}
+            <span className={styles.saveBtnContent}>
+              {saving ? (
+                <>
+                  <i className="fas fa-spinner fa-spin" /> Saving...
+                </>
+              ) : saved ? (
+                <>
+                  <i className="fas fa-check" /> Saved!
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-save" /> Save Changes
+                </>
+              )}
+            </span>
           </button>
         </div>
       </div>

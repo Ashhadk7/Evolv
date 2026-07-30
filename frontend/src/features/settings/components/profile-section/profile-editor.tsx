@@ -59,7 +59,7 @@ export function ProfileEditor({
       className="flex flex-col gap-4 pb-10"
     >
       <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <div className="relative">
               <ProfileAvatar
@@ -115,14 +115,6 @@ export function ProfileEditor({
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border bg-white p-6 px-3.5 py-2 text-[12px] font-bold transition hover:bg-[#f8faf8]"
-            style={{ borderColor: BORDER, color: TEXT_MUTED }}
-          >
-            Cancel
-          </button>
         </div>
       </section>
 
@@ -244,19 +236,43 @@ export function ProfileEditor({
         </section>
       </div>
 
-      <motion.button
-        type="button"
-        onClick={onSave}
-        disabled={saving}
-        whileHover={{ y: -2, boxShadow: "0 10px 26px rgba(26,49,44,0.22)" }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 400, damping: 24 }}
-        className="bp-gradient-btn mb-2 flex items-center justify-center gap-2 rounded-lg py-3 text-[13px] font-extrabold"
+      <div
+        className="mb-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
         style={{ marginBottom: 35 }}
       >
-        <Check size={15} weight="bold" />
-        {saving ? "Saving..." : "Save Changes"}
-      </motion.button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="h-11 rounded-lg border bg-white px-5 text-[13px] font-bold transition hover:bg-[#f8faf8] disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ borderColor: BORDER, color: TEXT_MUTED }}
+        >
+          Cancel
+        </button>
+        <motion.button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          whileHover={saving ? {} : { y: -2, boxShadow: "0 10px 26px rgba(26,49,44,0.22)" }}
+          whileTap={saving ? {} : { scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 24 }}
+          className="bp-gradient-btn relative flex h-11 min-w-[168px] items-center justify-center gap-2 overflow-hidden rounded-lg px-5 text-[13px] font-extrabold disabled:cursor-not-allowed disabled:opacity-80"
+        >
+          {saving && (
+            <motion.span
+              aria-hidden="true"
+              className="absolute inset-y-0 left-0 w-1/2 bg-white/25"
+              initial={{ x: "-110%" }}
+              animate={{ x: "210%" }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+            />
+          )}
+          <span className="relative flex items-center gap-2">
+            <Check size={15} weight="bold" />
+            {saving ? "Saving..." : "Save Changes"}
+          </span>
+        </motion.button>
+      </div>
     </motion.div>
   );
 }

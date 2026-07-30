@@ -31,4 +31,10 @@ export interface FounderProfile {
   city?: string;
   primaryGoal?: string;
   stripeConnected?: boolean;
+  billingPlan?: string;
+  billingEmail?: string;
+  billingCurrency?: string;
+  billingBudgetRange?: string;
+  paymentMethod?: string;
+  billingCompanyName?: string;
 }

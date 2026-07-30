@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, CheckCircle, DeviceMobile, LockKey, PaperPlaneTilt, ShieldCheck, X } from "@phosphor-icons/react";
+import {
+  Check,
+  CheckCircle,
+  DeviceMobile,
+  LockKey,
+  PaperPlaneTilt,
+  ShieldCheck,
+  X,
+} from "@phosphor-icons/react";
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { MID, TEXT_BODY, TEXT_MUTED } from "@/features/settings/lib/settings-theme";
 import { useChangePassword } from "@/features/settings/lib/use-change-password";
@@ -49,7 +57,7 @@ export function SecuritySection() {
             <button
               type="button"
               onClick={cancelForgotFlow}
-              className="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:text-red-800 transition bg-transparent border-none p-0 cursor-pointer"
+              className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[11px] font-bold text-red-600 transition hover:text-red-800"
             >
               <X size={12} weight="bold" /> Cancel Reset
             </button>
@@ -85,7 +93,8 @@ export function SecuritySection() {
                   <button
                     type="button"
                     onClick={() => void startForgotFlow()}
-                    className="cursor-pointer text-[11px] font-bold text-[#428475] transition-colors hover:text-[#2e7d5c] bg-transparent border-none p-0"
+                    disabled={isSubmitting}
+                    className="cursor-pointer border-none bg-transparent p-0 text-[11px] font-bold text-[#428475] transition-colors hover:text-[#2e7d5c] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Forgot Password?
                   </button>
@@ -111,13 +120,13 @@ export function SecuritySection() {
                     type="button"
                     onClick={() => void resendOtp()}
                     disabled={cooldown > 0 || isResending}
-                    className="cursor-pointer text-[11px] font-bold text-[#428475] transition-colors hover:text-[#2e7d5c] disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-none p-0"
+                    className="cursor-pointer border-none bg-transparent p-0 text-[11px] font-bold text-[#428475] transition-colors hover:text-[#2e7d5c] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isResending
                       ? "Sending..."
                       : cooldown > 0
-                      ? `Resend in ${cooldown}s`
-                      : "Resend Code"}
+                        ? `Resend in ${cooldown}s`
+                        : "Resend Code"}
                   </button>
                 </div>
                 <input
@@ -126,7 +135,7 @@ export function SecuritySection() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="000000"
-                  className="w-full rounded-lg px-4 py-2.5 text-[13px] transition outline-none focus:border-[#428475] focus:ring-2 focus:ring-[#89d7b7]/30 font-mono tracking-widest text-center"
+                  className="w-full rounded-lg px-4 py-2.5 text-center font-mono text-[13px] tracking-widest transition outline-none focus:border-[#428475] focus:ring-2 focus:ring-[#89d7b7]/30"
                   style={{ background: "#f8faf8", border: "1px solid #d4e4db", color: "#1a2e26" }}
                 />
               </div>
@@ -298,10 +307,10 @@ export function SecuritySection() {
           {saved
             ? "Password Updated"
             : isSubmitting
-            ? "Updating..."
-            : isResetFlow
-            ? "Verify & Reset Password"
-            : "Update Password"}
+              ? "Updating..."
+              : isResetFlow
+                ? "Verify & Reset Password"
+                : "Update Password"}
         </button>
       </section>
     </div>

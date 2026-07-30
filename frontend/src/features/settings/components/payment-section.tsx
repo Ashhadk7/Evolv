@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, CheckCircle, LinkSimple, CreditCard, CurrencyDollar } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import type { FounderProfile } from "@/features/founder-dashboard/types";
+import { getApiErrorMessage } from "@/lib/api";
 import {
   MID,
   TEXT_BODY,
@@ -12,30 +14,93 @@ import {
 } from "@/features/settings/lib/settings-theme";
 import { Field } from "./field";
 
+type BillingState = {
+  plan: string;
+  billingEmail: string;
+  currency: string;
+  budgetRange: string;
+  companyName: string;
+  paymentMethod: string;
+};
+
+const DEFAULT_BILLING: BillingState = {
+  plan: "Founder Launch",
+  billingEmail: "",
+  currency: "USD",
+  budgetRange: "$50K - $100K",
+  companyName: "",
+  paymentMethod: "card",
+};
+
+function billingFromProfile(profile: FounderProfile): BillingState {
+  return {
+    plan: profile.billingPlan || DEFAULT_BILLING.plan,
+    billingEmail: profile.billingEmail || profile.email || DEFAULT_BILLING.billingEmail,
+    currency: profile.billingCurrency || DEFAULT_BILLING.currency,
+    budgetRange: profile.billingBudgetRange || DEFAULT_BILLING.budgetRange,
+    companyName: profile.billingCompanyName || DEFAULT_BILLING.companyName,
+    paymentMethod: profile.paymentMethod || DEFAULT_BILLING.paymentMethod,
+  };
+}
+
+function profileWithBilling(profile: FounderProfile, billing: BillingState): FounderProfile {
+  return {
+    ...profile,
+    billingPlan: billing.plan,
+    billingEmail: billing.billingEmail,
+    billingCurrency: billing.currency,
+    billingBudgetRange: billing.budgetRange,
+    billingCompanyName: billing.companyName,
+    paymentMethod: billing.paymentMethod,
+  };
+}
+
 export function PaymentSection({
   profile,
   onSave,
 }: {
   profile: FounderProfile;
-  onSave: (p: FounderProfile) => void;
+  onSave: (p: FounderProfile) => Promise<void>;
 }) {
   const [saved, setSaved] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [billing, setBilling] = useState({
-    plan: "Founder Launch",
-    billingEmail: profile.email || "",
-    currency: "USD",
-    budgetRange: "$50K - $100K",
-    companyName: "My Startup",
-  });
+  const [saving, setSaving] = useState(false);
+  const [billing, setBilling] = useState<BillingState>(() => billingFromProfile(profile));
 
-  const save = () => {
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2200);
+  useEffect(() => {
+    let active = true;
+    const nextBilling = billingFromProfile(profile);
+    queueMicrotask(() => {
+      if (active) setBilling(nextBilling);
+    });
+    return () => {
+      active = false;
+    };
+  }, [profile]);
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await onSave(profileWithBilling(profile, billing));
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2200);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const connectStripe = () => onSave({ ...profile, stripeConnected: true });
-  const disconnectStripe = () => onSave({ ...profile, stripeConnected: false });
+  const updateStripeConnected = async (stripeConnected: boolean) => {
+    try {
+      await onSave({ ...profileWithBilling(profile, billing), stripeConnected });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const connectStripe = () => void updateStripeConnected(true);
+  const disconnectStripe = () => void updateStripeConnected(false);
 
   return (
     <div className="flex flex-col gap-5">
@@ -174,12 +239,12 @@ export function PaymentSection({
             </span>
             <div className="flex flex-wrap gap-2">
               {["card", "bank", "stripe"].map((method) => {
-                const active = paymentMethod === method;
+                const active = billing.paymentMethod === method;
                 return (
                   <button
                     key={method}
                     type="button"
-                    onClick={() => setPaymentMethod(method)}
+                    onClick={() => setBilling((current) => ({ ...current, paymentMethod: method }))}
                     className="w-15 rounded-lg border px-3.5 py-2 text-[12px] font-bold capitalize transition"
                     style={{
                       borderColor: active ? MID : BORDER,
@@ -196,12 +261,13 @@ export function PaymentSection({
         </div>
         <button
           type="button"
-          onClick={save}
+          onClick={() => void save()}
+          disabled={saving}
           className="bp-gradient-btn mt-5 flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-extrabold"
           style={{ margin: 15 }}
         >
           <Check size={15} weight="bold" />
-          {saved ? "Saved" : "Save Payment Info"}
+          {saving ? "Saving..." : saved ? "Saved" : "Save Payment Info"}
         </button>
       </section>
     </div>

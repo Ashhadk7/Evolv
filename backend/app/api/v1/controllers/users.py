@@ -163,6 +163,8 @@ def build_developer_profile_response(user: User) -> PublicDeveloperProfile:
         linkedin=profile.linkedin,
         portfolio_link=profile.portfolio_link,
         skills=profile.skills,
+        tags=profile.tags,
+        skill_entries=profile.skill_entries,
         rating_avg=float(profile.rating_avg or 0),
         profile_complete=user.profile_complete,
         educations=[EducationResponse.model_validate(education) for education in user.educations],

@@ -131,7 +131,7 @@ def delete_account(
     except InvalidCredentialsError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Password is incorrect.",
+            detail="Invalid password.",
         ) from exc
     except AuthProviderError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc

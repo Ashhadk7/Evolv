@@ -86,6 +86,12 @@ def build_response(db: Session, profile: FounderProfile) -> FounderProfileRespon
         domains=profile.domains,
         profile_complete=bool(profile.profile_complete and profile.user.phone_verified),
         stripe_connected=profile.stripe_connected,
+        billing_plan=profile.billing_plan,
+        billing_email=profile.billing_email,
+        billing_currency=profile.billing_currency,
+        billing_budget_range=profile.billing_budget_range,
+        payment_method=profile.payment_method,
+        billing_company_name=profile.billing_company_name,
         educations=get_education_responses(db, profile.user_id),
     )
 

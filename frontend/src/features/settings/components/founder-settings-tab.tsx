@@ -27,16 +27,9 @@ interface Props {
   onProfileSave: (p: FounderProfile) => Promise<void>;
   section?: SettingsSection;
   onSectionChange?: (section: SettingsSection) => void;
-  editSignal?: number;
 }
 
-export function SettingsTab({
-  profile,
-  onProfileSave,
-  section,
-  onSectionChange,
-  editSignal = 0,
-}: Props) {
+export function SettingsTab({ profile, onProfileSave, section, onSectionChange }: Props) {
   const [localSection, setLocalSection] = useState<SettingsSection>("profile");
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const activeSection = section ?? localSection;
@@ -179,11 +172,7 @@ export function SettingsTab({
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
               {activeSection === "profile" ? (
-                <ProfileSection
-                  profile={profile}
-                  onSave={onProfileSave}
-                  startEditingSignal={editSignal}
-                />
+                <ProfileSection profile={profile} onSave={onProfileSave} />
               ) : activeSection === "payment" ? (
                 <PaymentSection profile={profile} onSave={onProfileSave} />
               ) : activeSection === "security" ? (

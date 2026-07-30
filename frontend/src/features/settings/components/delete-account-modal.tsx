@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getApiErrorMessage } from "@/lib/api";
+import { ApiError, getApiErrorMessage } from "@/lib/api";
 import { clearAllUserData } from "@/features/auth/lib/session";
 import { deleteAccount } from "@/features/settings/lib/account-api";
 
@@ -35,7 +35,11 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
       clearAllUserData();
       window.location.href = "/sign-in";
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      setError(
+        getApiErrorMessage(err, (error) =>
+          error instanceof ApiError && error.status === 401 ? "Invalid password." : undefined
+        )
+      );
       setIsDeleting(false);
     }
   };
@@ -71,7 +75,7 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Current password"
           aria-label="Current password"
-          className="mt-4 w-full rounded-lg border border-[#d4e4db] bg-[#f8faf8] px-4 py-2.5 text-[13px] text-[#1a2e26] outline-none transition focus:border-[#428475] focus:ring-2 focus:ring-[#89d7b7]/30"
+          className="mt-4 w-full rounded-lg border border-[#d4e4db] bg-[#f8faf8] px-4 py-2.5 text-[13px] text-[#1a2e26] transition outline-none focus:border-[#428475] focus:ring-2 focus:ring-[#89d7b7]/30"
         />
 
         <div className="mt-5 flex justify-end gap-3">
