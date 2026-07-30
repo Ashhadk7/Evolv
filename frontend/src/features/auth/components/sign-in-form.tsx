@@ -45,8 +45,6 @@ export function SignInForm() {
       saveSession(session, rememberMe);
       router.push(session.user.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
     } catch (err: unknown) {
-      // A true network failure (status === 0) means the server is down.
-      // Everything else (401, 400, 422, any other) during sign-in = wrong credentials.
       const isNetworkError = err instanceof ApiError && err.status === 0;
       if (isNetworkError) {
         setError("We can't reach the server right now. Please try again shortly.");

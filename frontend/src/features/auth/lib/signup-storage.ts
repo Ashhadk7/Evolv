@@ -113,7 +113,6 @@ export async function persistSignupAccount({
     return "/developer/dashboard" as const;
   } catch (err) {
     if (!profileComplete) {
-      console.warn("[signup] Skipping profile persistence due to unfilled fields:", err);
       return role === "founder" ? ("/founder/dashboard" as const) : ("/developer/dashboard" as const);
     }
     throw err;

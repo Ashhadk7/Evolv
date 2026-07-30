@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from httpx import HTTPError
+from httpx import ConnectError, HTTPError
 from supabase import Client, create_client
 
 try:
@@ -100,10 +100,7 @@ class SupabaseAuthClient:
         except AuthApiError as exc:
             raise InvalidCredentialsError("Invalid email or password.") from exc
         except HTTPError as exc:
-            # httpx.ConnectError / DNS failure = Supabase is truly unreachable.
-            # Any other HTTP error (e.g. 400 Bad Request from Supabase) = bad credentials.
-            from httpx import ConnectError as HttpxConnectError
-            if isinstance(exc, HttpxConnectError):
+            if isinstance(exc, ConnectError):
                 logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
                 raise AuthProviderError(
                     "Could not reach the authentication service. Please try again shortly."
