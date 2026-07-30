@@ -21,6 +21,7 @@ class ErrorCode(StrEnum):
     BLUEPRINT_AGENT_INPUT = "blueprint_agent_input"
     BLUEPRINT_GENERATION = "blueprint_generation"
     INTAKE_REJECTED = "intake_rejected"
+    BLUEPRINT_BUSY = "blueprint_busy"
     FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
     DEVELOPER_PROFILE_REQUIRED = "developer_profile_required"
     ALREADY_APPLIED = "already_applied"
@@ -159,6 +160,18 @@ class BlueprintAgentInputError(AppError):
         super().__init__(ErrorCode.BLUEPRINT_AGENT_INPUT, message)
 
 
+class BlueprintBusyError(AppError):
+    """Raised when work is already in flight on this blueprint.
+
+    Generation and refinement both rewrite the same content_json, so letting a
+    refine start mid-generation means whichever finishes last silently discards
+    the other's work.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.BLUEPRINT_BUSY, message)
+
+
 class IntakeRejectedError(AppError):
     """The intake critic judged the input unable to produce a useful blueprint.
 
@@ -167,7 +180,7 @@ class IntakeRejectedError(AppError):
     """
 
     def __init__(self, verdict: object) -> None:
-        payload = verdict.model_dump(by_alias=True)  # type: ignore[attr-defined]
+        payload = verdict.model_dump(by_alias=True)
         super().__init__(ErrorCode.INTAKE_REJECTED, payload["reason"], {"intake": payload})
 
 

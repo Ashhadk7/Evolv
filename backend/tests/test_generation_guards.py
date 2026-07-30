@@ -532,6 +532,55 @@ def test_agent_concurrency_is_a_single_process_wide_gate():
     assert agent_service._groq_concurrency() is agent_service._groq_concurrency()
 
 
+def test_refine_does_not_send_feedback_to_the_search_provider():
+    import inspect
+
+    from app.services import refine_service
+
+    body = inspect.getsource(refine_service._call_agent_for_section)
+    assert "[feedback]" not in body
+    assert "plan.market_queries" in body
+    assert "plan.competitor_queries" in body
+
+
+def test_refine_refuses_while_other_work_is_in_flight():
+    from types import SimpleNamespace
+
+    from app.services.exceptions import BlueprintBusyError, ErrorCode
+    from app.services.refine_service import mark_refinement_started
+
+    class Repo:
+        def __init__(self, content):
+            self.blueprint = SimpleNamespace(current_version=SimpleNamespace(content_json=content))
+
+    def run(content):
+        import app.services.refine_service as module
+
+        original = module.blueprints_repository.get_blueprint_by_id
+        module.blueprints_repository.get_blueprint_by_id = (
+            lambda db, bid: Repo(content).blueprint
+        )
+        try:
+            mark_refinement_started(SimpleNamespace(commit=lambda: None), "id", "market")
+        finally:
+            module.blueprints_repository.get_blueprint_by_id = original
+
+    def expect_busy(content, label):
+        try:
+            run(content)
+        except BlueprintBusyError:
+            return
+        raise AssertionError(label)
+
+    expect_busy({"generation": {"status": "generating"}}, "refine during generation should be refused")
+    expect_busy({"refinement": {"status": "refining"}}, "a second concurrent refine should be refused")
+    try:
+        run({"generation": {"status": "completed"}})
+    except BlueprintBusyError:
+        raise AssertionError("a completed blueprint should be refinable")
+    assert ErrorCode.BLUEPRINT_BUSY.value == "blueprint_busy"
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

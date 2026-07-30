@@ -28,6 +28,7 @@ ERROR_STATUS_BY_CODE = {
     ErrorCode.BLUEPRINT_AGENT_INPUT: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ErrorCode.BLUEPRINT_GENERATION: status.HTTP_502_BAD_GATEWAY,
     ErrorCode.INTAKE_REJECTED: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    ErrorCode.BLUEPRINT_BUSY: status.HTTP_409_CONFLICT,
     ErrorCode.FOUNDER_PROFILE_REQUIRED: status.HTTP_403_FORBIDDEN,
     ErrorCode.DEVELOPER_PROFILE_REQUIRED: status.HTTP_403_FORBIDDEN,
     ErrorCode.ALREADY_APPLIED: status.HTTP_409_CONFLICT,
@@ -91,8 +92,6 @@ def register_exception_handlers(application: FastAPI) -> None:
 
     @application.exception_handler(AgentRateLimitError)
     async def handle_agent_rate_limit(request: Request, exc: AgentRateLimitError) -> JSONResponse:
-        # The message already states the real wait ("Try again in ~N min") — safe
-        # and useful to show, unlike a generic AgentServiceError.
         logger.warning("AI provider rate-limited on %s %s: %s", request.method, request.url.path, exc)
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -101,7 +100,6 @@ def register_exception_handlers(application: FastAPI) -> None:
 
     @application.exception_handler(AgentServiceError)
     async def handle_agent_service_error(request: Request, exc: AgentServiceError) -> JSONResponse:
-        # Provider/parse failures may carry internal detail — log it, show generic.
         logger.warning("AI provider failed on %s %s: %s", request.method, request.url.path, exc)
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,

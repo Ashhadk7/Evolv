@@ -11,11 +11,13 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.blueprint import BlueprintVersion
 from app.repositories import blueprints as blueprints_repository
+from app.services.exceptions import BlueprintBusyError
 from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
 from app.services.generation.agents.competitor import run_competitor
 from app.services.generation.agents.market import run_market
 from app.services.generation.agents.persona import run_persona
 from app.services.generation.agents.product import run_product
+from app.services.generation.agents.research_planner import run_research_planner
 from app.services.generation.agents.scorecard import ScorecardOutput, derive_viability, run_scorecard
 from app.services.generation.agents.strategy import run_strategy
 from app.services.generation.agents.synthesis import run_synthesis
@@ -43,6 +45,16 @@ def mark_refinement_started(db: Session, blueprint_id: UUID, section: str) -> No
     if blueprint is None or blueprint.current_version is None:
         return
     content = dict(blueprint.current_version.content_json or {})
+
+    if (content.get("generation") or {}).get("status") == "generating":
+        raise BlueprintBusyError(
+            "This blueprint is still generating. Wait for it to finish before refining a section."
+        )
+    if (content.get("refinement") or {}).get("status") == "refining":
+        raise BlueprintBusyError(
+            "Another section is being refined right now. Try again once it finishes."
+        )
+
     content["refinement"] = {
         "section": section,
         "status": "refining",
@@ -146,6 +158,23 @@ def _sync_derived(version: BlueprintVersion, agents: dict[str, Any]) -> None:
             logger.warning("Scorecard unreadable for %s; viability left unchanged", version.id)
 
 
+async def _replan_research(agent_brief: str):
+    """Turn the corrected brief into real search queries.
+
+    The founder's feedback used to be sent to the search provider verbatim, so
+    "make it better" was executed as a web search and its results became the
+    cited evidence. The brief already carries the correction, so the planner
+    that builds queries during generation can build them again here, bounded to
+    the same 8-90 character shape. A planner failure falls back to the template
+    queries, exactly as generation does.
+    """
+    try:
+        return await run_research_planner(agent_brief)
+    except (AgentServiceError, ValidationError):
+        logger.warning("Research planner failed during refine; using template queries")
+        return None
+
+
 async def _call_agent_for_section(
     *,
     section: str,
@@ -158,14 +187,14 @@ async def _call_agent_for_section(
     source_count: int,
     feedback: str = "",
 ) -> dict[str, Any]:
-    if section == "market":
-        queries = [feedback] if feedback else None
-        result = await run_market(agent_brief, idea, industry, queries)
-        return result.model_dump(by_alias=True)
-
-    if section == "competitor":
-        queries = [feedback, f"{feedback} competitor"] if feedback else None
-        result = await run_competitor(agent_brief, idea, industry, queries)
+    if section in {"market", "competitor"}:
+        plan = await _replan_research(agent_brief)
+        if section == "market":
+            queries = plan.market_queries if plan else None
+            result = await run_market(agent_brief, idea, industry, queries)
+        else:
+            queries = plan.competitor_queries if plan else None
+            result = await run_competitor(agent_brief, idea, industry, queries)
         return result.model_dump(by_alias=True)
 
     if section == "persona":
