@@ -25,7 +25,7 @@ dataEntities: the core domain objects the product is built around (for example "
 
 nonFunctional: the non-functional requirements that scope the build — authentication/authorization, performance targets, security/privacy, accessibility, or compliance that this specific product must meet. Concrete to this product, not generic boilerplate.
 
-Also plan phases: the build roadmap for exactly this product, derived from the feature list — never a generic template. Each phase has a name, weeks (realistic for a small team), 2-4 concrete deliverables, 1-2 acceptance criteria a founder can verify, and the primarySkill needed (for example "Frontend", "Backend", "AI/ML", "DevOps"). Only include phases this product actually needs.
+Also plan phases: the build roadmap for exactly this product, derived from the feature list — never a generic template. Each phase has a name, weeks (realistic for a small team), 2-4 concrete deliverables, 1-2 acceptance criteria a founder can verify, the primarySkill needed (for example "Frontend", "Backend", "AI/ML", "DevOps"), and `features`: the names of the features from your list that ship in that phase. Every Must feature must appear in exactly one phase, and respect the dependencies you declared, so a feature is never scheduled before something it depends on. Only include phases this product actually needs.
 
 Phase weeks are load-bearing: the founder's build cost is calculated from them, so a roadmap shorter than the stated timeline under-quotes the project. Make the weeks add up to the build timeline you were given.
 

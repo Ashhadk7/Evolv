@@ -59,6 +59,7 @@ class ProductPhase(BaseModel):
         alias="acceptanceCriteria", min_length=1, max_length=2
     )
     primary_skill: str = Field(alias="primarySkill", min_length=1, max_length=40)
+    features: list[FeatureName] = Field(default_factory=list, max_length=8)
 
 
 class ProductOutput(BaseModel):
@@ -101,6 +102,19 @@ class ProductOutput(BaseModel):
                 "Feature dependencies form a cycle, so the build order cannot be followed. "
                 "Break the loop so every feature can be built after the ones it needs."
             ) from exc
+
+        for phase in self.phases:
+            phase.features = [f for f in phase.features if f.strip().lower() in valid]
+
+        scheduled = {f.strip().lower() for phase in self.phases for f in phase.features}
+        unscheduled = [
+            f.name for f in self.features if f.priority == "Must" and f.name.strip().lower() not in scheduled
+        ]
+        if unscheduled:
+            raise ValueError(
+                "These Must-have features are in no phase, so the roadmap does not build the "
+                f"MVP: {', '.join(unscheduled)}. Put every Must feature in a phase."
+            )
         return self
 
 

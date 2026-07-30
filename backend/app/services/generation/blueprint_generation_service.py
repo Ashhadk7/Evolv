@@ -207,7 +207,7 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
         )
 
         persona_context = _persona_context(persona)
-        product, strategy, scorecard = await gather_stage(
+        product, strategy = await gather_stage(
             track(
                 "product",
                 run_product(
@@ -229,24 +229,31 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
                     len(shared_sources),
                 ),
             ),
-            track(
-                "scorecard",
-                run_scorecard(
-                    agent_brief, market, competitor, persona, shared_research, len(shared_sources)
-                ),
-            ),
         )
 
-        tech_stack, synthesis = await gather_stage(
+        tech_stack, scorecard = await gather_stage(
             track(
                 "techStack",
                 run_tech_stack(agent_brief, payload.industry, _committed_features(product)),
             ),
             track(
-                "synthesis",
-                run_synthesis(
-                    agent_brief, market, competitor, persona, product, strategy, scorecard
+                "scorecard",
+                run_scorecard(
+                    agent_brief,
+                    market,
+                    competitor,
+                    persona,
+                    product,
+                    shared_research,
+                    len(shared_sources),
                 ),
+            ),
+        )
+
+        synthesis = await track(
+            "synthesis",
+            run_synthesis(
+                agent_brief, market, competitor, persona, product, strategy, scorecard, tech_stack
             ),
         )
 

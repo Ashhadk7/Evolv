@@ -21,8 +21,6 @@ from app.services.exceptions import (
     FounderProfileRequiredError,
 )
 
-# Tech-stack layer keys a founder may edit; anything else is ignored so the
-# client can't inject arbitrary keys into content_json.
 _EDITABLE_LAYERS = frozenset(
     {"frontend", "backend", "aiProvider", "database", "vectorDb", "hosting"}
 )
@@ -115,7 +113,38 @@ def _reconcile_features(existing: object, edited_names: list[str]) -> list[dict[
             name = item.get("name") if isinstance(item, dict) else item
             if isinstance(name, str) and name:
                 by_name[name] = item
-    return [by_name.get(name, name) for name in edited_names]
+
+    reconciled = [by_name.get(name, name) for name in edited_names]
+    return _prune_stale_references(reconciled, {name.strip().lower() for name in edited_names})
+
+
+def _prune_stale_references(
+    features: list[dict[str, object] | str], surviving: set[str]
+) -> list[dict[str, object] | str]:
+    """Drop dependencies pointing at features the editor removed or renamed.
+
+    The editor round-trips names only, so a rename is indistinguishable from a
+    delete plus an add and the reference cannot be followed. Leaving it would
+    render "Depends on: Login" against a feature that no longer exists, which is
+    worse for a developer reading the roadmap than losing the ordering hint.
+    """
+    pruned: list[dict[str, object] | str] = []
+    for item in features:
+        if not isinstance(item, dict):
+            pruned.append(item)
+            continue
+        dependencies = item.get("dependencies")
+        if isinstance(dependencies, list):
+            item = {
+                **item,
+                "dependencies": [
+                    dep
+                    for dep in dependencies
+                    if isinstance(dep, str) and dep.strip().lower() in surviving
+                ],
+            }
+        pruned.append(item)
+    return pruned
 
 
 def update_content(
@@ -192,4 +221,3 @@ def get_blueprint_dict(db: Session, blueprint_id: UUID, current_user: User) -> d
             "budget": intake.get("budget", "") if isinstance(intake, dict) else "",
         },
     }
-

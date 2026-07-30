@@ -32,6 +32,7 @@ from app.services.refine_helpers import (
     reconstruct_persona,
     reconstruct_product,
     reconstruct_strategy,
+    reconstruct_tech_stack,
 )
 
 logger = logging.getLogger(__name__)
@@ -142,8 +143,6 @@ def _sync_derived(version: BlueprintVersion, agents: dict[str, Any]) -> None:
         try:
             version.viability = derive_viability(ScorecardOutput.model_validate(scorecard))
         except ValidationError:
-            # A legacy/unparseable scorecard must not fail an unrelated refine.
-            # Keeping the previous score is honest; inventing one is not.
             logger.warning("Scorecard unreadable for %s; viability left unchanged", version.id)
 
 
@@ -207,13 +206,14 @@ async def _call_agent_for_section(
         strategy_obj = reconstruct_strategy(agents)
 
         scorecard_obj = await run_scorecard(
-            agent_brief, market_obj, competitor_obj, persona_obj, shared_research, source_count
+            agent_brief, market_obj, competitor_obj, persona_obj, product_obj,
+            shared_research, source_count,
         )
         agents["scorecard"] = scorecard_obj.model_dump(by_alias=True)
 
         result = await run_synthesis(
             agent_brief, market_obj, competitor_obj, persona_obj,
-            product_obj, strategy_obj, scorecard_obj,
+            product_obj, strategy_obj, scorecard_obj, reconstruct_tech_stack(agents),
         )
         return result.model_dump(by_alias=True)
 

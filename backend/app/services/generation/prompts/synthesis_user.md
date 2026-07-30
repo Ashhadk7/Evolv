@@ -19,4 +19,7 @@ Strategy:
 Scorecard:
 {scorecard}
 
+Tech stack and hiring plan:
+{techstack}
+
 Write the synthesis for this startup.

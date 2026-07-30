@@ -1,3 +1,4 @@
+import { monthlyCostLabel } from "@/features/blueprints/blueprint-content";
 import { ApiError, apiFetch } from "@/lib/api";
 import type {
   Blueprint,
@@ -257,7 +258,7 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
     cost: {
       timeline: intake?.timeline || "To be estimated",
       team: roles.length ? `${roles.length} roles` : "",
-      hosting: stringValue(hostingLayer?.monthlyCost, ""),
+      hosting: monthlyCostLabel(hostingLayer?.monthlyCost),
       budget: intake?.budget || "To be estimated",
     },
     contentJson,

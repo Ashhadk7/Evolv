@@ -151,6 +151,20 @@ export function RoadmapSection({
                         ))}
                       </div>
                     </div>
+                    {ph.features.length > 0 && (
+                      <div className="mt-2.5">
+                        <span className="font-mono-app text-bp-label text-[10px] font-bold tracking-[0.08em] uppercase">
+                          Features shipped
+                        </span>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {ph.features.map((f) => (
+                            <Chip key={f} tone="mint">
+                              {f}
+                            </Chip>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="border-bp-border-soft mt-3 flex flex-wrap items-center justify-between gap-2.5 border-t pt-3">
                       <div className="flex flex-wrap gap-1.5">
                         {ph.skillset.map((s) => (

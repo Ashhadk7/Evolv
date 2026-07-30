@@ -26,19 +26,21 @@ def _feature(name: str, deps: list[str], priority: str) -> Feature:
     )
 
 
-def _phase() -> ProductPhase:
+def _phase(features: list[str] | None = None) -> ProductPhase:
     return ProductPhase(
-        name="P", weeks=2, deliverables=["a", "b"], acceptanceCriteria=["done"], primarySkill="Backend"
+        name="P", weeks=2, deliverables=["a", "b"], acceptanceCriteria=["done"],
+        primarySkill="Backend", features=features or [],
     )
 
 
-def _product(features: list[Feature]) -> ProductOutput:
+def _product(features: list[Feature], phases: list[ProductPhase] | None = None) -> ProductOutput:
+    musts = [f.name for f in features if f.priority == "Must"]
     return ProductOutput(
         features=features,
         outOfScope=["x", "y"],
         dataEntities=[DataEntity(name="User", fields=["id", "email"]), DataEntity(name="Session", fields=["id", "userId"])],
         nonFunctional=["Auth required", "p95 < 300ms"],
-        phases=[_phase(), _phase(), _phase()],
+        phases=phases or [_phase(musts), _phase(), _phase()],
     )
 
 
@@ -99,15 +101,21 @@ def test_refine_call_sites_match_agent_signatures():
     from app.services.generation.agents.product import run_product
     from app.services.generation.agents.scorecard import run_scorecard
     from app.services.generation.agents.strategy import run_strategy
+    from app.services.generation.agents.synthesis import run_synthesis
 
     # refine_service._call_agent_for_section, section "synthesis"
-    inspect.signature(run_scorecard).bind("brief", object(), object(), object(), "research", 3)
+    inspect.signature(run_scorecard).bind(
+        "brief", object(), object(), object(), object(), "research", 3
+    )
     # section "product"
     inspect.signature(run_product).bind("brief", "positioning", "persona", "research", 12)
     # section "strategy"
     inspect.signature(run_strategy).bind(object(), object(), "positioning", "research", "persona", 3)
     # section "persona"
     inspect.signature(run_persona).bind("brief", "industry", "research", 3)
+    inspect.signature(run_synthesis).bind(
+        "brief", object(), object(), object(), object(), object(), object(), object()
+    )
 
 
 def test_chat_features_summary_handles_structured_and_legacy():
@@ -328,7 +336,7 @@ def test_rate_card_falls_back_when_nobody_matches():
     from app.services.generation.blueprint_generation_service import _build_rate_card
     from app.services.generation.agents.tech_stack import TechRole, TechStackOutput
 
-    layer = {"chosen": "x", "reasoning": "y", "monthlyCost": "$0"}
+    layer = {"chosen": "x", "reasoning": "y", "monthlyCost": 0}
     stack = TechStackOutput(
         techStack={key: layer for key in
                    ("frontend", "backend", "database", "vectorDb", "aiProvider", "hosting")},
@@ -413,6 +421,93 @@ def test_tech_stack_is_sized_on_committed_features_only():
         _feature("Export", [], "Should"),
     ])
     assert _committed_features(spec) == ["Login", "Search", "Profile", "Export"]
+
+
+def test_every_must_feature_is_scheduled_into_a_phase():
+    features = [
+        _feature("Login", [], "Must"),
+        _feature("Booking", [], "Must"),
+        _feature("Profile", [], "Could"),
+        _feature("Search", [], "Should"),
+        _feature("Notify", [], "Could"),
+        _feature("Export", [], "Should"),
+    ]
+    scheduled = _product(features, [_phase(["Login", "Booking"]), _phase(), _phase()])
+    assert scheduled.phases[0].features == ["Login", "Booking"]
+
+    _expect_rejected(
+        lambda: _product(features, [_phase(["Login"]), _phase(), _phase()]),
+        "a Must feature in no phase should be rejected",
+    )
+
+
+def test_phase_features_drop_names_that_are_not_real_features():
+    features = [
+        _feature("Login", [], "Must"),
+        _feature("Search", [], "Should"),
+        _feature("Profile", [], "Could"),
+        _feature("Notify", [], "Could"),
+        _feature("Export", [], "Should"),
+        _feature("Billing", [], "Should"),
+    ]
+    spec = _product(features, [_phase(["Login", "Teleporter"]), _phase(), _phase()])
+    assert spec.phases[0].features == ["Login"]
+
+
+def test_editor_rename_does_not_leave_dangling_dependencies():
+    from app.services.blueprint_service import _reconcile_features
+
+    stored = [
+        {"name": "Login", "dependencies": []},
+        {"name": "Signup", "dependencies": ["Login"]},
+    ]
+    renamed = _reconcile_features(stored, ["Sign in", "Signup"])
+    assert renamed[0] == "Sign in"
+    assert renamed[1]["dependencies"] == []
+
+    untouched = _reconcile_features(stored, ["Login", "Signup"])
+    assert untouched[1]["dependencies"] == ["Login"]
+
+
+def test_bottom_up_wedge_cannot_exceed_its_own_market():
+    from app.services.generation.agents.market import (
+        MarketAnalysis,
+        _wedge_fits_inside_the_market,
+        usd_from_size,
+    )
+
+    assert usd_from_size("$500M") == 500_000_000
+    assert usd_from_size("$1,200") == 1200
+    assert usd_from_size("$2.5B") == 2_500_000_000
+    assert usd_from_size("not a size") == 0
+
+    def analysis(size: str, customers: int, price: int) -> MarketAnalysis:
+        return MarketAnalysis(
+            size=size, sizeBasis="sourced", cagr="18%", cagrBasis="assumption",
+            customerCount=customers, customerCountBasis="b", priceAnnualUsd=price,
+            priceBasis="b", barriers="Moderate", demandLevel="High", timing="Now",
+            whyNow="Shift", insight="A wedge exists.",
+            demandSignals=[{"text": "a"}, {"text": "b"}, {"text": "c"}],
+            headwinds=["h1", "h2"], assumptions=["a1", "a2"], confidence="Medium",
+            analysis="x" * 200,
+        )
+
+    _wedge_fits_inside_the_market(analysis("$500M", 12_000, 600))
+    _expect_rejected(
+        lambda: _wedge_fits_inside_the_market(analysis("$1M", 12_000, 600)),
+        "a wedge larger than its market should be rejected",
+    )
+
+
+def test_monthly_cost_must_be_a_number():
+    from app.services.generation.agents.tech_stack import TechStackLayer
+
+    assert TechStackLayer(chosen="Vercel", reasoning="r", monthlyCost=0).monthly_cost == 0
+    assert TechStackLayer(chosen="Neon", reasoning="r", monthlyCost=25).monthly_cost == 25
+    _expect_rejected(
+        lambda: TechStackLayer(chosen="Neon", reasoning="r", monthlyCost="$25/mo"),
+        "a prose monthly cost should be rejected",
+    )
 
 
 if __name__ == "__main__":

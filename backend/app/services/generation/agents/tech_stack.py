@@ -10,7 +10,7 @@ from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean
 
 ShortReasoning = Annotated[str, Field(min_length=1, max_length=180)]
-MonthlyCost = Annotated[str, Field(min_length=1, max_length=40)]
+MonthlyCostUsd = Annotated[int, Field(ge=0, le=100_000)]
 RoleSkills = Annotated[str, Field(min_length=1, max_length=140)]
 
 
@@ -19,7 +19,7 @@ class TechStackLayer(BaseModel):
 
     chosen: str = Field(min_length=1, max_length=70)
     reasoning: ShortReasoning
-    monthly_cost: MonthlyCost = Field(alias="monthlyCost")
+    monthly_cost: MonthlyCostUsd = Field(alias="monthlyCost")
 
 
 class TechStackPlan(BaseModel):

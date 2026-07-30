@@ -9,11 +9,11 @@ from app.services.generation.agents.common import SourceIndex, agent_json
 from app.services.generation.agents.competitor import CompetitorOutput
 from app.services.generation.agents.market import MarketOutput
 from app.services.generation.agents.persona import PersonaOutput
+from app.services.generation.agents.product import ProductOutput
 from app.services.generation.enrichment import keep_cited_indexes
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean, clip
 
-# Free-form justification — clipped, never hard-failed, when the model runs long.
 Justification = Annotated[str, BeforeValidator(clip(240)), Field(min_length=1, max_length=240)]
 
 
@@ -38,8 +38,6 @@ class ScorecardOutput(BaseModel):
     timing: ScoreDimension
 
 
-# Idea/pre-seed weighting: problem and market dominate early-stage evaluation.
-# ponytail: one weight profile — add stage-keyed profiles when intake stage becomes structured.
 VIABILITY_WEIGHTS: dict[str, float] = {
     "problem_severity": 0.25,
     "market_quality": 0.25,
@@ -64,6 +62,7 @@ async def run_scorecard(
     market: MarketOutput,
     competitor: CompetitorOutput,
     persona: PersonaOutput,
+    product: ProductOutput,
     research: str,
     source_count: int,
 ) -> ScorecardOutput:
@@ -80,12 +79,11 @@ async def run_scorecard(
             market=agent_json(market),
             competitors=agent_json(competitor),
             personas=agent_json(persona),
+            product=agent_json(product),
             research=research,
         ),
         max_tokens=1200,
     )
-    # source_count = sources in the shared block the orchestrator showed; drop
-    # any dimension citation past it so a score can't footnote a phantom source.
     for dimension in VIABILITY_WEIGHTS:
         dim = getattr(output, dimension)
         dim.source_indexes = keep_cited_indexes(dim.source_indexes, source_count)

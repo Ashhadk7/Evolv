@@ -12,6 +12,7 @@ from app.services.generation.agents.persona import PersonaOutput
 from app.services.generation.agents.product import ProductOutput
 from app.services.generation.agents.scorecard import ScorecardOutput
 from app.services.generation.agents.strategy import StrategyOutput
+from app.services.generation.agents.tech_stack import TechStackOutput
 from app.services.generation.prompt_loader import load_prompt, render_prompt
 from app.services.generation.text import clean, clip
 
@@ -30,7 +31,6 @@ class SynthesisOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
     brand_name: str = Field(alias="brandName", min_length=2, max_length=40)
-    # Free-form fields are clipped, never hard-failed, when the model runs long.
     tagline: Annotated[str, BeforeValidator(clip(80))] = Field(min_length=1, max_length=80)
     executive_summary: Annotated[str, BeforeValidator(clip(900))] = Field(
         alias="executiveSummary", min_length=120, max_length=900
@@ -52,6 +52,7 @@ async def run_synthesis(
     product: ProductOutput,
     strategy: StrategyOutput,
     scorecard: ScorecardOutput,
+    tech_stack: TechStackOutput,
 ) -> SynthesisOutput:
     brief = clean(brief)
     if not brief:
@@ -69,6 +70,7 @@ async def run_synthesis(
             product=agent_json(product),
             strategy=agent_json(strategy),
             scorecard=agent_json(scorecard),
+            techstack=agent_json(tech_stack),
         ),
         max_tokens=1200,
     )

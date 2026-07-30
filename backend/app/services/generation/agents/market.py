@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
@@ -83,7 +85,13 @@ async def run_market(
         industry=industry,
         research=research.to_prompt_block(max_sources=6, snippet_chars=450),
     )
-    analysis = await call_agent(MarketAnalysis, load_prompt("market"), user_prompt, max_tokens=1500)
+    analysis = await call_agent(
+        MarketAnalysis,
+        load_prompt("market"),
+        user_prompt,
+        max_tokens=1500,
+        verify=_wedge_fits_inside_the_market,
+    )
     shown = min(6, len(research.sources))
     for signal in analysis.demand_signals:
         signal.source_indexes = keep_cited_indexes(signal.source_indexes, shown)
@@ -91,6 +99,35 @@ async def run_market(
     enriched = attach_research(analysis, research)
     enriched["bottomUpSam"] = _fmt_usd(analysis.customer_count * analysis.price_annual_usd)
     return MarketOutput.model_validate(enriched)
+
+
+_SCALE = {"": 1, "K": 1_000, "M": 1_000_000, "B": 1_000_000_000, "T": 1_000_000_000_000}
+
+
+def usd_from_size(size: str) -> int:
+    """Parse the machine-readable market size back into a number."""
+    match = re.fullmatch(r"\$(?P<value>[\d,]+(?:\.\d+)?)(?P<scale>[KMBT]?)", size.strip())
+    if match is None:
+        return 0
+    return round(float(match.group("value").replace(",", "")) * _SCALE[match.group("scale")])
+
+
+def _wedge_fits_inside_the_market(analysis: MarketAnalysis) -> None:
+    """Reject a bottom-up wedge larger than the whole market it sits in.
+
+    customerCount x priceAnnualUsd is the reachable first wedge; `size` is the
+    entire market. A wedge bigger than its market is arithmetically impossible,
+    and the two numbers come from the same answer, so the model can reconcile
+    them when told which one it contradicted.
+    """
+    total = usd_from_size(analysis.size)
+    wedge = analysis.customer_count * analysis.price_annual_usd
+    if total and wedge > total:
+        raise ValueError(
+            f"customerCount x priceAnnualUsd is ${wedge:,}, larger than the stated market "
+            f"size of {analysis.size}. The bottom-up wedge cannot exceed its own market — "
+            "correct whichever number is wrong."
+        )
 
 
 def _fmt_usd(value: int) -> str:

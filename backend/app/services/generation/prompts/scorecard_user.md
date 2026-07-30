@@ -10,6 +10,9 @@ Competitor analysis:
 Personas:
 {personas}
 
+MVP scope the team would actually build:
+{product}
+
 Research sources (cite by index in sourceIndexes):
 {research}
 

@@ -73,8 +73,6 @@ def persona_context_from_agents(agents: dict[str, Any]) -> str:
     primary_segment = persona_data.get("primaryPersona", "")
     primary = next((p for p in personas if p.get("segment") == primary_segment), personas[0] if personas else {})
     channels = sorted({c for p in personas for c in p.get("acquisitionChannels", [])})
-    # Objections are {text, basis} objects on schema 6+, plain strings on legacy
-    # blueprints — normalise both to text for the digest.
     objections = [
         o.get("text", "") if isinstance(o, dict) else o
         for o in primary.get("objections", [])
@@ -88,13 +86,6 @@ def persona_context_from_agents(agents: dict[str, Any]) -> str:
     }, ensure_ascii=True)
 
 
-# Stored agent JSON -> the typed model a downstream agent expects.
-#
-# These deliberately let ValidationError propagate. The previous version fell
-# back to `model_construct()`, which dumps to `{}` with no warning — so a
-# refine would run against an empty market analysis and confidently invent one.
-# Failing here marks the refine "failed" with a real reason instead, which is
-# what a pre-schema-6 blueprint should do: regenerate, don't silently degrade.
 def reconstruct_market_competitor(agents: dict[str, Any]):
     from app.services.generation.agents.competitor import CompetitorOutput
     from app.services.generation.agents.market import MarketOutput
@@ -115,6 +106,12 @@ def reconstruct_product(agents: dict[str, Any]):
     from app.services.generation.agents.product import ProductOutput
 
     return ProductOutput.model_validate(agents.get("product", {}))
+
+
+def reconstruct_tech_stack(agents: dict[str, Any]):
+    from app.services.generation.agents.tech_stack import TechStackOutput
+
+    return TechStackOutput.model_validate(agents.get("techStack", {}))
 
 
 def reconstruct_strategy(agents: dict[str, Any]):

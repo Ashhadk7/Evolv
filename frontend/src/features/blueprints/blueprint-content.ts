@@ -149,6 +149,7 @@ export type Phase = {
   weeks: number;
   deliverables: string[];
   acceptanceCriteria: string[];
+  features: string[];
   skillset: string[];
   primarySkill: string;
   weeklyRate: number;
@@ -540,7 +541,7 @@ function stackLayer(layers: Record<string, unknown> | null, key: StackLayerKey):
     chosen,
     options: chosen ? [chosen] : [],
     reasoning: stringValue(layer?.reasoning),
-    monthlyCost: stringValue(layer?.monthlyCost),
+    monthlyCost: monthlyCostLabel(layer?.monthlyCost),
   };
 }
 
@@ -616,12 +617,21 @@ function deriveRateCard(bp: Blueprint): RateBasis {
     sampleSize,
   };
 }
-function parseMonthly(s: string): number {
-  const m = s.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kK])?/);
-  if (!m) return 800;
+function parseMonthly(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return 0;
+  const m = value.replace(/[, ]/g, "").match(/\$?([\d.]+)\s*([kK])?/);
+  if (!m) return 0;
   let n = parseFloat(m[1]);
   if ((m[2] || "").toLowerCase() === "k") n *= 1000;
   return n;
+}
+
+export function monthlyCostLabel(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value === 0 ? "Free tier" : `$${value.toLocaleString("en-US")}/mo`;
+  }
+  return stringValue(value);
 }
 
 const PALETTE = { mint: "#89d7b7", teal: "#428475", mintSoft: "#a8dfc9", faint: "#cfe3d8" };
@@ -638,6 +648,7 @@ function buildPhases(bp: Blueprint, rateScale: number): Phase[] {
           weeks: Math.max(1, numberValue(phase.weeks, 2)),
           deliverables: stringArray(phase.deliverables),
           acceptanceCriteria: stringArray(phase.acceptanceCriteria),
+          features: stringArray(phase.features),
           skillset: [skill],
           status: index === 0 ? ("In Progress" as const) : ("Planned" as const),
         };
@@ -665,6 +676,7 @@ function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" 
         "Design system covers every core screen",
         "Auth flow works end-to-end in staging",
       ],
+      features: [],
       skillset: ["Frontend", bp.techStack.frontend.split(",")[0].trim()],
       status: "In Progress",
     },
@@ -677,6 +689,7 @@ function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" 
         "API contract documented and typed end-to-end",
         "Core business logic covered by tests",
       ],
+      features: [],
       skillset: ["Backend", bp.techStack.backend.split(",")[0].trim()],
       status: "Planned",
     },
@@ -689,6 +702,7 @@ function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" 
         "Inference latency within target on staging data",
         "Results API returns explainable output",
       ],
+      features: [],
       skillset: ["AI/ML", bp.techStack.ai.split(",")[0].trim()],
       status: "Planned",
     },
@@ -698,6 +712,7 @@ function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" 
       weeks: 2,
       deliverables: ["E2E + load testing", "Observability & alerts", "Production deploy pipeline"],
       acceptanceCriteria: ["E2E suite passes in CI", "Alerts fire correctly on a simulated incident"],
+      features: [],
       skillset: ["DevOps", "QA"],
       status: "Planned",
     },
