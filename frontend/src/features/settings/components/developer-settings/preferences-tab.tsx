@@ -1,6 +1,13 @@
 "use client";
 
+import {
+  RATE_CURRENCIES,
+  RATE_PERIODS,
+  formatRate,
+  parseRateForm,
+} from "@/features/profiles/developer-rate";
 import styles from "./developer-settings.module.css";
+import { SaveButton } from "./save-button";
 
 const MATCH_TOGGLES = [
   {
@@ -16,20 +23,28 @@ const MATCH_TOGGLES = [
 ];
 
 export function PreferencesTab({
-  preferredBudget,
+  rateAmount,
+  ratePeriod,
+  rateCurrency,
   experienceYears,
-  onChangeBudget,
+  onChangeRateAmount,
+  onChangeRatePeriod,
+  onChangeRateCurrency,
   onChangeExperienceYears,
-  saved,
   onSave,
 }: {
-  preferredBudget: string;
+  rateAmount: string;
+  ratePeriod: string;
+  rateCurrency: string;
   experienceYears: string;
-  onChangeBudget: (value: string) => void;
+  onChangeRateAmount: (value: string) => void;
+  onChangeRatePeriod: (value: string) => void;
+  onChangeRateCurrency: (value: string) => void;
   onChangeExperienceYears: (value: string) => void;
-  saved: boolean;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
 }) {
+  const preview = formatRate(parseRateForm(rateAmount, ratePeriod, rateCurrency));
+
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>
@@ -39,13 +54,34 @@ export function PreferencesTab({
       </div>
       <div className={styles.formGrid}>
         <div className={styles.formGroup}>
-          <label>Preferred Budget Range</label>
-          <select value={preferredBudget} onChange={(e) => onChangeBudget(e.target.value)}>
-            <option>Under $100K</option>
-            <option>$100K – $150K</option>
-            <option>$150K – $200K</option>
-            <option>$180K – $250K</option>
-            <option>$250K+</option>
+          <label>Your Rate</label>
+          <input
+            type="number"
+            min={1}
+            inputMode="numeric"
+            value={rateAmount}
+            onChange={(e) => onChangeRateAmount(e.target.value)}
+            placeholder="80000"
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label>Currency</label>
+          <select value={rateCurrency} onChange={(e) => onChangeRateCurrency(e.target.value)}>
+            {RATE_CURRENCIES.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.formGroup}>
+          <label>Per</label>
+          <select value={ratePeriod} onChange={(e) => onChangeRatePeriod(e.target.value)}>
+            {RATE_PERIODS.map((period) => (
+              <option key={period} value={period}>
+                {period}
+              </option>
+            ))}
           </select>
         </div>
         <div className={styles.formGroup}>
@@ -56,6 +92,12 @@ export function PreferencesTab({
             ))}
           </select>
         </div>
+      </div>
+      <div className={styles.prefNote}>
+        <i className="fas fa-tag" />{" "}
+        {preview
+          ? `Founders see ${preview}. This is what build estimates are priced from.`
+          : "Set your rate so founders see accurate build estimates for your work."}
       </div>
       <div className={styles.sectionDivider}>Match Preferences</div>
       <div className={styles.prefNote}>
@@ -74,20 +116,7 @@ export function PreferencesTab({
         </div>
       ))}
       <div className={styles.cardFooter}>
-        <button
-          className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""}`}
-          onClick={onSave}
-        >
-          {saved ? (
-            <>
-              <i className="fas fa-check" /> Saved!
-            </>
-          ) : (
-            <>
-              <i className="fas fa-save" /> Save Preferences
-            </>
-          )}
-        </button>
+        <SaveButton label="Save Preferences" onSave={onSave} />
       </div>
     </div>
   );

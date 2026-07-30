@@ -46,6 +46,9 @@ export interface DeveloperProfile {
   availability?: boolean | string;
   openToRemote?: boolean;
   preferredBudget?: string;
+  rateAmount?: string;
+  ratePeriod?: string;
+  rateCurrency?: string;
   tags?: string[];
   skillEntries?: DeveloperSkillEntry[];
   techStack?: string[];

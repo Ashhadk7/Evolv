@@ -2,17 +2,16 @@
 
 import type { PaymentData } from "./developer-settings-types";
 import styles from "./developer-settings.module.css";
+import { SaveButton } from "./save-button";
 
 export function PaymentTab({
   payData,
   onChangePayData,
-  paySaved,
   onSave,
 }: {
   payData: PaymentData;
   onChangePayData: (patch: Partial<PaymentData>) => void;
-  paySaved: boolean;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
 }) {
   return (
     <div className={styles.card}>
@@ -125,20 +124,7 @@ export function PaymentTab({
       </p>
 
       <div className={styles.cardFooter}>
-        <button
-          className={`${styles.saveBtn} ${paySaved ? styles.saveBtnSaved : ""}`}
-          onClick={onSave}
-        >
-          {paySaved ? (
-            <>
-              <i className="fas fa-check" /> Saved!
-            </>
-          ) : (
-            <>
-              <i className="fas fa-save" /> Save Payment Info
-            </>
-          )}
-        </button>
+        <SaveButton label="Save Payment Info" onSave={onSave} />
       </div>
     </div>
   );

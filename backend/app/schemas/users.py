@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.schemas.auth import SignupRole
 from app.schemas.certifications import CertificationResponse
+from app.schemas.developer_profiles import DeveloperProfileBase
 from app.schemas.developer_reviews import DeveloperReviewCreate, DeveloperReviewResponse
 from app.schemas.educations import EducationResponse
 
@@ -62,21 +63,17 @@ class PublicFounderProfile(BaseModel):
     educations: list[EducationResponse] = Field(default_factory=list)
 
 
-class PublicDeveloperProfile(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class PublicDeveloperProfile(DeveloperProfileBase):
+    """The public view of a developer profile.
 
-    job_title: str | None = None
-    bio: str | None = None
-    experience_years: int | None = None
-    availability: bool
-    open_to_remote: bool
-    preferred_budget: str | None = None
-    github: str | None = None
-    linkedin: str | None = None
-    portfolio_link: str | None = None
-    skills: list[str] = Field(default_factory=list)
+    Inherits the field list rather than repeating it: a column added to
+    DeveloperProfileBase reaches this response without anyone remembering to
+    add it here, which is how the structured rate fields went missing.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
     rating_avg: float
-    profile_complete: bool
     educations: list[EducationResponse] = Field(default_factory=list)
     certifications: list[CertificationResponse] = Field(default_factory=list)
     reviews: list[DeveloperReviewResponse] = Field(default_factory=list)

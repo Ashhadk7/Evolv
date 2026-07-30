@@ -283,6 +283,24 @@ def test_developer_rate_parsing_covers_real_profile_text():
     assert median_weekly_usd(rates) == 2400
 
 
+def test_every_stored_profile_column_reaches_the_api():
+    from app.schemas.developer_profiles import DeveloperProfileBase, DeveloperProfileResponse
+    from app.schemas.users import PublicDeveloperProfile
+    from app.services.developer_profiles import stored_profile_fields
+
+    stored = set(DeveloperProfileBase.model_fields)
+    for response in (DeveloperProfileResponse, PublicDeveloperProfile):
+        missing = stored - set(response.model_fields)
+        assert not missing, f"{response.__name__} drops {missing}"
+
+    from types import SimpleNamespace
+
+    blank = {name: None for name in stored}
+    blank.update(availability=True, open_to_remote=False, skills=[], profile_complete=False)
+    projected = stored_profile_fields(SimpleNamespace(**blank))
+    assert set(projected) == stored - {"profile_complete"}
+
+
 def test_market_no_longer_carries_a_rival_score():
     from app.services.generation.agents.market import MarketAnalysis
 

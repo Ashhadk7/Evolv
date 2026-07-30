@@ -9,6 +9,7 @@ import {
   type DeveloperSkillEntry,
 } from "@/features/developer-dashboard/profile-utils";
 import type { NotificationPreferences } from "@/features/notifications/notifications-api";
+import { DEFAULT_RATE_CURRENCY, DEFAULT_RATE_PERIOD } from "@/features/profiles/developer-rate";
 
 export type DeveloperSettingsReview = {
   id: string;
@@ -24,6 +25,9 @@ export type DeveloperSettingsProfile = DeveloperProfile & {
   availability: boolean;
   openToRemote: boolean;
   preferredBudget: string;
+  rateAmount: string;
+  ratePeriod: string;
+  rateCurrency: string;
   experienceYears: string;
   rating: number;
   reviews: DeveloperSettingsReview[];
@@ -59,6 +63,9 @@ export const defaultProfile: DeveloperSettingsProfile = {
   availability: true,
   openToRemote: true,
   preferredBudget: "",
+  rateAmount: "",
+  ratePeriod: DEFAULT_RATE_PERIOD,
+  rateCurrency: DEFAULT_RATE_CURRENCY,
   experienceYears: "",
   avatarUrl: "",
   tags: [],
@@ -146,6 +153,9 @@ export const hydrateDeveloperProfile = (
     openToRemote:
       typeof user.openToRemote === "boolean" ? user.openToRemote : defaultProfile.openToRemote,
     preferredBudget: user.preferredBudget || "",
+    rateAmount: user.rateAmount || "",
+    ratePeriod: user.ratePeriod || DEFAULT_RATE_PERIOD,
+    rateCurrency: user.rateCurrency || DEFAULT_RATE_CURRENCY,
     experienceYears: user.experienceYears || user.experience || "",
     tags: Array.isArray(user.tags) ? user.tags : [],
     techStack: Array.isArray(user.techStack)

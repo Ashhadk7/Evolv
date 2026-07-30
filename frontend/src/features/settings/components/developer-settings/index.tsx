@@ -6,6 +6,7 @@ import {
   createBlankDeveloperSkill,
   getDeveloperCertifications,
   getDeveloperSkillEntries,
+  getMissingDeveloperProfileFields,
   normalizeDeveloperProfileForSave,
   type DeveloperCertification,
   type DeveloperEducation,
@@ -39,6 +40,7 @@ import {
   fetchNotificationPreferences,
   updateNotificationPreferences,
 } from "@/features/notifications/notifications-api";
+import { toast } from "sonner";
 
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
@@ -69,11 +71,8 @@ const Settings = () => {
   const [profile, setProfile] = useState(() => hydrateDeveloperProfile(dashboardProfile));
   const [notifications, setNotifications] = useState(defaultNotifications);
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [notificationsSaved, setNotificationsSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [paySaved, setPaySaved] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [payData, setPayData] = useState<PaymentData>({
     method: "bank",
@@ -160,7 +159,6 @@ const Settings = () => {
   ];
 
   const handleSave = async () => {
-    setSaved(false);
     setSaveError("");
     try {
       const parts = profile.name.trim().split(/\s+/).filter(Boolean);
@@ -179,12 +177,19 @@ const Settings = () => {
       });
       await completeProfile(normalized);
       setProfile(hydrateDeveloperProfile({ ...normalized, name: profile.name }));
-      setSaved(true);
       setEditing(false);
-      setTimeout(() => setSaved(false), 2000);
+      const missing = getMissingDeveloperProfileFields(normalized);
+      if (missing.length) {
+        toast.warning(
+          `Saved, but add ${missing.join(", ")} to complete your profile and appear in the network.`
+        );
+      } else {
+        toast.success("Changes saved");
+      }
     } catch (error) {
-      setSaved(false);
-      setSaveError(getApiErrorMessage(error));
+        const message = getApiErrorMessage(error);
+      setSaveError(message);
+      toast.error(message);
     }
   };
 
@@ -228,12 +233,10 @@ const Settings = () => {
   ) => setProfile((p) => ({ ...p, [key]: value }));
 
   const handlePaySave = () => {
-    setPaySaved(true);
-    setTimeout(() => setPaySaved(false), 2000);
+    toast.success("Payment details saved");
   };
 
   const handleNotificationSave = async () => {
-    setNotificationsSaved(false);
     setSaveError("");
     try {
       const savedPreferences = await updateNotificationPreferences(notifications);
@@ -249,10 +252,11 @@ const Settings = () => {
         marketingEmails: savedPreferences.marketingEmails,
         sound: savedPreferences.sound,
       });
-      setNotificationsSaved(true);
-      setTimeout(() => setNotificationsSaved(false), 2000);
+      toast.success("Notification preferences saved");
     } catch (error) {
-      setSaveError(getApiErrorMessage(error));
+      const message = getApiErrorMessage(error);
+      setSaveError(message);
+      toast.error(message);
     }
   };
 
@@ -435,9 +439,8 @@ const Settings = () => {
                     onAddCertification={addCertification}
                     onRemoveCertification={removeCertification}
                     onCertificationImage={handleCertificationImage}
-                    saved={saved}
                     onCancel={cancelEditing}
-                    onSave={() => void handleSave()}
+                    onSave={handleSave}
                   />
                 ) : (
                   <ProfileTabView
@@ -463,7 +466,6 @@ const Settings = () => {
                 <PaymentTab
                   payData={payData}
                   onChangePayData={(patch) => setPayData((prev) => ({ ...prev, ...patch }))}
-                  paySaved={paySaved}
                   onSave={handlePaySave}
                 />
               )}
@@ -474,8 +476,7 @@ const Settings = () => {
                   onToggle={(key) =>
                     setNotifications({ ...notifications, [key]: !notifications[key] })
                   }
-                  saved={notificationsSaved}
-                  onSave={() => void handleNotificationSave()}
+                  onSave={handleNotificationSave}
                 />
               )}
 
@@ -483,14 +484,17 @@ const Settings = () => {
 
               {activeTab === "preferences" && (
                 <PreferencesTab
-                  preferredBudget={profile.preferredBudget}
+                  rateAmount={profile.rateAmount}
+                  ratePeriod={profile.ratePeriod}
+                  rateCurrency={profile.rateCurrency}
                   experienceYears={profile.experienceYears}
-                  onChangeBudget={(value) => setProfile({ ...profile, preferredBudget: value })}
+                  onChangeRateAmount={(value) => setProfile({ ...profile, rateAmount: value })}
+                  onChangeRatePeriod={(value) => setProfile({ ...profile, ratePeriod: value })}
+                  onChangeRateCurrency={(value) => setProfile({ ...profile, rateCurrency: value })}
                   onChangeExperienceYears={(value) =>
                     setProfile({ ...profile, experienceYears: value })
                   }
-                  saved={saved}
-                  onSave={() => void handleSave()}
+                  onSave={handleSave}
                 />
               )}
             </div>

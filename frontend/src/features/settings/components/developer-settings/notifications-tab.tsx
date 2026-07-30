@@ -2,6 +2,7 @@
 
 import type { DeveloperNotificationPrefs } from "@/features/settings/data/developer-settings-data";
 import styles from "./developer-settings.module.css";
+import { SaveButton } from "./save-button";
 
 const NOTIFICATION_ITEMS: Record<keyof DeveloperNotificationPrefs, { label: string; sub: string }> =
   {
@@ -50,13 +51,11 @@ const NOTIFICATION_ITEMS: Record<keyof DeveloperNotificationPrefs, { label: stri
 export function NotificationsTab({
   notifications,
   onToggle,
-  saved,
   onSave,
 }: {
   notifications: DeveloperNotificationPrefs;
   onToggle: (key: keyof DeveloperNotificationPrefs) => void;
-  saved: boolean;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
 }) {
   return (
     <div className={styles.card}>
@@ -87,20 +86,7 @@ export function NotificationsTab({
         ))}
       </div>
       <div className={styles.cardFooter}>
-        <button
-          className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""}`}
-          onClick={onSave}
-        >
-          {saved ? (
-            <>
-              <i className="fas fa-check" /> Saved!
-            </>
-          ) : (
-            <>
-              <i className="fas fa-save" /> Save Preferences
-            </>
-          )}
-        </button>
+        <SaveButton label="Save Preferences" onSave={onSave} />
       </div>
     </div>
   );

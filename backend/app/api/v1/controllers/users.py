@@ -20,6 +20,7 @@ from app.schemas.users import (
     UserListResponse,
     UserSummary,
 )
+from app.services.developer_profiles import stored_profile_fields
 from app.services.profile_helpers import build_review_response
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -153,16 +154,7 @@ def build_developer_profile_response(user: User) -> PublicDeveloperProfile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Developer profile not found.")
     assert isinstance(profile, DeveloperProfile)
     return PublicDeveloperProfile(
-        job_title=profile.job_title,
-        bio=profile.bio,
-        experience_years=profile.experience_years,
-        availability=profile.availability,
-        open_to_remote=profile.open_to_remote,
-        preferred_budget=profile.preferred_budget,
-        github=profile.github,
-        linkedin=profile.linkedin,
-        portfolio_link=profile.portfolio_link,
-        skills=profile.skills,
+        **stored_profile_fields(profile),
         rating_avg=float(profile.rating_avg or 0),
         profile_complete=user.profile_complete,
         educations=[EducationResponse.model_validate(education) for education in user.educations],

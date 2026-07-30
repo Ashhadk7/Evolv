@@ -14,6 +14,7 @@ import type {
   DeveloperSkillEntry,
 } from "@/features/developer-dashboard/profile-utils";
 import styles from "./developer-settings.module.css";
+import { SaveButton } from "./save-button";
 
 export function ProfileTabEdit({
   profile,
@@ -39,7 +40,6 @@ export function ProfileTabEdit({
   onAddCertification,
   onRemoveCertification,
   onCertificationImage,
-  saved,
   onCancel,
   onSave,
 }: {
@@ -69,9 +69,8 @@ export function ProfileTabEdit({
   onAddCertification: () => void;
   onRemoveCertification: (id: string) => void;
   onCertificationImage: (id: string, file: File | null | undefined) => void;
-  saved: boolean;
   onCancel: () => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
 }) {
   return (
     <div className={`${styles.card} ${styles.profileCard}`}>
@@ -416,20 +415,7 @@ export function ProfileTabEdit({
           <button className={styles.secondaryBtn} onClick={onCancel}>
             Cancel
           </button>
-          <button
-            className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""}`}
-            onClick={onSave}
-          >
-            {saved ? (
-              <>
-                <i className="fas fa-check" /> Saved!
-              </>
-            ) : (
-              <>
-                <i className="fas fa-save" /> Save Changes
-              </>
-            )}
-          </button>
+          <SaveButton label="Save Changes" onSave={onSave} />
         </div>
       </div>
     </div>

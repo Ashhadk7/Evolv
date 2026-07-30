@@ -4,6 +4,7 @@ import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store
 import { useChangePassword } from "@/features/settings/lib/use-change-password";
 import { usePhoneVerification } from "@/features/settings/lib/use-phone-verification";
 import styles from "./developer-settings.module.css";
+import { SaveButton } from "./save-button";
 
 export function SecurityTab() {
   const {
@@ -243,29 +244,10 @@ export function SecurityTab() {
       </div>
 
       <div className={styles.cardFooter}>
-        <button
-          className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ""}`}
-          onClick={() => void submit()}
-          disabled={isSubmitting}
-        >
-          {saved ? (
-            <>
-              <i className="fas fa-check" /> Password Updated!
-            </>
-          ) : isSubmitting ? (
-            <>
-              <i className="fas fa-save" /> Updating...
-            </>
-          ) : isResetFlow ? (
-            <>
-              <i className="fas fa-save" /> Verify & Reset Password
-            </>
-          ) : (
-            <>
-              <i className="fas fa-save" /> Update Password
-            </>
-          )}
-        </button>
+        <SaveButton
+          label={isResetFlow ? "Verify & Reset Password" : "Update Password"}
+          onSave={submit}
+        />
       </div>
     </div>
   );

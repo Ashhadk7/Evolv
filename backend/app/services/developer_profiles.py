@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.user import DeveloperProfile, User, UserRole
 from app.repositories import developer_profiles as developer_profiles_repository
 from app.schemas.developer_profiles import (
+    DeveloperProfileBase,
     DeveloperProfileCreate,
     DeveloperProfileResponse,
     DeveloperProfileUpdate,
@@ -84,19 +86,22 @@ def get_profile_or_404(db: Session, user_id: UUID) -> DeveloperProfile:
     return profile
 
 
+def stored_profile_fields(profile: DeveloperProfile) -> dict[str, Any]:
+    """The profile's own columns, read straight off the model.
+
+    Shared by every developer-profile response so a new column reaches the API
+    without being hand-listed at each call site. `profile_complete` is excluded
+    because each caller derives it differently.
+    """
+    return DeveloperProfileBase.model_validate(profile, from_attributes=True).model_dump(
+        exclude={"profile_complete"}
+    )
+
+
 def build_response(db: Session, profile: DeveloperProfile) -> DeveloperProfileResponse:
     return DeveloperProfileResponse(
+        **stored_profile_fields(profile),
         user_id=profile.user_id,
-        job_title=profile.job_title,
-        bio=profile.bio,
-        experience_years=profile.experience_years,
-        availability=profile.availability,
-        open_to_remote=profile.open_to_remote,
-        preferred_budget=profile.preferred_budget,
-        github=profile.github,
-        linkedin=profile.linkedin,
-        portfolio_link=profile.portfolio_link,
-        skills=profile.skills,
         rating_avg=float(profile.rating_avg or 0),
         profile_complete=bool(profile.profile_complete and profile.user.phone_verified),
         educations=get_education_responses(db, profile.user_id),
