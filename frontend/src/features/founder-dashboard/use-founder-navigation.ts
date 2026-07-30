@@ -117,8 +117,12 @@ export function useFounderNavigation() {
     cleanupSetupParam();
   };
 
-  const handleLogout = () => {
-    void signOut();
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch {
+      /* ignore error during signout request */
+    }
     try {
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_BLUEPRINTS);

@@ -286,13 +286,17 @@ export function DashboardSidebar({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setProfileMenuOpen(false);
     if (onLogout) {
       onLogout();
       return;
     }
-    void signOut();
+    try {
+      await signOut();
+    } catch {
+      /* ignore error during signout request */
+    }
     clearAllUserData();
     window.location.replace("/sign-in");
   };
