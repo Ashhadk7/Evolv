@@ -12,6 +12,7 @@ import type { FounderProfile } from "./types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
 import { useFounderDashboardStore } from "./store";
 import { clearAllUserData } from "@/features/auth/lib/session";
+import { signOut } from "@/features/auth/lib/auth-api";
 import { STORAGE_KEY_BLUEPRINTS, STORAGE_KEY_PROFILE } from "./profile";
 
 function cleanupSetupParam() {
@@ -49,7 +50,7 @@ export function useFounderNavigation() {
     s.setPendingProtectedTab(null);
     s.setProfilePromptDismissed(true);
     s.bumpSettingsEditSignal();
-    go("settings");
+    window.setTimeout(() => go("settings"), 0);
   };
 
   const handleOpenSecurity = () => {
@@ -117,6 +118,7 @@ export function useFounderNavigation() {
   };
 
   const handleLogout = () => {
+    void signOut();
     try {
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_BLUEPRINTS);

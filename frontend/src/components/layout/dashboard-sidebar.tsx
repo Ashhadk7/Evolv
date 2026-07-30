@@ -20,6 +20,7 @@ import {
 } from "@/features/notifications/notification-events";
 import type { BadgeKey, NavSection } from "@/config/navigation";
 import { clearAllUserData } from "@/features/auth/lib/session";
+import { signOut } from "@/features/auth/lib/auth-api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ONE sidebar for every dashboard. Founder / Developer differ only by the props
@@ -291,6 +292,7 @@ export function DashboardSidebar({
       onLogout();
       return;
     }
+    void signOut();
     clearAllUserData();
     window.location.replace("/sign-in");
   };

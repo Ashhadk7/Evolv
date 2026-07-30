@@ -197,6 +197,12 @@ class SupabaseAuthClient:
                 provider_detail or "Supabase Auth could not update the password."
             ) from exc
 
+    def sign_out(self, access_token: str) -> None:
+        try:
+            self._auth_admin.sign_out(access_token)
+        except SUPABASE_CLIENT_ERRORS as exc:
+            logger.warning("Supabase Auth sign-out call failed: %s", exc)
+
     def _create_client(self, key: str) -> Client:
         return create_client(self._supabase_url, key.strip())
 

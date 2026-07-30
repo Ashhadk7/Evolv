@@ -182,6 +182,9 @@ class AuthService:
             expires_in=auth_session.expires_in,
             expires_at=auth_session.expires_at,
         )
+
+    def signout(self, access_token: str) -> None:
+        self._auth_client.sign_out(access_token)
     def forgot_password(
         self, db: Session, forgot_request: ForgotPasswordRequest
     ) -> ForgotPasswordResponse:
