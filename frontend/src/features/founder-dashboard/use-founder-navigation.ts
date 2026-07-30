@@ -49,7 +49,6 @@ export function useFounderNavigation() {
     s.setShowOnboarding(false);
     s.setPendingProtectedTab(null);
     s.setProfilePromptDismissed(true);
-    s.bumpSettingsEditSignal();
     window.setTimeout(() => go("settings"), 0);
   };
 
