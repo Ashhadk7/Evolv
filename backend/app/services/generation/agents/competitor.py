@@ -8,6 +8,7 @@ from app.services.generation.agent_service import call_agent
 from app.services.generation.enrichment import (
     ResearchSource,
     attach_research,
+    downgrade_when_unresearched,
     enrich_competitor_context,
     keep_cited_indexes,
 )
@@ -84,4 +85,5 @@ async def run_competitor(
     shown = min(8, len(research.sources))
     for card in analysis.competitors:
         card.source_indexes = keep_cited_indexes(card.source_indexes, shown)
+    downgrade_when_unresearched(analysis, research)
     return CompetitorOutput.model_validate(attach_research(analysis, research))

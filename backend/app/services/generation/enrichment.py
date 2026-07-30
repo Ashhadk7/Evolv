@@ -48,12 +48,11 @@ class ResearchBundle(BaseModel):
     provider_errors: list[str] = Field(default_factory=list, alias="providerErrors")
     notes: list[str] = Field(default_factory=list)
     credits_used: int = Field(default=0, alias="creditsUsed")
+    matched_idea: bool = Field(default=True, alias="matchedIdea")
 
     def to_prompt_block(
         self, *, max_sources: int | None = None, snippet_chars: int | None = None
     ) -> str:
-        # The full source list stays attached to the blueprint for the evidence
-        # UI — these limits only trim what the LLM prompt carries.
         return sources_to_prompt_block(self.sources[:max_sources], snippet_chars=snippet_chars)
 
     def to_metadata(self) -> dict[str, Any]:
@@ -65,6 +64,7 @@ class ResearchBundle(BaseModel):
             "creditsUsed": self.credits_used,
             "notes": self.notes,
             "providerErrors": self.provider_errors,
+            "matchedIdea": self.matched_idea,
         }
 
 
@@ -138,7 +138,6 @@ async def _collect_research(
     else:
         try:
             async with tavily_http_client() as client:
-                # Independent searches run together instead of one-at-a-time.
                 results = await asyncio.gather(
                     *(_search_tavily(client, query, limit) for query, limit in queries),
                     return_exceptions=True,
@@ -154,16 +153,12 @@ async def _collect_research(
         except Exception as exc:
             provider_errors.append(f"tavily web client: {exc}")
 
-    sources = _filter_relevant(_dedupe_sources(collected), _relevance_tokens(idea, industry))[
-        :max_sources
-    ]
+    relevant, matched_idea = _filter_relevant(
+        _dedupe_sources(collected), _tokens(idea), _tokens(industry)
+    )
+    sources = relevant[:max_sources]
 
     if not sources:
-        # Honest failure over fabricated evidence: no real source means nothing
-        # to ground on. Surface the true cause (bad key, 401, outage) so it's
-        # fixable — never invent placeholder sources that would flow into the
-        # citations UI as if real and skew every downstream agent (AGENT_FLOW.md
-        # Mode 4). Refinement already tolerates zero stored sources.
         detail = "; ".join(provider_errors) or "no results returned"
         raise EnrichmentError(f"Web research unavailable ({kind}: {detail})")
 
@@ -174,6 +169,7 @@ async def _collect_research(
         sources=sources,
         providerErrors=provider_errors,
         creditsUsed=credits_used,
+        matchedIdea=matched_idea,
     )
 
 
@@ -294,24 +290,38 @@ _RELEVANCE_STOPWORDS = frozenset(
 )
 
 
-def _relevance_tokens(idea: str, industry: str) -> set[str]:
-    words = re.findall(r"[a-z]{4,}", f"{idea} {industry}".lower())
+def _tokens(text: str) -> set[str]:
+    words = re.findall(r"[a-z]{4,}", text.lower())
     return {word for word in words if word not in _RELEVANCE_STOPWORDS}
 
 
+def _source_tokens(source: ResearchSource) -> set[str]:
+    return _tokens(f"{source.title} {source.snippet}")
+
+
 def _filter_relevant(
-    sources: list[ResearchSource], tokens: set[str]
-) -> list[ResearchSource]:
-    # ponytail: naive token-overlap filter — swap for an LLM relevance check only
-    # if off-topic sources still get through.
-    if not tokens:
-        return sources
-    kept = [
-        source
-        for source in sources
-        if tokens & set(re.findall(r"[a-z]{4,}", f"{source.title} {source.snippet}".lower()))
-    ]
-    return kept or sources  # never filter down to nothing
+    sources: list[ResearchSource], idea_tokens: set[str], industry_tokens: set[str]
+) -> tuple[list[ResearchSource], bool]:
+    """Keep sources related to the idea or its industry, and say whether any
+    actually matched the idea.
+
+    The two token sets are kept apart on purpose. Merged, a source matching only
+    the industry word looks relevant to every idea in that industry, so a wedge
+    nobody has written about is indistinguishable from a well-covered one. When
+    nothing matches the idea the research is industry-level background, and the
+    caller marks the analysis as low-evidence rather than presenting it as
+    researched.
+
+    ponytail: naive token overlap — swap for an LLM relevance check only if
+    off-topic sources still get through.
+    """
+    known = idea_tokens | industry_tokens
+    if not known:
+        return sources, True
+
+    kept = [source for source in sources if known & _source_tokens(source)]
+    matched_idea = any(idea_tokens & _source_tokens(source) for source in kept)
+    return (kept or sources), matched_idea
 
 
 def _dedupe_sources(sources: list[ResearchSource]) -> list[ResearchSource]:
@@ -349,6 +359,19 @@ def _text(value: Any) -> str:
 
 def _clean_html(value: str) -> str:
     return clean(re.sub(r"<[^>]+>", " ", value))
+
+
+def downgrade_when_unresearched(analysis: Any, research: ResearchBundle) -> None:
+    """Force Low confidence when nothing found actually mentioned the idea.
+
+    The agent judges confidence from the sources it was shown, and those sources
+    look plausible even when they only match the industry. Only the retrieval
+    layer knows the wedge itself went unmentioned, so it is the one place that
+    can say so honestly instead of letting industry background pass as research
+    into the specific idea.
+    """
+    if not research.matched_idea:
+        analysis.confidence = "Low"
 
 
 def attach_research(analysis: BaseModel, research: ResearchBundle) -> dict[str, Any]:

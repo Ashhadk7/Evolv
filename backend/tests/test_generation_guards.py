@@ -301,6 +301,100 @@ def test_every_stored_profile_column_reaches_the_api():
     assert set(projected) == stored - {"profile_complete"}
 
 
+def test_rate_of_prefers_structured_columns_then_legacy_text():
+    from types import SimpleNamespace
+
+    from app.services.developer_rates import rate_of
+
+    structured = SimpleNamespace(
+        rate_amount=900, rate_period="week", rate_currency="USD", preferred_budget="$5k"
+    )
+    assert rate_of(structured).amount == 900
+
+    legacy = SimpleNamespace(
+        rate_amount=None, rate_period=None, rate_currency=None,
+        preferred_budget="PKR 80,000/month",
+    )
+    fallback = rate_of(legacy)
+    assert (fallback.amount, fallback.currency) == (80000, "PKR")
+
+    blank = SimpleNamespace(
+        rate_amount=None, rate_period=None, rate_currency=None, preferred_budget="negotiable"
+    )
+    assert rate_of(blank) is None
+
+
+def test_rate_card_falls_back_when_nobody_matches():
+    from app.services.generation.blueprint_generation_service import _build_rate_card
+    from app.services.generation.agents.tech_stack import TechRole, TechStackOutput
+
+    layer = {"chosen": "x", "reasoning": "y", "monthlyCost": "$0"}
+    stack = TechStackOutput(
+        techStack={key: layer for key in
+                   ("frontend", "backend", "database", "vectorDb", "aiProvider", "hosting")},
+        roles=[
+            TechRole(role="Backend", count=1, skills="Python, FastAPI", lead=True),
+            TechRole(role="Frontend", count=1, skills="React", lead=False),
+            TechRole(role="QA", count=1, skills="Playwright", lead=False),
+        ],
+    )
+
+    from sqlalchemy.exc import SQLAlchemyError
+
+    class NoDb:
+        def scalars(self, *args, **kwargs):
+            raise SQLAlchemyError("no database here")
+
+    card = _build_rate_card(NoDb(), stack)
+    assert card == {"anchorWeeklyUsd": None, "sampleSize": 0, "basis": "default"}
+
+
+def test_industry_match_alone_is_not_researching_the_idea():
+    from app.services.generation.enrichment import ResearchSource, _filter_relevant, _tokens
+
+    def source(title: str) -> ResearchSource:
+        return ResearchSource(
+            provider="tavily", kind="web", title=title,
+            url=f"https://x.io/{abs(hash(title))}", snippet=title, domain="x.io", publishedAt="",
+        )
+
+    idea = _tokens("marketplace matching Karachi rooftop owners with solar installers")
+    industry = _tokens("CleanTech")
+
+    generic = [source("Global CleanTech investment trends 2026")]
+    kept, matched = _filter_relevant(generic, idea, industry)
+    assert kept == generic
+    assert matched is False
+
+    specific = [source("Karachi rooftop solar installers marketplace launches")]
+    kept, matched = _filter_relevant(specific, idea, industry)
+    assert matched is True
+
+    unrelated = [source("Unrelated cooking blog about pasta")]
+    kept, matched = _filter_relevant(unrelated, idea, industry)
+    assert kept == unrelated
+    assert matched is False
+
+
+def test_unresearched_idea_forces_low_confidence():
+    from types import SimpleNamespace
+
+    from app.services.generation.enrichment import ResearchBundle, downgrade_when_unresearched
+
+    def bundle(matched: bool) -> ResearchBundle:
+        return ResearchBundle(kind="market", generatedAt="now", matchedIdea=matched)
+
+    confident = SimpleNamespace(confidence="High")
+    downgrade_when_unresearched(confident, bundle(False))
+    assert confident.confidence == "Low"
+
+    researched = SimpleNamespace(confidence="High")
+    downgrade_when_unresearched(researched, bundle(True))
+    assert researched.confidence == "High"
+
+    assert bundle(False).to_metadata()["matchedIdea"] is False
+
+
 def test_market_no_longer_carries_a_rival_score():
     from app.services.generation.agents.market import MarketAnalysis
 

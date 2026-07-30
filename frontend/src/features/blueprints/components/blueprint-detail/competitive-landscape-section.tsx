@@ -67,6 +67,7 @@ export function CompetitiveLandscapeSection({
           </div>
         )}
         <ResearchFooter
+          researchedTheIdea={insight.researchedTheIdea}
           sources={insight.sources}
           retrievedAt={insight.retrievedAt}
           confidence={insight.confidence}

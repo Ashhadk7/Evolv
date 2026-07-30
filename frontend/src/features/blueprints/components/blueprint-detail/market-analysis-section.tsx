@@ -165,6 +165,7 @@ export function MarketAnalysisSection({ marketAnalysis }: { marketAnalysis: Mark
           </div>
         )}
         <ResearchFooter
+          researchedTheIdea={marketAnalysis.researchedTheIdea}
           sources={marketAnalysis.sources}
           retrievedAt={marketAnalysis.retrievedAt}
           confidence={marketAnalysis.confidence}

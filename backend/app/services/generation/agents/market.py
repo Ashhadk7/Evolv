@@ -8,6 +8,7 @@ from app.services.generation.agent_service import call_agent
 from app.services.generation.enrichment import (
     ResearchSource,
     attach_research,
+    downgrade_when_unresearched,
     enrich_market_context,
     keep_cited_indexes,
 )
@@ -86,6 +87,7 @@ async def run_market(
     shown = min(6, len(research.sources))
     for signal in analysis.demand_signals:
         signal.source_indexes = keep_cited_indexes(signal.source_indexes, shown)
+    downgrade_when_unresearched(analysis, research)
     enriched = attach_research(analysis, research)
     enriched["bottomUpSam"] = _fmt_usd(analysis.customer_count * analysis.price_annual_usd)
     return MarketOutput.model_validate(enriched)

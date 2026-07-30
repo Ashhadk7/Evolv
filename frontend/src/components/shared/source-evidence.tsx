@@ -147,11 +147,13 @@ export function ResearchFooter({
   retrievedAt,
   confidence,
   assumptions,
+  researchedTheIdea = true,
 }: {
   sources: ResearchSourceRef[];
   retrievedAt: string;
   confidence: string;
   assumptions: string[];
+  researchedTheIdea?: boolean;
 }) {
   const [activeSource, setActiveSource] = useState<ActiveSource>(null);
 
@@ -179,6 +181,12 @@ export function ResearchFooter({
                 [{i + 1}] {source.domain || source.title}
               </button>
             ))}
+          </div>
+        )}
+        {!researchedTheIdea && (
+          <div className="mt-2 rounded-lg border border-[#f0e0bd] bg-[#fdf8ec] px-3 py-2 text-[11px] leading-[1.5] text-[#8a6516]">
+            No source mentioned this specific idea. These sources describe the wider industry, so
+            treat this section as the model&apos;s reasoning rather than researched fact.
           </div>
         )}
         {assumptions.length > 0 && (
