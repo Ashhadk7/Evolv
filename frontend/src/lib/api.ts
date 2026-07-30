@@ -44,7 +44,7 @@ interface ValidationErrorItem {
  * string `detail`; FastAPI/Pydantic 422 responses return an array of validation
  * items, so we surface the actual field messages instead of a generic fallback.
  */
-function extractErrorDetail(data: unknown): string {
+export function extractErrorDetail(data: unknown): string {
   const detail = (data as { detail?: unknown } | null)?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {

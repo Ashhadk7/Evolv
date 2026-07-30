@@ -389,88 +389,118 @@ export function BlueprintDetail({
             combinedSources={verificationSources}
           />
 
-          <BlueprintVentureAssessmentSection
-            bp={bp}
-            strengths={strengths}
-            risks={assessmentRisks}
-          />
+          <div id="venture-assessment" className="scroll-mt-24">
+            <BlueprintVentureAssessmentSection
+              bp={bp}
+              strengths={strengths}
+              risks={assessmentRisks}
+            />
+          </div>
 
-          <BlueprintExecutiveSummarySection
-            bp={bp}
-            executiveSummary={content.synthesis.executiveSummary}
-            keyAssumptions={content.synthesis.keyAssumptions}
-            contradictions={content.synthesis.contradictions}
-            totalBuildCost={fmtMoney(cost.total)}
-            timelineLabel={cost.timelineLabel}
-            phaseCount={phases.length}
-            roleCount={roles.length}
-            mvpFeatureCount={content.mvpPlan.mustHave.length + content.mvpPlan.shouldHave.length}
-          />
+          <div id="executive-summary" className="scroll-mt-24">
+            <BlueprintExecutiveSummarySection
+              bp={bp}
+              executiveSummary={content.synthesis.executiveSummary}
+              keyAssumptions={content.synthesis.keyAssumptions}
+              contradictions={content.synthesis.contradictions}
+              totalBuildCost={fmtMoney(cost.total)}
+              timelineLabel={cost.timelineLabel}
+              phaseCount={phases.length}
+              roleCount={roles.length}
+              mvpFeatureCount={content.mvpPlan.mustHave.length + content.mvpPlan.shouldHave.length}
+            />
+          </div>
 
-          <BlueprintSignalsSection analytics={analytics} recommendations={aiRecs} />
-          <BlueprintIdeaSection infoGrid={infoGrid} />
+          <div id="signals" className="scroll-mt-24">
+            <BlueprintSignalsSection analytics={analytics} recommendations={aiRecs} />
+          </div>
+          <div id="the-idea" className="scroll-mt-24">
+            <BlueprintIdeaSection infoGrid={infoGrid} />
+          </div>
 
-          <BlueprintPersonasSection personas={personas} />
-          <BlueprintProductScopeSection
-            featureItems={featureItems}
-            outOfScope={content.mvpPlan.outOfScope}
-            dataEntities={content.mvpPlan.dataEntities}
-            nonFunctional={content.mvpPlan.nonFunctional}
-          />
-          <BlueprintTechStackSection
-            editing={editing}
-            draftTechStack={draftTechStack}
-            architecture={architecture}
-            stack={stack}
-            onToggleEditing={() => setEditing((current) => !current)}
-            onChangeLayer={updateTechStackLayer}
-          />
+          <div id="target-users" className="scroll-mt-24">
+            <BlueprintPersonasSection personas={personas} />
+          </div>
+          <div id="product-scope" className="scroll-mt-24">
+            <BlueprintProductScopeSection
+              featureItems={featureItems}
+              outOfScope={content.mvpPlan.outOfScope}
+              dataEntities={content.mvpPlan.dataEntities}
+              nonFunctional={content.mvpPlan.nonFunctional}
+            />
+          </div>
+          <div id="tech-stack" className="scroll-mt-24">
+            <BlueprintTechStackSection
+              editing={editing}
+              draftTechStack={draftTechStack}
+              architecture={architecture}
+              stack={stack}
+              onToggleEditing={() => setEditing((current) => !current)}
+              onChangeLayer={updateTechStackLayer}
+            />
+          </div>
 
-          <TeamTalentSection
-            roles={roles}
-            developerConnections={developerConnections}
-            activeRoleFilter={activeRoleFilter}
-            onRoleFilterChange={setActiveRoleFilter}
-            onSelectDeveloper={handleViewMatchedDeveloper}
-            matchedDevelopers={matchedDevelopers}
-          />
+          <div id="roles-developers" className="scroll-mt-24">
+            <TeamTalentSection
+              roles={roles}
+              developerConnections={developerConnections}
+              activeRoleFilter={activeRoleFilter}
+              onRoleFilterChange={setActiveRoleFilter}
+              onSelectDeveloper={handleViewMatchedDeveloper}
+              matchedDevelopers={matchedDevelopers}
+            />
+          </div>
 
-          <RoadmapSection
-            phases={phases}
-            setPhases={setPhases}
-            editing={editing}
-            editPhase={editPhase}
-            setEditPhase={setEditPhase}
-            hirePanelPhase={hirePanelPhase}
-            setHirePanelPhase={setHirePanelPhase}
-            phaseHires={phaseHires}
-            setPhaseHires={setPhaseHires}
-            totalWeeks={totalWeeks}
-            reduce={reduce}
-            matchedDevelopers={matchedDevelopers}
-          />
+          <div id="development-roadmap" className="scroll-mt-24">
+            <RoadmapSection
+              phases={phases}
+              setPhases={setPhases}
+              editing={editing}
+              editPhase={editPhase}
+              setEditPhase={setEditPhase}
+              hirePanelPhase={hirePanelPhase}
+              setHirePanelPhase={setHirePanelPhase}
+              phaseHires={phaseHires}
+              setPhaseHires={setPhaseHires}
+              totalWeeks={totalWeeks}
+              reduce={reduce}
+              matchedDevelopers={matchedDevelopers}
+            />
+          </div>
 
-          <MarketAnalysisSection marketAnalysis={content.marketAnalysis} />
+          <div id="market-analysis" className="scroll-mt-24">
+            <MarketAnalysisSection marketAnalysis={content.marketAnalysis} />
+          </div>
 
-          <CompetitiveLandscapeSection
-            bpName={bp.name}
-            competitorRows={competitorRows}
-            insight={content.competitorInsight}
-          />
+          <div id="competitive-landscape" className="scroll-mt-24">
+            <CompetitiveLandscapeSection
+              bpName={bp.name}
+              competitorRows={competitorRows}
+              insight={content.competitorInsight}
+            />
+          </div>
 
-          <GapAnalysisSection gaps={gaps} additions={additions} pathToComplete={pathToComplete} />
+          <div id="gap-analysis" className="scroll-mt-24">
+            <GapAnalysisSection gaps={gaps} additions={additions} pathToComplete={pathToComplete} />
+          </div>
 
-          <GoToMarketSection gtmChannels={gtmChannels} gtmPhases={gtmPhases} />
+          <div id="go-to-market" className="scroll-mt-24">
+            <GoToMarketSection gtmChannels={gtmChannels} gtmPhases={gtmPhases} />
+          </div>
 
-          <FinancialsSection
-            cost={cost}
-            fin={fin}
-            phases={phases}
-            rateBasis={content.rateBasis}
-            reduce={reduce}
-          />
+          <div id="financials" className="scroll-mt-24">
+            <FinancialsSection
+              cost={cost}
+              fin={fin}
+              phases={phases}
+              rateBasis={content.rateBasis}
+              reduce={reduce}
+            />
+          </div>
 
-          <RisksSection riskRows={riskRows} />
+          <div id="risks" className="scroll-mt-24">
+            <RisksSection riskRows={riskRows} />
+          </div>
 
           <FooterBar bpName={bp.name} updatedAt={bp.updatedAt} />
         </div>

@@ -9,6 +9,7 @@ import type { Blueprint } from "@/features/blueprints/types";
 import { Chip } from "@/components/shared/chip";
 
 import { RefineModal } from "./refine-modal";
+import { SectionNav } from "./blueprint-detail/section-nav";
 
 export function BlueprintActionBar({
   bp,
@@ -65,7 +66,8 @@ export function BlueprintActionBar({
           </Chip>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <RefineModal blueprintId={bp.id} blueprintName={bp.name} onRefined={onRefined} />
+          <SectionNav />
+        <RefineModal blueprintId={bp.id} blueprintName={bp.name} onRefined={onRefined} />
           {!bp.project && (
             <button onClick={onTogglePublish} className="bp-primary-btn">
               <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}

@@ -4,27 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowsClockwise, CheckCircle, Warning, Sparkle } from "@phosphor-icons/react";
 import { getAccessToken } from "@/features/auth/lib/session";
+import { ApiError, extractErrorDetail, getApiErrorMessage } from "@/lib/api";
+import {
+  SECTION_BY_REFINE,
+  scrollToSection,
+  type RefinableSection,
+} from "./blueprint-detail/blueprint-detail-data";
 import { blueprintFromWire as transformBlueprint } from "@/features/blueprints/blueprints-api";
 import type { Blueprint } from "@/features/blueprints/types";
-
-type RefinableSection =
-  | "market"
-  | "competitor"
-  | "persona"
-  | "product"
-  | "strategy"
-  | "techStack"
-  | "synthesis";
-
-const SECTION_LABELS: Record<RefinableSection, string> = {
-  market: "Market Analysis",
-  competitor: "Competitive Landscape",
-  persona: "Target Users",
-  product: "Product Scope",
-  strategy: "Strategy & GTM",
-  techStack: "Tech Stack",
-  synthesis: "Venture Assessment",
-};
 
 const SECTION_DESCRIPTIONS: Record<RefinableSection, string> = {
   market: "Update market size, growth rates, demand signals and timing analysis.",
@@ -45,6 +32,11 @@ const SECTION_PLACEHOLDERS: Record<RefinableSection, string> = {
   techStack: "Example: Use Python FastAPI for backend and PostgreSQL for database.",
   synthesis: "Example: Re-evaluate venture risk considering high local market demand.",
 };
+
+const sectionLabel = (key: RefinableSection): string =>
+  SECTION_BY_REFINE.get(key)?.label ?? key;
+
+const POLL_ATTEMPT_LIMIT = 90;
 
 type ModalStep = "form" | "refining" | "completed" | "error";
 
@@ -84,7 +76,7 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
 
     setStep("refining");
     setProgress(15);
-    setStatusMessage(`Initiating ${SECTION_LABELS[section]} AI analysis...`);
+    setStatusMessage(`Initiating ${sectionLabel(section)} AI analysis...`);
     setErrorMessage("");
 
     try {
@@ -101,7 +93,7 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.detail || "Refine request failed.");
+        throw new ApiError(res.status, extractErrorDetail(data), data?.code);
       }
 
       progressIntervalRef.current = setInterval(() => {
@@ -131,11 +123,11 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
               return;
             }
 
-            if (refState.status === "completed" || attempts >= 15) {
+            if (refState.status === "completed") {
               cleanupTimers();
               setProgress(100);
               setStep("completed");
-              setStatusMessage(`${SECTION_LABELS[section]} has been successfully refined!`);
+              setStatusMessage(`${sectionLabel(section)} has been successfully refined!`);
 
               const freshBlueprint = transformBlueprint(freshData);
               onRefined?.(freshBlueprint);
@@ -144,17 +136,23 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
         } catch {
         }
 
-        if (attempts >= 22) {
+        if (attempts >= POLL_ATTEMPT_LIMIT) {
           cleanupTimers();
-          setErrorMessage("Refinement timed out. Please refresh to check status.");
+          setErrorMessage("This is taking longer than usual. Refresh the blueprint shortly to see the result.");
           setStep("error");
         }
       }, 2000);
     } catch (err: unknown) {
       cleanupTimers();
       setStep("error");
-      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setErrorMessage(getApiErrorMessage(err));
     }
+  };
+
+  const handleViewSection = () => {
+    const target = SECTION_BY_REFINE.get(section);
+    handleClose();
+    if (target) requestAnimationFrame(() => scrollToSection(target.id));
   };
 
   const handleClose = () => {
@@ -263,7 +261,7 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                       Select Section to Refine
                     </label>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                      {(Object.keys(SECTION_LABELS) as RefinableSection[]).map((s) => (
+                      {(Object.keys(SECTION_DESCRIPTIONS) as RefinableSection[]).map((s) => (
                         <button
                           key={s}
                           onClick={() => setSection(s)}
@@ -283,7 +281,7 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                             transition: "all 0.15s",
                           }}
                         >
-                          {SECTION_LABELS[s]}
+                          {sectionLabel(s)}
                         </button>
                       ))}
                     </div>
@@ -372,7 +370,7 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                     </motion.div>
                     <div>
                       <div style={{ fontSize: 14.5, fontWeight: 700, color: "#e8f4ef" }}>
-                        Refining {SECTION_LABELS[section]}...
+                        Refining {sectionLabel(section)}...
                       </div>
                       <div style={{ fontSize: 12, color: "rgba(232,244,239,0.55)", marginTop: 2 }}>
                         Re-running agent analysis with your feedback. Please wait...
@@ -406,27 +404,16 @@ export function RefineModal({ blueprintId, blueprintName, onRefined }: Props) {
                         Refinement Complete!
                       </div>
                       <div style={{ fontSize: 12.5, color: "rgba(232,244,239,0.75)", marginTop: 2 }}>
-                        {SECTION_LABELS[section]} has been updated with your changes.
+                        {sectionLabel(section)} has been updated with your changes.
                       </div>
                     </div>
                   </div>
 
                   <button
-                    onClick={handleClose}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(137,215,183,0.3)",
-                      background: "linear-gradient(180deg, #244b42 0%, #18382f 100%)",
-                      color: "#abffdc",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      textAlign: "center",
-                    }}
+                    onClick={handleViewSection}
+                    className="w-full cursor-pointer rounded-[10px] border border-[rgba(137,215,183,0.3)] bg-[linear-gradient(180deg,#244b42_0%,#18382f_100%)] p-2.5 text-center text-[13px] font-semibold text-[#abffdc]"
                   >
-                    View Updated Section
+                    View {sectionLabel(section)}
                   </button>
                 </div>
               )}

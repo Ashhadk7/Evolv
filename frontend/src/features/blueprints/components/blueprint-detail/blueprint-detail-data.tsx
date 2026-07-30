@@ -16,23 +16,46 @@ import type { BlueprintContent, ProductFeature } from "@/features/blueprints/blu
 import type { Blueprint } from "@/features/blueprints/types";
 import type { FounderContactProfile } from "@/features/network/types";
 
-export const TOC_SECTIONS = [
-  "Venture Assessment",
-  "Executive Summary",
-  "Signals & Activity",
-  "The Idea",
-  "Target Users & Personas",
-  "Product Scope",
-  "Recommended Tech Stack & Architecture",
-  "Roles & Matched Developers",
-  "Development Roadmap",
-  "Market Analysis",
-  "Competitive Landscape",
-  "Gap Analysis & Recommendations",
-  "Go-to-Market",
-  "Project Cost & Financials",
-  "Risks & Mitigations",
+export type RefinableSection =
+  | "market"
+  | "competitor"
+  | "persona"
+  | "product"
+  | "strategy"
+  | "techStack"
+  | "synthesis";
+
+export interface BlueprintSection {
+  id: string;
+  label: string;
+  refine?: RefinableSection;
+}
+
+export const TOC_SECTIONS: BlueprintSection[] = [
+  { id: "venture-assessment", label: "Venture Assessment", refine: "synthesis" },
+  { id: "executive-summary", label: "Executive Summary" },
+  { id: "signals", label: "Signals & Activity" },
+  { id: "the-idea", label: "The Idea" },
+  { id: "target-users", label: "Target Users & Personas", refine: "persona" },
+  { id: "product-scope", label: "Product Scope", refine: "product" },
+  { id: "tech-stack", label: "Recommended Tech Stack & Architecture", refine: "techStack" },
+  { id: "roles-developers", label: "Roles & Matched Developers" },
+  { id: "development-roadmap", label: "Development Roadmap" },
+  { id: "market-analysis", label: "Market Analysis", refine: "market" },
+  { id: "competitive-landscape", label: "Competitive Landscape", refine: "competitor" },
+  { id: "gap-analysis", label: "Gap Analysis & Recommendations" },
+  { id: "go-to-market", label: "Go-to-Market", refine: "strategy" },
+  { id: "financials", label: "Project Cost & Financials" },
+  { id: "risks", label: "Risks & Mitigations" },
 ];
+
+export const SECTION_BY_REFINE = new Map(
+  TOC_SECTIONS.filter((entry) => entry.refine).map((entry) => [entry.refine, entry])
+);
+
+export function scrollToSection(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 export function buildVentureAssessment(bp: Blueprint, content: BlueprintContent) {
 

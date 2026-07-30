@@ -9,7 +9,7 @@ export function BlueprintPrintCover({
   bp: Blueprint;
   grade: string;
   viabilityScore: number;
-  tocSections: string[];
+  tocSections: { id: string; label: string }[];
 }) {
   return (
     <div className="blueprint-print-only">
@@ -47,11 +47,11 @@ export function BlueprintPrintCover({
         <div className="[columns:2] [column-gap:32px]">
           {tocSections.map((section, index) => (
             <div
-              key={section}
+              key={section.id}
               className="border-bp-border-soft flex [break-inside:avoid] justify-between gap-2.5 border-b py-2"
             >
               <span className="text-bp-ink text-[13px]">
-                {index + 1}. {section}
+                {index + 1}. {section.label}
               </span>
             </div>
           ))}
