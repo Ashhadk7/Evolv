@@ -693,6 +693,34 @@ def test_unretryable_status_codes_are_not_resent():
     assert 500 not in NON_RETRYABLE_STATUSES
 
 
+def test_refine_critic_gate_runs_before_anything_is_written():
+    import ast
+    import pathlib
+
+    src = pathlib.Path("app/api/v1/controllers/blueprints.py").read_text(encoding="utf-8")
+    fn = next(
+        node
+        for node in ast.walk(ast.parse(src))
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "refine_blueprint"
+    )
+    lines = {
+        (node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", "")): node.lineno
+        for node in ast.walk(fn)
+        if isinstance(node, ast.Call)
+    }
+    assert "run_refine_critic" in lines, "refine endpoint does not gate its input"
+    assert lines["run_refine_critic"] < lines["mark_refinement_started"], (
+        "critic must run before the blueprint is marked refining, or a blocked "
+        "refine leaves the row stuck in 'refining'"
+    )
+
+
+def test_refine_verdict_has_no_gaps_to_render():
+    from app.services.generation.agents.refine_critic import RefineVerdict
+
+    assert set(RefineVerdict.model_fields) == {"verdict", "reason"}
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

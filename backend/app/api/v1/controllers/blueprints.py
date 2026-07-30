@@ -25,7 +25,9 @@ from app.schemas.blueprints import (
 )
 from app.models.blueprint import BlueprintVisibility
 from app.services import application_service, blueprint_service, chat_service
+from app.services.exceptions import BlueprintAgentInputError
 from app.services.generation import blueprint_generation_service
+from app.services.generation.agents.refine_critic import run_refine_critic
 from app.services import message_websocket as message_websocket_service
 from app.services import notifications_service, refine_service
 
@@ -233,8 +235,12 @@ async def refine_blueprint(
     """Re-run a single targeted agent with founder feedback and patch the result
     back into the blueprint's current version. Returns immediately; the agent
     runs in the background (same pattern as /generate)."""
-    # Verify the blueprint belongs to this founder before queuing the task
     blueprint_service.get_blueprint(db, blueprint_id, current_user, require_ownership=True)
+
+    verdict = await run_refine_critic(payload.section, payload.feedback)
+    if verdict.verdict != "proceed":
+        raise BlueprintAgentInputError(verdict.reason)
+
     refine_service.mark_refinement_started(db, blueprint_id, payload.section)
     background_tasks.add_task(
         refine_service.refine_section,
