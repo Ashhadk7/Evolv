@@ -21,6 +21,7 @@ from app.repositories import blueprints as blueprints_repository
 from app.schemas.blueprints import BlueprintGenerateRequest, BlueprintVersionCreate, LevelRating
 from app.services.exceptions import (
     BlueprintAgentInputError,
+    BlueprintBusyError,
     BlueprintPersistenceError,
     BlueprintVersionNotFoundError,
     FounderProfileRequiredError,
@@ -142,7 +143,13 @@ def retry_generation(db: Session, blueprint_id: UUID) -> tuple[Blueprint, Bluepr
     if version is None:
         raise BlueprintVersionNotFoundError()
 
-    intake = (version.content_json or {}).get("intake")
+    content = version.content_json or {}
+    if (content.get("generation") or {}).get("status") == "generating":
+        raise BlueprintBusyError(
+            "This blueprint is already generating. Wait for it to finish before retrying."
+        )
+
+    intake = content.get("intake")
     if not intake:
         raise BlueprintAgentInputError("Cannot retry: the original inputs are missing.")
     try:

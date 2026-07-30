@@ -60,7 +60,7 @@ class BlueprintCreate(BaseModel):
 class BlueprintGenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    idea: str = Field(min_length=20, max_length=2500)
+    idea: str = Field(min_length=1, max_length=2500)
     industry: str = Field(min_length=1, max_length=255)
     target_customer: str = Field(default="", max_length=500)
     problem: str = Field(default="", max_length=800)

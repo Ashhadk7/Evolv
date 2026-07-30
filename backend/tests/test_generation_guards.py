@@ -581,6 +581,118 @@ def test_refine_refuses_while_other_work_is_in_flight():
     assert ErrorCode.BLUEPRINT_BUSY.value == "blueprint_busy"
 
 
+def test_timeline_budget_stays_inside_what_a_roadmap_can_express():
+    from app.services.generation.agents.product import (
+        MAX_ROADMAP_WEEKS,
+        MIN_ROADMAP_WEEKS,
+        _fits_timeline,
+        _timeline_budget,
+        roadmap_weeks,
+    )
+
+    assert roadmap_weeks(2) == MIN_ROADMAP_WEEKS
+    assert roadmap_weeks(17) == 17
+    assert roadmap_weeks(500) == MAX_ROADMAP_WEEKS
+
+    assert "3 weeks" in _timeline_budget(2)
+    assert "shorter than the" in _timeline_budget(2)
+    assert "shorter than the" not in _timeline_budget(17)
+
+    three_by_one = _product(
+        [_feature(n, [], "Must" if n == "A" else "Should") for n in "ABCDEF"],
+        [_phase(["A"]), _phase(), _phase()],
+    )
+    for phase in three_by_one.phases:
+        phase.weeks = 1
+    _fits_timeline(2)(three_by_one)
+
+
+def test_retry_refuses_while_a_generation_is_running():
+    from types import SimpleNamespace
+
+    from app.services.exceptions import BlueprintBusyError
+    from app.services.generation import blueprint_generation_service as service
+
+    def run(content):
+        original = service.blueprints_repository.get_blueprint_by_id
+        service.blueprints_repository.get_blueprint_by_id = lambda db, bid: SimpleNamespace(
+            current_version=SimpleNamespace(content_json=content)
+        )
+        try:
+            service.retry_generation(SimpleNamespace(commit=lambda: None), "id")
+        finally:
+            service.blueprints_repository.get_blueprint_by_id = original
+
+    try:
+        run({"generation": {"status": "generating"}, "intake": {"idea": "x", "industry": "y"}})
+    except BlueprintBusyError:
+        pass
+    else:
+        raise AssertionError("retry during a running generation should be refused")
+
+
+def test_connection_pool_has_burst_capacity():
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    assert settings.DB_POOL_SIZE + settings.DB_MAX_OVERFLOW >= 6
+
+
+def test_product_digest_is_far_smaller_than_the_full_spec():
+    import json
+
+    from app.services.generation.agents.product import ProductOutput
+
+    def feature(n):
+        return {
+            "name": f"Feature {n}",
+            "module": "Core",
+            "description": "d" * 280,
+            "userStory": "u" * 200,
+            "priority": "Must" if n < 3 else "Should",
+            "acceptanceCriteria": ["a" * 160] * 5,
+            "effort": "M",
+            "dependencies": [],
+            "addresses": "x" * 160,
+        }
+
+    spec = ProductOutput.model_validate(
+        {
+            "features": [feature(i) for i in range(15)],
+            "outOfScope": ["cut one", "cut two"],
+            "dataEntities": [
+                {"name": f"E{i}", "fields": ["id uuid", "name text"]}
+                for i in range(2)
+            ],
+            "nonFunctional": ["nf one", "nf two"],
+            "phases": [
+                {
+                    "name": f"Phase {i}",
+                    "weeks": 2,
+                    "deliverables": ["d one", "d two"],
+                    "acceptanceCriteria": ["c one"],
+                    "primarySkill": "Backend",
+                    "features": [f"Feature {i}"],
+                }
+                for i in range(3)
+            ],
+        }
+    )
+
+    full = len(spec.model_dump_json(by_alias=True))
+    small = len(json.dumps(spec.digest(), default=str))
+    assert small * 4 < full, f"digest {small} is not materially smaller than {full}"
+    assert all(f.name in json.dumps(spec.digest(), default=str) for f in spec.features)
+
+
+def test_unretryable_status_codes_are_not_resent():
+    from app.services.generation.agent_service import NON_RETRYABLE_STATUSES
+
+    assert 413 in NON_RETRYABLE_STATUSES
+    assert 429 not in NON_RETRYABLE_STATUSES
+    assert 500 not in NON_RETRYABLE_STATUSES
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

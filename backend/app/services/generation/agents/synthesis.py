@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
@@ -67,7 +69,7 @@ async def run_synthesis(
             market=agent_json(market),
             competitors=agent_json(competitor),
             personas=agent_json(persona),
-            product=agent_json(product),
+            product=json.dumps(product.digest(), default=str),
             strategy=agent_json(strategy),
             scorecard=agent_json(scorecard),
             techstack=agent_json(tech_stack),

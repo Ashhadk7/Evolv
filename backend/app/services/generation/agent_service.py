@@ -31,6 +31,8 @@ RETRY_FAIL_FAST_SECONDS = 120.0
 
 RETRY_BUDGET_SECONDS = 300.0
 
+NON_RETRYABLE_STATUSES = frozenset({400, 401, 403, 404, 413, 422})
+
 _CONCURRENCY: asyncio.Semaphore | None = None
 
 
@@ -138,6 +140,11 @@ async def call_agent(
                     )
                     await asyncio.sleep(delay + random.uniform(0.5, 2.5))
                     continue
+                if response.status_code in NON_RETRYABLE_STATUSES:
+                    raise AgentServiceError(
+                        f"Groq rejected the request for {payload['model']} with "
+                        f"{response.status_code}; retrying the same request cannot help."
+                    )
                 response.raise_for_status()
                 choice = response.json()["choices"][0]
                 if choice.get("finish_reason") == "length":

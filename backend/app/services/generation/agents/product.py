@@ -71,6 +71,34 @@ class ProductOutput(BaseModel):
     non_functional: list[NonFunctional] = Field(alias="nonFunctional", min_length=2, max_length=6)
     phases: list[ProductPhase] = Field(min_length=3, max_length=6)
 
+
+    def digest(self) -> dict:
+        """A compact view for agents that reason about the build without owning it.
+
+        The full spec exists so a developer can implement from it; the scorecard
+        and synthesis only judge shape and scale. Sending them every acceptance
+        criterion costs tens of thousands of prompt characters and can push the
+        request past the provider's payload limit.
+        """
+        return {
+            "features": [
+                {"name": f.name, "module": f.module, "priority": f.priority, "effort": f.effort}
+                for f in self.features
+            ],
+            "outOfScope": self.out_of_scope,
+            "dataEntities": [e.name for e in self.data_entities],
+            "nonFunctional": self.non_functional,
+            "phases": [
+                {
+                    "name": ph.name,
+                    "weeks": ph.weeks,
+                    "primarySkill": ph.primary_skill,
+                    "features": ph.features,
+                }
+                for ph in self.phases
+            ],
+        }
+
     @model_validator(mode="after")
     def _check_feature_quality(self) -> ProductOutput:
         names = [f.name.strip().lower() for f in self.features]
@@ -145,6 +173,21 @@ async def run_product(
 
 
 PHASE_WEEK_TOLERANCE = 0.2
+MIN_ROADMAP_WEEKS = 3
+MAX_ROADMAP_WEEKS = 72
+
+
+def roadmap_weeks(weeks: int) -> int:
+    """The founder's timeline clamped to what a roadmap can actually express.
+
+    phases is 3-6 entries of 1-12 weeks, so the shortest roadmap that can exist
+    is 3 weeks and the longest 72. Asking for a 2-week build made the prompt and
+    the schema contradict each other, and the model burned every retry trying to
+    satisfy both. A timeline outside the range is not rejected here: the
+    scorecard judges whether the founder's resources fit the scope, and it can
+    only do that if the blueprint gets generated.
+    """
+    return min(max(weeks, MIN_ROADMAP_WEEKS), MAX_ROADMAP_WEEKS)
 
 
 def _fits_timeline(weeks: int) -> Callable[[ProductOutput], None] | None:
@@ -157,14 +200,15 @@ def _fits_timeline(weeks: int) -> Callable[[ProductOutput], None] | None:
     if weeks <= 0:
         return None
 
-    low, high = weeks * (1 - PHASE_WEEK_TOLERANCE), weeks * (1 + PHASE_WEEK_TOLERANCE)
+    target = roadmap_weeks(weeks)
+    low, high = target * (1 - PHASE_WEEK_TOLERANCE), target * (1 + PHASE_WEEK_TOLERANCE)
 
     def check(spec: ProductOutput) -> None:
         planned = sum(phase.weeks for phase in spec.phases)
         if not low <= planned <= high:
             raise ValueError(
-                f"Phase weeks total {planned} but the founder's timeline is about "
-                f"{weeks} weeks. Re-scope the phases so they sum to roughly {weeks}."
+                f"Phase weeks total {planned} but the roadmap should cover about "
+                f"{target} weeks. Re-scope the phases so they sum to roughly {target}."
             )
 
     return check
@@ -180,9 +224,17 @@ def _timeline_budget(weeks: int) -> str:
     """
     if weeks <= 0:
         return "The founder gave no usable timeline — size the phases to the scope."
+    target = roadmap_weeks(weeks)
+    note = (
+        f" The founder asked for about {weeks} weeks, which is shorter than the "
+        "smallest roadmap this format allows, so plan the shortest honest build "
+        "and let the assessment judge whether that fits their resources."
+        if target != weeks
+        else ""
+    )
     return (
-        f"The founder's stated timeline is about {weeks} weeks. Your phase weeks "
-        f"MUST sum to roughly {weeks} (within ~20%) — scope the phases to fit it, "
-        "and if the scope genuinely cannot fit, cut features to 'Could' rather "
-        "than pretending the build is shorter than it is."
+        f"Plan a roadmap of about {target} weeks in total. Your phase weeks MUST "
+        f"sum to roughly {target} (within ~20%) — scope the phases to fit, and if "
+        "the scope genuinely cannot fit, cut features to 'Could' rather than "
+        f"pretending the build is shorter than it is.{note}"
     )

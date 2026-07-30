@@ -40,6 +40,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
   const [completedAgents, setCompletedAgents] = useState<string[]>([]);
 
   const progress = Math.round((completedAgents.length / FORGE_AGENTS.length) * 100);
+  const notes = notesByField(intakeReview);
 
   const startGeneration = async () => {
     if (!idea.trim() || !industry.trim()) return;
@@ -129,8 +130,11 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     value={idea}
                     onChange={(event) => setIdea(event.target.value)}
                     placeholder="e.g. An AI platform that helps small restaurants optimise menu pricing dynamically..."
-                    className="min-h-[110px] w-full resize-none rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-4 py-[13px] font-[inherit] text-[13px] leading-[1.6] text-[#1a2e26] outline-none"
+                    className={`min-h-[110px] w-full resize-none rounded-xl border px-4 py-[13px] font-[inherit] text-[13px] leading-[1.6] text-[#1a2e26] outline-none ${
+                      notes.idea ? FLAGGED_INPUT[notes.idea.tone] : "border-[#d8e8e0] bg-[#f5f8f6]"
+                    }`}
                   />
+                  <FieldNoteText note={notes.idea} />
                 </div>
 
                 <div>
@@ -141,8 +145,11 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     value={industry}
                     onChange={(event) => setIndustry(event.target.value)}
                     placeholder="Restaurant tech, LogisticsTech, AgriTech…"
-                    className="mb-2.5 h-11 w-full rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-3.5 font-[inherit] text-[13px] text-[#1a2e26] outline-none"
+                    className={`mb-2.5 h-11 w-full rounded-xl border px-3.5 font-[inherit] text-[13px] text-[#1a2e26] outline-none ${
+                      notes.industry ? FLAGGED_INPUT[notes.industry.tone] : "border-[#d8e8e0] bg-[#f5f8f6]"
+                    }`}
                   />
+                  <FieldNoteText note={notes.industry} />
                   <div className="flex flex-wrap gap-2">
                     {WORKSPACE_INDUSTRIES.map((ind) => (
                       <button
@@ -167,36 +174,42 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     value={targetCustomer}
                     onChange={setTargetCustomer}
                     placeholder="small clinics, founders, restaurant owners"
+                    note={notes.target_customer}
                   />
                   <Field
                     label="Stage"
                     value={stage}
                     onChange={setStage}
                     placeholder="Idea, validation, MVP, launched"
+                    note={notes.stage}
                   />
                   <Field
                     label="Estimated budget"
                     value={budget}
                     onChange={setBudget}
                     placeholder="$5K, $25K, PKR 2M"
+                    note={notes.budget}
                   />
                   <Field
                     label="Timeline"
                     value={timeline}
                     onChange={setTimeline}
                     placeholder="8 weeks, 3 months"
+                    note={notes.timeline}
                   />
                   <Field
                     label="Region"
                     value={region}
                     onChange={setRegion}
                     placeholder="Pakistan, US, global"
+                    note={notes.region}
                   />
                   <Field
                     label="Monetization"
                     value={monetization}
                     onChange={setMonetization}
                     placeholder="Subscription, commission, freemium"
+                    note={notes.monetization}
                   />
                 </div>
 
@@ -206,12 +219,14 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     value={problem}
                     onChange={setProblem}
                     placeholder="What painful workflow or need are you solving?"
+                    note={notes.problem}
                   />
                   <LongField
                     label="Proposed solution"
                     value={solution}
                     onChange={setSolution}
                     placeholder="How do you think the product should solve it?"
+                    note={notes.solution}
                   />
                 </div>
 
@@ -221,6 +236,7 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     value={constraints}
                     onChange={setConstraints}
                     placeholder="Must-haves, limits, compliance, integrations"
+                    note={notes.constraints}
                   />
                 </div>
 
@@ -354,15 +370,48 @@ const INTAKE_FIELD_LABEL: Record<IntakeFieldName, string> = {
 
 const fieldLabel = (field: IntakeFieldName) => INTAKE_FIELD_LABEL[field] ?? field;
 
-function ReviewItem({ tag, headline, hint }: { tag: string; headline: string; hint: string }) {
+const FLAGGED_INPUT = {
+  ask: "border-[#e6c98a] bg-[#fdf8ec]",
+  block: "border-[#e8b5a3] bg-[#fff6f2]",
+} as const;
+
+const NOTE_TEXT = { ask: "text-[#8a6516]", block: "text-[#9b4a2f]" } as const;
+
+export interface FieldNote {
+  question: string;
+  hint: string;
+  tone: "ask" | "block";
+}
+
+function notesByField(review: IntakeReview | null): Partial<Record<IntakeFieldName, FieldNote>> {
+  if (!review) return {};
+  const notes: Partial<Record<IntakeFieldName, FieldNote>> = {};
+  const tone = review.verdict === "block" ? "block" : "ask";
+  for (const gap of review.gaps) {
+    notes[gap.field] = { question: gap.question, hint: gap.suggestion, tone };
+  }
+  for (const conflict of review.conflicts) {
+    const others = conflict.fields.map(fieldLabel).join(" and ");
+    for (const field of conflict.fields) {
+      notes[field] = {
+        question: conflict.question,
+        hint: `${conflict.conflict} (${others} disagree)`,
+        tone,
+      };
+    }
+  }
+  return notes;
+}
+
+function FieldNoteText({ note }: { note?: FieldNote }) {
+  if (!note) return null;
   return (
-    <li className="border-t border-[#efe2c4] pt-2.5 first:border-t-0 first:pt-0">
-      <div className="text-[10px] font-bold tracking-[0.06em] text-[#a98436] uppercase">{tag}</div>
-      <p className="mt-1 mb-0 text-[12.5px] leading-[1.5] font-semibold text-[#4a3c1d]">
-        {headline}
+    <div className="mt-1.5">
+      <p className={`m-0 text-[12px] leading-[1.45] font-semibold ${NOTE_TEXT[note.tone]}`}>
+        {note.question}
       </p>
-      <p className="mt-1 mb-0 text-[12px] leading-[1.5] text-[#7a6a45]">{hint}</p>
-    </li>
+      <p className="text-bp-muted m-0 mt-0.5 text-[11.5px] leading-[1.45]">{note.hint}</p>
+    </div>
   );
 }
 
@@ -381,25 +430,10 @@ function IntakeReviewPanel({ review }: { review: IntakeReview }) {
       >
         {review.reason}
       </p>
-      {(review.conflicts.length > 0 || review.gaps.length > 0) && (
-        <ul className="m-0 mt-3 flex list-none flex-col gap-2.5 p-0">
-          {review.conflicts.map((conflict, index) => (
-            <ReviewItem
-              key={`conflict-${index}`}
-              tag={conflict.fields.map(fieldLabel).join("  vs  ")}
-              headline={conflict.conflict}
-              hint={conflict.question}
-            />
-          ))}
-          {review.gaps.map((gap, index) => (
-            <ReviewItem
-              key={`gap-${index}`}
-              tag={fieldLabel(gap.field)}
-              headline={gap.question}
-              hint={gap.suggestion}
-            />
-          ))}
-        </ul>
+      {!blocked && (
+        <p className="text-bp-muted m-0 mt-1.5 text-[11.5px] leading-[1.45]">
+          Answer the highlighted fields below, then generate again.
+        </p>
       )}
     </div>
   );
@@ -410,11 +444,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  note,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  note?: FieldNote;
 }) {
   return (
     <div>
@@ -425,8 +461,11 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-3.5 font-[inherit] text-[13px] text-[#1a2e26] outline-none"
+        className={`h-11 w-full rounded-xl border px-3.5 font-[inherit] text-[13px] text-[#1a2e26] outline-none ${
+          note ? FLAGGED_INPUT[note.tone] : "border-[#d8e8e0] bg-[#f5f8f6]"
+        }`}
       />
+      <FieldNoteText note={note} />
     </div>
   );
 }
@@ -436,11 +475,13 @@ function LongField({
   value,
   onChange,
   placeholder,
+  note,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  note?: FieldNote;
 }) {
   return (
     <div>
@@ -451,8 +492,11 @@ function LongField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="min-h-[86px] w-full resize-none rounded-xl border border-[#d8e8e0] bg-[#f5f8f6] px-3.5 py-3 font-[inherit] text-[13px] leading-[1.5] text-[#1a2e26] outline-none"
+        className={`min-h-[86px] w-full resize-none rounded-xl border px-3.5 py-3 font-[inherit] text-[13px] leading-[1.5] text-[#1a2e26] outline-none ${
+          note ? FLAGGED_INPUT[note.tone] : "border-[#d8e8e0] bg-[#f5f8f6]"
+        }`}
       />
+      <FieldNoteText note={note} />
     </div>
   );
 }

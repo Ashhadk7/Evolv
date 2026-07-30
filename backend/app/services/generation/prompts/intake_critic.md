@@ -43,4 +43,6 @@ Every conflict names the fields involved, states the contradiction, and asks whi
 
 When the verdict is "proceed", return empty gaps and conflicts.
 
+When the verdict is "block", still report a gap for each field that caused it, so the founder can see which box to fix. For blocked input the `question` asks for what the field should contain and the `suggestion` says how to think about it, exactly as for "ask".
+
 Return JSON only.
