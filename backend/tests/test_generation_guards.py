@@ -510,6 +510,28 @@ def test_monthly_cost_must_be_a_number():
     )
 
 
+def test_truncated_response_is_told_to_be_shorter():
+    from app.services.generation.agent_service import TruncatedResponseError
+
+    assert issubclass(TruncatedResponseError, ValueError)
+    message = str(TruncatedResponseError("cut off before the JSON finished"))
+    assert "cut off" in message
+
+
+def test_generation_deadline_matches_the_client_poll_window():
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    assert 1 <= settings.GROQ_MAX_CONCURRENCY <= 8
+    assert settings.GENERATION_DEADLINE_SECONDS <= 12 * 60
+
+
+def test_agent_concurrency_is_a_single_process_wide_gate():
+    from app.services.generation import agent_service
+
+    assert agent_service._groq_concurrency() is agent_service._groq_concurrency()
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

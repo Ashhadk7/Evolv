@@ -31,7 +31,21 @@ RETRY_FAIL_FAST_SECONDS = 120.0
 
 RETRY_BUDGET_SECONDS = 300.0
 
-_GROQ_CONCURRENCY = asyncio.Semaphore(1)
+_CONCURRENCY: asyncio.Semaphore | None = None
+
+
+def _groq_concurrency() -> asyncio.Semaphore:
+    """One semaphore for the process, sized from settings on first use.
+
+    Groq's free tier bills tokens per minute, and a single agent call is large
+    enough that even two in flight blow the window and keep re-blowing it on
+    reset, so the pipeline never finishes. A paid key with real TPM headroom can
+    raise GROQ_MAX_CONCURRENCY without touching this code.
+    """
+    global _CONCURRENCY
+    if _CONCURRENCY is None:
+        _CONCURRENCY = asyncio.Semaphore(get_settings().GROQ_MAX_CONCURRENCY)
+    return _CONCURRENCY
 
 
 class AgentServiceError(RuntimeError):
@@ -40,6 +54,15 @@ class AgentServiceError(RuntimeError):
 
 class AgentRateLimitError(AgentServiceError):
     """Raised when the provider's rate limit cannot be waited out in-request."""
+
+
+class TruncatedResponseError(ValueError):
+    """Raised when the model hit max_tokens before closing its JSON.
+
+    A parse error cannot distinguish this from a malformed answer, so retrying
+    would repeat the same overlong response. The provider reports it directly
+    via finish_reason, which lets the retry ask for a shorter one instead.
+    """
 
 
 def _rate_limit_error(model: str, delay: float) -> AgentRateLimitError:
@@ -101,7 +124,7 @@ async def call_agent(
     async with groq_http_client() as client:
         while True:
             try:
-                async with _GROQ_CONCURRENCY:
+                async with _groq_concurrency():
                     response = await client.post(url, headers=headers, json=payload)
                 if response.status_code == 429:
                     delay = _retry_delay(response, attempt)
@@ -116,7 +139,14 @@ async def call_agent(
                     await asyncio.sleep(delay + random.uniform(0.5, 2.5))
                     continue
                 response.raise_for_status()
-                content = response.json()["choices"][0]["message"]["content"]
+                choice = response.json()["choices"][0]
+                if choice.get("finish_reason") == "length":
+                    raise TruncatedResponseError(
+                        "Your previous response was cut off before the JSON finished. "
+                        "Return the same structure with fewer list items and shorter prose "
+                        "so the whole object fits."
+                    )
+                content = choice["message"]["content"]
                 result = _parse_agent_json(schema, content)
                 if verify is not None:
                     verify(result)

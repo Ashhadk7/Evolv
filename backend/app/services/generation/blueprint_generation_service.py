@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -12,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.blueprint import Blueprint, BlueprintVersion, VersionState
 from app.models.user import User
@@ -44,6 +46,15 @@ from app.services.generation.text import weeks_from_timeline
 from app.services.matching_service import parse_role_skills, rate_anchor_for_skills
 
 logger = logging.getLogger(__name__)
+
+
+class GenerationTimeout(RuntimeError):
+    """The pipeline outlived the window the founder is told to wait.
+
+    Each agent call can ride out rate limits for minutes, so nine of them can
+    outlast the client's poll by a wide margin. Stopping at the deadline keeps
+    the founder's view and the server's behaviour describing the same run.
+    """
 
 CONTENT_SCHEMA_VERSION = 6
 ALL_AGENTS = [
@@ -161,8 +172,14 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
     """
     db = SessionLocal()
     completed: list[str] = []
+    deadline = time.monotonic() + get_settings().GENERATION_DEADLINE_SECONDS
+
+    def check_deadline() -> None:
+        if time.monotonic() > deadline:
+            raise GenerationTimeout()
 
     async def track(name: str, coro):
+        check_deadline()
         result = await coro
         completed.append(name)
         _update_generation(db, blueprint_id, completedAgents=list(completed))
@@ -270,6 +287,17 @@ async def run_generation(blueprint_id: UUID, payload: BlueprintGenerateRequest) 
             synthesis=synthesis,
         )
         _finalize(db, blueprint_id, content)
+    except GenerationTimeout:
+        logger.warning("Blueprint generation exceeded its deadline for %s", blueprint_id)
+        _update_generation(
+            db,
+            blueprint_id,
+            status="failed",
+            error=(
+                "Generation took longer than expected, most likely provider rate limits. "
+                "Please retry."
+            ),
+        )
     except (AgentRateLimitError, EnrichmentError) as exc:
         logger.warning("Blueprint generation blocked for %s: %s", blueprint_id, exc)
         _update_generation(db, blueprint_id, status="failed", error=str(exc))
