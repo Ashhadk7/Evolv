@@ -158,6 +158,28 @@
           }
         },
         {
+          "name": "Sign Out (Revoke Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signout"
+              ]
+            }
+          }
+        },
+        {
           "name": "Forgot Password Request",
           "request": {
             "method": "POST",

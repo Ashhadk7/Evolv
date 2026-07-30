@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from httpx import HTTPError
+from httpx import ConnectError, HTTPError
 from supabase import Client, create_client
 
 try:
@@ -121,10 +121,12 @@ class SupabaseAuthClient:
         except AUTH_API_ERRORS as exc:
             raise InvalidCredentialsError("Invalid email or password.") from exc
         except HTTPError as exc:
-            logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
-            raise AuthProviderError(
-                "Could not reach the authentication service. Please try again shortly."
-            ) from exc
+            if isinstance(exc, ConnectError):
+                logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
+                raise AuthProviderError(
+                    "Could not reach the authentication service. Please try again shortly."
+                ) from exc
+            raise InvalidCredentialsError("Invalid email or password.") from exc
 
         user = self._read_user(response)
         session = self._read_session(response)
@@ -217,6 +219,12 @@ class SupabaseAuthClient:
             raise AuthProviderError(
                 provider_detail or "Supabase Auth could not update the password."
             ) from exc
+
+    def sign_out(self, access_token: str) -> None:
+        try:
+            self._auth_admin.sign_out(access_token)
+        except SUPABASE_CLIENT_ERRORS as exc:
+            logger.warning("Supabase Auth sign-out call failed: %s", exc)
 
     def _create_client(self, key: str) -> Client:
         return create_client(self._supabase_url, key.strip())

@@ -36,6 +36,7 @@ from app.services.exceptions import (
     ProfilePersistenceError,
 )
 from app.services.supabase_auth import SupabaseAuthClient
+from supabase_auth.errors import AuthApiError
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,10 @@ class AuthService:
         if not app_user.email_verified:
             raise EmailOtpError("Email verification is required before sign in.")
 
-        auth_session = self._auth_client.sign_in(signin)
+        try:
+            auth_session = self._auth_client.sign_in(signin)
+        except AuthApiError:
+            raise InvalidCredentialsError("Invalid email or password.")
         if auth_session.user_id != app_user.id:
             raise AuthUserMismatchError("Auth user does not match application user.")
 
@@ -183,6 +187,9 @@ class AuthService:
             expires_in=auth_session.expires_in,
             expires_at=auth_session.expires_at,
         )
+
+    def signout(self, access_token: str) -> None:
+        self._auth_client.sign_out(access_token)
 
     def forgot_password(
         self, db: Session, forgot_request: ForgotPasswordRequest

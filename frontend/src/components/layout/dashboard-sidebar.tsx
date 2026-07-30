@@ -20,6 +20,7 @@ import {
 } from "@/features/notifications/notification-events";
 import type { BadgeKey, NavSection } from "@/config/navigation";
 import { clearAllUserData } from "@/features/auth/lib/session";
+import { signOut } from "@/features/auth/lib/auth-api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ONE sidebar for every dashboard. Founder / Developer differ only by the props
@@ -285,11 +286,16 @@ export function DashboardSidebar({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setProfileMenuOpen(false);
     if (onLogout) {
       onLogout();
       return;
+    }
+    try {
+      await signOut();
+    } catch {
+      /* ignore error during signout request */
     }
     clearAllUserData();
     window.location.replace("/sign-in");

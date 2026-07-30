@@ -105,3 +105,7 @@ export async function resetPassword(
     body: { email, otp, new_password: newPassword },
   });
 }
+
+export async function signOut(): Promise<void> {
+  await apiFetch("/auth/signout", { method: "POST", auth: true });
+}
