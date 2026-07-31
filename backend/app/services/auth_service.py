@@ -36,7 +36,15 @@ from app.services.exceptions import (
     ProfilePersistenceError,
 )
 from app.services.supabase_auth import SupabaseAuthClient
-from supabase_auth.errors import AuthApiError
+
+# supabase-py renamed its auth package from `gotrue` to `supabase_auth` in
+# 2.18.1. pyproject pins `supabase<2.18.1`, so a correctly-installed environment
+# actually ships `gotrue` — import that when the new name is absent, otherwise
+# the app fails to boot with ModuleNotFoundError.
+try:
+    from supabase_auth.errors import AuthApiError
+except ModuleNotFoundError:  # pragma: no cover - depends on the resolved supabase version
+    from gotrue.errors import AuthApiError
 
 logger = logging.getLogger(__name__)
 
