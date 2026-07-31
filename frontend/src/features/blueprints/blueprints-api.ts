@@ -219,6 +219,7 @@ export function blueprintFromWire(data: BlueprintWire): Blueprint {
     name: version.name,
     industry: version.industry,
     ideaDesc: version.idea_desc,
+    createdAt: data.created_at,
     isPublic: data.visibility === "public",
     status: data.visibility === "public" ? "PUBLISHED" : "DRAFT",
     viability: version.viability,

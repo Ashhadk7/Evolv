@@ -1,89 +1,80 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, MagnifyingGlass, CaretDown } from "@phosphor-icons/react";
-import type { Blueprint } from "@/features/blueprints/types";
-import type { FounderNetworkMessageTarget } from "@/features/network/types";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
+import {
+  ChartBar,
+  MagnifyingGlass,
+  Notebook,
+  PlusCircle,
+  Rocket,
+  UsersThree,
+} from "@phosphor-icons/react";
 import {
   deleteBlueprint,
-  retryBlueprint,
-  pollGeneration,
   getBlueprint,
-  blueprintGeneration,
-  setBlueprintVisibility,
+  pollGeneration,
+  retryBlueprint,
 } from "@/features/blueprints/blueprints-api";
-import { getApiErrorMessage } from "@/lib/api";
-import { IdeaCard } from "./idea-card";
-import { ForgeModal } from "./forge-modal";
-import { DeleteIdeaModal } from "./delete-idea-modal";
-import { WorkspaceSidebar } from "./workspace-sidebar";
 import { BlueprintDetail } from "@/features/blueprints/components/blueprint-detail";
+import type { Blueprint } from "@/features/blueprints/types";
+import type { FounderNetworkMessageTarget } from "@/features/network/types";
+import { useWorkspaceMatches } from "@/features/workspace/lib/use-workspace-matches";
 import {
-  DEFAULT_BLUEPRINTS,
-  WORKSPACE_SORT_OPTIONS,
-  WORKSPACE_STAGES,
-} from "@/features/workspace/data/workspace-data";
+  filterBlueprints,
+  isBlueprintReady,
+  sortBlueprints,
+  workspaceStats,
+  type WorkspaceSort,
+  type WorkspaceStage,
+} from "@/features/workspace/lib/workspace-metrics";
+import { getApiErrorMessage } from "@/lib/api";
+import { DeleteIdeaModal } from "./delete-idea-modal";
+import { ForgeModal } from "./forge-modal";
+import { IdeaCard } from "./idea-card";
+import { WorkspaceFilters } from "./workspace-filters";
+import { WorkspaceKpiCard } from "./workspace-kpi-card";
 
-/* ------------------------------------------------------- */
-/* Types                                                    */
-/* ------------------------------------------------------- */
-
-/* ------------------------------------------------------- */
-/* Main export                                            */
-/* ------------------------------------------------------- */
-interface Props {
-  initialBlueprints?: Blueprint[];
-  onBlueprintsChange?: (bps: Blueprint[]) => void;
+interface WorkspaceTabProps {
+  blueprints: Blueprint[];
+  onBlueprintsChange: (update: Blueprint[] | ((prev: Blueprint[]) => Blueprint[])) => void;
   openBlueprintId?: string | null;
   onClearOpen?: () => void;
   triggerForge?: boolean;
   onClearForge?: () => void;
   profileComplete?: boolean;
-  onCompleteProfile?: () => void;
   onMessage?: (contact: FounderNetworkMessageTarget) => void;
   onRequireProfile?: (afterComplete?: () => void) => void;
 }
 
 export function WorkspaceTab({
-  initialBlueprints = DEFAULT_BLUEPRINTS,
+  blueprints,
   onBlueprintsChange,
   openBlueprintId,
   onClearOpen,
   triggerForge,
   onClearForge,
   profileComplete = true,
-  onCompleteProfile,
   onMessage,
   onRequireProfile,
-}: Props) {
+}: WorkspaceTabProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [blueprints, setBlueprints] = useState<Blueprint[]>(initialBlueprints);
+
   const [forgeOpen, setForgeOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Blueprint | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [openInEdit, setOpenInEdit] = useState(false);
 
-  // Keep local state in sync when the store's blueprints change (a project
-  // started elsewhere, an edit in another tab, a background refetch). Without
-  // this, `blueprints` goes stale and the next local `update()` would persist
-  // that stale snapshot back over whatever changed. Adjust during render off
-  // the previous prop rather than in an effect — a single render pass instead
-  // of a cascading post-commit re-render (React "info from previous renders").
-  const [prevInitial, setPrevInitial] = useState(initialBlueprints);
-  if (initialBlueprints !== prevInitial) {
-    setPrevInitial(initialBlueprints);
-    setBlueprints(initialBlueprints);
-  }
-
-  // Use searchParams to initialize without flashing
-  const bpParam = searchParams.get("blueprint");
-  const [viewingId, setViewingId] = useState<string | null>(bpParam ?? openBlueprintId ?? null);
+  // Initialise from the URL so a deep-linked blueprint renders without a flash.
+  const [viewingId, setViewingId] = useState<string | null>(
+    searchParams.get("blueprint") ?? openBlueprintId ?? null
+  );
 
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState("All Stages");
-  const [sort, setSort] = useState("Viability");
+  const [stage, setStage] = useState<WorkspaceStage>("All Stages");
+  const [sort, setSort] = useState<WorkspaceSort>("Viability");
 
   useEffect(() => {
     if (triggerForge)
@@ -92,39 +83,39 @@ export function WorkspaceTab({
         onClearForge?.();
       });
   }, [triggerForge, onClearForge]);
+
   useEffect(() => {
     if (openBlueprintId) queueMicrotask(() => setViewingId(openBlueprintId));
   }, [openBlueprintId]);
 
-  // Sync to URL to persist across refreshes
+  // Persist the open blueprint across refreshes.
   useEffect(() => {
-    const p = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams.toString());
     if (viewingId) {
-      if (p.get("blueprint") !== viewingId) {
-        p.set("blueprint", viewingId);
-        router.push(`?${p.toString()}`, { scroll: false });
+      if (params.get("blueprint") !== viewingId) {
+        params.set("blueprint", viewingId);
+        router.push(`?${params.toString()}`, { scroll: false });
       }
-    } else {
-      if (p.has("blueprint")) {
-        p.delete("blueprint");
-        router.push(`?${p.toString()}`, { scroll: false });
-      }
+    } else if (params.has("blueprint")) {
+      params.delete("blueprint");
+      router.push(`?${params.toString()}`, { scroll: false });
     }
   }, [viewingId, router, searchParams]);
 
-  const update = (bps: Blueprint[]) => {
-    setBlueprints(bps);
-    onBlueprintsChange?.(bps);
-  };
+  const visible = sortBlueprints(filterBlueprints(blueprints, { search, stage }), sort);
+  const stats = workspaceStats(blueprints);
+  // Only completed blueprints have the roles the matcher scores against, so
+  // asking for the others' matches would spend a request per guaranteed-empty result.
+  const matches = useWorkspaceMatches(blueprints.filter(isBlueprintReady).map((bp) => bp.id));
+  const viewingBlueprint = blueprints.find((bp) => bp.id === viewingId);
 
-  // Delete server-side first, then drop it from the list — so the card only
-  // disappears once the row is actually gone. On error the card stays put.
+  // Delete server-side first so the card only disappears once the row is gone.
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
       await deleteBlueprint(pendingDelete.id);
-      update(blueprints.filter((b) => b.id !== pendingDelete.id));
+      onBlueprintsChange((prev) => prev.filter((bp) => bp.id !== pendingDelete.id));
       if (viewingId === pendingDelete.id) setViewingId(null);
       setPendingDelete(null);
     } catch (err) {
@@ -134,255 +125,151 @@ export function WorkspaceTab({
     }
   };
 
-  // Retry re-runs generation on the same row. Update just this card via the
-  // functional form so the long poll can't clobber concurrent changes to other
-  // cards; the store cache reconciles on the next load from the backend.
+  // Retry re-runs generation on the same row, then polls it to completion.
   const handleRetry = async (bp: Blueprint) => {
     const applyOne = (updated: Blueprint) =>
-      setBlueprints((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      onBlueprintsChange((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     try {
-      applyOne(await retryBlueprint(bp.id)); // reset to `generating`
-      applyOne(await pollGeneration(bp.id)); // resolved `completed`
+      applyOne(await retryBlueprint(bp.id));
+      applyOne(await pollGeneration(bp.id));
     } catch {
-      // Poll threw (failed or timed out) — re-fetch so the card shows the real
-      // backend state (failed + error, or still generating).
+      // The poll failed or timed out — re-fetch so the card shows the real
+      // backend state rather than a stale "generating".
       const latest = await getBlueprint(bp.id).catch(() => null);
       if (latest) applyOne(latest);
     }
   };
 
-  // Toggle public/private with an optimistic update + rollback, and persist to
-  // the backend so visibility survives reload. On failure, restore prior state.
-  const handleTogglePublic = async (bp: Blueprint) => {
-    const nextPublic = !bp.isPublic;
-    const prev = blueprints;
-    update(
-      blueprints.map((b) =>
-        b.id === bp.id
-          ? { ...b, isPublic: nextPublic, status: (nextPublic ? "PUBLISHED" : "DRAFT") as "DRAFT" | "PUBLISHED" }
-          : b
-      )
-    );
-    try {
-      const saved = await setBlueprintVisibility(bp.id, nextPublic);
-      update(prev.map((b) => (b.id === bp.id ? saved : b)));
-    } catch (err) {
-      update(prev);
-      alert(getApiErrorMessage(err));
-    }
+  const openBlueprint = (bp: Blueprint, edit: boolean) => {
+    setOpenInEdit(edit);
+    setViewingId(bp.id);
   };
 
-  const viewingBP = blueprints.find((b) => b.id === viewingId);
-
-  const filtered = blueprints.filter((bp) => {
-    const matchSearch =
-      bp.name.toLowerCase().includes(search.toLowerCase()) ||
-      bp.industry.toLowerCase().includes(search.toLowerCase()) ||
-      bp.ideaDesc.toLowerCase().includes(search.toLowerCase());
-    const matchStage = stage === "All Stages" || bp.status.toLowerCase() === stage.toLowerCase();
-    return matchSearch && matchStage;
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
-    if (sort === "Viability") return b.viability - a.viability;
-    if (sort === "Impressions") return b.investorViews - a.investorViews;
-    if (sort === "Market Potential") return b.marketPotential - a.marketPotential;
-    return 0;
-  });
-
-  const pubCount = blueprints.filter((b) => b.status === "PUBLISHED").length;
-  const totalInvViews = blueprints.reduce((s, b) => s + b.investorViews, 0);
-  // Only completed blueprints have a real viability score; failed/generating
-  // ones sit at 0 and would drag the average down, so exclude them.
-  const scored = blueprints.filter((b) => blueprintGeneration(b).status === "completed");
-  const avgViability =
-    scored.length > 0
-      ? Math.round(scored.reduce((s, b) => s + b.viability, 0) / scored.length)
-      : 0;
-
-  const headerStats = [
-    { value: blueprints.length, label: "Total Ideas" },
-    { value: pubCount, label: "Published" },
-    { value: `${avgViability}%`, label: "Avg Viability" },
-    { value: totalInvViews, label: "Impressions" },
-  ];
+  if (viewingBlueprint) {
+    return (
+      <div className="bg-bp-page flex h-full flex-col overflow-hidden px-9 py-7">
+        <BlueprintDetail
+          bp={viewingBlueprint}
+          startInEdit={openInEdit}
+          onBack={() => {
+            setViewingId(null);
+            setOpenInEdit(false);
+            onClearOpen?.();
+          }}
+          onSave={(updated) =>
+            onBlueprintsChange((prev) => prev.map((bp) => (bp.id === updated.id ? updated : bp)))
+          }
+          onMessage={onMessage}
+          profileComplete={profileComplete}
+          onRequireProfile={onRequireProfile}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#f0f3f1]">
-      {/* -- Header -- */}
-      <div className="shrink-0 px-8 pt-7 pb-5">
-        <AnimatePresence mode="wait">
-          {!viewingBP ? (
-            <motion.div
-              key="header"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              {/* Title row */}
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <h1 className="text-[28px] leading-none font-black tracking-[-0.025em] text-[#1a2e26]">
-                    Founder Workspace
-                  </h1>
-                  <p className="mt-1.5 text-[13px] text-[#7a9e8e]">
-                    Manage and track your startup blueprints
-                  </p>
-                </div>
-                <button onClick={() => setForgeOpen(true)} className="bp-primary-btn">
-                  <Plus size={15} weight="bold" /> New idea
-                </button>
-              </div>
-
-              {/* Dark stats bar */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="flex overflow-hidden rounded-2xl bg-[#1a312c] shadow-[0_4px_20px_rgba(26,49,44,0.2)]"
-              >
-                {headerStats.map((s, i) => (
-                  <div
-                    key={s.label}
-                    className={`flex flex-1 flex-col items-center px-4 py-5 ${
-                      i < headerStats.length - 1 ? "border-r border-[rgba(137,215,183,0.12)]" : ""
-                    }`}
-                  >
-                    <span className="text-[26px] leading-none font-black tracking-[-0.02em] text-white">
-                      {s.value}
-                    </span>
-                    <span className="mt-1.5 text-[10px] font-semibold tracking-[0.1em] text-[#89d7b7] uppercase">
-                      {s.label}
-                    </span>
-                  </div>
-                ))}
-              </motion.div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="detail-header"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* -- Body -- */}
-      <div className="flex flex-1 gap-5 overflow-hidden px-8 pb-7">
-        {/* Left: list or detail */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <AnimatePresence mode="wait">
-            {viewingBP ? (
-              <BlueprintDetail
-                key="detail"
-                bp={viewingBP}
-                onBack={() => {
-                  setViewingId(null);
-                  onClearOpen?.();
-                }}
-                onSave={(updated) =>
-                  update(blueprints.map((b) => (b.id === updated.id ? updated : b)))
-                }
-                onMessage={onMessage}
-                profileComplete={profileComplete}
-                onRequireProfile={onRequireProfile}
-              />
-            ) : (
-              <motion.div
-                key="list"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex h-full flex-col overflow-hidden"
-              >
-                {/* Search & filter bar */}
-                <div className="mb-[18px] flex shrink-0 items-center gap-2.5">
-                  <div className="flex flex-1 items-center gap-2.5 rounded-2xl border border-[#dde8e2] bg-white px-4 py-3 shadow-[0_1px_6px_rgba(26,49,44,0.05)]">
-                    <MagnifyingGlass size={17} className="shrink-0 text-[#9ab4a4]" />
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search ideas, industries…"
-                      className="flex-1 border-none bg-transparent font-[inherit] text-[13px] text-[#1a2e26] outline-none"
-                    />
-                  </div>
-                  {[
-                    { label: stage, options: WORKSPACE_STAGES, setter: setStage },
-                    { label: `Sort: ${sort}`, options: WORKSPACE_SORT_OPTIONS, setter: setSort },
-                  ].map(({ label, options, setter }) => (
-                    <div key={label} className="relative">
-                      <select
-                        onChange={(e) => setter(e.target.value)}
-                        className="min-w-[138px] cursor-pointer appearance-none rounded-2xl border border-[#dde8e2] bg-white py-3 pr-10 pl-4 font-[inherit] text-[13px] font-semibold text-[#1a2e26] shadow-[0_1px_6px_rgba(26,49,44,0.05)] outline-none"
-                      >
-                        {options.map((o) => (
-                          <option key={o}>{o}</option>
-                        ))}
-                      </select>
-                      <CaretDown
-                        size={11}
-                        className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-[#7a9e8e]"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Cards */}
-                <div className="flex flex-1 flex-col gap-[18px] overflow-y-auto pr-1">
-                  {sorted.length === 0 && (
-                    <div className="py-16 text-center text-[#7a9e8e]">
-                      <div className="mb-4 text-4xl">?</div>
-                      <div className="mb-1.5 text-sm font-bold text-[#1a2e26]">No ideas found</div>
-                      <div className="text-[13px]">
-                        Try adjusting your search or forge a new blueprint.
-                      </div>
-                    </div>
-                  )}
-                  <AnimatePresence>
-                    {sorted.map((bp, idx) => (
-                      <IdeaCard
-                        key={bp.id}
-                        bp={bp}
-                        idx={idx}
-                        onView={() => setViewingId(bp.id)}
-                        onDelete={() => setPendingDelete(bp)}
-                        onRetry={() => handleRetry(bp)}
-                        canPublish={profileComplete}
-                        onCompleteProfile={onCompleteProfile}
-                        onTogglePublic={() => handleTogglePublic(bp)}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+    <div className="bg-bp-page flex h-full flex-col overflow-hidden">
+      <header className="flex shrink-0 items-start justify-between gap-4 px-9 pt-[30px] pb-5">
+        <div>
+          <h1 className="text-bp-ink text-[28px] leading-none font-extrabold tracking-[-0.03em]">
+            Founder Workspace
+          </h1>
+          <p className="text-bp-muted mt-2 text-[13.5px]">
+            Track viability, momentum and reach across your startup blueprints.
+          </p>
         </div>
+        <button type="button" onClick={() => setForgeOpen(true)} className="bp-primary-btn">
+          <PlusCircle size={16} weight="fill" aria-hidden /> New idea
+        </button>
+      </header>
 
-        {/* Right sidebar */}
-        <AnimatePresence>
-          {!viewingBP && (
-            <motion.aside
-              key="sidebar"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ type: "spring", stiffness: 260, damping: 26 }}
-              className="w-[290px] shrink-0 overflow-y-auto"
-            >
-              <WorkspaceSidebar />
-            </motion.aside>
-          )}
-        </AnimatePresence>
+      <div className="blueprint-scroll flex-1 overflow-y-auto px-9 pt-1 pb-8">
+        <section
+          aria-label="Workspace summary"
+          className="mb-6 grid grid-cols-2 gap-[18px] lg:grid-cols-4"
+        >
+          <WorkspaceKpiCard
+            icon={<Notebook size={21} weight="duotone" />}
+            value={stats.total}
+            label="Total ideas"
+            delta={
+              stats.createdThisWeek > 0
+                ? { label: `+${stats.createdThisWeek} this week`, tone: "positive" }
+                : undefined
+            }
+          />
+          <WorkspaceKpiCard
+            icon={<Rocket size={21} weight="duotone" />}
+            value={stats.published}
+            label="Published live"
+            delta={
+              stats.drafts > 0
+                ? {
+                    label: `${stats.drafts} draft${stats.drafts === 1 ? "" : "s"} left`,
+                    tone: "neutral",
+                  }
+                : undefined
+            }
+          />
+          <WorkspaceKpiCard
+            icon={<ChartBar size={21} weight="duotone" />}
+            value={
+              <>
+                {stats.avgViability}
+                <span className="text-bp-label text-[20px]">%</span>
+              </>
+            }
+            label="Avg viability"
+            progress={stats.avgViability}
+          />
+          <WorkspaceKpiCard
+            icon={<UsersThree size={21} weight="duotone" />}
+            value={matches.loading ? "—" : matches.total}
+            label="Developer matches"
+          />
+        </section>
+
+        <WorkspaceFilters
+          search={search}
+          stage={stage}
+          sort={sort}
+          onSearchChange={setSearch}
+          onStageChange={setStage}
+          onSortChange={setSort}
+        />
+
+        {visible.length === 0 ? (
+          <div className="py-16 text-center text-[#7a9e8e]">
+            <MagnifyingGlass size={34} aria-hidden className="mx-auto text-[#b6cfc3]" />
+            <p className="text-bp-ink mt-3 text-sm font-bold">No ideas found</p>
+            <p className="mt-1.5 text-[13px]">Try a different search or forge a new blueprint.</p>
+          </div>
+        ) : (
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(360px,100%),1fr))] gap-5">
+            <AnimatePresence>
+              {visible.map((bp, index) => (
+                <IdeaCard
+                  key={bp.id}
+                  bp={bp}
+                  index={index}
+                  developers={matches.byBlueprint[bp.id] ?? []}
+                  developersLoading={matches.loading}
+                  onView={() => openBlueprint(bp, false)}
+                  onEdit={() => openBlueprint(bp, true)}
+                  onDelete={() => setPendingDelete(bp)}
+                  onRetry={() => handleRetry(bp)}
+                />
+              ))}
+            </AnimatePresence>
+          </ul>
+        )}
       </div>
 
       {forgeOpen && (
         <ForgeModal
           onClose={() => setForgeOpen(false)}
           onCreated={(bp) => {
-            update([bp, ...blueprints]);
+            onBlueprintsChange((prev) => [bp, ...prev]);
             setViewingId(bp.id);
           }}
         />
@@ -401,5 +288,3 @@ export function WorkspaceTab({
     </div>
   );
 }
-
-export { DEFAULT_BLUEPRINTS };

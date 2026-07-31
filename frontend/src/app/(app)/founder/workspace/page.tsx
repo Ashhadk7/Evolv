@@ -16,18 +16,16 @@ export default function FounderWorkspacePage() {
     setTriggerForge,
   } = useFounderDashboardStore();
   const nav = useFounderNavigation();
-  const profileComplete = isFounderProfileComplete(profile);
 
   return (
     <WorkspaceTab
-      initialBlueprints={blueprints}
+      blueprints={blueprints}
       onBlueprintsChange={saveBlueprints}
       openBlueprintId={openBlueprintId}
       onClearOpen={() => setOpenBlueprintId(null)}
       triggerForge={triggerForge}
       onClearForge={() => setTriggerForge(false)}
-      profileComplete={profileComplete}
-      onCompleteProfile={nav.handleOpenProfile}
+      profileComplete={isFounderProfileComplete(profile)}
       onMessage={nav.handleOpenNetworkMessage}
       onRequireProfile={nav.requireFounderProfile}
     />

@@ -83,6 +83,23 @@ export function matchedDeveloperToProfile(dev: MatchedDeveloperResponse): Founde
   };
 }
 
+// The backend scores developers per blueprint role, so one developer can appear
+// under several roles. Flatten to a single list keeping each developer's best
+// match score — the shape every "matched developers" surface actually renders.
+export function blueprintMatchesToProfiles(
+  response: BlueprintMatchesResponse
+): FounderContactProfile[] {
+  const best = new Map<string, FounderContactProfile>();
+  for (const role of response.roles) {
+    for (const match of role.matches) {
+      const profile = matchedDeveloperToProfile(match);
+      const existing = best.get(profile.id);
+      if (!existing || profile.match > existing.match) best.set(profile.id, profile);
+    }
+  }
+  return Array.from(best.values()).sort((a, b) => b.match - a.match);
+}
+
 export async function fetchMatchingDevelopers(
   skills: string[],
   options: { minExperience?: number; limit?: number } = {}

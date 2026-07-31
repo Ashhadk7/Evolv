@@ -12,6 +12,7 @@ const DEV_BLUEPRINT: Blueprint = {
   name: "Nexus Health",
   industry: "HealthTech",
   ideaDesc: "AI-driven diagnostics platform for early-stage oncology detection.",
+  createdAt: "2026-01-05T09:00:00Z",
   isPublic: true,
   status: "PUBLISHED",
   investorInterest: 78,
@@ -49,6 +50,7 @@ const DEV_BLUEPRINT_2: Blueprint = {
   industry: "SaaS",
   ideaDesc:
     "Last-mile delivery drone network utilizing autonomous navigation in mid-density suburban environments.",
+  createdAt: "2026-02-11T09:00:00Z",
   isPublic: true,
   status: "PUBLISHED",
   investorInterest: 61,

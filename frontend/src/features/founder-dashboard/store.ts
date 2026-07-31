@@ -16,11 +16,7 @@ import { normalizeFounderProfileForSave } from "@/features/founder-dashboard/pro
 import { loadFounderProfile, saveFounderProfile } from "@/features/profiles/profile-api";
 import { getSession } from "@/features/auth/lib/session";
 import { listBlueprints } from "@/features/blueprints/blueprints-api";
-import {
-  DEFAULT_FOUNDER_PROFILE,
-  STORAGE_KEY_BLUEPRINTS,
-  mergeFounderProfiles,
-} from "./profile";
+import { DEFAULT_FOUNDER_PROFILE, STORAGE_KEY_BLUEPRINTS, mergeFounderProfiles } from "./profile";
 
 interface FounderDashboardState {
   // ── data ──
@@ -45,7 +41,9 @@ interface FounderDashboardState {
   // ── actions (data + persistence) ──
   loadData: () => Promise<void>;
   saveProfile: (p: FounderProfile) => Promise<void>;
-  saveBlueprints: (bps: Blueprint[]) => void;
+  /** Accepts an updater so callers awaiting a request can patch one blueprint
+   *  without writing back a list snapshot that went stale while they waited. */
+  saveBlueprints: (bps: Blueprint[] | ((prev: Blueprint[]) => Blueprint[])) => void;
   // ── granular setters ──
   setOpenBlueprintId: (id: string | null) => void;
   setTriggerForge: (v: boolean) => void;
@@ -113,12 +111,15 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   },
 
   saveBlueprints: (bps) => {
-    set({ blueprints: bps });
-    try {
-      localStorage.setItem(STORAGE_KEY_BLUEPRINTS, JSON.stringify(bps));
-    } catch {
-      /* ignore */
-    }
+    set((state) => {
+      const next = typeof bps === "function" ? bps(state.blueprints) : bps;
+      try {
+        localStorage.setItem(STORAGE_KEY_BLUEPRINTS, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return { blueprints: next };
+    });
   },
 
   setOpenBlueprintId: (id) => set({ openBlueprintId: id }),

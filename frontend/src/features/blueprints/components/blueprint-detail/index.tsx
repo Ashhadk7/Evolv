@@ -79,6 +79,7 @@ export function BlueprintDetail({
   onMessage,
   profileComplete = true,
   onRequireProfile,
+  startInEdit = false,
 }: {
   bp: Blueprint;
   onBack: () => void;
@@ -86,6 +87,8 @@ export function BlueprintDetail({
   onMessage?: (contact: FounderNetworkMessageTarget) => void;
   profileComplete?: boolean;
   onRequireProfile?: (afterComplete?: () => void) => void;
+  /** Opens straight into edit mode — used by the workspace card's Edit action. */
+  startInEdit?: boolean;
 }) {
   const reduce = useReducedMotion();
   const [currentBp, setCurrentBp] = useState<Blueprint>(bp);
@@ -120,7 +123,7 @@ export function BlueprintDetail({
     updateTechStackLayer,
     saveEdits,
     cancelEdits,
-  } = useBlueprintEditor(currentBp, content, onSave, showToast);
+  } = useBlueprintEditor(currentBp, content, onSave, showToast, startInEdit);
 
   // Auto-polling effect when refinement starts
   const startAutoPolling = (section: string) => {

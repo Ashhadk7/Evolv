@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FounderContactProfile } from "@/features/network/types";
 import {
+  blueprintMatchesToProfiles,
   fetchBlueprintMatches,
   matchedDeveloperToProfile,
   type BlueprintMatchesResponse,
@@ -78,17 +79,5 @@ export function useBlueprintMatches(
     developers: role.matches.map(matchedDeveloperToProfile),
   }));
 
-  // Build a de-duped list of all developers, keeping highest match_score.
-  const seen = new Map<string, FounderContactProfile>();
-  for (const role of roleMatches) {
-    for (const dev of role.developers) {
-      const existing = seen.get(dev.id);
-      if (!existing || dev.match > existing.match) {
-        seen.set(dev.id, dev);
-      }
-    }
-  }
-  const allDevelopers = Array.from(seen.values()).sort((a, b) => b.match - a.match);
-
-  return { allDevelopers, roleMatches, loading, error };
+  return { allDevelopers: blueprintMatchesToProfiles(response), roleMatches, loading, error };
 }

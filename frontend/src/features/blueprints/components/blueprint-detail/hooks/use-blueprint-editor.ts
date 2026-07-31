@@ -16,9 +16,10 @@ export function useBlueprintEditor(
   bp: Blueprint,
   content: BlueprintContent,
   onSave: ((updated: Blueprint) => void) | undefined,
-  showToast: (message: string) => void
+  showToast: (message: string) => void,
+  startInEdit = false
 ) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startInEdit);
   const [draftDesc, setDraftDesc] = useState(bp.ideaDesc);
   const [draftFeatures, setDraftFeatures] = useState<string[]>(bp.features);
   const [draftCost, setDraftCost] = useState(bp.cost);

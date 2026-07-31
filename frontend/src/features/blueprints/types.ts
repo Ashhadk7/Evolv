@@ -71,6 +71,9 @@ export interface Blueprint {
   name: string;
   industry: string;
   ideaDesc: string;
+  /** ISO timestamp the blueprint row was created — the only sortable/comparable
+   *  date on the entity (`updatedAt` is a pre-formatted "2d ago" label). */
+  createdAt: string;
   isPublic: boolean;
   status: "PUBLISHED" | "DRAFT";
   viability: number;
