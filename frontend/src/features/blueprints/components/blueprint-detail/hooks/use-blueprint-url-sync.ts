@@ -1,28 +1,22 @@
-// URL deep-link + browser-back sync for the blueprint detail view, extracted from blueprint-detail.tsx.
+// Back-navigation for the blueprint detail view. WorkspaceTab already owns the
+// `?blueprint=` query param (it pushes/strips it off `viewingId`), so this hook
+// no longer keeps its own separate history entries — it only decides how to
+// leave: real browser back when there's somewhere to go back to, or a direct
+// close when the blueprint URL was opened with no prior history (e.g. a
+// bookmarked/shared link in a fresh tab).
 "use client";
 
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export function useBlueprintUrlSync(blueprintId: string, onBack: () => void) {
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", "workspace");
-    url.searchParams.set("blueprint", blueprintId);
-    window.history.pushState({}, "", url.toString());
-    const handlePop = () => {
-      const p = new URLSearchParams(window.location.search);
-      if (!p.get("blueprint")) onBack();
-    };
-    window.addEventListener("popstate", handlePop);
-    return () => window.removeEventListener("popstate", handlePop);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blueprintId]);
+export function useBlueprintUrlSync(onBack: () => void) {
+  const router = useRouter();
 
   const handleBack = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("blueprint");
-    window.history.pushState({}, "", url.toString());
-    onBack();
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      onBack();
+    }
   };
 
   return { handleBack };

@@ -11,7 +11,6 @@ export function StatCard({ metric, index }: { metric: Metric; index: number }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.36, delay: index * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
-      whileHover={{ y: -3, boxShadow: "0 12px 36px rgba(15,28,24,0.09)", borderColor: "#c8ddd4" }}
       style={{
         background: "#ffffff",
         borderRadius: 16,
@@ -21,7 +20,6 @@ export function StatCard({ metric, index }: { metric: Metric; index: number }) {
         flexDirection: "column",
         gap: 4,
         cursor: "default",
-        transition: "border-color 0.2s ease",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

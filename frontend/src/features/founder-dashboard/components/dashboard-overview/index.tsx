@@ -1,29 +1,30 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Plus } from "@phosphor-icons/react";
 import type { AIState } from "@/features/founder-dashboard/data/dashboard-overview-data";
 // Use the real Blueprint type (superset) — the store passes real blueprints and
 // buildBlueprintContent needs the full shape, not the local dashboard mock.
 import type { Blueprint } from "@/features/blueprints/types";
-import {
-  computeMetrics,
-  computePipeline,
-  computeAIContent,
-} from "@/features/founder-dashboard/data/dashboard-overview-data";
+import { computeMetrics, computeAIContent } from "@/features/founder-dashboard/data/dashboard-overview-data";
 import { AIBriefingBanner } from "./ai-briefing-banner";
 import { StatCard } from "./stat-card";
 import { IdeaCard } from "./idea-card";
 import { VentureHealthWidget } from "./venture-health-widget";
 import { VentureRoadmapWidget } from "./venture-roadmap-widget";
-import { DevPipelineWidget } from "./dev-pipeline-widget";
-import { listProjects, deserialiseMilestones } from "@/features/projects/projects-api";
+import { DevPipelineWidget, type ProjectPipelineCounts } from "./dev-pipeline-widget";
+import { listProjects } from "@/features/projects/projects-api";
 import { fetchApplicationSummary } from "@/features/projects/applications-api";
+import { listBlueprintApplications } from "@/features/projects/applications-api";
 import { loadNetworkConnections } from "@/features/network/lib/network-api";
 import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
-import { buildBlueprintContent, initProjectState } from "@/features/blueprints/blueprint-content";
-import { currentPhaseIndex } from "@/features/projects/lib/project-helpers";
+import type { FounderContactProfile } from "@/features/network/types";
+import { buildBlueprintContent } from "@/features/blueprints/blueprint-content";
+import {
+  currentPhaseIndex,
+  mergeBlueprintsWithProjects,
+} from "@/features/projects/lib/project-helpers";
 
 interface Props {
   profile: { firstName: string };
@@ -31,6 +32,7 @@ interface Props {
   blueprints: Blueprint[];
   onViewBlueprint: (id: string) => void;
   profileComplete?: boolean;
+  onCompleteProfile?: () => void;
 }
 
 export function DashboardOverview({
@@ -39,6 +41,7 @@ export function DashboardOverview({
   blueprints,
   onViewBlueprint,
   profileComplete = true,
+  onCompleteProfile,
 }: Props) {
   const name = profile.firstName || "Founder";
   const [greeting, setGreeting] = useState("");
@@ -48,10 +51,29 @@ export function DashboardOverview({
   const [activeProjectCount, setActiveProjectCount] = useState(0);
   const [totalApplications, setTotalApplications] = useState(0);
   const [applicationsInConversation, setApplicationsInConversation] = useState(0);
-  const [matchedCount, setMatchedCount] = useState(0);
-  const [incomingCount, setIncomingCount] = useState(0);
-  const [connectedCount, setConnectedCount] = useState(0);
-  const [hiredCount, setHiredCount] = useState(0);
+  // Backend project rows, merged onto `blueprints` below so every venture card
+  // (Progress / Roadmap / Pipeline) reads the SAME real phase state.
+  const [apiProjects, setApiProjects] = useState<Awaited<ReturnType<typeof listProjects>>>([]);
+  // Per-venture breakdowns, scoped to one blueprint_id instead of aggregated
+  // across all active projects.
+  const [matchedByBlueprintId, setMatchedByBlueprintId] = useState<
+    Record<string, FounderContactProfile[]>
+  >({});
+  const [pipelineByBlueprintId, setPipelineByBlueprintId] = useState<
+    Record<string, ProjectPipelineCounts>
+  >({});
+
+  const mergedBlueprints = useMemo(
+    () => mergeBlueprintsWithProjects(blueprints, apiProjects),
+    [blueprints, apiProjects]
+  );
+
+  // Active Ideas cards: highest viability first, lowest last — a fresh sorted
+  // copy so the store's own ordering (creation/fetch order) is never mutated.
+  const activeIdeasByViability = useMemo(
+    () => [...mergedBlueprints].sort((a, b) => b.viability - a.viability),
+    [mergedBlueprints]
+  );
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -78,15 +100,16 @@ export function DashboardOverview({
     let projects: Awaited<ReturnType<typeof listProjects>> = [];
     try {
       projects = await listProjects();
+      setApiProjects(projects);
     } catch (err) {
       console.error("[dashboard] Failed to load projects for pipeline stats:", err);
       projects = [];
     }
 
-    const activeProjects = projects.filter(
+    const activeProjectCount = projects.filter(
       (p) => p.status === "active" || p.status === "paused"
-    );
-    setActiveProjectCount(activeProjects.length);
+    ).length;
+    setActiveProjectCount(activeProjectCount);
 
     try {
       const applicationSummary = await fetchApplicationSummary(blueprints.map((b) => b.id));
@@ -96,57 +119,78 @@ export function DashboardOverview({
       console.error("[dashboard] Failed to load application summary:", err);
     }
 
+    // Founder-account-wide accepted connections. There is no blueprint_id on
+    // a connection, so per-venture "Connected" below is a PROXY (accepted
+    // connection + an application to that specific blueprint) — flag this so
+    // it gets replaced with a real field if project_id is ever added to
+    // connections on the backend.
+    let connectedIds = new Set<string>();
     try {
       const connectionState = await loadNetworkConnections();
-      setConnectedCount(connectionState.connectedIds.length);
-      setIncomingCount(connectionState.incomingIds.length);
+      connectedIds = new Set(connectionState.connectedIds);
     } catch (err) {
       console.error("[dashboard] Failed to load network connections:", err);
     }
 
-    // Hired = distinct developers actually assigned to a phase across active projects.
-    try {
-      const hiredIds = new Set<string>();
-      for (const project of activeProjects) {
-        const state = deserialiseMilestones(project.milestones);
-        if (!state) continue;
-        for (const ps of state.phaseStates) {
-          if (ps.assignment?.developerId) hiredIds.add(ps.assignment.developerId);
-        }
-      }
-      setHiredCount(hiredIds.size);
-    } catch (err) {
-      console.error("[dashboard] Failed to compute hired developer count:", err);
-    }
+    // Per-venture breakdown: matches/pending/connected/hired scoped to ONE
+    // blueprint_id at a time, instead of a single aggregate across every
+    // active project. Every source is looked up per blueprint independently
+    // so one blueprint's failure can't blank out another's numbers.
+    const merged = mergeBlueprintsWithProjects(blueprints, projects);
+    const matchedEntries: [string, FounderContactProfile[]][] = [];
+    const pipelineEntries: [string, ProjectPipelineCounts][] = [];
 
-    // Matched = distinct developers matched (via /matching) against each active
-    // project's current phase skillset, sourced from the project's own blueprint.
-    try {
-      const matchedIds = new Set<string>();
-      await Promise.all(
-        activeProjects.map(async (project) => {
-          const blueprint = blueprints.find((b) => b.id === project.blueprint_id);
-          if (!blueprint) return;
-          const content = buildBlueprintContent(blueprint);
-          const state = deserialiseMilestones(project.milestones) ?? initProjectState(content);
-          const phaseIdx = currentPhaseIndex(state);
-          const skillset = content.phases[phaseIdx]?.skillset ?? [];
-          if (!skillset.length) return;
+    await Promise.all(
+      merged.map(async (bp) => {
+        // Matches + hired need the venture's real phase state — skip (zero)
+        // when the idea hasn't been started as a project yet.
+        let matchedDevelopers: FounderContactProfile[] = [];
+        let hiredCount = 0;
+        if (bp.project) {
+          hiredCount = new Set(
+            bp.project.phaseStates
+              .map((ps) => ps.assignment?.developerId)
+              .filter((id): id is string => Boolean(id))
+          ).size;
+
           try {
-            const devs = await fetchMatchingDevelopers(skillset);
-            devs.forEach((d) => matchedIds.add(d.id));
+            const content = buildBlueprintContent(bp);
+            const phaseIdx = currentPhaseIndex(bp.project);
+            const skillset = content.phases[phaseIdx]?.skillset ?? [];
+            if (skillset.length) matchedDevelopers = await fetchMatchingDevelopers(skillset);
           } catch (err) {
-            console.error(
-              `[dashboard] Failed to fetch matches for project ${project.id}:`,
-              err
-            );
+            console.error(`[dashboard] Failed to fetch matches for blueprint ${bp.id}:`, err);
           }
-        })
-      );
-      setMatchedCount(matchedIds.size);
-    } catch (err) {
-      console.error("[dashboard] Failed to compute matched developer count:", err);
-    }
+        }
+        matchedEntries.push([bp.id, matchedDevelopers]);
+
+        // Pending/Connected come from this blueprint's own applications —
+        // these exist independent of whether a project was ever started.
+        let pendingCount = 0;
+        let connectedCount = 0;
+        try {
+          const applications = await listBlueprintApplications(bp.id);
+          const live = applications.filter((a) => a.status !== "withdrawn");
+          pendingCount = live.filter((a) => !a.connection_id).length;
+          connectedCount = live.filter((a) => connectedIds.has(a.developer_id)).length;
+        } catch (err) {
+          console.error(`[dashboard] Failed to fetch applications for blueprint ${bp.id}:`, err);
+        }
+
+        pipelineEntries.push([
+          bp.id,
+          {
+            matchedCount: matchedDevelopers.length,
+            incomingCount: pendingCount,
+            connectedCount,
+            hiredCount,
+          },
+        ]);
+      })
+    );
+
+    setMatchedByBlueprintId(Object.fromEntries(matchedEntries));
+    setPipelineByBlueprintId(Object.fromEntries(pipelineEntries));
   }, [blueprints]);
 
   useEffect(() => {
@@ -164,7 +208,6 @@ export function DashboardOverview({
   };
 
   const metrics = computeMetrics(liveData);
-  const pipeline = computePipeline({ matchedCount, incomingCount, connectedCount, hiredCount });
 
   const topBlueprint = [...blueprints].sort((a, b) => b.viability - a.viability)[0];
   const aiState: AIState = !profileComplete
@@ -272,7 +315,11 @@ export function DashboardOverview({
         <AIBriefingBanner
           state={aiState}
           onCta={() => {
-            if (aiState !== "profile_incomplete") onNavigateWorkspace(false);
+            if (aiState === "profile_incomplete") {
+              onCompleteProfile?.();
+            } else {
+              onNavigateWorkspace(false);
+            }
           }}
           overrideContent={aiContent}
         />
@@ -334,7 +381,7 @@ export function DashboardOverview({
           </motion.button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-          {blueprints.slice(0, 3).map((bp, i) => (
+          {activeIdeasByViability.slice(0, 3).map((bp, i) => (
             <IdeaCard key={bp.id} bp={bp} onView={onViewBlueprint} index={i} />
           ))}
         </div>
@@ -342,9 +389,15 @@ export function DashboardOverview({
 
       {/* ── Bottom widgets ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, flexShrink: 0 }}>
-        <VentureHealthWidget blueprints={blueprints} />
-        <VentureRoadmapWidget blueprints={blueprints} />
-        <DevPipelineWidget pipeline={pipeline} />
+        <VentureHealthWidget
+          blueprints={mergedBlueprints}
+          matchedByBlueprintId={matchedByBlueprintId}
+        />
+        <VentureRoadmapWidget blueprints={mergedBlueprints} />
+        <DevPipelineWidget
+          blueprints={mergedBlueprints}
+          pipelineByBlueprintId={pipelineByBlueprintId}
+        />
       </div>
 
       {/* Footer note */}

@@ -108,7 +108,7 @@ export function BlueprintDetail({
   const [phaseHires, setPhaseHires] = useState<Record<number, string>>({});
 
   const { toast, showToast } = useBlueprintToast();
-  const { handleBack } = useBlueprintUrlSync(currentBp.id, onBack);
+  const { handleBack } = useBlueprintUrlSync(onBack);
   const { allDevelopers: matchedDevelopers } = useBlueprintMatches(currentBp.id, { limit: 10 });
   const { scrollRef, progress, onScroll, restoreBlueprintScrollRef } =
     useBlueprintScrollProgress(selectedDeveloper);

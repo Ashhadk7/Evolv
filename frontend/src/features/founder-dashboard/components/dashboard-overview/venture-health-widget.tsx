@@ -3,9 +3,18 @@
 import { useState } from "react";
 import { ChartLine } from "@phosphor-icons/react";
 import type { Blueprint } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import { computeVentureProgress } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import { buildBlueprintContent } from "@/features/blueprints/blueprint-content";
 import { AnimatedBar } from "./animated-bar";
 
-export function VentureHealthWidget({ blueprints }: { blueprints: Blueprint[] }) {
+export function VentureHealthWidget({
+  blueprints,
+  matchedByBlueprintId,
+}: {
+  blueprints: Blueprint[];
+  /** Same matched-developer lists the Developer Pipeline card fetches — shared source of truth. */
+  matchedByBlueprintId: Record<string, { availability: string }[]>;
+}) {
   const [selectedId, setSelectedId] = useState("latest");
 
   // Determine which blueprint is active
@@ -14,30 +23,22 @@ export function VentureHealthWidget({ blueprints }: { blueprints: Blueprint[] })
       ? blueprints[0]
       : blueprints.find((b) => b.id === selectedId) || blueprints[0];
 
-  // Dynamically calculate health bars based on the active blueprint's viability
-  const baseViability = activeBp ? activeBp.viability : 70;
+  // Real bars derived from the venture's actual content + phase state —
+  // Execution Readiness in particular reads the same project data the
+  // Venture Roadmap card's phase status comes from.
+  const bars = activeBp
+    ? computeVentureProgress(
+        activeBp,
+        buildBlueprintContent(activeBp),
+        matchedByBlueprintId[activeBp.id] ?? []
+      )
+    : { marketStrength: 0, designCompleteness: 0, developerAvailability: 0, executionReadiness: 0 };
 
   const dynamicBars = [
-    {
-      label: "Market Strength",
-      value: Math.min(95, Math.max(45, baseViability + 6)),
-      color: "#428475",
-    },
-    {
-      label: "Design Completeness",
-      value: Math.min(95, Math.max(40, baseViability - 12)),
-      color: "#89d7b7",
-    },
-    {
-      label: "Developer Availability",
-      value: Math.min(95, Math.max(35, baseViability - 5)),
-      color: "#7C5CBF",
-    },
-    {
-      label: "Execution Readiness",
-      value: Math.min(95, Math.max(30, baseViability - 18)),
-      color: "#C4973A",
-    },
+    { label: "Market Strength", value: bars.marketStrength, color: "#428475" },
+    { label: "Design Completeness", value: bars.designCompleteness, color: "#89d7b7" },
+    { label: "Developer Availability", value: bars.developerAvailability, color: "#7C5CBF" },
+    { label: "Execution Readiness", value: bars.executionReadiness, color: "#C4973A" },
   ];
 
   return (

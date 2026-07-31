@@ -61,6 +61,7 @@ export function WorkspaceTab({
 }: WorkspaceTabProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const bpParam = searchParams.get("blueprint");
 
   const [forgeOpen, setForgeOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Blueprint | null>(null);
@@ -69,7 +70,7 @@ export function WorkspaceTab({
 
   // Initialise from the URL so a deep-linked blueprint renders without a flash.
   const [viewingId, setViewingId] = useState<string | null>(
-    searchParams.get("blueprint") ?? openBlueprintId ?? null
+    bpParam ?? openBlueprintId ?? null
   );
 
   const [search, setSearch] = useState("");
@@ -87,6 +88,14 @@ export function WorkspaceTab({
   useEffect(() => {
     if (openBlueprintId) queueMicrotask(() => setViewingId(openBlueprintId));
   }, [openBlueprintId]);
+
+  // Resync FROM the URL when it changes without an unmount — e.g. the browser
+  // Back/Forward buttons, which update `searchParams` in place rather than
+  // remounting this component. Without this, closing the blueprint via Back
+  // only changed the URL; the view stayed visually open.
+  useEffect(() => {
+    setViewingId(bpParam ?? null);
+  }, [bpParam]);
 
   // Persist the open blueprint across refreshes.
   useEffect(() => {
