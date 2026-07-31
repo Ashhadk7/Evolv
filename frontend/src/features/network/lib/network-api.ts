@@ -1,17 +1,18 @@
 import { apiFetch } from "@/lib/api";
 import { getSession } from "@/features/auth/lib/session";
 import type { FounderContactProfile, NetworkReview } from "@/features/network/types";
-import type { DeveloperCertification } from "@/features/developer-dashboard/profile-utils";
+import type { DeveloperSkillEntry } from "@/features/developer-dashboard/profile-utils";
 import {
   type WireEducation,
   type WireCertification,
   type WireReview,
+  certificationFromWire,
   educationFromWire,
   reviewFromWire,
 } from "@/features/profiles/lib/profile-wire";
 interface UserSummary { id: string; email: string; role: "founder" | "developer"; first_name: string; last_name: string; city: string | null; country: string | null; avatar_url: string | null; phone_verified: boolean; profile_title: string | null; profile_bio: string | null; profile_complete: boolean; rating_avg: number | null; discovery_tags: string[] }
 interface PublicFounderProfile { headline: string | null; bio: string | null; description: string | null; linkedin: string | null; venture_stage: string | null; primary_goal: string | null; domains: string[]; profile_complete: boolean; educations: WireEducation[] }
-interface PublicDeveloperProfile { job_title: string | null; bio: string | null; experience_years: number | null; availability: boolean; open_to_remote: boolean; preferred_budget: string | null; github: string | null; linkedin: string | null; portfolio_link: string | null; skills: string[]; rating_avg: number; profile_complete: boolean; educations: WireEducation[]; certifications: WireCertification[]; reviews: WireReview[] }
+interface PublicDeveloperProfile { job_title: string | null; bio: string | null; experience_years: number | null; availability: boolean; open_to_remote: boolean; preferred_budget: string | null; github: string | null; linkedin: string | null; portfolio_link: string | null; skills: string[]; tags: string[]; skill_entries: Array<{ id?: string | null; kind?: string | null; name: string; experience?: string | null }>; rating_avg: number; profile_complete: boolean; educations: WireEducation[]; certifications: WireCertification[]; reviews: WireReview[] }
 interface PublicUserProfile extends UserSummary { founder_profile: PublicFounderProfile | null; developer_profile: PublicDeveloperProfile | null }
 interface ConnectionRecord { id: string; status: "pending" | "accepted" | "ignored" | "rejected"; note: string | null; user: { id: string } }
 
@@ -49,19 +50,28 @@ function initialsFor(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "U";
 }
 
-function certificationFromWire(items: WireCertification[] = []): DeveloperCertification[] {
-  return items.map((item) => ({
-    id: item.id,
-    name: item.name,
-  }));
-}
-
 function personFromUser(user: UserSummary | PublicUserProfile): FounderContactProfile {
   const developerProfile = "developer_profile" in user ? user.developer_profile : null;
   const founderProfile = "founder_profile" in user ? user.founder_profile : null;
   const isDeveloper = user.role === "developer";
   const name = `${user.first_name} ${user.last_name}`.trim();
   const skills = developerProfile?.skills ?? founderProfile?.domains ?? user.discovery_tags;
+  const profileTags = developerProfile?.tags?.length ? developerProfile.tags : skills;
+  const skillEntries: DeveloperSkillEntry[] = developerProfile?.skill_entries?.length
+    ? developerProfile.skill_entries
+        .filter((entry) => entry.name?.trim())
+        .map((entry, index) => ({
+          id: entry.id || `api_skill_${index}_${entry.name}`,
+          kind: entry.kind || "Skill",
+          name: entry.name.trim(),
+          experience: entry.experience ?? "",
+        }))
+    : skills.map((skill, index) => ({
+        id: `api_skill_${index}_${skill}`,
+        kind: "Skill",
+        name: skill,
+        experience: "",
+      }));
   const role =
     developerProfile?.job_title ??
     founderProfile?.headline ??
@@ -89,13 +99,8 @@ function personFromUser(user: UserSummary | PublicUserProfile): FounderContactPr
     avatarUrl: user.avatar_url ?? undefined,
     skills,
     domains: founderProfile?.domains ?? user.discovery_tags,
-    tags: skills,
-    skillEntries: skills.map((skill, index) => ({
-      id: `api_skill_${index}_${skill}`,
-      kind: "Skill",
-      name: skill,
-      experience: "",
-    })),
+    tags: profileTags,
+    skillEntries,
     experience,
     experienceYears: developerProfile?.experience_years?.toString(),
     mutual: 0,

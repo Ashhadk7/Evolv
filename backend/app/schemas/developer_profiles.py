@@ -11,6 +11,15 @@ from app.schemas.certifications import CertificationCreate, CertificationRespons
 from app.schemas.developer_reviews import DeveloperReviewResponse
 
 
+class DeveloperSkillEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str | None = Field(None, max_length=100)
+    kind: str = Field(default="Skill", max_length=50)
+    name: str = Field(..., max_length=255)
+    experience: str | None = Field(None, max_length=100)
+
+
 class DeveloperProfileBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -27,6 +36,8 @@ class DeveloperProfileBase(BaseModel):
     linkedin: str | None = Field(None, max_length=255)
     portfolio_link: str | None = Field(None, max_length=255)
     skills: list[str] = Field(default_factory=list, max_length=100)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    skill_entries: list[DeveloperSkillEntry] = Field(default_factory=list, max_length=100)
     profile_complete: bool = False
 
 
@@ -51,6 +62,8 @@ class DeveloperProfileUpdate(BaseModel):
     linkedin: str | None = Field(None, max_length=255)
     portfolio_link: str | None = Field(None, max_length=255)
     skills: list[str] | None = Field(None, max_length=100)
+    tags: list[str] | None = Field(None, max_length=50)
+    skill_entries: list[DeveloperSkillEntry] | None = Field(None, max_length=100)
     profile_complete: bool | None = None
     educations: list[EducationCreate] | None = Field(None, max_length=20)
     certifications: list[CertificationCreate] | None = Field(None, max_length=20)

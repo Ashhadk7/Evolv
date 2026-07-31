@@ -1,7 +1,7 @@
 """add structured developer rate columns
 
-Revision ID: 20260729_0001
-Revises: 20260723_0002
+Revision ID: 20260729_0003
+Revises: 20260729_0002
 Create Date: 2026-07-29
 
 preferred_budget is free text, so nothing could compute with it. These columns
@@ -16,8 +16,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "20260729_0001"
-down_revision = "20260723_0002"
+revision = "20260729_0003"
+down_revision = "20260729_0002"
 branch_labels = None
 depends_on = None
 

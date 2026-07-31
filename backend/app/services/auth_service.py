@@ -36,8 +36,10 @@ from app.services.exceptions import (
     ProfilePersistenceError,
 )
 from app.services.supabase_auth import SupabaseAuthClient
+from supabase_auth.errors import AuthApiError
 
 logger = logging.getLogger(__name__)
+
 
 class AuthService:
     def __init__(self, auth_client: SupabaseAuthClient, email_sender: SmtpEmailSender) -> None:
@@ -166,7 +168,10 @@ class AuthService:
         if not app_user.email_verified:
             raise EmailOtpError("Email verification is required before sign in.")
 
-        auth_session = self._auth_client.sign_in(signin)
+        try:
+            auth_session = self._auth_client.sign_in(signin)
+        except AuthApiError:
+            raise InvalidCredentialsError("Invalid email or password.")
         if auth_session.user_id != app_user.id:
             raise AuthUserMismatchError("Auth user does not match application user.")
 
@@ -182,23 +187,32 @@ class AuthService:
             expires_in=auth_session.expires_in,
             expires_at=auth_session.expires_at,
         )
+
+    def signout(self, access_token: str) -> None:
+        self._auth_client.sign_out(access_token)
+
     def forgot_password(
         self, db: Session, forgot_request: ForgotPasswordRequest
     ) -> ForgotPasswordResponse:
-        app_user = users_repository.get_user_by_email(db, str(forgot_request.email))
+        app_user = users_repository.get_user_by_email_for_update(db, str(forgot_request.email))
         generic_message = "If an account exists for this email, a reset code has been sent."
 
         if app_user is None or not app_user.email_verified:
             return ForgotPasswordResponse(message=generic_message)
 
+        now = datetime.now(UTC)
+        if self._password_reset_is_cooling_down(app_user, now):
+            return ForgotPasswordResponse(message=generic_message)
+
         otp_code = self._generate_otp()
-        expires_at = datetime.now(UTC) + timedelta(minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES)
+        expires_at = now + timedelta(minutes=settings.SIGNUP_OTP_EXPIRE_MINUTES)
 
         try:
             users_repository.set_password_reset_otp(
                 app_user,
                 otp_hash=self._hash_otp(app_user.email, otp_code),
                 expires_at=expires_at,
+                sent_at=now,
             )
             db.flush()
             self._email_sender.send_password_reset_otp(
@@ -256,6 +270,20 @@ class AuthService:
         return ResetPasswordResponse(
             message="Password has been reset. You can sign in with your new password."
         )
+
+    def _password_reset_is_cooling_down(self, app_user: User, now: datetime) -> bool:
+        cooldown_seconds = settings.PASSWORD_RESET_OTP_COOLDOWN_SECONDS
+        if cooldown_seconds <= 0:
+            return False
+        if app_user.password_reset_otp_sent_at is None:
+            return False
+        if app_user.password_reset_otp_expires_at is None:
+            return False
+        if self._as_aware_utc(app_user.password_reset_otp_expires_at) <= now:
+            return False
+
+        sent_at = self._as_aware_utc(app_user.password_reset_otp_sent_at)
+        return now - sent_at < timedelta(seconds=cooldown_seconds)
 
     @staticmethod
     def _signup_response(app_user: User, *, message: str) -> SignupResponse:

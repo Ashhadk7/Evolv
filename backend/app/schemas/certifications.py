@@ -13,6 +13,7 @@ class CertificationBase(BaseModel):
     issue_date: str | None = Field(None, max_length=50)
     credential_id: str | None = Field(None, max_length=100)
     credential_url: str | None = Field(None, max_length=500)
+    image_url: str | None = None
 
 
 class CertificationCreate(CertificationBase):

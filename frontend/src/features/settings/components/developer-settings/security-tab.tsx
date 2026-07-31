@@ -37,7 +37,8 @@ export function SecurityTab() {
           <button
             type="button"
             onClick={() => void startForgotFlow()}
-            className="text-[11px] font-bold text-[#428475] transition-colors hover:text-[#2e7d5c] bg-transparent border-none p-0 cursor-pointer"
+            disabled={isSubmitting}
+            className="cursor-pointer border-none bg-transparent p-0 text-[11px] font-bold text-[#428475] transition-colors hover:text-[#2e7d5c] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Forgot Password?
           </button>
@@ -45,7 +46,7 @@ export function SecurityTab() {
           <button
             type="button"
             onClick={cancelForgotFlow}
-            className="text-[11px] font-bold text-red-600 transition-colors hover:text-red-800 bg-transparent border-none p-0 cursor-pointer"
+            className="cursor-pointer border-none bg-transparent p-0 text-[11px] font-bold text-red-600 transition-colors hover:text-red-800"
           >
             <i className="fas fa-times" /> Cancel Reset
           </button>
@@ -83,19 +84,19 @@ export function SecurityTab() {
           </div>
         ) : (
           <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-            <div className="flex justify-between items-center mb-1">
+            <div className="mb-1 flex items-center justify-between">
               <label className="mb-0">Verification Code (OTP)</label>
               <button
                 type="button"
                 onClick={() => void resendOtp()}
                 disabled={cooldown > 0 || isResending}
-                className="text-[11px] font-bold text-[#428475] hover:text-[#2e7d5c] disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-none p-0 cursor-pointer"
+                className="cursor-pointer border-none bg-transparent p-0 text-[11px] font-bold text-[#428475] hover:text-[#2e7d5c] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isResending
                   ? "Sending..."
                   : cooldown > 0
-                  ? `Resend in ${cooldown}s`
-                  : "Resend Code"}
+                    ? `Resend in ${cooldown}s`
+                    : "Resend Code"}
               </button>
             </div>
             <input

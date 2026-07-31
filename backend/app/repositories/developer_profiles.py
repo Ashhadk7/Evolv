@@ -25,6 +25,8 @@ DEVELOPER_PROFILE_FIELDS = (
     "linkedin",
     "portfolio_link",
     "skills",
+    "tags",
+    "skill_entries",
     "profile_complete",
 )
 PROFILE_EXCLUDE = {"educations", "certifications"}

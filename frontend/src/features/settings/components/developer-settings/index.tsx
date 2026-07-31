@@ -71,6 +71,9 @@ const Settings = () => {
   const [profile, setProfile] = useState(() => hydrateDeveloperProfile(dashboardProfile));
   const [notifications, setNotifications] = useState(defaultNotifications);
   const [editing, setEditing] = useState(false);
+  // Each tab's SaveButton owns its own button-level spinner; this flag is the
+  // page-level one, so an in-flight save can still block cancel/re-submit.
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
@@ -83,6 +86,12 @@ const Settings = () => {
     paypal: "",
   });
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const activeTabExists = TABS.some((tab) => tab.id === activeTab);
+  const visibleTab: SettingsTab = activeTabExists ? activeTab : "profile";
+
+  useEffect(() => {
+    if (!activeTabExists) setActiveTab("profile");
+  }, [activeTabExists, setActiveTab]);
 
   useEffect(() => {
     queueMicrotask(() => setProfile(hydrateDeveloperProfile(dashboardProfile)));
@@ -159,7 +168,9 @@ const Settings = () => {
   ];
 
   const handleSave = async () => {
+    if (saving) return;
     setSaveError("");
+    setSaving(true);
     try {
       const parts = profile.name.trim().split(/\s+/).filter(Boolean);
       const firstName = parts[0] || profile.firstName || dashboardProfile.firstName || "";
@@ -187,13 +198,16 @@ const Settings = () => {
         toast.success("Changes saved");
       }
     } catch (error) {
-        const message = getApiErrorMessage(error);
+      const message = getApiErrorMessage(error);
       setSaveError(message);
       toast.error(message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const cancelEditing = () => {
+    if (saving) return;
     setProfile(hydrateDeveloperProfile(dashboardProfile));
     setEditing(false);
   };
@@ -392,7 +406,7 @@ const Settings = () => {
     reader.readAsDataURL(file);
   };
 
-  const sectionCopy = SECTION_COPY[activeTab];
+  const sectionCopy = SECTION_COPY[visibleTab];
 
   return (
     <div className={styles.container}>
@@ -400,20 +414,20 @@ const Settings = () => {
         <div className={styles.settingsLayout}>
           <SettingsSidebarNav
             tabs={TABS}
-            activeTab={activeTab}
+            activeTab={visibleTab}
             onSelectTab={setActiveTab}
             onDeleteAccount={handleDeleteAccount}
           />
 
           <div className={styles.contentCol}>
             <div
-              className={`${styles.contentInner} ${activeTab === "profile" ? styles.contentInnerWide : ""}`}
+              className={`${styles.contentInner} ${visibleTab === "profile" ? styles.contentInnerWide : ""}`}
             >
               <h2 className={styles.pageTitle}>{sectionCopy.title}</h2>
               <p className={styles.pageSubtitle}>{sectionCopy.subtitle}</p>
               {saveError && <p className={styles.saveError}>{saveError}</p>}
 
-              {activeTab === "profile" &&
+              {visibleTab === "profile" &&
                 (editing ? (
                   <ProfileTabEdit
                     profile={profile}
@@ -462,7 +476,7 @@ const Settings = () => {
                   />
                 ))}
 
-              {activeTab === "payment" && (
+              {visibleTab === "payment" && (
                 <PaymentTab
                   payData={payData}
                   onChangePayData={(patch) => setPayData((prev) => ({ ...prev, ...patch }))}
@@ -470,7 +484,7 @@ const Settings = () => {
                 />
               )}
 
-              {activeTab === "notifications" && (
+              {visibleTab === "notifications" && (
                 <NotificationsTab
                   notifications={notifications}
                   onToggle={(key) =>
@@ -480,9 +494,9 @@ const Settings = () => {
                 />
               )}
 
-              {activeTab === "security" && <SecurityTab />}
+              {visibleTab === "security" && <SecurityTab />}
 
-              {activeTab === "preferences" && (
+              {visibleTab === "preferences" && (
                 <PreferencesTab
                   rateAmount={profile.rateAmount}
                   ratePeriod={profile.ratePeriod}

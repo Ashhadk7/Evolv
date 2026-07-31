@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: SecretStr
     SIGNUP_OTP_EXPIRE_MINUTES: int = 5
     SIGNUP_OTP_RETURN_DEBUG: bool = False
+    PASSWORD_RESET_OTP_COOLDOWN_SECONDS: int = Field(default=30, ge=0, le=3600)
     EMAIL_FROM_EMAIL: str = Field(min_length=1)
     EMAIL_FROM_NAME: str = "Evolv AI"
     SMTP_HOST: str = Field(min_length=1)

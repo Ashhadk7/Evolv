@@ -1,6 +1,6 @@
 import { clearSession, getAccessToken } from "@/features/auth/lib/session";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // A 401 on an authenticated call means the session is dead (expired, revoked,
 // or the account no longer exists) — the token can never become valid again by
@@ -15,6 +15,23 @@ function handleExpiredSession(): void {
   if (window.location.pathname !== "/sign-in") {
     window.location.replace("/sign-in");
   }
+}
+
+function isExpiredSessionResponse(
+  response: Response,
+  detail: string,
+  code: string | null
+): boolean {
+  if (response.headers.has("WWW-Authenticate")) return true;
+  if (code === "no_session" || code === "invalid_token") return true;
+
+  const normalized = detail.toLowerCase();
+  return (
+    normalized.includes("access token") ||
+    normalized.includes("bearer") ||
+    normalized.includes("not signed in") ||
+    normalized.includes("not registered in the application")
+  );
 }
 
 export class ApiError extends Error {
@@ -112,8 +129,16 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    if (auth && response.status === 401) handleExpiredSession();
-    throw new ApiError(response.status, extractErrorDetail(data), data?.code ?? null, data);
+    const detail = extractErrorDetail(data);
+    const code = data?.code ?? null;
+    // Only a genuinely expired session logs the user out — a 401 from a wrong
+    // password must surface as an error, not a redirect.
+    if (auth && response.status === 401 && isExpiredSessionResponse(response, detail, code)) {
+      handleExpiredSession();
+    }
+    // `data` is carried on the error so callers can read the structured body —
+    // intakeReviewFrom() reads error.data to recover the intake critic's questions.
+    throw new ApiError(response.status, detail, code, data);
   }
 
   return data as T;

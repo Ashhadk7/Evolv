@@ -1,6 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
 
-from app.api.deps import AuthServiceDep, DbSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
+
+from app.api.deps import AuthServiceDep, CurrentUser, DbSession, bearer_scheme
 from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -161,3 +164,12 @@ def reset_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Password reset could not be completed.",
         ) from exc
+
+
+@router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)
+def signout(
+    auth_service: AuthServiceDep,
+    _current_user: CurrentUser,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+) -> None:
+    auth_service.signout(credentials.credentials)

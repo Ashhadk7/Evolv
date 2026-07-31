@@ -62,6 +62,7 @@ class User(Base):
     email_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     password_reset_otp_hash: Mapped[str | None] = mapped_column(String)
     password_reset_otp_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    password_reset_otp_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     phone: Mapped[str] = mapped_column(String)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     country: Mapped[str] = mapped_column(String)
@@ -153,7 +154,9 @@ class User(Base):
     def discovery_tags(self) -> list[str]:
         if self.role == UserRole.FOUNDER:
             return self.founder_profile.domains if self.founder_profile else []
-        return self.developer_profile.skills if self.developer_profile else []
+        if not self.developer_profile:
+            return []
+        return self.developer_profile.tags or self.developer_profile.skills
 
 
 class FounderProfile(Base):
@@ -173,6 +176,12 @@ class FounderProfile(Base):
     domains: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     profile_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     stripe_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    billing_plan: Mapped[str | None] = mapped_column(String)
+    billing_email: Mapped[str | None] = mapped_column(String)
+    billing_currency: Mapped[str | None] = mapped_column(String)
+    billing_budget_range: Mapped[str | None] = mapped_column(String)
+    payment_method: Mapped[str | None] = mapped_column(String)
+    billing_company_name: Mapped[str | None] = mapped_column(String)
 
     user: Mapped[User] = relationship(back_populates="founder_profile")
     blueprints: Mapped[list[Blueprint]] = relationship(
@@ -202,6 +211,12 @@ class DeveloperProfile(Base):
     linkedin: Mapped[str | None] = mapped_column(String)
     portfolio_link: Mapped[str | None] = mapped_column(String)
     skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    skill_entries: Mapped[list[dict[str, str | None]]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
     rating_avg: Mapped[Decimal] = mapped_column(Numeric, nullable=False, default=0)
     profile_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

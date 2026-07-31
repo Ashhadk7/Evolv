@@ -5,13 +5,26 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from httpx import HTTPError
+from httpx import ConnectError, HTTPError
 from supabase import Client, create_client
 
 try:
-    from gotrue.errors import AuthApiError, AuthRetryableError
+    from gotrue.errors import (
+        AuthApiError as GotrueAuthApiError,
+        AuthRetryableError as GotrueAuthRetryableError,
+    )
 except ModuleNotFoundError:
-    from supabase_auth.errors import AuthApiError, AuthRetryableError
+    GotrueAuthApiError = None
+    GotrueAuthRetryableError = None
+
+try:
+    from supabase_auth.errors import (
+        AuthApiError as SupabaseAuthApiError,
+        AuthRetryableError as SupabaseAuthRetryableError,
+    )
+except ModuleNotFoundError:
+    SupabaseAuthApiError = None
+    SupabaseAuthRetryableError = None
 
 from app.core.config import settings
 from app.schemas.auth import SigninRequest, SignupRequest
@@ -25,14 +38,22 @@ from app.services.exceptions import (
 # Errors that mean "Supabase looked at this and rejected it" (bad credentials,
 # malformed/expired/revoked token). These are conclusive — safe to treat as a
 # real auth failure.
-SUPABASE_CLIENT_ERRORS = (AuthApiError, HTTPError)
+AUTH_API_ERRORS = tuple(
+    error for error in (GotrueAuthApiError, SupabaseAuthApiError) if error is not None
+)
+AUTH_RETRYABLE_ERRORS = tuple(
+    error
+    for error in (GotrueAuthRetryableError, SupabaseAuthRetryableError)
+    if error is not None
+)
+SUPABASE_CLIENT_ERRORS = (*AUTH_API_ERRORS, HTTPError)
 
 # Errors that mean "we couldn't actually reach/finish talking to Supabase" —
 # network blips, timeouts, connections dropped mid-response (httpx's
 # RemoteProtocolError is a subclass of HTTPError), or Supabase's own
 # AuthRetryableError. These say nothing about whether the token/credentials
 # are valid and must NEVER be classified as an auth rejection.
-SUPABASE_TRANSIENT_ERRORS = (AuthRetryableError, HTTPError)
+SUPABASE_TRANSIENT_ERRORS = (*AUTH_RETRYABLE_ERRORS, HTTPError)
 logger = logging.getLogger(__name__)
 
 
@@ -97,13 +118,15 @@ class SupabaseAuthClient:
                     "password": signin.password.get_secret_value(),
                 }
             )
-        except AuthApiError as exc:
+        except AUTH_API_ERRORS as exc:
             raise InvalidCredentialsError("Invalid email or password.") from exc
         except HTTPError as exc:
-            logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
-            raise AuthProviderError(
-                "Could not reach the authentication service. Please try again shortly."
-            ) from exc
+            if isinstance(exc, ConnectError):
+                logger.exception("Could not reach Supabase Auth while signing in %s.", signin.email)
+                raise AuthProviderError(
+                    "Could not reach the authentication service. Please try again shortly."
+                ) from exc
+            raise InvalidCredentialsError("Invalid email or password.") from exc
 
         user = self._read_user(response)
         session = self._read_session(response)
@@ -148,7 +171,7 @@ class SupabaseAuthClient:
             try:
                 response = self._public_client.auth.get_user(access_token)
                 break
-            except AuthApiError as exc:
+            except AUTH_API_ERRORS as exc:
                 # Supabase actively rejected this token — conclusive, don't retry.
                 raise InvalidTokenError("Invalid or expired access token.") from exc
             except SUPABASE_TRANSIENT_ERRORS as exc:
@@ -196,6 +219,12 @@ class SupabaseAuthClient:
             raise AuthProviderError(
                 provider_detail or "Supabase Auth could not update the password."
             ) from exc
+
+    def sign_out(self, access_token: str) -> None:
+        try:
+            self._auth_admin.sign_out(access_token)
+        except SUPABASE_CLIENT_ERRORS as exc:
+            logger.warning("Supabase Auth sign-out call failed: %s", exc)
 
     def _create_client(self, key: str) -> Client:
         return create_client(self._supabase_url, key.strip())

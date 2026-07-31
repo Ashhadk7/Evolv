@@ -14,6 +14,12 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     return db.scalar(select(User).where(func.lower(User.email) == normalized_email))
 
 
+def get_user_by_email_for_update(db: Session, email: str) -> User | None:
+    normalized_email = email.strip().lower()
+    statement = select(User).where(func.lower(User.email) == normalized_email).with_for_update()
+    return db.scalar(statement)
+
+
 def get_user_by_id(db: Session, user_id: UUID) -> User | None:
     return db.get(User, user_id)
 
@@ -82,15 +88,20 @@ def mark_email_verified(user: User) -> User:
     user.email_otp_expires_at = None
     return user
 
-def set_password_reset_otp(user: User, *, otp_hash: str, expires_at: datetime) -> User:
+
+def set_password_reset_otp(
+    user: User, *, otp_hash: str, expires_at: datetime, sent_at: datetime
+) -> User:
     user.password_reset_otp_hash = otp_hash
     user.password_reset_otp_expires_at = expires_at
+    user.password_reset_otp_sent_at = sent_at
     return user
 
 
 def clear_password_reset_otp(user: User) -> User:
     user.password_reset_otp_hash = None
     user.password_reset_otp_expires_at = None
+    user.password_reset_otp_sent_at = None
     return user
 
 

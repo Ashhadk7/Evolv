@@ -37,6 +37,12 @@ export const DEFAULT_FOUNDER_PROFILE: FounderProfile = {
   avatarUrl: "",
   profileComplete: false,
   stripeConnected: false,
+  billingPlan: "Founder Launch",
+  billingEmail: "",
+  billingCurrency: "USD",
+  billingBudgetRange: "$50K - $100K",
+  paymentMethod: "card",
+  billingCompanyName: "",
 };
 
 export type StoredFounderRecord = Partial<FounderProfile> & {

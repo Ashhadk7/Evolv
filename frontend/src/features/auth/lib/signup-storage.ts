@@ -97,17 +97,24 @@ export async function persistSignupAccount({
           firstTime: !profileComplete,
         };
 
-  if (role === "founder") {
-    await saveFounderProfile(
-      { ...profile, gender: "", description: "" } as FounderProfile,
-      { preferCreate: true, reload: false, saveAccount: false }
-    );
-    return "/founder/dashboard" as const;
+  try {
+    if (role === "founder") {
+      await saveFounderProfile(
+        { ...profile, gender: "", description: "" } as FounderProfile,
+        { preferCreate: true, reload: false, saveAccount: false }
+      );
+      return "/founder/dashboard" as const;
+    }
+    await saveDeveloperProfile(profile as DeveloperProfile, {
+      preferCreate: true,
+      reload: false,
+      saveAccount: false,
+    });
+    return "/developer/dashboard" as const;
+  } catch (err) {
+    if (!profileComplete) {
+      return role === "founder" ? ("/founder/dashboard" as const) : ("/developer/dashboard" as const);
+    }
+    throw err;
   }
-  await saveDeveloperProfile(profile as DeveloperProfile, {
-    preferCreate: true,
-    reload: false,
-    saveAccount: false,
-  });
-  return "/developer/dashboard" as const;
 }

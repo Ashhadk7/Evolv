@@ -30,7 +30,6 @@ interface FounderDashboardState {
   inboxActiveContactId: string;
   networkInboxContacts: InboxLaunchContact[];
   settingsSection: SettingsSection;
-  settingsEditSignal: number;
   // ── onboarding / profile-gating ──
   showOnboarding: boolean;
   profilePromptDismissed: boolean;
@@ -51,7 +50,6 @@ interface FounderDashboardState {
   setInboxActiveContactId: (id: string) => void;
   addNetworkInboxContact: (contact: InboxLaunchContact) => void;
   setSettingsSection: (s: SettingsSection) => void;
-  bumpSettingsEditSignal: () => void;
   setShowOnboarding: (v: boolean) => void;
   setProfilePromptDismissed: (v: boolean) => void;
   setPendingProtectedTab: (t: string | null) => void;
@@ -68,7 +66,6 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   inboxActiveContactId: "",
   networkInboxContacts: [],
   settingsSection: "profile",
-  settingsEditSignal: 0,
   showOnboarding: false,
   profilePromptDismissed: false,
   pendingProtectedTab: null,
@@ -132,7 +129,6 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
       inboxActiveContactId: contact.conversationId ?? contact.id,
     })),
   setSettingsSection: (section) => set({ settingsSection: section }),
-  bumpSettingsEditSignal: () => set((s) => ({ settingsEditSignal: s.settingsEditSignal + 1 })),
   setShowOnboarding: (v) => set({ showOnboarding: v }),
   setProfilePromptDismissed: (v) => set({ profilePromptDismissed: v }),
   setPendingProtectedTab: (t) => set({ pendingProtectedTab: t }),
