@@ -6,23 +6,14 @@ import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-navigation";
 
 export default function FounderWorkspacePage() {
-  const {
-    blueprints,
-    openBlueprintId,
-    triggerForge,
-    profile,
-    saveBlueprints,
-    setOpenBlueprintId,
-    setTriggerForge,
-  } = useFounderDashboardStore();
+  const { blueprints, triggerForge, profile, saveBlueprints, setTriggerForge } =
+    useFounderDashboardStore();
   const nav = useFounderNavigation();
 
   return (
     <WorkspaceTab
       blueprints={blueprints}
       onBlueprintsChange={saveBlueprints}
-      openBlueprintId={openBlueprintId}
-      onClearOpen={() => setOpenBlueprintId(null)}
       triggerForge={triggerForge}
       onClearForge={() => setTriggerForge(false)}
       profileComplete={isFounderProfileComplete(profile)}

@@ -38,7 +38,8 @@ export function useFounderNavigation() {
     // history entry) instead of a bare tab push followed by a second push
     // for the query param — the two-step version left an extra entry that
     // ate one of the user's Back presses without going anywhere.
-    useFounderDashboardStore.getState().setOpenBlueprintId(id);
+    // The URL is the whole state: mirroring it into the store as well left a
+    // copy that browser Back could not clear, which re-opened the blueprint.
     router.push(`/founder/workspace?blueprint=${encodeURIComponent(id)}`);
   };
 

@@ -24,7 +24,6 @@ interface FounderDashboardState {
   blueprints: Blueprint[];
   dataLoaded: boolean;
   // ── cross-tab UI state ──
-  openBlueprintId: string | null;
   triggerForge: boolean;
   networkRequestCount: number;
   inboxActiveContactId: string;
@@ -44,7 +43,6 @@ interface FounderDashboardState {
    *  without writing back a list snapshot that went stale while they waited. */
   saveBlueprints: (bps: Blueprint[] | ((prev: Blueprint[]) => Blueprint[])) => void;
   // ── granular setters ──
-  setOpenBlueprintId: (id: string | null) => void;
   setTriggerForge: (v: boolean) => void;
   setNetworkRequestCount: (n: number) => void;
   setInboxActiveContactId: (id: string) => void;
@@ -60,7 +58,6 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   profile: DEFAULT_FOUNDER_PROFILE,
   blueprints: [],
   dataLoaded: false,
-  openBlueprintId: null,
   triggerForge: false,
   networkRequestCount: 0,
   inboxActiveContactId: "",
@@ -119,7 +116,6 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
     });
   },
 
-  setOpenBlueprintId: (id) => set({ openBlueprintId: id }),
   setTriggerForge: (v) => set({ triggerForge: v }),
   setNetworkRequestCount: (n) => set({ networkRequestCount: n }),
   setInboxActiveContactId: (id) => set({ inboxActiveContactId: id }),

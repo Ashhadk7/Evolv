@@ -39,8 +39,6 @@ import { WorkspaceKpiCard } from "./workspace-kpi-card";
 interface WorkspaceTabProps {
   blueprints: Blueprint[];
   onBlueprintsChange: (update: Blueprint[] | ((prev: Blueprint[]) => Blueprint[])) => void;
-  openBlueprintId?: string | null;
-  onClearOpen?: () => void;
   triggerForge?: boolean;
   onClearForge?: () => void;
   profileComplete?: boolean;
@@ -51,8 +49,6 @@ interface WorkspaceTabProps {
 export function WorkspaceTab({
   blueprints,
   onBlueprintsChange,
-  openBlueprintId,
-  onClearOpen,
   triggerForge,
   onClearForge,
   profileComplete = true,
@@ -61,17 +57,19 @@ export function WorkspaceTab({
 }: WorkspaceTabProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const bpParam = searchParams.get("blueprint");
 
   const [forgeOpen, setForgeOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Blueprint | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [openInEdit, setOpenInEdit] = useState(false);
 
-  // Initialise from the URL so a deep-linked blueprint renders without a flash.
-  const [viewingId, setViewingId] = useState<string | null>(
-    bpParam ?? openBlueprintId ?? null
-  );
+  // The `?blueprint=` param is the ONLY source of truth for what's open.
+  // It was previously mirrored into component state and a store field, kept in
+  // step by three effects writing the same value from different directions —
+  // browser Back cleared the URL but not the store, so the stale id pushed the
+  // param straight back and the two ping-ponged forever. Deriving it means
+  // there is nothing left to fall out of sync.
+  const viewingId = searchParams.get("blueprint");
 
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<WorkspaceStage>("All Stages");
@@ -85,31 +83,21 @@ export function WorkspaceTab({
       });
   }, [triggerForge, onClearForge]);
 
-  useEffect(() => {
-    if (openBlueprintId) queueMicrotask(() => setViewingId(openBlueprintId));
-  }, [openBlueprintId]);
-
-  // Resync FROM the URL when it changes without an unmount — e.g. the browser
-  // Back/Forward buttons, which update `searchParams` in place rather than
-  // remounting this component. Without this, closing the blueprint via Back
-  // only changed the URL; the view stayed visually open.
-  useEffect(() => {
-    setViewingId(bpParam ?? null);
-  }, [bpParam]);
-
-  // Persist the open blueprint across refreshes.
-  useEffect(() => {
+  const openBlueprint = (id: string, edit: boolean) => {
+    setOpenInEdit(edit);
     const params = new URLSearchParams(searchParams.toString());
-    if (viewingId) {
-      if (params.get("blueprint") !== viewingId) {
-        params.set("blueprint", viewingId);
-        router.push(`?${params.toString()}`, { scroll: false });
-      }
-    } else if (params.has("blueprint")) {
-      params.delete("blueprint");
-      router.push(`?${params.toString()}`, { scroll: false });
-    }
-  }, [viewingId, router, searchParams]);
+    params.set("blueprint", id);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const closeBlueprint = () => {
+    setOpenInEdit(false);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("blueprint");
+    router.push(params.size ? `?${params.toString()}` : window.location.pathname, {
+      scroll: false,
+    });
+  };
 
   const visible = sortBlueprints(filterBlueprints(blueprints, { search, stage }), sort);
   const stats = workspaceStats(blueprints);
@@ -125,7 +113,7 @@ export function WorkspaceTab({
     try {
       await deleteBlueprint(pendingDelete.id);
       onBlueprintsChange((prev) => prev.filter((bp) => bp.id !== pendingDelete.id));
-      if (viewingId === pendingDelete.id) setViewingId(null);
+      if (viewingId === pendingDelete.id) closeBlueprint();
       setPendingDelete(null);
     } catch (err) {
       alert(getApiErrorMessage(err));
@@ -149,22 +137,13 @@ export function WorkspaceTab({
     }
   };
 
-  const openBlueprint = (bp: Blueprint, edit: boolean) => {
-    setOpenInEdit(edit);
-    setViewingId(bp.id);
-  };
-
   if (viewingBlueprint) {
     return (
       <div className="bg-bp-page flex h-full flex-col overflow-hidden px-9 py-7">
         <BlueprintDetail
           bp={viewingBlueprint}
           startInEdit={openInEdit}
-          onBack={() => {
-            setViewingId(null);
-            setOpenInEdit(false);
-            onClearOpen?.();
-          }}
+          onBack={closeBlueprint}
           onSave={(updated) =>
             onBlueprintsChange((prev) => prev.map((bp) => (bp.id === updated.id ? updated : bp)))
           }
@@ -263,8 +242,8 @@ export function WorkspaceTab({
                   index={index}
                   developers={matches.byBlueprint[bp.id] ?? []}
                   developersLoading={matches.loading}
-                  onView={() => openBlueprint(bp, false)}
-                  onEdit={() => openBlueprint(bp, true)}
+                  onView={() => openBlueprint(bp.id, false)}
+                  onEdit={() => openBlueprint(bp.id, true)}
                   onDelete={() => setPendingDelete(bp)}
                   onRetry={() => handleRetry(bp)}
                 />
@@ -279,7 +258,7 @@ export function WorkspaceTab({
           onClose={() => setForgeOpen(false)}
           onCreated={(bp) => {
             onBlueprintsChange((prev) => [bp, ...prev]);
-            setViewingId(bp.id);
+            openBlueprint(bp.id, false);
           }}
         />
       )}
