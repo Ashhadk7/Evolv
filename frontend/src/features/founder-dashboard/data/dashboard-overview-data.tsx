@@ -4,18 +4,14 @@
 
 import type { ReactNode } from "react";
 import { Lightning, Users, Warning } from "@phosphor-icons/react";
+import { computeProjectHealth, type BlueprintContent } from "@/features/blueprints/blueprint-content";
+import type { Blueprint } from "@/features/blueprints/types";
 
-export interface Blueprint {
-  id: string;
-  name: string;
-  industry: string;
-  isPublic: boolean;
-  viability: number;
-  devMatches: number;
-  views: number;
-  interested: number;
-  updatedAt: string;
-}
+// Re-export the real domain type instead of a parallel mock shape — these
+// widgets now read real fields (`.project`, tech stack, mvp plan) off it via
+// `buildBlueprintContent`/`computeProjectHealth`, which only typecheck
+// against the real Blueprint.
+export type { Blueprint } from "@/features/blueprints/types";
 
 export interface Metric {
   id: string;
@@ -128,135 +124,92 @@ export const AI_CONTENT = {
   },
 } as const;
 
-export function getRoadmapForBlueprint(bp: Blueprint): RoadmapMilestone[] {
-  const industry = bp?.industry || "SaaS";
-  if (industry === "HealthTech" || industry === "MedTech") {
-    return [
-      {
-        phase: "Phase 1",
-        title: "Clinical Validation & HIPAA Setup",
-        status: "completed",
-        date: "Completed",
-        color: "#428475",
-      },
-      {
-        phase: "Phase 2",
-        title: "AI Model Diagnostics Training",
-        status: "completed",
-        date: "Completed",
-        color: "#89d7b7",
-      },
-      {
-        phase: "Phase 3",
-        title: "Developer Sourcing (HIPAA Stack)",
-        status: "active",
-        date: "In Progress",
-        color: "#7C5CBF",
-      },
-      {
-        phase: "Phase 4",
-        title: "Hospital Pilot & Clinical Launch",
-        status: "upcoming",
-        date: "Upcoming",
-        color: "#C4973A",
-      },
-    ];
-  }
-  if (industry === "CleanTech") {
-    return [
-      {
-        phase: "Phase 1",
-        title: "Micro-Grid Simulation Testing",
-        status: "completed",
-        date: "Completed",
-        color: "#428475",
-      },
-      {
-        phase: "Phase 2",
-        title: "Carbon Credit Smart Contracts",
-        status: "completed",
-        date: "Completed",
-        color: "#89d7b7",
-      },
-      {
-        phase: "Phase 3",
-        title: "Cooperative Partner Onboarding",
-        status: "active",
-        date: "In Progress",
-        color: "#7C5CBF",
-      },
-      {
-        phase: "Phase 4",
-        title: "Coop Grid Rollout & Launch",
-        status: "upcoming",
-        date: "Upcoming",
-        color: "#C4973A",
-      },
-    ];
-  }
-  if (industry === "EdTech") {
-    return [
-      {
-        phase: "Phase 1",
-        title: "Curriculum Mapping & Validation",
-        status: "completed",
-        date: "Completed",
-        color: "#428475",
-      },
-      {
-        phase: "Phase 2",
-        title: "Generative Math Engine Review",
-        status: "completed",
-        date: "Completed",
-        color: "#89d7b7",
-      },
-      {
-        phase: "Phase 3",
-        title: "Beta School Matching & Sourcing",
-        status: "active",
-        date: "In Progress",
-        color: "#7C5CBF",
-      },
-      {
-        phase: "Phase 4",
-        title: "Mobile App Store MVP Launch",
-        status: "upcoming",
-        date: "Upcoming",
-        color: "#C4973A",
-      },
-    ];
-  }
-  // Default / SaaS
-  return [
-    {
-      phase: "Phase 1",
-      title: "Venture Ideation & Validation",
-      status: "completed",
-      date: "Completed",
-      color: "#428475",
-    },
-    {
-      phase: "Phase 2",
-      title: "AI Blueprint Refinement",
-      status: "completed",
-      date: "Completed",
-      color: "#89d7b7",
-    },
-    {
-      phase: "Phase 3",
-      title: "Developer Matching & Sourcing",
-      status: "active",
-      date: "In Progress",
-      color: "#7C5CBF",
-    },
-    {
-      phase: "Phase 4",
-      title: "MVP Development & Launch",
-      status: "upcoming",
-      date: "Upcoming",
-      color: "#C4973A",
-    },
-  ];
+/**
+ * Real roadmap built from the venture's actual phases + phase state — no
+ * more per-industry canned copy. Phase 1..N titles come from the blueprint's
+ * own generated content; status/date come from the backend project record
+ * (`bp.project.phaseStates`), the same data `computeProjectHealth` reads for
+ * the Venture Progress card, so both cards share one source of truth.
+ */
+export function getRoadmapForBlueprint(
+  bp: Blueprint,
+  content: BlueprintContent
+): RoadmapMilestone[] {
+  const project = bp.project;
+  return content.phases.map((phase, i) => {
+    const ps = project?.phaseStates[i];
+    const status: RoadmapMilestone["status"] = !ps
+      ? "upcoming"
+      : ps.status === "Complete"
+        ? "completed"
+        : ps.status === "Not Started"
+          ? "upcoming"
+          : "active"; // "In Progress" | "In Review"
+    const date = !project
+      ? "Not started"
+      : status === "completed"
+        ? "Completed"
+        : status === "active"
+          ? "In Progress"
+          : "Upcoming";
+    const color =
+      status === "completed" ? "#428475" : status === "active" ? "#7C5CBF" : "#eaeeed";
+    return { phase: `Phase ${i + 1}`, title: phase.name, status, date, color };
+  });
+}
+
+export interface VentureProgressBars {
+  marketStrength: number;
+  designCompleteness: number;
+  developerAvailability: number;
+  executionReadiness: number;
+}
+
+/**
+ * Real signals for the Venture Progress bars — replaces the old formula that
+ * derived all 4 numbers as arbitrary offsets from `viability`.
+ *  - Market Strength: the blueprint's own AI-derived viability score.
+ *  - Design Completeness: fraction of tech-stack layers with a chosen option
+ *    plus whether MVP features have been defined.
+ *  - Developer Availability: fraction of this venture's matched developers
+ *    (same matched-developer list the Developer Pipeline card fetches) who
+ *    are currently available.
+ *  - Execution Readiness: real deliverables-done ratio from the project's
+ *    phase state (0 if the idea hasn't been started as a project yet) — the
+ *    same `computeProjectHealth` the Roadmap card's phase status comes from.
+ */
+export function computeVentureProgress(
+  bp: Blueprint,
+  content: BlueprintContent,
+  matchedDevelopers: { availability: string }[]
+): VentureProgressBars {
+  const marketStrength = Math.max(0, Math.min(100, Math.round(bp.viability)));
+
+  const layers = Object.values(content.techStack);
+  const layersChosen = layers.filter((l) => l.chosen?.trim()).length;
+  const featuresDefined = content.mvpPlan.mustHave.length > 0 ? 1 : 0;
+  const designCompleteness = Math.round(
+    ((layersChosen + featuresDefined) / (layers.length + 1)) * 100
+  );
+
+  const developerAvailability = matchedDevelopers.length
+    ? Math.round(
+        (matchedDevelopers.filter((d) => d.availability === "Available").length /
+          matchedDevelopers.length) *
+          100
+      )
+    : 0;
+
+  const executionReadiness = bp.project
+    ? (() => {
+        const health = computeProjectHealth(content, bp.project!);
+        return health.deliverables.total
+          ? Math.round((health.deliverables.done / health.deliverables.total) * 100)
+          : 0;
+      })()
+    : 0;
+
+  return { marketStrength, designCompleteness, developerAvailability, executionReadiness };
 }
 
 // ─── Live-data compute functions ──────────────────────────────────────────────

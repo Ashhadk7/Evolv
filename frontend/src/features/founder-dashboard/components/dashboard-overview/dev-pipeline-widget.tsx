@@ -1,11 +1,46 @@
 "use client";
 
+import { useState } from "react";
 import { Users } from "@phosphor-icons/react";
-import type { PipelineRow } from "@/features/founder-dashboard/data/dashboard-overview-data";
-import { PIPELINE } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import {
+  computePipeline,
+  type Blueprint,
+} from "@/features/founder-dashboard/data/dashboard-overview-data";
 
-export function DevPipelineWidget({ pipeline }: { pipeline?: PipelineRow[] }) {
-  const rows = pipeline ?? PIPELINE;
+export interface ProjectPipelineCounts {
+  matchedCount: number;
+  incomingCount: number;
+  connectedCount: number;
+  hiredCount: number;
+}
+
+export function DevPipelineWidget({
+  blueprints,
+  pipelineByBlueprintId,
+}: {
+  blueprints: Blueprint[];
+  /** Per-venture counts, scoped to that blueprint's own applications/matches/hires. */
+  pipelineByBlueprintId: Record<string, ProjectPipelineCounts>;
+}) {
+  const [selectedId, setSelectedId] = useState("latest");
+
+  // Determine which blueprint is active — same dropdown pattern as Venture
+  // Roadmap / Venture Progress, for consistency.
+  const activeBp =
+    selectedId === "latest"
+      ? blueprints[0]
+      : blueprints.find((b) => b.id === selectedId) || blueprints[0];
+
+  const counts = activeBp
+    ? (pipelineByBlueprintId[activeBp.id] ?? {
+        matchedCount: 0,
+        incomingCount: 0,
+        connectedCount: 0,
+        hiredCount: 0,
+      })
+    : { matchedCount: 0, incomingCount: 0, connectedCount: 0, hiredCount: 0 };
+  const rows = computePipeline(counts);
+
   return (
     <div
       style={{
@@ -16,9 +51,51 @@ export function DevPipelineWidget({ pipeline }: { pipeline?: PipelineRow[] }) {
         height: "100%",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <Users size={14} weight="bold" style={{ color: "#7C5CBF" }} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>Developer Pipeline</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 16,
+          gap: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <Users size={14} weight="bold" style={{ color: "#7C5CBF" }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2e26" }}>
+            Developer Pipeline
+          </span>
+        </div>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#4a6a5a",
+            background: "#f2f6f4",
+            border: "1px solid #eaeeed",
+            borderRadius: 8,
+            padding: "4px 24px 4px 10px",
+            cursor: "pointer",
+            outline: "none",
+            maxWidth: 160,
+            textOverflow: "ellipsis",
+            appearance: "none",
+            WebkitAppearance: "none",
+            backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='%234a6a5a' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 6px center",
+            backgroundSize: "14px",
+          }}
+        >
+          <option value="latest">Latest Venture</option>
+          {blueprints.map((bp) => (
+            <option key={bp.id} value={bp.id}>
+              {bp.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {rows.map((row, i) => (

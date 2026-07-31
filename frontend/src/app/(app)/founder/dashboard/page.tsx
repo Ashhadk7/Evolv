@@ -20,6 +20,7 @@ export default function FounderDashboardPage() {
       blueprints={blueprints}
       onViewBlueprint={nav.handleViewBlueprint}
       profileComplete={profileComplete}
+      onCompleteProfile={nav.handleOpenProfile}
     />
   );
 }

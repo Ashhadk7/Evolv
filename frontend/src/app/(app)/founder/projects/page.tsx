@@ -5,52 +5,16 @@ import { ProjectsTab } from "@/features/projects/components/projects-tab";
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-navigation";
 import type { Blueprint } from "@/features/blueprints/types";
-import { buildBlueprintContent, initProjectState } from "@/features/blueprints/blueprint-content";
+import { mergeBlueprintsWithProjects } from "@/features/projects/lib/project-helpers";
 import {
   listProjects,
   createProject,
   updateProjectStatus,
   updateProjectMilestones,
   backendStatus,
-  frontendStatus,
-  deserialiseMilestones,
   serialiseMilestones,
   type ProjectWire,
 } from "@/features/projects/projects-api";
-
-// ─── merge backend projects onto blueprints ───────────────────────────────────
-// Pure function: given the founder's blueprints and the CURRENT backend project
-// rows, produce the enriched blueprint list. No caching, no refs — this is
-// always recomputed from the latest of both, so it can never go stale.
-
-function mergeBlueprintsWithProjects(
-  blueprints: Blueprint[],
-  apiProjects: ProjectWire[]
-): Blueprint[] {
-  const byBlueprint = new Map<string, ProjectWire>();
-  for (const p of apiProjects) byBlueprint.set(p.blueprint_id, p);
-
-  return blueprints.map((bp) => {
-    const wire = byBlueprint.get(bp.id);
-    if (!wire) return bp;
-
-    // Prefer persisted phase state from milestones; fall back to a fresh init.
-    const storedState = deserialiseMilestones(wire.milestones);
-    const content = buildBlueprintContent(bp);
-    const project = storedState ?? initProjectState(content);
-
-    return {
-      ...bp,
-      project: {
-        ...project,
-        // Always authoritative from backend:
-        status: frontendStatus(wire.status),
-      },
-      // Store backend project id on the blueprint for later mutations.
-      _projectId: wire.id,
-    } as Blueprint & { _projectId: string };
-  });
-}
 
 // ─── page component ───────────────────────────────────────────────────────────
 

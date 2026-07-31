@@ -6,6 +6,7 @@ import {
   getRoadmapForBlueprint,
   type Blueprint,
 } from "@/features/founder-dashboard/data/dashboard-overview-data";
+import { buildBlueprintContent } from "@/features/blueprints/blueprint-content";
 
 export function VentureRoadmapWidget({ blueprints }: { blueprints: Blueprint[] }) {
   const [selectedId, setSelectedId] = useState("latest");
@@ -16,7 +17,7 @@ export function VentureRoadmapWidget({ blueprints }: { blueprints: Blueprint[] }
       ? blueprints[0]
       : blueprints.find((b) => b.id === selectedId) || blueprints[0];
 
-  const roadmap = getRoadmapForBlueprint(activeBp);
+  const roadmap = activeBp ? getRoadmapForBlueprint(activeBp, buildBlueprintContent(activeBp)) : [];
 
   return (
     <div
