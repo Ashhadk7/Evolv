@@ -87,6 +87,9 @@ export function BlueprintPersonasSection({ personas }: { personas: Persona[] }) 
               key={persona.name}
               whileHover={{ y: -3 }}
               transition={{ type: "spring", stiffness: 300, damping: 24 }}
+              // min-w-0: grid items default to `min-width: auto`, so any wide
+              // child stretches its column past the track and overflows the page.
+              className="min-w-0"
               style={cardStyle({ padding: "24px 24px" })}
             >
               <div className="mb-3.5 flex items-center justify-between">
@@ -138,7 +141,7 @@ export function BlueprintPersonasSection({ personas }: { personas: Persona[] }) 
                     <Label>Where to reach them</Label>
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {persona.channels.map((channel, i) => (
-                        <Chip key={i} tone="mint">
+                        <Chip key={i} tone="mint" wrap>
                           {channel}
                         </Chip>
                       ))}
