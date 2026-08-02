@@ -14,6 +14,10 @@ engine_kwargs: dict[str, object] = {
 if settings.DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 else:
+    # Supabase's transaction pooler (pgbouncer, port 6543) reassigns the backend
+    # connection per transaction, so server-side prepared statements leak across
+    # sessions and fail. None disables psycopg's automatic preparation entirely.
+    connect_args["prepare_threshold"] = None
     engine_kwargs.update(
         {
             "pool_size": settings.DB_POOL_SIZE,
