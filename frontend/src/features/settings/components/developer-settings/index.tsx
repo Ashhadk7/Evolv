@@ -23,7 +23,7 @@ import {
   getProfileInitials,
   hydrateDeveloperProfile,
 } from "@/features/settings/data/developer-settings-data";
-import type { PaymentData, SettingsTab } from "./developer-settings-types";
+import type { SettingsTab } from "./developer-settings-types";
 import styles from "./developer-settings.module.css";
 import { DeleteAccountModal } from "@/features/settings/components/delete-account-modal";
 import { SettingsSidebarNav } from "./settings-sidebar-nav";
@@ -77,14 +77,6 @@ const Settings = () => {
   const [saveError, setSaveError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [payData, setPayData] = useState<PaymentData>({
-    method: "bank",
-    accountName: "",
-    accountNumber: "",
-    bankName: "",
-    currency: "USD",
-    paypal: "",
-  });
   const photoInputRef = useRef<HTMLInputElement>(null);
   const activeTabExists = TABS.some((tab) => tab.id === activeTab);
   const visibleTab: SettingsTab = activeTabExists ? activeTab : "profile";
@@ -184,6 +176,7 @@ const Settings = () => {
         lastName,
         jobTitle: profile.role,
         role: profile.role,
+        rateCurrency: "USD",
         education: formatFounderEducations(profile.educations || []),
       });
       await completeProfile(normalized);
@@ -245,10 +238,6 @@ const Settings = () => {
     key: "name" | "email" | "role" | "github" | "linkedin" | "portfolioLink" | "bio",
     value: string
   ) => setProfile((p) => ({ ...p, [key]: value }));
-
-  const handlePaySave = () => {
-    toast.success("Payment details saved");
-  };
 
   const handleNotificationSave = async () => {
     setSaveError("");
@@ -477,11 +466,7 @@ const Settings = () => {
                 ))}
 
               {visibleTab === "payment" && (
-                <PaymentTab
-                  payData={payData}
-                  onChangePayData={(patch) => setPayData((prev) => ({ ...prev, ...patch }))}
-                  onSave={handlePaySave}
-                />
+                <PaymentTab profile={profile} />
               )}
 
               {visibleTab === "notifications" && (
@@ -500,11 +485,9 @@ const Settings = () => {
                 <PreferencesTab
                   rateAmount={profile.rateAmount}
                   ratePeriod={profile.ratePeriod}
-                  rateCurrency={profile.rateCurrency}
                   experienceYears={profile.experienceYears}
                   onChangeRateAmount={(value) => setProfile({ ...profile, rateAmount: value })}
                   onChangeRatePeriod={(value) => setProfile({ ...profile, ratePeriod: value })}
-                  onChangeRateCurrency={(value) => setProfile({ ...profile, rateCurrency: value })}
                   onChangeExperienceYears={(value) =>
                     setProfile({ ...profile, experienceYears: value })
                   }

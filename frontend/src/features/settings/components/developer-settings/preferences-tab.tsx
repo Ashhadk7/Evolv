@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  RATE_CURRENCIES,
   RATE_PERIODS,
   formatRate,
   parseRateForm,
@@ -25,25 +24,21 @@ const MATCH_TOGGLES = [
 export function PreferencesTab({
   rateAmount,
   ratePeriod,
-  rateCurrency,
   experienceYears,
   onChangeRateAmount,
   onChangeRatePeriod,
-  onChangeRateCurrency,
   onChangeExperienceYears,
   onSave,
 }: {
   rateAmount: string;
   ratePeriod: string;
-  rateCurrency: string;
   experienceYears: string;
   onChangeRateAmount: (value: string) => void;
   onChangeRatePeriod: (value: string) => void;
-  onChangeRateCurrency: (value: string) => void;
   onChangeExperienceYears: (value: string) => void;
   onSave: () => void | Promise<void>;
 }) {
-  const preview = formatRate(parseRateForm(rateAmount, ratePeriod, rateCurrency));
+  const preview = formatRate(parseRateForm(rateAmount, ratePeriod, "USD"));
 
   return (
     <div className={styles.card}>
@@ -63,16 +58,6 @@ export function PreferencesTab({
             onChange={(e) => onChangeRateAmount(e.target.value)}
             placeholder="80000"
           />
-        </div>
-        <div className={styles.formGroup}>
-          <label>Currency</label>
-          <select value={rateCurrency} onChange={(e) => onChangeRateCurrency(e.target.value)}>
-            {RATE_CURRENCIES.map((currency) => (
-              <option key={currency} value={currency}>
-                {currency}
-              </option>
-            ))}
-          </select>
         </div>
         <div className={styles.formGroup}>
           <label>Per</label>

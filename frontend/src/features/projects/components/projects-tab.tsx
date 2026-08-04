@@ -25,19 +25,14 @@ export function ProjectsTab({
   onViewBlueprint,
   onNavigateNetwork,
   onMessage,
-  stripeConnected,
-  onNavigateSettingsPayment,
 }: {
   blueprints: Blueprint[];
   onBlueprintsChange: (bps: Blueprint[]) => void;
   onViewBlueprint?: (id: string) => void;
   onNavigateNetwork?: () => void;
   onMessage?: (contact: FounderNetworkMessageTarget) => void;
-  stripeConnected: boolean;
-  onNavigateSettingsPayment?: () => void;
 }) {
   const {
-    selectedId,
     setSelectedId,
     pickerOpen,
     setPickerOpen,
@@ -64,8 +59,6 @@ export function ProjectsTab({
           onViewBlueprint={onViewBlueprint}
           onNavigateNetwork={onNavigateNetwork}
           onMessage={onMessage}
-          stripeConnected={stripeConnected}
-          onNavigateSettingsPayment={onNavigateSettingsPayment}
         />
       </div>
     );

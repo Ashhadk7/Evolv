@@ -24,6 +24,10 @@ export const DEFAULT_DEVELOPER_PROFILE: DeveloperProfile = {
   linkedin: "",
   portfolioLink: "",
   certifications: [],
+  stripeAccountId: "",
+  stripeOnboardingComplete: false,
+  stripeChargesEnabled: false,
+  stripePayoutsEnabled: false,
   profileComplete: false,
   firstTime: false,
 };

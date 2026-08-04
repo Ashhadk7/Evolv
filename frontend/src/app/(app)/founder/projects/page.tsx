@@ -19,7 +19,7 @@ import {
 // ─── page component ───────────────────────────────────────────────────────────
 
 export default function FounderProjectsPage() {
-  const { blueprints: storeBlueprints, profile, saveBlueprints } = useFounderDashboardStore();
+  const { blueprints: storeBlueprints, saveBlueprints } = useFounderDashboardStore();
   const nav = useFounderNavigation();
 
   // The ONLY source of truth for "which blueprints have a backend project" is
@@ -251,8 +251,6 @@ export default function FounderProjectsPage() {
         onViewBlueprint={nav.handleViewBlueprint}
         onNavigateNetwork={() => nav.go("network")}
         onMessage={nav.handleOpenNetworkMessage}
-        stripeConnected={Boolean(profile.stripeConnected)}
-        onNavigateSettingsPayment={nav.handleOpenPaymentSettings}
       />
     </>
   );

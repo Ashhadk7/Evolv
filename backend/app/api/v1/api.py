@@ -16,6 +16,7 @@ from app.api.v1.controllers import (
     me,
     messages,
     notifications,
+    payments,
     phone,
     projects,
     skills,
@@ -46,5 +47,6 @@ api_router.include_router(me.router, prefix="/me", tags=["me"])
 api_router.include_router(connections.router, prefix="/connections", tags=["connections"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(matching.router, tags=["matching"])
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])

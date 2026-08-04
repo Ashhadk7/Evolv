@@ -49,6 +49,10 @@ export interface DeveloperProfile {
   rateAmount?: string;
   ratePeriod?: string;
   rateCurrency?: string;
+  stripeAccountId?: string;
+  stripeOnboardingComplete?: boolean;
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
   tags?: string[];
   skillEntries?: DeveloperSkillEntry[];
   techStack?: string[];

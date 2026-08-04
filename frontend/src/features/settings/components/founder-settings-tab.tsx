@@ -158,7 +158,7 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
             {activeSection === "profile"
               ? "Update your personal details and public profile."
               : activeSection === "payment"
-                ? "Manage founder billing, plans, and funding preferences."
+                ? "Manage founder billing contact and workspace plan."
                 : activeSection === "security"
                   ? "Protect your founder account and workspace access."
                   : "Control which notifications you receive."}

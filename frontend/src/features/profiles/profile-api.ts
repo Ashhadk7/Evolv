@@ -56,6 +56,10 @@ interface DeveloperWire {
   rate_amount: number | null;
   rate_period: string | null;
   rate_currency: string | null;
+  stripe_account_id: string | null;
+  stripe_onboarding_complete: boolean;
+  stripe_charges_enabled: boolean;
+  stripe_payouts_enabled: boolean;
   github: string | null;
   linkedin: string | null;
   portfolio_link: string | null;
@@ -283,12 +287,12 @@ export async function saveFounderProfile(
       primary_goal: profile.primaryGoal?.trim() || null,
       domains: profile.domains,
       profile_complete: Boolean(profile.profileComplete),
-      stripe_connected: Boolean(profile.stripeConnected),
+      stripe_connected: false,
       billing_plan: profile.billingPlan?.trim() || null,
       billing_email: profile.billingEmail?.trim() || null,
-      billing_currency: profile.billingCurrency?.trim() || null,
-      billing_budget_range: profile.billingBudgetRange?.trim() || null,
-      payment_method: profile.paymentMethod?.trim() || null,
+      billing_currency: DEFAULT_RATE_CURRENCY,
+      billing_budget_range: null,
+      payment_method: "card",
       billing_company_name: profile.billingCompanyName?.trim() || null,
       educations: educationPayload(profile.educations),
     },
@@ -304,7 +308,7 @@ export async function loadDeveloperProfile(): Promise<DeveloperProfile> {
     data = await apiFetch<DeveloperWire>("/developer-profile", { auth: true });
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 404) throw error;
-    data = { job_title: null, bio: null, experience_years: null, availability: true, open_to_remote: false, preferred_budget: null, rate_amount: null, rate_period: null, rate_currency: null, github: null, linkedin: null, portfolio_link: null, skills: [], tags: [], skill_entries: [], rating_avg: 0, profile_complete: false, educations: [], certifications: [], reviews: [] };
+    data = { job_title: null, bio: null, experience_years: null, availability: true, open_to_remote: false, preferred_budget: null, rate_amount: null, rate_period: null, rate_currency: null, stripe_account_id: null, stripe_onboarding_complete: false, stripe_charges_enabled: false, stripe_payouts_enabled: false, github: null, linkedin: null, portfolio_link: null, skills: [], tags: [], skill_entries: [], rating_avg: 0, profile_complete: false, educations: [], certifications: [], reviews: [] };
   }
   const experienceYears = data.experience_years?.toString() ?? "";
   const skillEntries = developerSkillEntriesFromWire(data.skill_entries, data.skills);
@@ -329,7 +333,11 @@ export async function loadDeveloperProfile(): Promise<DeveloperProfile> {
     preferredBudget: data.preferred_budget ?? "",
     rateAmount: data.rate_amount ? String(data.rate_amount) : "",
     ratePeriod: data.rate_period ?? DEFAULT_RATE_PERIOD,
-    rateCurrency: data.rate_currency ?? DEFAULT_RATE_CURRENCY,
+    rateCurrency: DEFAULT_RATE_CURRENCY,
+    stripeAccountId: data.stripe_account_id ?? "",
+    stripeOnboardingComplete: data.stripe_onboarding_complete,
+    stripeChargesEnabled: data.stripe_charges_enabled,
+    stripePayoutsEnabled: data.stripe_payouts_enabled,
     github: data.github ?? "",
     linkedin: data.linkedin ?? "",
     linkedIn: data.linkedin ?? "",
@@ -359,7 +367,7 @@ export async function saveDeveloperProfile(
     const avatarUrl = avatarUrlForAccountPatch(profile.avatarUrl);
     await apiFetch<AccountWire>("/me", { method: "PATCH", auth: true, body: { first_name: profile.firstName, last_name: profile.lastName, phone: profile.phone || null, country: profile.country || null, city: profile.city || null, ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}) } });
   }
-  const developerRate = parseRateForm(profile.rateAmount, profile.ratePeriod, profile.rateCurrency);
+  const developerRate = parseRateForm(profile.rateAmount, profile.ratePeriod, DEFAULT_RATE_CURRENCY);
   await upsert<DeveloperWire>("/developer-profile", { job_title: profile.jobTitle?.trim() || profile.role?.trim() || null, bio: profile.bio?.trim() || null, experience_years: experience, availability: typeof profile.availability === "boolean" ? profile.availability : true, open_to_remote: profile.openToRemote ?? false, preferred_budget: formatRate(developerRate) || profile.preferredBudget?.trim() || null, rate_amount: developerRate?.amount ?? null, rate_period: developerRate?.period ?? null, rate_currency: developerRate?.currency ?? null, github: profile.github?.trim() || null, linkedin: profile.linkedin?.trim() || profile.linkedIn?.trim() || null, portfolio_link: profile.portfolioLink?.trim() || null, skills, tags: Array.isArray(profile.tags) ? profile.tags.filter((tag) => tag.trim()) : [], skill_entries: skillEntries, profile_complete: Boolean(profile.profileComplete), educations: educationPayload(profile.educations), certifications: certificationPayload(profile.certifications) }, { preferCreate: options.preferCreate });
   return options.reload === false ? profile : loadDeveloperProfile();
 }

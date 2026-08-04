@@ -6,7 +6,7 @@ import { AddDeveloperModal, RemoveDeveloperModal } from "../add-remove-developer
 import { IssueModal } from "../issue-modal";
 import { DeadlineModal } from "../deadline-modal";
 import { SpendHistoryModal } from "../spend-history-modal";
-import type { BlueprintContent, ProjectDeadline, ProjectExpense, ProjectIssue, ProjectPhaseState } from "@/features/blueprints/blueprint-content";
+import type { BlueprintContent, ProjectDeadline, ProjectExpense, ProjectIssue } from "@/features/blueprints/blueprint-content";
 import type { FounderContactProfile } from "@/features/network/types";
 import { useProjectModals } from "@/features/projects/lib/use-project-modals";
 import { ProjectBlueprint } from "@/features/projects/lib/project-helpers";
@@ -16,8 +16,6 @@ export function ProjectModals({
   content,
   totalBudget,
   spentBudget,
-  stripeConnected,
-  onNavigateSettingsPayment,
   assignDeveloper,
   removeDeveloper,
   sendPayment,
@@ -30,8 +28,6 @@ export function ProjectModals({
   content: BlueprintContent;
   totalBudget: number;
   spentBudget: number;
-  stripeConnected: boolean;
-  onNavigateSettingsPayment?: () => void;
   assignDeveloper: (phaseIdx: number, dev: FounderContactProfile, amount: number) => void;
   removeDeveloper: (phaseIdx: number, reason: string) => void;
   sendPayment: (phaseIdx: number, amount: number) => void;
@@ -62,11 +58,6 @@ export function ProjectModals({
             amountAgreed={bp.project.phaseStates[payModalPhase].assignment?.amountAgreed ?? 0}
             amountPaid={bp.project.phaseStates[payModalPhase].assignment?.amountPaid ?? 0}
             feePct={content.costModel.platformFeePct}
-            stripeConnected={stripeConnected}
-            onNavigateSettingsPayment={() => {
-              setPayModalPhase(null);
-              onNavigateSettingsPayment?.();
-            }}
             onSend={(amount) => {
               sendPayment(payModalPhase, amount);
               setPayModalPhase(null);

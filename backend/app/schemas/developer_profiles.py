@@ -74,6 +74,10 @@ class DeveloperProfileResponse(DeveloperProfileBase):
 
     user_id: UUID
     rating_avg: float
+    stripe_account_id: str | None = None
+    stripe_onboarding_complete: bool = False
+    stripe_charges_enabled: bool = False
+    stripe_payouts_enabled: bool = False
     educations: list[EducationResponse] = Field(default_factory=list)
     certifications: list[CertificationResponse] = Field(default_factory=list)
     reviews: list[DeveloperReviewResponse] = Field(default_factory=list)
