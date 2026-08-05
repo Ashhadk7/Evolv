@@ -245,11 +245,11 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
       const data = await messagingApi.messages(id);
       const currentId = userId || getSession()?.user.id || "";
       setMessages((old) => ({ ...old, [id]: data.items.map((m) => uiMessage(m, currentId)) }));
-      await messagingApi.read(id);
       markConversationReadLocal(id);
+      setLoadingConversationId(null);
+      void messagingApi.read(id);
     } catch (err) {
       setError(getApiErrorMessage(err));
-    } finally {
       setLoadingConversationId(null);
     }
   }, [markConversationReadLocal, messages, onActiveContactChange, userId]);
@@ -337,14 +337,132 @@ export function RealInbox({ activeContactId, onActiveContactChange, currentUser,
     }
   };
 
-  return <div className="flex h-screen max-h-screen min-h-0 flex-col overflow-hidden" style={{ background: "#f5f6f4", padding: "24px 28px" }}>
-    <div className="mb-4 flex shrink-0 items-center justify-between"><div><h2 className="text-[1.2rem] font-bold" style={{ color: TEXT }}>Inbox</h2><p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>Your persistent Evolv conversations.</p></div><motion.button type="button" onClick={() => { if (!profileComplete && onRequireProfile) onRequireProfile(() => setComposeOpen(true)); else setComposeOpen(true); }} className="bp-gradient-btn flex h-11 items-center gap-2 rounded-xl px-5 text-[13px] font-extrabold"><PencilSimple size={15} weight="bold" />Compose</motion.button></div>
-    {error && <div className="mb-3 rounded-lg border border-[#dce9e2] bg-[#f4f8f6] px-4 py-2 text-xs text-[#365f52]">{error}</div>}
-    <div className="grid min-h-0 flex-1 grid-cols-[340px_minmax(0,1fr)] gap-4"><ConversationListPanel inboxTabs={tabs} inboxFilter={filter} onFilterChange={setFilter} visibleContacts={visible} activeId={activeId} onSelectContact={(id) => void select(id)} loading={loadingChats} />
-      <section className="flex h-full min-h-0 flex-col overflow-hidden bg-white" style={{ border: `1px solid ${BORDER}`, borderRadius: 14 }}>
-        {loadingChats ? <ChatLoading message="Please wait while we load your chats" /> : profilePreview ? <NetworkProfileDetailScreen profile={profilePreview} connected={conversation?.status === "accepted"} pending={conversation?.status === "pending"} backLabel="Back to Inbox" onBack={() => setProfileContact(null)} surface="inbox" connectionLabel={conversation?.status === "pending" ? "Pending" : undefined} connectionDisabled /> : !contact ? <div className="flex flex-1 items-center justify-center text-sm" style={{ color: MUTED }}>Select a conversation or compose a new message.</div> : <><ChatHeader contact={contact} onViewProfile={() => setProfileContact(contact)} />{directions[activeId] === "incoming" && <RequestBanner contact={contact} onAccept={() => void action("accept")} onReject={() => void action("decline")} />}{directions[activeId] === "outgoing" && <PendingBanner sentOutgoingIntro={thread.some((m) => m.from === "me")} />}{loadingConversationId === activeId ? <ChatLoading message="Loading conversation" /> : <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5"><div className="flex flex-col gap-6"><AnimatePresence initial={false}>{thread.map((msg) => <MessageRow key={msg.id} msg={msg} contact={contact} currentUser={currentUser} />)}</AnimatePresence></div></div>}<MessageComposer senderName={[currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ") || "You"} senderInitials={getInitials([currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ") || "You")} senderAvatarUrl={currentUser?.avatarUrl} draft={draft} onDraftChange={setDraft} onKeyDown={keyDown} locked={Boolean(locked) || !socketReady} placeholder={!socketReady ? "Connecting to messaging..." : locked ? directions[activeId] === "incoming" ? "Accept the request before replying." : "Wait for the request to be accepted." : "Type a message..."} onSend={send} onMeetInvite={() => void sendMeetInvite()} meetLoading={creatingMeet} /></>}
-      </section></div><AnimatePresence>{composeOpen && <ComposeModal onClose={() => setComposeOpen(false)} onSend={compose} />}</AnimatePresence>
-  </div>;
+  return (
+    <div className="flex h-[calc(100dvh-52px)] md:h-full max-h-[calc(100dvh-52px)] md:max-h-full min-h-0 flex-col overflow-hidden p-3 md:p-6" style={{ background: "#f5f6f4" }}>
+      <div className="mb-3 md:mb-4 flex shrink-0 items-center justify-between">
+        <div>
+          <h2 className="text-lg md:text-[1.2rem] font-bold" style={{ color: TEXT }}>Inbox</h2>
+          <p className="mt-0.5 text-[11px] md:text-[12px]" style={{ color: MUTED }}>Your persistent Evolv conversations.</p>
+        </div>
+        <motion.button
+          type="button"
+          onClick={() => {
+            if (!profileComplete && onRequireProfile) onRequireProfile(() => setComposeOpen(true));
+            else setComposeOpen(true);
+          }}
+          className="bp-gradient-btn flex h-9 md:h-11 items-center gap-1.5 md:gap-2 rounded-xl px-3.5 md:px-5 text-xs md:text-[13px] font-extrabold"
+        >
+          <PencilSimple size={15} weight="bold" />
+          Compose
+        </motion.button>
+      </div>
+
+      {error && (
+        <div className="mb-3 rounded-lg border border-[#dce9e2] bg-[#f4f8f6] px-4 py-2 text-xs text-[#365f52]">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-col md:grid min-h-0 flex-1 md:grid-cols-[340px_minmax(0,1fr)] gap-4">
+        {/* ── Conversation List Panel ── */}
+        <div className={`w-full md:w-auto h-full min-h-0 ${activeId ? "hidden md:block" : "block"}`}>
+          <ConversationListPanel
+            inboxTabs={tabs}
+            inboxFilter={filter}
+            onFilterChange={setFilter}
+            visibleContacts={visible}
+            activeId={activeId}
+            onSelectContact={(id) => void select(id)}
+            loading={loadingChats}
+          />
+        </div>
+
+        {/* ── Active Chat Panel ── */}
+        <section
+          className={`w-full ${activeId ? "flex" : "hidden md:flex"} h-full min-h-0 flex-col overflow-hidden bg-white`}
+          style={{ border: `1px solid ${BORDER}`, borderRadius: 14 }}
+        >
+          {loadingChats ? (
+            <ChatLoading message="Please wait while we load your chats" />
+          ) : profilePreview ? (
+            <NetworkProfileDetailScreen
+              profile={profilePreview}
+              connected={conversation?.status === "accepted"}
+              pending={conversation?.status === "pending"}
+              backLabel="Back to Inbox"
+              onBack={() => setProfileContact(null)}
+              surface="inbox"
+              connectionLabel={conversation?.status === "pending" ? "Pending" : undefined}
+              connectionDisabled
+            />
+          ) : !contact ? (
+            <div className="flex flex-1 items-center justify-center text-sm" style={{ color: MUTED }}>
+              Select a conversation or compose a new message.
+            </div>
+          ) : (
+            <>
+              <ChatHeader
+                contact={contact}
+                onViewProfile={() => setProfileContact(contact)}
+                onBack={() => {
+                  setLocalActiveId("");
+                  onActiveContactChange?.("");
+                }}
+              />
+              {directions[activeId] === "incoming" && (
+                <RequestBanner
+                  contact={contact}
+                  onAccept={() => void action("accept")}
+                  onReject={() => void action("decline")}
+                />
+              )}
+              {directions[activeId] === "outgoing" && (
+                <PendingBanner sentOutgoingIntro={thread.some((m) => m.from === "me")} />
+              )}
+              {loadingConversationId === activeId ? (
+                <ChatLoading message="Loading conversation" />
+              ) : (
+                <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
+                  <div className="flex flex-col gap-4 md:gap-6">
+                    <AnimatePresence initial={false}>
+                      {thread.map((msg) => (
+                        <MessageRow key={msg.id} msg={msg} contact={contact} currentUser={currentUser} />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
+              <MessageComposer
+                senderName={[currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ") || "You"}
+                senderInitials={getInitials([currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ") || "You")}
+                senderAvatarUrl={currentUser?.avatarUrl}
+                draft={draft}
+                onDraftChange={setDraft}
+                onKeyDown={keyDown}
+                locked={Boolean(locked) || !socketReady}
+                placeholder={
+                  !socketReady
+                    ? "Connecting to messaging..."
+                    : locked
+                    ? directions[activeId] === "incoming"
+                      ? "Accept the request before replying."
+                      : "Wait for the request to be accepted."
+                    : "Type a message..."
+                }
+                onSend={send}
+                onMeetInvite={() => void sendMeetInvite()}
+                meetLoading={creatingMeet}
+              />
+            </>
+          )}
+        </section>
+      </div>
+
+      <AnimatePresence>
+        {composeOpen && <ComposeModal onClose={() => setComposeOpen(false)} onSend={compose} />}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 function ChatLoading({ message }: { message: string }) {

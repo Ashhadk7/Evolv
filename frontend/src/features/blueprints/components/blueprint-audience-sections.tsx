@@ -46,7 +46,7 @@ export function BlueprintIdeaSection({ infoGrid }: { infoGrid: IdeaCard[] }) {
         title="The Idea"
         desc="The product narrative - what it is, who it serves, and how it makes money."
       />
-      <div className="grid grid-cols-2 gap-[18px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-[18px]">
         {infoGrid.map((card) => (
           <motion.div
             key={card.label}
@@ -79,7 +79,7 @@ export function BlueprintPersonasSection({ personas }: { personas: Persona[] }) 
         title="Target Users & Personas"
         desc="The audience segments this idea is built for - who they are, what they need, and what's holding them back today."
       />
-      <div className="grid grid-cols-3 gap-[18px]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-[18px]">
         {personas.map((persona) => {
           const segment = personaSegment(persona.segment);
           return (

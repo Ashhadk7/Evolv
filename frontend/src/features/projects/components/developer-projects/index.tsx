@@ -79,8 +79,8 @@ export default function Projects({ onNavigate }: { onNavigate?: (tab: DeveloperT
   };
 
   return (
-    <div className="flex min-h-screen">
-      <main className="flex-1 p-[1.5rem_2rem_2rem] overflow-x-hidden min-w-0 flex flex-col">
+    <div className="flex h-full">
+      <main className="flex-1 p-[1rem_1rem_2rem] md:p-[1.5rem_2rem_2rem] overflow-x-hidden overflow-y-auto min-w-0 flex flex-col">
         <Topbar
           title="My Projects"
           subtitle="Manage your assigned phases, deliverables, and payments."

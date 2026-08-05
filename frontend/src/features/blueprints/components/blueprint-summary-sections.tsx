@@ -70,17 +70,17 @@ export function BlueprintExecutiveSummarySection({
 
   return (
     <Reveal>
-      <div className="grid grid-cols-[1.6fr_1fr] gap-[22px]">
-        <div style={cardStyle({ padding: "28px 30px" })}>
+      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 md:gap-[22px]">
+        <div style={cardStyle({ padding: "22px 20px" })}>
           <SectionHead
             icon={<Notebook size={18} weight="duotone" className="text-bp-teal" />}
             kicker="Overview"
             title="Executive Summary"
           />
           {executiveSummary ? (
-            <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">{executiveSummary}</p>
+            <p className="text-bp-body mb-3.5 text-[13.5px] md:text-[14.5px] leading-[1.75]">{executiveSummary}</p>
           ) : (
-            <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">
+            <p className="text-bp-body mb-3.5 text-[13.5px] md:text-[14.5px] leading-[1.75]">
               <strong className="text-bp-ink">{bp.name}</strong> is a {bp.industry} venture built
               around a simple thesis: {bp.differentiator.toLowerCase()}. {bp.ideaDesc}
             </p>
@@ -113,7 +113,7 @@ export function BlueprintExecutiveSummarySection({
             </div>
           )}
         </div>
-        <div style={cardStyle({ padding: "26px 28px" })}>
+        <div style={cardStyle({ padding: "22px 20px" })}>
           <Label>Build snapshot</Label>
           <div className="flex flex-col">
             {snapshotRows.map(([label, value], index) => (
@@ -151,15 +151,15 @@ export function BlueprintSignalsSection({
         title="Signals & Activity"
         desc="How this blueprint is performing on the platform, and what to act on next."
       />
-      <div className="mb-[18px] grid grid-cols-3 gap-4">
+      <div className="mb-[18px] grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         {analytics.map((item) => (
           <motion.div
             key={item.label}
             whileHover={{ y: -3 }}
             transition={{ type: "spring", stiffness: 300, damping: 24 }}
-            style={cardStyle({ padding: "20px", textAlign: "center" })}
+            style={cardStyle({ padding: "18px 16px", textAlign: "center" })}
           >
-            <div style={NUM} className="text-bp-ink text-[28px] leading-none font-extrabold">
+            <div style={NUM} className="text-bp-ink text-[24px] md:text-[28px] leading-none font-extrabold">
               {item.value}
             </div>
             <div className="font-mono-app text-bp-label mt-[7px] text-[9.5px] font-bold tracking-[0.08em] uppercase">
@@ -177,9 +177,9 @@ export function BlueprintSignalsSection({
           </motion.div>
         ))}
       </div>
-      <div style={cardStyle({ padding: "24px 26px" })}>
+      <div style={cardStyle({ padding: "20px 20px" })}>
         <Label>Recommended next steps</Label>
-        <div className="grid grid-cols-2 gap-x-7 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-7 gap-y-3">
           {recommendations.map((recommendation, index) => (
             <div key={index} className="flex items-start gap-3">
               <Chip tone={priorityTone(recommendation.p)}>{recommendation.p}</Chip>

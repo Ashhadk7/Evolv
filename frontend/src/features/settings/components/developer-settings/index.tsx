@@ -35,6 +35,7 @@ import { SecurityTab } from "./security-tab";
 import { PreferencesTab } from "./preferences-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { getApiErrorMessage } from "@/lib/api";
+import { DeveloperProfileMobileCard } from "@/features/profiles/components/developer-profile-mobile-card";
 import { uploadAvatar } from "@/features/profiles/profile-api";
 import {
   fetchNotificationPreferences,
@@ -409,9 +410,23 @@ const Settings = () => {
   const sectionCopy = SECTION_COPY[visibleTab];
 
   return (
-    <div className={styles.container}>
-      <main className={styles.mainWrapper}>
-        <div className={styles.settingsLayout}>
+    <>
+      {/* ── Mobile Layout (Canva Screen 3) ── */}
+      {visibleTab === "profile" && !editing && (
+        <DeveloperProfileMobileCard
+          name={displayName}
+          title={profile.jobTitle || profile.role || "Senior AI Engineer - Freelance"}
+          location={profile.location || "Berlin"}
+          experienceYears={profile.experienceYears ? `${profile.experienceYears} yrs` : "8 yrs"}
+          avatarUrl={displayPhoto}
+          summaryText={profile.bio || "Senior AI engineer specialising in medical imaging and HIPAA-compliant ML pipelines."}
+          skills={skillEntries.map((s) => s.name).filter(Boolean)}
+        />
+      )}
+
+      <div className={`hidden md:block ${styles.container}`}>
+        <main className={styles.mainWrapper}>
+          <div className={styles.settingsLayout}>
           <SettingsSidebarNav
             tabs={TABS}
             activeTab={visibleTab}
@@ -517,7 +532,8 @@ const Settings = () => {
       </main>
 
       <DeleteAccountModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
-    </div>
+      </div>
+    </>
   );
 };
 

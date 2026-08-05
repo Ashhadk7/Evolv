@@ -227,7 +227,7 @@ export default function FounderProjectsPage() {
   }
 
   return (
-    <>
+    <div className="h-full flex flex-col min-h-0">
       {loadError && (
         <div className="mx-auto mb-3 max-w-[1240px] rounded-lg border border-[#e3b3ab] bg-[#fbe9e7] px-4 py-2.5 text-[12.5px] text-[#7a2e24]">
           Couldn&apos;t load your projects from the server ({loadError}). What you see below may
@@ -254,6 +254,6 @@ export default function FounderProjectsPage() {
         stripeConnected={Boolean(profile.stripeConnected)}
         onNavigateSettingsPayment={nav.handleOpenPaymentSettings}
       />
-    </>
+    </div>
   );
 }

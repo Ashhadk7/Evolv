@@ -20,12 +20,12 @@ export function ProjectActionBar({
   onViewBlueprint?: () => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-3">
-      <button onClick={onBack} className="bp-primary-btn">
-        <ArrowLeft size={15} weight="bold" /> Projects
+    <div className="flex flex-wrap items-center gap-2 md:gap-3 shrink-0">
+      <button onClick={onBack} className="bp-primary-btn !px-3 !py-1.5 !text-xs md:!text-sm">
+        <ArrowLeft size={14} weight="bold" /> Projects
       </button>
-      <div className="bg-bp-border h-5 w-px" />
-      <span className="text-bp-ink text-[15px] font-bold">{name}</span>
+      <div className="bg-bp-border hidden sm:block h-5 w-px" />
+      <span className="text-bp-ink text-sm md:text-[15px] font-bold truncate max-w-[150px] sm:max-w-none">{name}</span>
       <Chip
         tone={status === "IN_DEVELOPMENT" ? "mint" : status === "ONBOARDING" ? "amber" : "neutral"}
       >
@@ -44,7 +44,7 @@ export function ProjectActionBar({
         {verdict}
       </Chip>
       {onViewBlueprint && (
-        <button onClick={onViewBlueprint} className="bp-primary-btn ml-auto">
+        <button onClick={onViewBlueprint} className="bp-primary-btn ml-auto !px-3 !py-1.5 !text-xs md:!text-sm">
           View full spec <CaretRight size={12} weight="bold" />
         </button>
       )}

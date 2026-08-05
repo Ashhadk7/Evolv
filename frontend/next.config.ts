@@ -4,7 +4,7 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   devIndicators: false,
   experimental: {
-    turbopackFileSystemCacheForDev: false,
+    optimizePackageImports: ["lucide-react", "@phosphor-icons/react", "@iconify/react"],
   },
   turbopack: {
     root: path.resolve(__dirname),

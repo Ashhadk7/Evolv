@@ -1,11 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/features/auth/components/auth-guard";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
-import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wizard";
 import { founderNav } from "@/config/navigation";
 import {
   getMissingFounderProfileFields,
@@ -14,6 +14,11 @@ import {
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-navigation";
 import { MessagingPresence } from "@/features/messaging/components/messaging-presence";
+
+const OnboardingWizard = dynamic(
+  () => import("@/features/onboarding/components/onboarding-wizard").then((m) => m.OnboardingWizard),
+  { ssr: false }
+);
 
 export default function FounderLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -52,7 +57,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
 
   return (
     <AuthGuard requiredRole="founder">
-    <div className="founder-shell flex h-screen overflow-hidden bg-[#f5f6f4]">
+    <div className="founder-shell flex flex-col md:flex-row h-[100dvh] overflow-hidden bg-[#f5f6f4]">
       <MessagingPresence enabled={profileComplete} />
       <style
         dangerouslySetInnerHTML={{
@@ -77,7 +82,7 @@ export default function FounderLayout({ children }: { children: React.ReactNode 
         />
       )}
 
-      <main className="flex-1 overflow-hidden">{dataLoaded ? children : null}</main>
+      <main className="flex-1 min-h-0 overflow-hidden bg-[#f5f6f4]">{dataLoaded ? children : null}</main>
 
       <ProfileCompletionPrompt
         visible={!profileComplete && !showOnboarding && !profilePromptDismissed}

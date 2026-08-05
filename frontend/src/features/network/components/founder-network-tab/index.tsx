@@ -58,7 +58,7 @@ export function NetworkTab({
     const selectedRequested = outgoingSet.has(selectedPerson.id);
     return (
       <>
-        <div className="relative h-screen overflow-hidden">
+        <div className="relative h-full overflow-hidden">
           <NetworkProfileDetailScreen
             key={selectedPerson.id}
             profile={selectedPerson}
@@ -93,7 +93,7 @@ export function NetworkTab({
 
   return (
     <>
-      <div className="flex h-screen flex-col overflow-y-auto bg-[#f5f6f4] py-6 px-[28px]">
+      <div className="flex h-full flex-col overflow-y-auto bg-[#f5f6f4] py-4 px-4 md:py-6 md:px-[28px]">
         {/* Horizontal Navigation Tab Bar */}
         <div className="mb-6 flex border-b border-[#e0e9e3] pb-px">
           <div className="flex gap-6">

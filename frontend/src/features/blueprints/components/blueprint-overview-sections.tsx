@@ -53,14 +53,14 @@ export function BlueprintHeroSection({
     <Reveal y={14}>
       <div style={cardStyle({ position: "relative", overflow: "hidden", padding: "40px 44px" })}>
         <div className="pointer-events-none absolute -top-[120px] -right-20 h-[360px] w-[360px] bg-[radial-gradient(circle,rgba(137,215,183,0.16),transparent_70%)]" />
-        <div className="relative flex flex-wrap items-center justify-between gap-10">
-          <div className="min-w-[300px] flex-[1_1_420px]">
+        <div className="relative flex flex-wrap items-center justify-between gap-6 md:gap-10">
+          <div className="min-w-0 w-full flex-[1_1_420px]">
             <Kicker>Venture Blueprint · {stageLabel}</Kicker>
-            <h1 className="text-bp-ink text-[38px] leading-[1.04] font-extrabold tracking-[-0.032em]">
+            <h1 className="text-bp-ink text-[28px] md:text-[38px] leading-[1.08] md:leading-[1.04] font-extrabold tracking-[-0.032em]">
               {bp.name}
             </h1>
             {tagline && (
-              <p className="text-bp-muted mt-1.5 mb-0 text-[15px] leading-[1.4] italic">
+              <p className="text-bp-muted mt-1.5 mb-0 text-[14px] md:text-[15px] leading-[1.4] italic">
                 {tagline}
               </p>
             )}
@@ -78,7 +78,7 @@ export function BlueprintHeroSection({
               )}
               <Chip>Updated {bp.updatedAt}</Chip>
             </div>
-            <p className="text-bp-body mt-4.5 max-w-[540px] text-base leading-[1.7]">
+            <p className="text-bp-body mt-4.5 max-w-[540px] text-sm md:text-base leading-[1.7]">
               {bp.ideaDesc}
             </p>
             <div className="font-mono-app text-bp-label mt-5 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
@@ -89,7 +89,7 @@ export function BlueprintHeroSection({
               <span>{bp.devMatches} developer matches</span>
             </div>
           </div>
-          <div className="flex max-w-[356px] min-w-[330px] flex-[0_0_auto] flex-col gap-4">
+          <div className="flex max-w-full w-full md:max-w-[356px] flex-[0_0_auto] flex-col gap-4">
             <div className="flex items-center justify-center">
               <ViabilityGauge score={viabilityScore} />
             </div>
@@ -103,10 +103,10 @@ export function BlueprintHeroSection({
               {subScoreRow.map((score) => (
                 <div
                   key={score.label}
-                  className="flex flex-col gap-1.5 cursor-help"
+                  className="flex flex-col gap-1.5 cursor-help min-w-0"
                   title={score.note ? `LLM Critic Pass: "${score.note}"` : undefined}
                 >
-                  <span style={NUM} className="text-bp-ink text-base leading-none font-bold flex items-center">
+                  <span style={NUM} className="text-bp-ink text-sm md:text-base leading-none font-bold flex items-center flex-wrap">
                     {score.value}
                     {score.sourceIndexes && score.sourceIndexes.length > 0 && combinedSources && combinedSources.length > 0 ? (
                       <SourceChips indexes={score.sourceIndexes} sources={combinedSources} />
@@ -120,7 +120,7 @@ export function BlueprintHeroSection({
                     )}
                   </span>
                   <MeterBar value={score.value} height={3} />
-                  <span className="font-mono-app text-bp-label text-[9px] tracking-[0.06em] whitespace-nowrap uppercase">
+                  <span className="font-mono-app text-bp-label text-[8.5px] md:text-[9px] tracking-[0.06em] whitespace-nowrap uppercase truncate">
                     {score.label}
                   </span>
                 </div>
@@ -144,13 +144,13 @@ export function BlueprintVentureAssessmentSection({
 }) {
   return (
     <Reveal>
-      <div style={cardStyle({ borderLeft: "3px solid var(--color-bp-mint)", padding: "28px 30px" })}>
+      <div style={cardStyle({ borderLeft: "3px solid var(--color-bp-mint)", padding: "24px 20px" })}>
         <SectionHead
           icon={<Gauge size={18} weight="duotone" className="text-bp-success" />}
           kicker="AI Analysis"
           title="Venture Assessment"
         />
-        <div className="grid grid-cols-[1fr_1fr_1.1fr] gap-[30px]">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.1fr] gap-5 md:gap-[30px]">
           <div>
             <Label>Strengths</Label>
             {strengths.map((strength) => (

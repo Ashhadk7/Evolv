@@ -25,7 +25,7 @@ export function GapAnalysisSection({
           title="Gap Analysis & Recommendations"
           desc="Where the market falls short today — and exactly what to add to turn this into a complete, defensible product."
         />
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <div>
             <Label>What the market lacks</Label>
             <div className="flex flex-col gap-2.5">
@@ -51,12 +51,14 @@ export function GapAnalysisSection({
                   key={a.title}
                   className="border-bp-border bg-bp-card rounded-xl border px-[15px] py-[13px]"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Lightbulb size={15} weight="fill" className="text-bp-success" />
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Lightbulb size={15} weight="fill" className="text-bp-success shrink-0" />
                       <span className="text-bp-ink text-[13px] font-bold">{a.title}</span>
                     </div>
-                    <Chip tone="mint">{a.impact}</Chip>
+                    <div className="shrink-0 max-w-full">
+                      <Chip tone="mint">{a.impact}</Chip>
+                    </div>
                   </div>
                   <div className="text-bp-muted mt-1.5 text-[12.5px] leading-[1.5]">{a.text}</div>
                 </div>
@@ -66,7 +68,7 @@ export function GapAnalysisSection({
         </div>
         <div className="mt-6">
           <Label>Path to a complete product</Label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {pathToComplete.map((s, i) => (
               <div
                 key={i}

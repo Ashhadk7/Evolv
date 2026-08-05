@@ -30,20 +30,20 @@ export function BlueprintActionBar({
 }) {
   return (
     <div className="blueprint-no-print border-bp-border relative z-20 border-b bg-[rgba(240,243,241,0.86)] backdrop-blur-[12px]">
-      <div className="mx-auto flex max-w-[1180px] items-center gap-3.5 px-0.5 py-3">
+      <div className="mx-auto flex max-w-[1180px] items-center gap-2 md:gap-3.5 px-3 py-2.5 md:px-0.5 md:py-3">
         <button
           onClick={onBack}
-          className="bp-back-btn text-bp-teal flex cursor-pointer items-center gap-[7px] rounded-[10px] border-none bg-transparent py-2 pr-[13px] pl-[11px] text-[13px] font-semibold"
+          className="bp-back-btn text-bp-teal flex cursor-pointer items-center gap-1.5 rounded-[10px] border-none bg-transparent py-1.5 pr-2.5 pl-2 text-[12.5px] md:text-[13px] font-semibold shrink-0"
         >
           <ArrowLeft className="bp-back-arrow" size={15} weight="bold" /> Back
         </button>
-        <div className="bg-bp-border h-[22px] w-px" />
-        <span className="text-bp-ink overflow-hidden text-[15px] font-bold tracking-[-0.012em] text-ellipsis whitespace-nowrap">
+        <div className="bg-bp-border h-[20px] w-px shrink-0" />
+        <span className="text-bp-ink overflow-hidden text-[13.5px] md:text-[15px] font-bold tracking-[-0.012em] text-ellipsis whitespace-nowrap max-w-[120px] sm:max-w-none">
           {bp.name}
         </span>
         {bp.project ? (
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-[11px] py-1 text-[11px] font-bold tracking-[0.03em]"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-[11px] py-1 text-[11px] font-bold tracking-[0.03em] shrink-0"
             style={{
               background: PROJECT_STATUS_STYLE[bp.project.status].bg,
               color: PROJECT_STATUS_STYLE[bp.project.status].color,
@@ -52,25 +52,29 @@ export function BlueprintActionBar({
             <Buildings size={12} weight="bold" /> {PROJECT_STATUS_LABEL[bp.project.status]}
           </span>
         ) : (
-          <Chip
-            tone="mint"
-            icon={
-              <span
-                className={`inline-block h-[5px] w-[5px] rounded-full ${
-                  bp.isPublic ? "bg-[#1d6e47]" : "bg-[#9ab4a4]"
-                }`}
-              />
-            }
-          >
-            {bp.isPublic ? "Public" : "Private"}
-          </Chip>
+          <div className="hidden sm:block shrink-0">
+            <Chip
+              tone="mint"
+              icon={
+                <span
+                  className={`inline-block h-[5px] w-[5px] rounded-full ${
+                    bp.isPublic ? "bg-[#1d6e47]" : "bg-[#9ab4a4]"
+                  }`}
+                />
+              }
+            >
+              {bp.isPublic ? "Public" : "Private"}
+            </Chip>
+          </div>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <SectionNav />
-        <RefineModal blueprintId={bp.id} blueprintName={bp.name} onRefined={onRefined} />
+        <div className="ml-auto flex items-center gap-1.5 md:gap-2 shrink-0">
+          <div className="hidden lg:block">
+            <SectionNav />
+          </div>
+          <RefineModal blueprintId={bp.id} blueprintName={bp.name} onRefined={onRefined} />
           {!bp.project && (
-            <button onClick={onTogglePublish} className="bp-primary-btn">
-              <Broadcast size={15} weight="bold" /> {published ? "Unpublish" : "Publish"}
+            <button onClick={onTogglePublish} className="bp-primary-btn !text-xs md:!text-sm !px-2.5 md:!px-4">
+              <Broadcast size={14} weight="bold" /> <span className="hidden sm:inline">{published ? "Unpublish" : "Publish"}</span>
             </button>
           )}
           <button

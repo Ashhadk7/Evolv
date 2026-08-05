@@ -223,38 +223,23 @@ export function DashboardOverview({
   });
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflowY: "auto",
-        background: "#f7f8f6",
-        padding: "26px 30px 36px",
-        gap: 18,
-      }}
-    >
+    <div className="flex flex-col h-full min-h-full overflow-y-auto gap-4 px-4 py-5 md:px-7 md:py-6 md:gap-[18px]" style={{ background: "#f7f8f6" }}>
       {/* ── Header ── */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}
+        className="flex items-start justify-between gap-3 shrink-0"
       >
-        <div>
+        <div className="min-w-0 flex-1">
           <h1
             style={{
-              fontSize: "1.65rem",
+              fontSize: "clamp(1.25rem, 5vw, 1.65rem)",
               fontWeight: 900,
               letterSpacing: "-0.04em",
               color: "#1a2e26",
               lineHeight: 1.15,
-              minHeight: "1.98rem",
+              minHeight: "1.5rem",
             }}
           >
             {greeting}
@@ -273,7 +258,7 @@ export function DashboardOverview({
               />
             )}
           </h1>
-          <p style={{ fontSize: 13.5, color: "#7a9e8e", marginTop: 6, lineHeight: 1.55 }}>
+          <p style={{ fontSize: "clamp(12px, 3vw, 13.5px)", color: "#7a9e8e", marginTop: 6, lineHeight: 1.55 }}>
             You have{" "}
             <strong style={{ color: "#1a2e26" }}>
               {blueprints.length} venture{blueprints.length !== 1 ? "s" : ""}
@@ -292,21 +277,19 @@ export function DashboardOverview({
           whileHover={{ scale: 1.03, boxShadow: "0 8px 24px rgba(26,49,44,0.28)" }}
           whileTap={{ scale: 0.97 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
-          className="bp-gradient-btn"
+          className="bp-gradient-btn flex items-center gap-2 shrink-0"
           style={{
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "11px 20px",
+            padding: "9px 14px",
             borderRadius: 13,
-            fontSize: 13.5,
+            fontSize: "clamp(11px, 3vw, 13.5px)",
             fontWeight: 600,
             cursor: "pointer",
+            whiteSpace: "nowrap",
           }}
         >
-          <Plus size={15} weight="bold" />
-          New idea
+          <Plus size={14} weight="bold" />
+          <span className="hidden sm:inline">New idea</span>
+          <span className="inline sm:hidden">New</span>
         </motion.button>
       </motion.div>
 
@@ -326,26 +309,17 @@ export function DashboardOverview({
       </div>
 
       {/* ── Stat cards ── */}
-      <div
-        style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, flexShrink: 0 }}
-      >
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-[14px] shrink-0">
         {metrics.map((m, i) => (
           <StatCard key={m.id} metric={m} index={i} />
         ))}
       </div>
 
       {/* ── Active Ideas ── */}
-      <div style={{ flexShrink: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#89d7b7" }} />
+      <div className="shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#89d7b7", flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "#1a2e26" }}>Active Ideas</span>
             <span
               style={{
@@ -380,7 +354,7 @@ export function DashboardOverview({
             View all <ArrowRight size={12} weight="bold" />
           </motion.button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-[14px]">
           {activeIdeasByViability.slice(0, 3).map((bp, i) => (
             <IdeaCard key={bp.id} bp={bp} onView={onViewBlueprint} index={i} />
           ))}
@@ -388,7 +362,7 @@ export function DashboardOverview({
       </div>
 
       {/* ── Bottom widgets ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, flexShrink: 0 }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-[14px] shrink-0">
         <VentureHealthWidget
           blueprints={mergedBlueprints}
           matchedByBlueprintId={matchedByBlueprintId}

@@ -22,7 +22,7 @@ export function GoToMarketSection({
           title="Go-to-Market"
           desc="How the first users are reached, and the sequence to get from beta to scale."
         />
-        <div className="mb-5 grid grid-cols-4 gap-3.5">
+        <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
           {gtmChannels.map((g) => (
             <div
               key={g.title}

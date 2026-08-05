@@ -13,7 +13,11 @@ import { useDeveloperDashboardStore } from "./store";
 
 export function useDeveloperNavigation() {
   const router = useRouter();
-  const go = (tab: string) => router.push(`/developer/${tab}`);
+  const go = (tab: string) => {
+    const route = `/developer/${tab}`;
+    router.prefetch(route);
+    router.push(route);
+  };
 
   const navigateDeveloper = (tab: string) => {
     useDeveloperDashboardStore.getState().setPendingProtectedAction(null);

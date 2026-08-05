@@ -33,23 +33,25 @@ export function MessageComposer({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center gap-3 bg-white px-4 py-3"
+      className="flex shrink-0 items-center gap-2 md:gap-3 bg-white px-3 py-2.5 md:px-4 md:py-3 pb-[env(safe-area-inset-bottom,0px)]"
       style={{ borderTop: "1px solid #e8ede9" }}
     >
-      <Avatar
-        name={senderName}
-        initials={senderInitials}
-        avatarUrl={senderAvatarUrl}
-        size={36}
-        dark
-      />
+      <div className="hidden sm:block shrink-0">
+        <Avatar
+          name={senderName}
+          initials={senderInitials}
+          avatarUrl={senderAvatarUrl}
+          size={36}
+          dark
+        />
+      </div>
       <input
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={onKeyDown}
         disabled={locked || meetLoading}
         placeholder={placeholder}
-        className="h-11 flex-1 rounded-xl px-4 text-[13px] outline-none"
+        className="h-10 md:h-11 flex-1 min-w-0 rounded-xl px-3 md:px-4 text-xs md:text-[13px] outline-none"
         style={{
           background: locked ? "#eef3ef" : "#f5f7f5",
           border: "1px solid #e8ede9",
@@ -64,10 +66,11 @@ export function MessageComposer({
         whileHover={!locked ? { scale: 1.05 } : {}}
         whileTap={!locked ? { scale: 0.95 } : {}}
         transition={{ type: "spring", stiffness: 400, damping: 22 }}
-        className="flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#d4e4db] px-3 text-[12.5px] font-bold transition-colors hover:bg-[#f5f7f5]"
+        className="flex h-9 md:h-10 cursor-pointer items-center justify-center gap-1 rounded-xl border border-[#d4e4db] px-2.5 md:px-3 text-[11px] md:text-[12.5px] font-bold transition-colors hover:bg-[#f5f7f5] shrink-0"
         style={{ color: "#1a2e26" }}
       >
-        <VideoCamera size={14} weight="bold" /> {meetLoading ? "Creating..." : "Meet"}
+        <VideoCamera size={15} weight="bold" />
+        <span className="hidden sm:inline">{meetLoading ? "Creating..." : "Meet"}</span>
       </motion.button>
 
       <motion.button
@@ -77,7 +80,7 @@ export function MessageComposer({
         whileHover={draft.trim() && !locked ? { scale: 1.08 } : {}}
         whileTap={draft.trim() && !locked ? { scale: 0.92 } : {}}
         transition={{ type: "spring", stiffness: 400, damping: 22 }}
-        className="bp-gradient-icon-btn flex h-10 w-10 items-center justify-center rounded-xl"
+        className="bp-gradient-icon-btn flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl shrink-0"
         style={{ opacity: draft.trim() && !locked ? 1 : 0.4 }}
         aria-label="Send message"
       >

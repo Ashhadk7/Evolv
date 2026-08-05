@@ -58,7 +58,7 @@ export function StatCard({ metric, index }: { metric: Metric; index: number }) {
 
       <div
         style={{
-          fontSize: "2rem",
+          fontSize: "clamp(1.4rem, 5vw, 2rem)",
           fontWeight: 900,
           lineHeight: 1.05,
           letterSpacing: "-0.04em",

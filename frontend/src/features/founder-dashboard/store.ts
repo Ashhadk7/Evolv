@@ -69,34 +69,53 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
   pendingProtectedAction: null,
 
   loadData: async () => {
+    // 1. Instantly surface locally cached blueprints so UI renders immediately
     try {
-      set({ profile: mergeFounderProfiles(DEFAULT_FOUNDER_PROFILE, await loadFounderProfile()) });
+      const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
+      if (storedBlueprints) {
+        const parsed = JSON.parse(storedBlueprints) as Blueprint[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          set({ blueprints: parsed, dataLoaded: true });
+        }
+      }
+    } catch {
+      /* ignore storage errors */
+    }
 
-      try {
-        const apiBlueprints = await listBlueprints();
-        set({ blueprints: apiBlueprints });
-        localStorage.setItem(STORAGE_KEY_BLUEPRINTS, JSON.stringify(apiBlueprints));
-      } catch (err) {
-        console.error(
-          "[founder-dashboard] Failed to load blueprints from the server; falling back to the last locally cached list. Active Projects may be stale until this succeeds.",
-          err
-        );
-        const storedBlueprints = localStorage.getItem(STORAGE_KEY_BLUEPRINTS);
-        if (storedBlueprints) set({ blueprints: JSON.parse(storedBlueprints) as Blueprint[] });
+    // 2. Fetch profile and blueprints in parallel
+    try {
+      const [profileRes, blueprintsRes] = await Promise.allSettled([
+        loadFounderProfile(),
+        listBlueprints(),
+      ]);
+
+      if (profileRes.status === "fulfilled") {
+        set({ profile: mergeFounderProfiles(DEFAULT_FOUNDER_PROFILE, profileRes.value) });
+      } else {
+        const user = getSession()?.user;
+        set({
+          profile: {
+            ...DEFAULT_FOUNDER_PROFILE,
+            firstName: user?.firstName ?? "",
+            lastName: user?.lastName ?? "",
+            email: user?.email ?? "",
+          },
+        });
+      }
+
+      if (blueprintsRes.status === "fulfilled") {
+        set({ blueprints: blueprintsRes.value });
+        try {
+          localStorage.setItem(STORAGE_KEY_BLUEPRINTS, JSON.stringify(blueprintsRes.value));
+        } catch {
+          /* ignore storage errors */
+        }
       }
     } catch (err) {
-      console.error("[founder-dashboard] Failed to load founder profile:", err);
-      const user = getSession()?.user;
-      set({
-        profile: {
-          ...DEFAULT_FOUNDER_PROFILE,
-          firstName: user?.firstName ?? "",
-          lastName: user?.lastName ?? "",
-          email: user?.email ?? "",
-        },
-      });
+      console.error("[founder-dashboard] Unexpected error loading dashboard data:", err);
+    } finally {
+      set({ dataLoaded: true });
     }
-    set({ dataLoaded: true });
   },
 
   saveProfile: async (p) => {

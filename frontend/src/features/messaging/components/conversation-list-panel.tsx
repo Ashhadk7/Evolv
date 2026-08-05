@@ -40,8 +40,8 @@ export function ConversationListPanel({
           Conversations
         </div>
         <div
-          className="mt-3 grid grid-cols-[1fr_1fr_1.25fr_1.15fr] rounded-xl p-1"
-          style={{ background: "#eef4f0", border: "1px solid #e2ebe5" }}
+          className="mt-3 flex items-center justify-between overflow-x-auto rounded-xl p-1 gap-1"
+          style={{ background: "#eef4f0", border: "1px solid #e2ebe5", scrollbarWidth: "none" }}
         >
           {inboxTabs.map((tab) => {
             const isActive = inboxFilter === tab.id;
@@ -50,7 +50,7 @@ export function ConversationListPanel({
                 key={tab.id}
                 type="button"
                 onClick={() => onFilterChange(tab.id)}
-                className="flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 text-[10px] font-extrabold transition-all"
+                className="flex flex-1 min-w-0 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-extrabold transition-all shrink-0"
                 style={{
                   background: isActive ? DARK : "transparent",
                   color: isActive ? MINT : MUTED,
