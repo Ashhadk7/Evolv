@@ -55,13 +55,13 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = Field(min_length=1)
     GROQ_FAST_MODEL: str = "llama-3.1-8b-instant"
     CHAT_MODEL_NAME: str = "llama-3.1-8b-instant"
-    GROQ_EMBEDDING_MODEL: str | None = None
     ENRICHMENT_TIMEOUT_SECONDS: int = Field(default=12, ge=1, le=60)
     TAVILY_API_KEY: SecretStr
     TAVILY_BASE_URL: str = Field(min_length=1)
     PINECONE_API_KEY: SecretStr | None = None
     PINECONE_INDEX_NAME: str | None = None
     PINECONE_REGION: str | None = None
+    PINECONE_EMBEDDING_MODEL: str = "multilingual-e5-large"
     DB_POOL_SIZE: int = Field(default=5, ge=1, le=20)
     DB_MAX_OVERFLOW: int = Field(default=5, ge=0, le=20)
     DB_POOL_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)

@@ -4,7 +4,16 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Uuid, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -23,6 +32,11 @@ class Application(Base):
         CheckConstraint(
             "status in ('applied', 'withdrawn')",
             name="ck_applications_status",
+        ),
+        CheckConstraint(
+            "availability IS NULL OR availability IN "
+            "('full_time', 'part_time', 'weekends')",
+            name="ck_applications_availability_known",
         ),
     )
 
@@ -45,6 +59,8 @@ class Application(Base):
     )
     connection_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     role: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    availability: Mapped[str | None] = mapped_column(String(20), nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="applied")
     applied_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

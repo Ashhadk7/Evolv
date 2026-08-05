@@ -6,7 +6,6 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.repositories import matching as matching_repository
-from app.services.developer_rates import median_weekly_usd, rate_of
 from app.schemas.matching import (
     BlueprintMatchesResponse,
     MatchedDeveloperResponse,
@@ -14,6 +13,7 @@ from app.schemas.matching import (
     RoleMatchResponse,
 )
 from app.services import embeddings_service, pinecone_service
+from app.services.developer_rates import median_weekly_usd, rate_of
 
 logger = logging.getLogger(__name__)
 
@@ -225,12 +225,12 @@ def get_matches_semantic(
 def sync_developer_embedding(user_id: UUID, skills: list[str]) -> None:
     if not skills:
         return
-    try:
-        embedding = embeddings_service.embed_text(", ".join(skills))
-        if embedding:
-            pinecone_service.upsert_developer(str(user_id), embedding)
-    except Exception:
-        logger.exception("Failed to sync developer embedding for user %s", user_id)
+    _upsert(
+        pinecone_service.upsert_developer,
+        str(user_id),
+        ", ".join(skills),
+        "developer",
+    )
 
 
 def remove_developer_embedding(user_id: UUID) -> None:
@@ -240,6 +240,37 @@ def remove_developer_embedding(user_id: UUID) -> None:
         logger.exception("Failed to remove developer embedding for user %s", user_id)
 
 
+def sync_blueprint_embedding(blueprint_id: UUID, profile_text: str) -> None:
+    if not profile_text:
+        return
+    _upsert(
+        pinecone_service.upsert_blueprint,
+        str(blueprint_id),
+        profile_text,
+        "blueprint",
+    )
+
+
+def remove_blueprint_embedding(blueprint_id: UUID) -> None:
+    try:
+        pinecone_service.delete_blueprint(str(blueprint_id))
+    except Exception:
+        logger.exception("Failed to remove blueprint embedding for %s", blueprint_id)
+
+
+def _upsert(upsert, vector_id: str, text: str, label: str) -> None:
+    """Embedding sync never propagates: a stale vector degrades ranking, but a
+    raised exception would fail the publish or profile save that triggered it."""
+    try:
+        embedding = embeddings_service.embed_text(
+            text, input_type=embeddings_service.PASSAGE_INPUT_TYPE
+        )
+        if embedding:
+            upsert(vector_id, embedding)
+    except Exception:
+        logger.exception("Failed to sync %s embedding for %s", label, vector_id)
+
+
 def reindex_developer_embeddings(db: Session) -> int:
     developers = matching_repository.list_available_developers(db)
     indexed = 0
@@ -247,9 +278,30 @@ def reindex_developer_embeddings(db: Session) -> int:
         profile = user.developer_profile
         if profile is None or not profile.skills:
             continue
-        embedding = embeddings_service.embed_text(", ".join(profile.skills))
+        embedding = embeddings_service.embed_text(
+            ", ".join(profile.skills), input_type=embeddings_service.PASSAGE_INPUT_TYPE
+        )
         if not embedding:
             continue
         pinecone_service.upsert_developer(str(user.id), embedding)
+        indexed += 1
+    return indexed
+
+
+def reindex_blueprint_embeddings(db: Session) -> int:
+    from app.repositories import blueprints as blueprints_repository
+    from app.services import discover_service
+
+    indexed = 0
+    for blueprint in blueprints_repository.list_public_blueprints(db):
+        profile_text = discover_service.blueprint_embedding_text(blueprint)
+        if not profile_text:
+            continue
+        embedding = embeddings_service.embed_text(
+            profile_text, input_type=embeddings_service.PASSAGE_INPUT_TYPE
+        )
+        if not embedding:
+            continue
+        pinecone_service.upsert_blueprint(str(blueprint.id), embedding)
         indexed += 1
     return indexed

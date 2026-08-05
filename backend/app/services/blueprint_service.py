@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models.blueprint import Blueprint, VersionState
+from app.models.blueprint import Blueprint, BlueprintVisibility, VersionState
 from app.models.user import User, UserRole
 from app.repositories import blueprints as blueprints_repository
 from app.schemas.blueprints import (
@@ -24,6 +24,22 @@ from app.services.exceptions import (
 _EDITABLE_LAYERS = frozenset(
     {"frontend", "backend", "aiProvider", "database", "vectorDb", "hosting"}
 )
+
+
+def sync_search_index(blueprint: Blueprint) -> None:
+    """Keep the blueprint's vector in step with its published state.
+
+    Imported lazily: the matching stack pulls in the vector-store client, which
+    the majority of blueprint operations never need.
+    """
+    from app.services import discover_service, matching_service
+
+    if blueprint.visibility == BlueprintVisibility.PUBLIC:
+        matching_service.sync_blueprint_embedding(
+            blueprint.id, discover_service.blueprint_embedding_text(blueprint)
+        )
+    else:
+        matching_service.remove_blueprint_embedding(blueprint.id)
 
 
 def _require_founder_profile(user: User) -> UUID:
@@ -94,6 +110,7 @@ def update_visibility(
         db.rollback()
         raise BlueprintPersistenceError("Blueprint could not be updated.") from exc
 
+    sync_search_index(blueprint)
     return blueprint
 
 
@@ -182,6 +199,7 @@ def update_content(
         db.rollback()
         raise BlueprintPersistenceError("Blueprint content could not be updated.") from exc
 
+    sync_search_index(blueprint)
     return blueprint
 
 
@@ -194,6 +212,10 @@ def delete_blueprint(db: Session, blueprint_id: UUID, current_user: User) -> Non
     except SQLAlchemyError as exc:
         db.rollback()
         raise BlueprintPersistenceError("Blueprint could not be deleted.") from exc
+
+    from app.services import matching_service
+
+    matching_service.remove_blueprint_embedding(blueprint_id)
 
 
 def get_blueprint_dict(db: Session, blueprint_id: UUID, current_user: User) -> dict | None:
