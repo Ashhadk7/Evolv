@@ -17,10 +17,7 @@ import {
 import styles from "@/features/developer-dashboard/components/discover.module.css";
 import { getApiErrorMessage } from "@/lib/api";
 import { messagingApi } from "@/features/messaging/lib/messaging-api";
-import {
-  buildArchitecture,
-  deriveProductFeatures,
-} from "@/features/blueprints/blueprint-content";
+import { buildArchitecture, deriveProductFeatures } from "@/features/blueprints/blueprint-content";
 import {
   BlueprintIdeaSection,
   BlueprintPersonasSection,
@@ -225,7 +222,7 @@ export function DeveloperBlueprintDetail({
                 keyAssumptions={doc.content.synthesis.keyAssumptions}
               />
               <BlueprintIdeaSection infoGrid={document.infoGrid} />
-              <BlueprintPersonasSection personas={doc.content.personas} />
+              <BlueprintPersonasSection personas={doc.content.personas} display="carousel" />
               <BlueprintProductScopeSection
                 featureItems={document.features}
                 outOfScope={doc.content.mvpPlan.outOfScope}
