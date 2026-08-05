@@ -1,115 +1,151 @@
-import { Filter, Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 
 import styles from "@/features/developer-dashboard/components/discover.module.css";
+import type { DiscoverSort } from "@/features/developer-dashboard/lib/discover-api";
 import type { DiscoverFilterOptions, DiscoverFilters } from "./types";
 
-const VIABILITY_OPTIONS = [
-  { label: "Any viability", value: "" },
-  { label: "70% and up", value: "70" },
-  { label: "80% and up", value: "80" },
-  { label: "90% and up", value: "90" },
+const SORT_OPTIONS: { value: DiscoverSort; label: string }[] = [
+  { value: "match", label: "Sort: Best match" },
+  { value: "newest", label: "Sort: Newest" },
+  { value: "applicants", label: "Sort: Fewest applicants" },
 ];
+
+export type DiscoverView = "all" | "saved";
 
 export function FilterBar({
   filterOptions,
   activeFilters,
+  sort,
+  view,
+  savedCount,
   onFilterChange,
+  onSortChange,
   onClearFilters,
+  onViewChange,
 }: {
   filterOptions: DiscoverFilterOptions;
   activeFilters: DiscoverFilters;
+  sort: DiscoverSort;
+  view: DiscoverView;
+  savedCount: number;
   onFilterChange: (key: keyof DiscoverFilters, value: string) => void;
+  onSortChange: (sort: DiscoverSort) => void;
   onClearFilters: () => void;
+  onViewChange: (view: DiscoverView) => void;
 }) {
   const hasFilters = Object.values(activeFilters).some(Boolean);
-  const hasDynamicOptions =
-    filterOptions.industries.length > 0 ||
-    filterOptions.stages.length > 0 ||
-    filterOptions.techStack.length > 0;
 
   return (
     <section className={styles.filterBar}>
+      <div className={styles.segmented} role="tablist" aria-label="Blueprint list">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "all"}
+          className={view === "all" ? styles.segmentActive : styles.segment}
+          onClick={() => onViewChange("all")}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "saved"}
+          className={view === "saved" ? styles.segmentActive : styles.segment}
+          onClick={() => onViewChange("saved")}
+        >
+          Saved ({savedCount})
+        </button>
+      </div>
+
       <div className={styles.searchBox}>
-        <Search size={16} />
+        <Search size={17} aria-hidden="true" />
         <input
+          type="search"
           value={activeFilters.q ?? ""}
           onChange={(event) => onFilterChange("q", event.target.value)}
-          placeholder="Search blueprint, role, stack"
+          placeholder="Search ideas, industries, tech"
+          aria-label="Search blueprints"
         />
       </div>
 
-      <label className={styles.selectFilter}>
-        <span>
-          <Filter size={14} /> Industry
-        </span>
-        <select
-          value={activeFilters.industry ?? ""}
-          onChange={(event) => onFilterChange("industry", event.target.value)}
-        >
-          <option value="">All industries</option>
-          {filterOptions.industries.map((industry) => (
-            <option key={industry} value={industry}>
-              {industry}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FilterSelect
+        label="Industry"
+        placeholder="All industries"
+        value={activeFilters.industry ?? ""}
+        options={filterOptions.industries}
+        onChange={(value) => onFilterChange("industry", value)}
+      />
+      <FilterSelect
+        label="Role"
+        placeholder="All roles"
+        value={activeFilters.role ?? ""}
+        options={filterOptions.roles}
+        onChange={(value) => onFilterChange("role", value)}
+      />
+      <FilterSelect
+        label="Tech"
+        placeholder="All tech"
+        value={activeFilters.tech ?? ""}
+        options={filterOptions.techStack}
+        onChange={(value) => onFilterChange("tech", value)}
+      />
 
-      <label className={styles.selectFilter}>
-        <span>Stage</span>
+      <div className={styles.selectWrap}>
         <select
-          value={activeFilters.stage ?? ""}
-          onChange={(event) => onFilterChange("stage", event.target.value)}
+          className={styles.filterSelect}
+          aria-label="Sort blueprints"
+          value={sort}
+          onChange={(event) => onSortChange(event.target.value as DiscoverSort)}
         >
-          <option value="">All stages</option>
-          {filterOptions.stages.map((stage) => (
-            <option key={stage} value={stage}>
-              {stage}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className={styles.selectFilter}>
-        <span>Tech</span>
-        <select
-          value={activeFilters.tech ?? ""}
-          onChange={(event) => onFilterChange("tech", event.target.value)}
-        >
-          <option value="">Any stack</option>
-          {filterOptions.techStack.map((tech) => (
-            <option key={tech} value={tech}>
-              {tech}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className={styles.selectFilter}>
-        <span>Viability</span>
-        <select
-          value={activeFilters.minViability ?? ""}
-          onChange={(event) => onFilterChange("minViability", event.target.value)}
-        >
-          {VIABILITY_OPTIONS.map((option) => (
-            <option key={option.value || "any"} value={option.value}>
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
-      </label>
+        <ChevronDown size={14} aria-hidden="true" />
+      </div>
 
       {hasFilters && (
-        <button className={styles.clearFiltersBtn} onClick={onClearFilters}>
-          <X size={14} /> Clear
+        <button type="button" className={styles.clearFiltersBtn} onClick={onClearFilters}>
+          <X size={14} aria-hidden="true" /> Clear
         </button>
       )}
-
-      {!hasDynamicOptions && (
-        <p className={styles.filterHint}>
-          Industry, stage, and tech filters appear after at least one public blueprint is available.
-        </p>
-      )}
     </section>
+  );
+}
+
+function FilterSelect({
+  label,
+  placeholder,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className={styles.selectWrap}>
+      <select
+        className={styles.filterSelect}
+        aria-label={label}
+        value={value}
+        disabled={options.length === 0}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={14} aria-hidden="true" />
+    </div>
   );
 }
