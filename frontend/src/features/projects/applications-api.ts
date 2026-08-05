@@ -17,6 +17,8 @@ export interface ApplicationWire {
   blueprint_id: string;
   connection_id: string | null;
   role: string | null;
+  message: string | null;
+  availability: "full_time" | "part_time" | "weekends" | null;
   status: string;
   applied_at: string;
   withdrawn_at: string | null;

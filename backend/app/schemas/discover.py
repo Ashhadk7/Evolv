@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
-
-from app.models.blueprint import LevelRating
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DiscoverBlueprintRole(BaseModel):
@@ -17,12 +15,27 @@ class DiscoverBlueprintRole(BaseModel):
     lead: bool
 
 
+class DiscoverRoleFit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+    fit: int
+
+
+class DiscoverApplicantsByRole(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+    count: int
+
+
 class DiscoverFilterOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     industries: list[str]
     stages: list[str]
     tech_stack: list[str]
+    roles: list[str]
 
 
 class DiscoverBlueprintResponse(BaseModel):
@@ -33,18 +46,21 @@ class DiscoverBlueprintResponse(BaseModel):
     industry: str
     founder_id: UUID
     founder_name: str | None = None
+    founder_blueprint_count: int = 0
     stage: str
     summary: str
-    differentiator: str | None = None
     viability: int
-    developer_demand: LevelRating
     tech_stack: list[str]
     roles: list[DiscoverBlueprintRole]
-    mvp_features: list[str]
-    timeline: str | None = None
-    match_score: int
-    match_reasons: list[str]
-    matched_skills: list[str]
+    match_score: int | None = None
+    fit_label: str | None = None
+    best_role: str | None = None
+    role_fits: list[DiscoverRoleFit] = Field(default_factory=list)
+    match_reasons: list[str] = Field(default_factory=list)
+    matched_skills: list[str] = Field(default_factory=list)
+    skills_to_pick_up: list[str] = Field(default_factory=list)
+    applicant_count: int = 0
+    applicants_by_role: list[DiscoverApplicantsByRole] = Field(default_factory=list)
     saved: bool
     applied: bool
     application_id: UUID | None = None
@@ -52,6 +68,7 @@ class DiscoverBlueprintResponse(BaseModel):
     applied_role: str | None = None
     applied_at: datetime | None = None
     withdrawn_at: datetime | None = None
+    created_at: datetime
     updated_at: datetime
 
 

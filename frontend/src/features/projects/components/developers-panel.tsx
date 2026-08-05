@@ -10,6 +10,12 @@ import type { FounderContactProfile } from "@/features/network/types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
 import { listBlueprintApplications, type ApplicationWire } from "@/features/projects/applications-api";
 
+const AVAILABILITY_LABELS = {
+  full_time: "Full-time",
+  part_time: "Part-time",
+  weekends: "Weekends",
+} as const;
+
 export function DevelopersPanel({
   blueprintId,
   phases,
@@ -213,10 +219,13 @@ export function DevelopersPanel({
                           {jobTitle}
                         </div>
                       )}
-                      <div className="flex gap-1.5 mt-1">
+                      <div className="flex gap-1.5 mt-1 flex-wrap">
                         <Chip tone="mint">
                           {a.role ? `Role: ${a.role}` : "General Application"}
                         </Chip>
+                        {a.availability && (
+                          <Chip tone="neutral">{AVAILABILITY_LABELS[a.availability]}</Chip>
+                        )}
                       </div>
                       <div className="text-bp-label text-[10.5px] mt-0.5">
                         Applied {new Date(a.applied_at).toLocaleDateString("en-US", {
@@ -227,6 +236,12 @@ export function DevelopersPanel({
                       </div>
                     </div>
                   </div>
+
+                  {a.message && (
+                    <p className="text-bp-body bg-bp-tint border-bp-border-soft m-0 rounded-lg border p-2 text-[11.5px] leading-[1.5]">
+                      {a.message}
+                    </p>
+                  )}
 
                   <div className="flex gap-1.5 mt-0.5">
                     <button

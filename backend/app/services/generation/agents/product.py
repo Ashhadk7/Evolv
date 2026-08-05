@@ -167,7 +167,7 @@ async def run_product(
             research=research,
             timeline=_timeline_budget(timeline_weeks),
         ),
-        max_tokens=6000,
+        max_tokens=2400,
         verify=_fits_timeline(timeline_weeks),
     )
 

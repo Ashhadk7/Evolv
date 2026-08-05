@@ -11,13 +11,13 @@ from pydantic import SecretStr
 from app.core.config import get_settings
 
 if TYPE_CHECKING:
-    from openai import OpenAI
     from pinecone import Pinecone
 
 GROQ_CHAT_COMPLETIONS_PATH = "/chat/completions"
 TAVILY_SEARCH_PATH = "/search"
 BLUEPRINT_RESEARCH_USER_AGENT = "Evolv/0.1 blueprint-research"
 DEVELOPER_EMBEDDING_NAMESPACE = "developers"
+BLUEPRINT_EMBEDDING_NAMESPACE = "blueprints"
 
 
 def _secret_value(secret: SecretStr) -> str:
@@ -56,17 +56,6 @@ def groq_sync_http_client() -> Iterator[httpx.Client]:
     settings = get_settings()
     with httpx.Client(timeout=settings.AI_TIMEOUT_SECONDS) as client:
         yield client
-
-
-@lru_cache(maxsize=1)
-def groq_openai_client() -> OpenAI:
-    from openai import OpenAI
-
-    settings = get_settings()
-    return OpenAI(
-        api_key=groq_api_key(),
-        base_url=settings.GROQ_API_BASE_URL.rstrip("/"),
-    )
 
 
 def tavily_api_key() -> str:

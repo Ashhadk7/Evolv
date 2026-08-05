@@ -6,6 +6,7 @@ import {
   connectionApi,
   loadNetworkConnections,
   loadNetworkPeople,
+  type NetworkConnectionState,
 } from "@/features/network/lib/network-api";
 import type { StoredNetworkState } from "@/features/network/types";
 import { messagingApi, type Conversation } from "@/features/messaging/lib/messaging-api";
@@ -28,18 +29,32 @@ export function useNetwork({
 }: UseNetworkProps) {
   // Select constants and storage loaders based on the role
   const [people, setPeople] = useState<FounderContactProfile[]>([]);
-  const [loadError, setLoadError] = useState(false);
+  const [peopleLoading, setPeopleLoading] = useState(true);
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [peopleLoadError, setPeopleLoadError] = useState(false);
+  const [connectionsLoadError, setConnectionsLoadError] = useState(false);
   const [connectionIdByUser, setConnectionIdByUser] = useState<Record<string, string>>({});
 
   // Distinguish "loaded, genuinely empty" from "failed to load" so the UI can
   // show a real error + retry instead of a misleading "No results found".
-  const loadPeople = useCallback(() => {
-    loadNetworkPeople()
-      .then((items) => { setPeople(items); setLoadError(false); })
-      .catch(() => { setPeople([]); setLoadError(true); });
+  const loadPeople = useCallback(async () => {
+    setPeopleLoading(true);
+    try {
+      const items = await loadNetworkPeople();
+      setPeople(items);
+      setPeopleLoadError(false);
+    } catch {
+      setPeople([]);
+      setPeopleLoadError(true);
+    } finally {
+      setPeopleLoading(false);
+    }
   }, []);
 
-  useEffect(() => { loadPeople(); }, [loadPeople]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadPeople(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadPeople]);
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"network" | "requests" | "connections">("network");
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,8 +72,7 @@ export function useNetwork({
   const { connected, pendingIds, ignoredIds, outgoingIds } = networkState;
   const outgoingSet = useMemo(() => new Set(outgoingIds), [outgoingIds]);
 
-  const refreshConnections = async () => {
-    const state = await loadNetworkConnections();
+  const applyConnectionState = useCallback((state: NetworkConnectionState) => {
     setConnectionIdByUser(state.connectionIdByUser);
     setNetworkState((previous) => ({
       ...previous,
@@ -67,28 +81,37 @@ export function useNetwork({
       outgoingIds: state.outgoingIds,
       requestNotes: state.requestNotes,
     }));
-  };
+  }, []);
+
+  const loadConnectionsForInitialState = useCallback(async () => {
+    setConnectionsLoading(true);
+    try {
+      const state = await loadNetworkConnections();
+      applyConnectionState(state);
+      setConnectionsLoadError(false);
+    } catch {
+      setConnectionsLoadError(true);
+    } finally {
+      setConnectionsLoading(false);
+    }
+  }, [applyConnectionState]);
+
+  const refreshConnections = useCallback(async () => {
+    const state = await loadNetworkConnections();
+    applyConnectionState(state);
+    setConnectionsLoadError(false);
+  }, [applyConnectionState]);
 
   useEffect(() => {
-    let active = true;
-    void loadNetworkConnections().then((state) => {
-      if (!active) return;
-      setConnectionIdByUser(state.connectionIdByUser);
-      setNetworkState((previous) => ({
-        ...previous,
-        connected: Object.fromEntries(state.connectedIds.map((id) => [id, true])),
-        pendingIds: state.incomingIds,
-        outgoingIds: state.outgoingIds,
-        requestNotes: state.requestNotes,
-      }));
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, []);
+    const timer = window.setTimeout(() => void loadConnectionsForInitialState(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadConnectionsForInitialState]);
 
   // Notify of pending counts
   useEffect(() => {
+    if (connectionsLoading) return;
     onPendingCountChange?.(pendingIds.length);
-  }, [onPendingCountChange, pendingIds.length]);
+  }, [connectionsLoading, onPendingCountChange, pendingIds.length]);
 
   const pendingPeople = useMemo(
     () => people.filter((person) => pendingIds.includes(person.id)),
@@ -152,6 +175,13 @@ export function useNetwork({
       );
     });
   }, [connectedPeople, searchQuery]);
+
+  const loading = peopleLoading || connectionsLoading;
+  const loadError = peopleLoadError || connectionsLoadError;
+  const retryLoadNetwork = () => {
+    void loadPeople();
+    void loadConnectionsForInitialState();
+  };
 
   const requireProfileBeforeAction = (afterComplete?: () => void) => {
     if (profileComplete || !onRequireProfile) return false;
@@ -287,8 +317,9 @@ export function useNetwork({
     connectedPeople,
     filteredSuggested,
     filteredConnections,
+    loading,
     loadError,
-    retryLoadPeople: loadPeople,
+    retryLoadNetwork,
     handleAcceptRequest,
     handleIgnoreRequest,
     handleDismissSuggestion,

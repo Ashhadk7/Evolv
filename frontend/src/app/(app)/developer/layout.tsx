@@ -5,6 +5,7 @@ import "../../developer.css";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AuthGuard } from "@/features/auth/components/auth-guard";
+import { getSession } from "@/features/auth/lib/session";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ProfileCompletionPrompt } from "@/components/layout/profile-completion-prompt";
 import { developerNav } from "@/config/navigation";
@@ -44,6 +45,9 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   }, [loadData]);
 
   const profileComplete = isDeveloperProfileComplete(profile);
+  const sessionEmail = getSession()?.user.email.trim().toLowerCase() ?? "";
+  const profileEmail = (profile.email ?? "").trim().toLowerCase();
+  const profileReady = dataLoaded && profileEmail === sessionEmail;
   const missingProfileFields = getMissingDeveloperProfileFields(profile);
   const needsOnlyPhoneVerification =
     missingProfileFields.length === 1 && missingProfileFields[0] === "verified phone number";
@@ -51,7 +55,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard requiredRole="developer">
     <div className="flex flex-col md:flex-row h-[100dvh] overflow-hidden bg-[#f5f6f4]">
-      <MessagingPresence enabled={profileComplete} />
+      <MessagingPresence enabled={profileReady && profileComplete} />
       {!isSettings && (
         <DashboardSidebar
           sections={developerNav}
@@ -73,10 +77,10 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      <main className="flex-1 min-h-0 overflow-hidden bg-[#f5f6f4]">{dataLoaded ? children : null}</main>
+      <main className="flex-1 min-h-0 overflow-hidden bg-[#f5f6f4]">{profileReady ? children : null}</main>
 
       <ProfileCompletionPrompt
-        visible={!profileComplete && !showOnboarding && !profilePromptDismissed}
+        visible={profileReady && !profileComplete && !showOnboarding && !profilePromptDismissed}
         missingProfileFields={missingProfileFields}
         messageSuffix="before applying, messaging, or using network actions."
         title={needsOnlyPhoneVerification ? "Verify number" : "Complete profile setup"}

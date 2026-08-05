@@ -72,7 +72,6 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [busyAction, setBusyAction] = useState<"apply" | "save" | "withdraw" | null>(null);
   const [busyBlueprintId, setBusyBlueprintId] = useState<string | null>(null);
-  const [busyRole, setBusyRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -154,10 +153,9 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
 
     setBusyBlueprintId(app.id);
     setBusyAction("apply");
-    setBusyRole(role);
     setError("");
     try {
-      const application = await applyToDiscoverBlueprint(app.id, role);
+      const application = await applyToDiscoverBlueprint(app.id, { role });
       updateApplication(app.id, {
         applied: true,
         applicationId: application.id,
@@ -171,14 +169,7 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
     } finally {
       setBusyBlueprintId(null);
       setBusyAction(null);
-      setBusyRole(null);
     }
-  };
-
-  const getViabilityColor = (score: number) => {
-    if (score >= 85) return "#2e8b6a";
-    if (score >= 70) return "#b98319";
-    return "#d94f4f";
   };
 
   const statusCounts = useMemo(
@@ -201,6 +192,12 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
     [applications, statusFilter]
   );
 
+  const averageMatch = useMemo(() => {
+    const scored = applications.flatMap((app) => (app.matchScore === null ? [] : [app.matchScore]));
+    if (scored.length === 0) return null;
+    return Math.round(scored.reduce((total, score) => total + score, 0) / scored.length);
+  }, [applications]);
+
   const stats = useMemo(
     () => [
       {
@@ -221,14 +218,10 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
       {
         id: 4,
         label: "Average Match",
-        value: applications.length
-          ? `${Math.round(
-              applications.reduce((total, app) => total + app.matchScore, 0) / applications.length
-            )}%`
-          : "0%",
+        value: averageMatch === null ? "—" : `${averageMatch}%`,
       },
     ],
-    [applications, statusCounts.applied, statusCounts.withdrawn]
+    [applications.length, averageMatch, statusCounts.applied, statusCounts.withdrawn]
   );
 
   if (detailApp) {
@@ -238,9 +231,7 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
           <DeveloperBlueprintDetail
             key={detailApp.id}
             blueprint={detailApp}
-            getViabilityColor={getViabilityColor}
             busyAction={busyBlueprintId === detailApp.id ? (busyAction ?? undefined) : undefined}
-            busyRole={busyBlueprintId === detailApp.id ? (busyRole ?? undefined) : undefined}
             backLabel="Back to Applications"
             onBack={() => setDetailApp(null)}
             onApply={handleApply}
@@ -320,7 +311,9 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
                     </div>
                     <div className={styles.roleCell}>{applicationRole(app)}</div>
                     <div className={styles.matchCell}>
-                      <span className={styles.matchBadge}>{app.matchScore}%</span>
+                      <span className={styles.matchBadge}>
+                        {app.matchScore === null ? "—" : `${app.matchScore}%`}
+                      </span>
                     </div>
                     <div className={styles.dateCell}>{formatDate(app.appliedAt)}</div>
                     <div className={styles.statusCell}>

@@ -1,32 +1,50 @@
 from __future__ import annotations
 
+import logging
 import re
-from collections.abc import Iterable
+from collections import Counter
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.models.application import Application
-from app.models.blueprint import Blueprint, BlueprintVisibility, LevelRating
+from app.models.blueprint import Blueprint, BlueprintVisibility
 from app.models.user import DeveloperProfile, User, UserRole
 from app.repositories import applications as applications_repository
 from app.repositories import blueprints as blueprints_repository
 from app.schemas.discover import (
+    DiscoverApplicantsByRole,
     DiscoverBlueprintListResponse,
     DiscoverBlueprintResponse,
     DiscoverBlueprintRole,
     DiscoverFilterOptions,
+    DiscoverRoleFit,
     SavedDiscoverBlueprintItem,
     SavedDiscoverBlueprintListResponse,
 )
+from app.services import discover_scoring, embeddings_service, pinecone_service
+from app.services.discover_scoring import dedupe, matching_terms, normal_key, sorted_unique
 from app.services.exceptions import DeveloperProfileRequiredError
 
+logger = logging.getLogger(__name__)
+
 TECH_LAYER_KEYS = ("frontend", "backend", "database", "vectorDb", "aiProvider", "hosting")
-DEVELOPER_DEMAND_BONUS = {
-    LevelRating.HIGH: 7,
-    LevelRating.MEDIUM: 4,
-    LevelRating.LOW: 1,
-}
+HIGH_MATCH_THRESHOLD = 75
+MAX_FILTER_TECH = 10
+
+# A blueprint whose agent pipeline failed or is still running carries placeholder
+# content, so it is withheld from Discover. Blueprints predating generation
+# tracking have no status at all and stay visible.
+UNFINISHED_STATUSES = frozenset({"failed", "generating"})
+
+# The generator writes these when a layer is not needed. They are answers, not
+# technologies, so they must never reach a filter, a chip or a skills gap.
+PLACEHOLDER_VALUES = frozenset({"none", "n a", "na", "tbd", "not applicable", "not required"})
+SEMANTIC_QUERY_LIMIT = 200
+
+SORT_MATCH = "match"
+SORT_NEWEST = "newest"
+SORT_APPLICANTS = "applicants"
 
 
 def list_public_blueprints(
@@ -36,8 +54,10 @@ def list_public_blueprints(
     industry: str | None,
     stage: str | None,
     tech: str | None,
+    role: str | None,
     min_viability: int | None,
     q: str | None,
+    sort: str,
     limit: int,
     offset: int,
 ) -> DiscoverBlueprintListResponse:
@@ -45,27 +65,35 @@ def list_public_blueprints(
     saved_ids = applications_repository.list_saved_blueprint_ids_for_developer(
         db, developer.user_id
     )
-    application_by_blueprint = (
-        applications_repository.list_application_details_by_developer(db, developer.user_id)
+    application_by_blueprint = applications_repository.list_application_details_by_developer(
+        db, developer.user_id
     )
-    saved_count = len(saved_ids)
-    applications_count = sum(
-        1 for application in application_by_blueprint.values() if application.status == "applied"
-    )
+    applicant_counts = applications_repository.count_active_applications_by_role(db)
+    blueprints_by_founder = applications_repository.count_public_blueprints_by_founder(db)
+    scorable = [
+        blueprint
+        for blueprint in blueprints_repository.list_public_blueprints(db)
+        if is_scorable(blueprint)
+    ]
+    similarities = _semantic_similarities(developer, {str(bp.id) for bp in scorable})
 
     all_items = [
         item
-        for blueprint in blueprints_repository.list_public_blueprints(db)
-        if (item := _blueprint_to_discover_item(
-            blueprint,
-            developer,
-            saved_ids,
-            application_by_blueprint,
-        ))
+        for blueprint in scorable
+        if (
+            item := _blueprint_to_discover_item(
+                blueprint,
+                developer,
+                saved_ids,
+                application_by_blueprint,
+                applicant_counts,
+                blueprints_by_founder,
+                similarities,
+            )
+        )
         is not None
     ]
 
-    filter_options = _build_filter_options(all_items)
     filtered = [
         item
         for item in all_items
@@ -74,30 +102,28 @@ def list_public_blueprints(
             industry=industry,
             stage=stage,
             tech=tech,
+            role=role,
             min_viability=min_viability,
             q=q,
         )
     ]
-    filtered.sort(
-        key=lambda item: (
-            item.match_score,
-            len(item.matched_skills),
-            item.viability,
-            item.updated_at,
-        ),
-        reverse=True,
-    )
-    paged = filtered[offset : offset + limit]
+    _sort_items(filtered, sort)
 
     return DiscoverBlueprintListResponse(
         total=len(filtered),
         limit=limit,
         offset=offset,
-        saved_count=saved_count,
-        applications_count=applications_count,
-        high_match_count=sum(1 for item in all_items if item.match_score >= 75),
-        filter_options=filter_options,
-        items=paged,
+        saved_count=len(saved_ids),
+        applications_count=sum(
+            1
+            for application in application_by_blueprint.values()
+            if application.status == "applied"
+        ),
+        high_match_count=sum(
+            1 for item in all_items if (item.match_score or 0) >= HIGH_MATCH_THRESHOLD
+        ),
+        filter_options=_build_filter_options(all_items),
+        items=filtered[offset : offset + limit],
     )
 
 
@@ -116,30 +142,45 @@ def list_saved_blueprints(
     application_by_blueprint = applications_repository.list_application_details_by_developer(
         db, developer.user_id
     )
+    applicant_counts = applications_repository.count_active_applications_by_role(db)
+    blueprints_by_founder = applications_repository.count_public_blueprints_by_founder(db)
+    similarities = _semantic_similarities(
+        developer,
+        {
+            str(saved.blueprint_id)
+            for saved in saved_items
+            if saved.blueprint is not None
+            and saved.blueprint.visibility == BlueprintVisibility.PUBLIC
+            and is_scorable(saved.blueprint)
+        },
+    )
     items: list[SavedDiscoverBlueprintItem] = []
 
     for saved in saved_items:
         blueprint = saved.blueprint
         version = blueprint.current_version if blueprint is not None else None
-        name = version.name if version is not None else "Unavailable blueprint"
         discover_item = None
 
         if (
             blueprint is not None
             and blueprint.visibility == BlueprintVisibility.PUBLIC
             and version is not None
+            and is_scorable(blueprint)
         ):
             discover_item = _blueprint_to_discover_item(
                 blueprint,
                 developer,
                 saved_ids,
                 application_by_blueprint,
+                applicant_counts,
+                blueprints_by_founder,
+                similarities,
             )
 
         items.append(
             SavedDiscoverBlueprintItem(
                 id=saved.blueprint_id,
-                name=name,
+                name=version.name if version is not None else "Unavailable blueprint",
                 available=discover_item is not None,
                 saved_at=saved.saved_at,
                 blueprint=discover_item,
@@ -149,10 +190,101 @@ def list_saved_blueprints(
     return SavedDiscoverBlueprintListResponse(total=total, items=items)
 
 
+def is_scorable(blueprint: Blueprint) -> bool:
+    """Whether a public blueprint is finished enough to show a developer.
+
+    A blueprint whose agent pipeline failed or is still running carries
+    placeholder content. Blueprints predating generation tracking have no status
+    at all and stay visible.
+    """
+    version = blueprint.current_version
+    if version is None:
+        return False
+    generation = _record(_record(version.content_json).get("generation"))
+    return _string(generation.get("status")) not in UNFINISHED_STATUSES
+
+
+def blueprint_embedding_text(blueprint: Blueprint) -> str:
+    """The blueprint's semantic fingerprint, shared by indexing and querying so
+    both sides of the comparison describe the blueprint the same way."""
+    version = blueprint.current_version
+    if version is None:
+        return ""
+    agents = _record(_record(version.content_json).get("agents"))
+    tech_agent = _record(agents.get("techStack"))
+    return discover_scoring.blueprint_profile_text(
+        version.industry, _extract_roles(tech_agent), _extract_tech_stack(tech_agent)
+    )
+
+
 def _require_developer_profile(user: User) -> DeveloperProfile:
     if user.role != UserRole.DEVELOPER or user.developer_profile is None:
         raise DeveloperProfileRequiredError("Only developers with a developer profile can browse.")
     return user.developer_profile
+
+
+def _similarity_for(similarities: dict[str, float], blueprint_id: UUID) -> float | None:
+    """Blend every blueprint or none of them.
+
+    Pinecone returns only its top matches, so a blueprint outside that slice has
+    a genuinely low similarity rather than an unknown one. Scoring it rule-only
+    would rank it above blueprints that were pulled down by a weak semantic
+    score, which inverts the ordering the blend exists to produce.
+    """
+    if not similarities:
+        return None
+    return similarities.get(str(blueprint_id), 0.0)
+
+
+def _semantic_similarities(
+    developer: DeveloperProfile, blueprint_ids: set[str]
+) -> dict[str, float]:
+    """Cosine similarity per blueprint id, or {} to fall back to rule-only scoring.
+
+    A partially built index is worse than none: any blueprint without a vector
+    would blend against zero and lose roughly half its score, so the ranking
+    would reflect how much of the backfill had run rather than fit. Semantic
+    scoring therefore engages only when every blueprint about to be scored has a
+    vector — checked against those exact ids, not a count, so a blueprint that is
+    withheld from Discover cannot hold the whole page back.
+    """
+    if not blueprint_ids:
+        return {}
+    if not embeddings_service.embeddings_enabled() or not pinecone_service.index_ready():
+        return {}
+
+    embedding = embeddings_service.embed_text(discover_scoring.developer_profile_text(developer))
+    if not embedding:
+        return {}
+
+    top_k = max(len(blueprint_ids), SEMANTIC_QUERY_LIMIT)
+    similarities = pinecone_service.query_blueprints(embedding, top_k)
+    missing = blueprint_ids - similarities.keys()
+    if missing:
+        logger.warning(
+            "Blueprint vector index is missing %d of %d blueprints; falling back to "
+            "rule-based scoring. Run reindex_developers.py to backfill.",
+            len(missing),
+            len(blueprint_ids),
+        )
+        return {}
+    return _rescale({key: similarities[key] for key in blueprint_ids})
+
+
+def _rescale(similarities: dict[str, float]) -> dict[str, float]:
+    """Stretch raw cosines across the result set so they discriminate.
+
+    Embedding similarity between any two pieces of software-related text lands
+    in a narrow band near the top of the range, so blending the raw value mostly
+    adds the same constant to every blueprint. Rescaling the set to 0-1 turns it
+    back into a comparison. When every blueprint scores alike the signal carries
+    no information, so it is dropped rather than amplified into noise.
+    """
+    lowest, highest = min(similarities.values()), max(similarities.values())
+    spread = highest - lowest
+    if spread <= 0:
+        return {}
+    return {key: (value - lowest) / spread for key, value in similarities.items()}
 
 
 def _blueprint_to_discover_item(
@@ -160,6 +292,9 @@ def _blueprint_to_discover_item(
     developer: DeveloperProfile,
     saved_ids: set[UUID],
     application_by_blueprint: dict[UUID, Application],
+    applicant_counts: dict[UUID, dict[str | None, int]],
+    blueprints_by_founder: dict[UUID, int],
+    similarities: dict[str, float],
 ) -> DiscoverBlueprintResponse | None:
     version = blueprint.current_version
     if version is None:
@@ -168,59 +303,61 @@ def _blueprint_to_discover_item(
     content = _record(version.content_json)
     agents = _record(content.get("agents"))
     intake = _record(content.get("intake"))
-    product = _record(agents.get("product"))
     synthesis = _record(agents.get("synthesis"))
     tech_agent = _record(agents.get("techStack"))
 
     roles = _extract_roles(tech_agent)
     tech_stack = _extract_tech_stack(tech_agent)
-    mvp_features = _strings(product.get("features")) or _strings(content.get("features"))
-    summary = (
-        _string(synthesis.get("executiveSummary"))
-        or _string(content.get("summary"))
-        or version.idea_desc
-    )
-    stage = _string(intake.get("stage")) or "Not specified"
-    timeline = _string(intake.get("timeline")) or None
-    founder_name = _founder_name(blueprint)
 
-    match_score, matched_skills, match_reasons = _score_blueprint(
+    score = discover_scoring.score_blueprint(
         developer=developer,
         industry=version.industry,
         viability=version.viability,
         developer_demand=version.developer_demand,
         roles=roles,
         tech_stack=tech_stack,
+        semantic_similarity=_similarity_for(similarities, blueprint.id),
     )
 
     application = application_by_blueprint.get(blueprint.id)
-    application_active = application is not None and application.status == "applied"
+    by_role = applicant_counts.get(blueprint.id, {})
 
     return DiscoverBlueprintResponse(
         id=blueprint.id,
         name=version.name,
         industry=version.industry,
         founder_id=blueprint.founder_id,
-        founder_name=founder_name,
-        stage=stage,
-        summary=summary,
-        differentiator=version.differentiator,
+        founder_name=_founder_name(blueprint),
+        founder_blueprint_count=blueprints_by_founder.get(blueprint.founder_id, 0),
+        stage=_string(intake.get("stage")) or "Not specified",
+        summary=(
+            _string(synthesis.get("executiveSummary"))
+            or _string(content.get("summary"))
+            or version.idea_desc
+        ),
         viability=version.viability,
-        developer_demand=version.developer_demand,
         tech_stack=tech_stack,
         roles=roles,
-        mvp_features=mvp_features[:6],
-        timeline=timeline,
-        match_score=match_score,
-        match_reasons=match_reasons,
-        matched_skills=matched_skills,
+        match_score=score.score,
+        fit_label=score.fit_label,
+        best_role=score.best_role,
+        role_fits=[DiscoverRoleFit(role=fit.role, fit=fit.fit) for fit in score.role_fits],
+        match_reasons=score.reasons,
+        matched_skills=score.matched_skills,
+        skills_to_pick_up=score.skills_to_pick_up,
+        applicant_count=sum(by_role.values()),
+        applicants_by_role=[
+            DiscoverApplicantsByRole(role=role or "General application", count=count)
+            for role, count in sorted(by_role.items(), key=lambda item: item[1], reverse=True)
+        ],
         saved=blueprint.id in saved_ids,
-        applied=application_active,
+        applied=application is not None and application.status == "applied",
         application_id=application.id if application is not None else None,
         application_status=application.status if application is not None else None,
         applied_role=application.role if application is not None else None,
         applied_at=application.applied_at if application is not None else None,
         withdrawn_at=application.withdrawn_at if application is not None else None,
+        created_at=blueprint.created_at,
         updated_at=blueprint.updated_at,
     )
 
@@ -251,68 +388,30 @@ def _extract_roles(tech_agent: dict[str, object]) -> list[DiscoverBlueprintRole]
 
 def _extract_tech_stack(tech_agent: dict[str, object]) -> list[str]:
     layers = _record(tech_agent.get("techStack"))
-    stack = [_string(_record(layers.get(key)).get("chosen")) for key in TECH_LAYER_KEYS]
-    return _dedupe(stack)
+    chosen = (_string(_record(layers.get(key)).get("chosen")) for key in TECH_LAYER_KEYS)
+    return [tech for tech in dedupe(chosen) if not _is_placeholder(tech)]
 
 
-def _score_blueprint(
-    *,
-    developer: DeveloperProfile,
-    industry: str,
-    viability: int,
-    developer_demand: LevelRating,
-    roles: list[DiscoverBlueprintRole],
-    tech_stack: list[str],
-) -> tuple[int, list[str], list[str]]:
-    developer_skills = _dedupe(developer.skills or [])
-    required_skills = _dedupe(
-        [*tech_stack, *(skill for role in roles for skill in role.skills)]
+def _is_placeholder(value: str) -> bool:
+    return normal_key(value) in PLACEHOLDER_VALUES
+
+
+def _sort_items(items: list[DiscoverBlueprintResponse], sort: str) -> None:
+    if sort == SORT_NEWEST:
+        items.sort(key=lambda item: item.created_at, reverse=True)
+        return
+    if sort == SORT_APPLICANTS:
+        items.sort(key=lambda item: (item.applicant_count, -(item.match_score or 0)))
+        return
+    items.sort(
+        key=lambda item: (
+            item.match_score or 0,
+            len(item.matched_skills),
+            item.viability,
+            item.updated_at,
+        ),
+        reverse=True,
     )
-    matched_skills = _matching_terms(developer_skills, required_skills)
-    overlap = len(matched_skills) / max(len(required_skills), 1)
-
-    profile_text = " ".join(
-        _clean_text(value)
-        for value in [
-            developer.job_title,
-            developer.bio,
-            developer.preferred_budget,
-            " ".join(developer_skills),
-        ]
-        if value
-    )
-    industry_match = bool(industry and _normal_key(industry) in _normal_key(profile_text))
-    role_match = bool(
-        developer.job_title
-        and any(_normal_key(role.role) in _normal_key(developer.job_title) for role in roles)
-    )
-
-    score = 24
-    score += round(overlap * 52)
-    score += min(10, round(viability / 10))
-    score += DEVELOPER_DEMAND_BONUS.get(developer_demand, 0)
-    if industry_match:
-        score += 8
-    if role_match:
-        score += 5
-    if not developer_skills:
-        score = min(score, 68)
-
-    reasons: list[str] = []
-    if matched_skills:
-        reasons.append(f"Matches your skills: {', '.join(matched_skills[:4])}.")
-    if industry_match:
-        reasons.append(f"Aligns with your profile focus on {industry}.")
-    if role_match:
-        reasons.append("Open roles map closely to your profile title.")
-    if developer_demand == LevelRating.HIGH:
-        reasons.append("High developer demand in the build plan.")
-    if viability >= 80:
-        reasons.append("Strong blueprint viability for an application-ready project.")
-    if not reasons:
-        reasons.append("Ranked by public blueprint quality while you add more profile skills.")
-
-    return min(98, max(35, score)), matched_skills, reasons[:4]
 
 
 def _matches_filters(
@@ -321,14 +420,17 @@ def _matches_filters(
     industry: str | None,
     stage: str | None,
     tech: str | None,
+    role: str | None,
     min_viability: int | None,
     q: str | None,
 ) -> bool:
-    if industry and _normal_key(item.industry) != _normal_key(industry):
+    if industry and normal_key(item.industry) != normal_key(industry):
         return False
-    if stage and _normal_key(item.stage) != _normal_key(stage):
+    if stage and normal_key(item.stage) != normal_key(stage):
         return False
-    if tech and not _matching_terms([tech], item.tech_stack):
+    if tech and not matching_terms([tech], item.tech_stack):
+        return False
+    if role and not matching_terms([role], [entry.role for entry in item.roles]):
         return False
     if min_viability is not None and item.viability < min_viability:
         return False
@@ -340,20 +442,41 @@ def _matches_filters(
                 item.stage,
                 item.summary,
                 " ".join(item.tech_stack),
-                " ".join(role.role for role in item.roles),
+                " ".join(entry.role for entry in item.roles),
             ]
         )
-        if _normal_key(q) not in _normal_key(haystack):
+        if normal_key(q) not in normal_key(haystack):
             return False
     return True
 
 
 def _build_filter_options(items: list[DiscoverBlueprintResponse]) -> DiscoverFilterOptions:
     return DiscoverFilterOptions(
-        industries=_sorted_unique(item.industry for item in items),
-        stages=_sorted_unique(item.stage for item in items if item.stage != "Not specified"),
-        tech_stack=_sorted_unique(skill for item in items for skill in item.tech_stack)[:10],
+        industries=sorted_unique(item.industry for item in items),
+        stages=sorted_unique(item.stage for item in items if item.stage != "Not specified"),
+        tech_stack=_most_used_tech([item.tech_stack for item in items]),
+        roles=sorted_unique(entry.role for item in items for entry in item.roles),
     )
+
+
+def _most_used_tech(stacks: list[list[str]]) -> list[str]:
+    """The stacks developers are most likely to filter by.
+
+    Sorting alphabetically and then truncating offered a dropdown that ran out
+    partway through the alphabet, so React and PostgreSQL were unreachable while
+    obscure one-off choices took the slots. Rank by how many blueprints use each
+    stack, then alphabetise the survivors for a predictable dropdown.
+    """
+    counts: Counter[str] = Counter()
+    labels: dict[str, str] = {}
+    for stack in stacks:
+        for tech in dedupe(stack):
+            key = normal_key(tech)
+            counts[key] += 1
+            labels.setdefault(key, tech)
+
+    top_keys = [key for key, _ in counts.most_common(MAX_FILTER_TECH)]
+    return sorted((labels[key] for key in top_keys), key=str.lower)
 
 
 def _record(value: object) -> dict[str, object]:
@@ -362,12 +485,6 @@ def _record(value: object) -> dict[str, object]:
 
 def _records(value: object) -> list[dict[str, object]]:
     return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
-
-
-def _strings(value: object) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
 
 
 def _string(value: object) -> str:
@@ -380,47 +497,9 @@ def _int(value: object, fallback: int) -> int:
 
 def _split_skills(value: object) -> list[str]:
     if isinstance(value, list):
-        return _dedupe(str(item).strip() for item in value if str(item).strip())
-    if not isinstance(value, str):
+        parts = [str(item) for item in value]
+    elif isinstance(value, str):
+        parts = re.split(r"[,;/|]", value)
+    else:
         return []
-    return _dedupe(part.strip() for part in re.split(r"[,;/|]", value) if part.strip())
-
-
-def _matching_terms(source: list[str], candidates: list[str]) -> list[str]:
-    matched: list[str] = []
-    normalized_source = [_normal_key(item) for item in source]
-    for candidate in candidates:
-        key = _normal_key(candidate)
-        if not key:
-            continue
-        if any(
-            key == source_key or key in source_key or source_key in key
-            for source_key in normalized_source
-        ):
-            matched.append(candidate)
-    return _dedupe(matched)
-
-
-def _dedupe(values: Iterable[object]) -> list[str]:
-    seen: set[str] = set()
-    items: list[str] = []
-    for raw in values:
-        value = str(raw).strip()
-        key = _normal_key(value)
-        if value and key and key not in seen:
-            seen.add(key)
-            items.append(value)
-    return items
-
-
-def _sorted_unique(values: Iterable[object]) -> list[str]:
-    return sorted(_dedupe(values), key=str.lower)
-
-
-def _clean_text(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
-
-
-def _normal_key(value: object) -> str:
-    text = str(value).lower()
-    return re.sub(r"[^a-z0-9+#.]+", " ", text).strip()
+    return [skill for skill in dedupe(part.strip() for part in parts) if not _is_placeholder(skill)]

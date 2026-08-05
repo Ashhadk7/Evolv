@@ -40,37 +40,43 @@ export function BlueprintExecutiveSummarySection({
   executiveSummary,
   keyAssumptions,
   contradictions,
-  totalBuildCost,
-  timelineLabel,
-  phaseCount,
-  roleCount,
-  mvpFeatureCount,
+  snapshot,
 }: {
   bp: Blueprint;
   executiveSummary?: string;
   keyAssumptions?: string[];
+  /** The synthesis agent's audit of its own sections — founder-only. */
   contradictions?: string[];
-  totalBuildCost: string;
-  timelineLabel: string;
-  phaseCount: number;
-  roleCount: number;
-  mvpFeatureCount: number;
+  /** Cost and scope figures. Omitted for audiences that must not see budget. */
+  snapshot?: {
+    totalBuildCost: string;
+    timelineLabel: string;
+    phaseCount: number;
+    roleCount: number;
+    mvpFeatureCount: number;
+  };
 }) {
   // The founder's own timeline sits next to the derived one: build cost is
   // priced off the roadmap's weeks, so if the two disagree the founder must be
   // able to see it rather than read the derived number as agreed fact.
-  const snapshotRows = [
-    ["Total build cost", totalBuildCost],
-    ["Build time", timelineLabel],
-    ...(bp.intake?.timeline ? [["Founder's timeline", bp.intake.timeline]] : []),
-    ["Milestones", `${phaseCount} phases`],
-    ["Roles needed", `${roleCount}`],
-    ["MVP features", `${mvpFeatureCount} core`],
-  ];
+  const snapshotRows = snapshot
+    ? [
+        ["Total build cost", snapshot.totalBuildCost],
+        ["Build time", snapshot.timelineLabel],
+        ...(bp.intake?.timeline ? [["Founder's timeline", bp.intake.timeline]] : []),
+        ["Milestones", `${snapshot.phaseCount} phases`],
+        ["Roles needed", `${snapshot.roleCount}`],
+        ["MVP features", `${snapshot.mvpFeatureCount} core`],
+      ]
+    : [];
 
   return (
     <Reveal>
-      <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 md:gap-[22px]">
+      <div
+        className={
+          snapshot ? "grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 md:gap-[22px]" : "grid grid-cols-1 gap-[22px]"
+        }
+      >
         <div style={cardStyle({ padding: "22px 20px" })}>
           <SectionHead
             icon={<Notebook size={18} weight="duotone" className="text-bp-teal" />}
@@ -97,9 +103,6 @@ export function BlueprintExecutiveSummarySection({
               </ul>
             </div>
           )}
-          {/* The synthesis agent's cross-agent audit — where the sections
-              disagree with each other or with the brief. It was being computed
-              and never shown, which made the whole check pointless. */}
           {contradictions && contradictions.length > 0 && (
             <div className="border-bp-amber/40 mt-3 rounded-xl border bg-[#fef6e4] px-4 py-3">
               <div className="font-mono-app mb-1.5 text-[10px] font-bold tracking-[0.1em] text-[#a66a10] uppercase">
@@ -113,24 +116,26 @@ export function BlueprintExecutiveSummarySection({
             </div>
           )}
         </div>
-        <div style={cardStyle({ padding: "22px 20px" })}>
-          <Label>Build snapshot</Label>
-          <div className="flex flex-col">
-            {snapshotRows.map(([label, value], index) => (
-              <div
-                key={label}
-                className={`flex items-center justify-between py-[11px] ${
-                  index === 0 ? "border-t-0" : "border-bp-border-soft border-t"
-                }`}
-              >
-                <span className="text-bp-muted text-[12.5px]">{label}</span>
-                <span style={NUM} className="text-bp-ink text-[13px] font-bold">
-                  {value}
-                </span>
-              </div>
-            ))}
+        {snapshot && (
+          <div style={cardStyle({ padding: "22px 20px" })}>
+            <Label>Build snapshot</Label>
+            <div className="flex flex-col">
+              {snapshotRows.map(([label, value], index) => (
+                <div
+                  key={label}
+                  className={`flex items-center justify-between py-[11px] ${
+                    index === 0 ? "border-t-0" : "border-bp-border-soft border-t"
+                  }`}
+                >
+                  <span className="text-bp-muted text-[12.5px]">{label}</span>
+                  <span style={NUM} className="text-bp-ink text-[13px] font-bold">
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </Reveal>
   );

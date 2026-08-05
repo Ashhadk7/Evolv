@@ -9,6 +9,40 @@ from app.models.user import DeveloperProfile, FounderProfile, User, UserRole
 from app.schemas.auth import SignupRequest
 
 
+def verified_user_filters() -> tuple:
+    """Verification a user must clear before anyone else can see them.
+
+    Both halves are required for founders and developers alike, so every
+    listing query agrees on what "visible to others" means.
+    """
+    return (
+        User.email_verified.is_(True),
+        User.phone_verified.is_(True),
+    )
+
+
+def discoverable_developer_filters() -> tuple:
+    """Discoverability rule for developer-only listings (matching, suggestions).
+
+    Callers must already join DeveloperProfile.
+    """
+    return (*verified_user_filters(), DeveloperProfile.profile_complete.is_(True))
+
+
+def discoverable_user_filters() -> tuple:
+    """Discoverability rule for mixed founder/developer listings.
+
+    Callers must already outerjoin both profile tables.
+    """
+    return (
+        *verified_user_filters(),
+        or_(
+            FounderProfile.profile_complete.is_(True),
+            DeveloperProfile.profile_complete.is_(True),
+        ),
+    )
+
+
 def get_user_by_email(db: Session, email: str) -> User | None:
     normalized_email = email.strip().lower()
     return db.scalar(select(User).where(func.lower(User.email) == normalized_email))
@@ -124,17 +158,10 @@ def list_users(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[User], int]:
-    filters = [
-        User.email_verified.is_(True),
-        User.phone_verified.is_(True),
-        # Only users who have completed their profile are discoverable to others.
-        # profile_complete is a computed property on User, so filter the underlying
-        # founder/developer columns directly.
-        or_(
-            FounderProfile.profile_complete.is_(True),
-            DeveloperProfile.profile_complete.is_(True),
-        ),
-    ]
+    # Only verified users who have completed their profile are discoverable to
+    # others. profile_complete is a computed property on User, so the shared
+    # filters target the underlying founder/developer columns directly.
+    filters = list(discoverable_user_filters())
 
     if role is not None:
         filters.append(User.role == role)

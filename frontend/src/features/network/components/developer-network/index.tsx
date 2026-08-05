@@ -9,6 +9,7 @@ import { PendingRequestsPanel } from "../pending-requests-panel";
 import { NetworkPersonCard } from "../network-person-card";
 import { NetworkLoadError } from "../network-load-error";
 import { NetworkActionToast } from "../network-action-toast";
+import { NetworkLoadingState } from "../network-loading-state";
 import { useNetwork } from "@/features/network/lib/use-network";
 
 export default function Network({
@@ -37,8 +38,9 @@ export default function Network({
     connectedPeople,
     filteredSuggested,
     filteredConnections,
+    loading,
     loadError,
-    retryLoadPeople,
+    retryLoadNetwork,
     handleAcceptRequest,
     handleIgnoreRequest,
     handleDismissSuggestion,
@@ -194,8 +196,10 @@ export default function Network({
             </div>
 
             {/* Grid of suggested matches */}
-            {loadError ? (
-              <NetworkLoadError onRetry={retryLoadPeople} />
+            {loading ? (
+              <NetworkLoadingState />
+            ) : loadError ? (
+              <NetworkLoadError onRetry={retryLoadNetwork} />
             ) : filteredSuggested.length > 0 ? (
               <motion.div
                 layout
@@ -233,12 +237,16 @@ export default function Network({
         {/* Tab 2: Requests View */}
         {activeTab === "requests" && (
           <div className="w-full">
-            <PendingRequestsPanel
-              pendingPeople={pendingPeople}
-              onSelectPerson={setSelectedPerson}
-              onAccept={handleAcceptRequest}
-              onIgnore={handleIgnoreRequest}
-            />
+            {loading ? (
+              <NetworkLoadingState />
+            ) : (
+              <PendingRequestsPanel
+                pendingPeople={pendingPeople}
+                onSelectPerson={setSelectedPerson}
+                onAccept={handleAcceptRequest}
+                onIgnore={handleIgnoreRequest}
+              />
+            )}
           </div>
         )}
 
@@ -263,7 +271,9 @@ export default function Network({
             </div>
 
             {/* Connections Grid */}
-            {filteredConnections.length > 0 ? (
+            {loading ? (
+              <NetworkLoadingState />
+            ) : filteredConnections.length > 0 ? (
               <motion.div
                 layout
                 className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"

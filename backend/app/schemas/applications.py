@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+Availability = Literal["full_time", "part_time", "weekends"]
 
 
 class ApplicationCreate(BaseModel):
@@ -11,10 +14,12 @@ class ApplicationCreate(BaseModel):
 
     blueprint_id: UUID
     role: str | None = Field(default=None, max_length=255)
+    message: str | None = Field(default=None, max_length=2000)
+    availability: Availability | None = None
 
-    @field_validator("role")
+    @field_validator("role", "message")
     @classmethod
-    def strip_role(cls, value: str | None) -> str | None:
+    def strip_text(cls, value: str | None) -> str | None:
         if value is None:
             return None
         stripped = value.strip()
@@ -35,6 +40,8 @@ class ApplicationResponse(BaseModel):
     blueprint_id: UUID
     connection_id: UUID | None = None
     role: str | None = None
+    message: str | None = None
+    availability: Availability | None = None
     status: str
     applied_at: datetime
     withdrawn_at: datetime | None = None
@@ -81,6 +88,9 @@ class BlueprintApplicationResponse(BaseModel):
     developer_id: UUID
     blueprint_id: UUID
     connection_id: UUID | None = None
+    role: str | None = None
+    message: str | None = None
+    availability: Availability | None = None
     applied_at: datetime
     developer: DeveloperSummary
 

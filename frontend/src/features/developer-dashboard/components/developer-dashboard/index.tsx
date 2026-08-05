@@ -33,7 +33,6 @@ import { useDeveloperDashboardStats } from "@/features/developer-dashboard/use-d
 import { TopbarWithModal } from "./topbar-with-modal";
 import { FeaturedMatchWithModal } from "./featured-match-with-modal";
 import { MatchCardWithModal } from "./match-card-with-modal";
-import { featuredMatch } from "@/features/developer-dashboard/data/discover-data";
 
 const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
   const profile = useDeveloperDashboardStore((state) => state.profile);
@@ -133,7 +132,9 @@ const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
               >
                 <div className={dashboardStyles.matchTop}>
                   <span className={dashboardStyles.matchLogo}>{match.logo}</span>
-                  <span className={dashboardStyles.matchScore}>{match.matchScore}%</span>
+                  <span className={dashboardStyles.matchScore}>
+                    {match.matchScore === null ? "—" : `${match.matchScore}%`}
+                  </span>
                 </div>
                 <strong>{match.name}</strong>
                 <span>{match.industry}</span>
