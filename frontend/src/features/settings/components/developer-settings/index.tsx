@@ -32,7 +32,6 @@ import { ProfileTabEdit } from "./profile-tab-edit";
 import { PaymentTab } from "./payment-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { SecurityTab } from "./security-tab";
-import { PreferencesTab } from "./preferences-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { getApiErrorMessage } from "@/lib/api";
 import { uploadAvatar } from "@/features/profiles/profile-api";
@@ -49,7 +48,6 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "payment", label: "Payment", icon: "credit-card" },
   { id: "notifications", label: "Notifications", icon: "bell" },
   { id: "security", label: "Security", icon: "lock" },
-  { id: "preferences", label: "Preferences", icon: "sliders-h" },
 ];
 
 const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
@@ -57,10 +55,6 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
   payment: { title: "Payment", subtitle: "Manage payout details, billing method, and earnings." },
   notifications: { title: "Notifications", subtitle: "Control which notifications you receive." },
   security: { title: "Security", subtitle: "Protect your developer account and login access." },
-  preferences: {
-    title: "Preferences",
-    subtitle: "Tune your startup match and opportunity preferences.",
-  },
 };
 
 const Settings = () => {
@@ -495,22 +489,6 @@ const Settings = () => {
               )}
 
               {visibleTab === "security" && <SecurityTab />}
-
-              {visibleTab === "preferences" && (
-                <PreferencesTab
-                  rateAmount={profile.rateAmount}
-                  ratePeriod={profile.ratePeriod}
-                  rateCurrency={profile.rateCurrency}
-                  experienceYears={profile.experienceYears}
-                  onChangeRateAmount={(value) => setProfile({ ...profile, rateAmount: value })}
-                  onChangeRatePeriod={(value) => setProfile({ ...profile, ratePeriod: value })}
-                  onChangeRateCurrency={(value) => setProfile({ ...profile, rateCurrency: value })}
-                  onChangeExperienceYears={(value) =>
-                    setProfile({ ...profile, experienceYears: value })
-                  }
-                  onSave={handleSave}
-                />
-              )}
             </div>
           </div>
         </div>
