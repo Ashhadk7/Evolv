@@ -158,7 +158,8 @@
 
 .discoverPage {
   display: flex;
-  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
   flex-direction: column;
   background: var(--color-bp-page);
   color: var(--color-bp-ink);
@@ -975,9 +976,9 @@
 
 .detailPage {
   display: flex;
-  height: 100dvh;
+  height: 100%;
+  overflow-y: auto;
   flex-direction: column;
-  overflow: hidden;
   background: var(--color-bp-page);
   color: var(--color-bp-ink);
 }
