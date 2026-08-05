@@ -115,18 +115,21 @@ const discoverBlueprintWire = {
   industry: "HealthTech",
   founder_id: "founder-e2e-user",
   founder_name: "Fiona Founder",
+  founder_blueprint_count: 2,
   stage: "MVP",
   summary: "Automates intake and follow-up for small clinics.",
-  differentiator: "Practical workflow automation for under-served clinics.",
   viability: 82,
-  developer_demand: "High",
   tech_stack: ["Next.js", "FastAPI", "PostgreSQL"],
   roles: [{ role: "Full-stack Developer", count: 1, skills: ["Next.js", "FastAPI"], lead: true }],
-  mvp_features: ["Patient intake", "Follow-up reminders"],
-  timeline: "8 weeks",
   match_score: 88,
-  match_reasons: ["Matches your React and FastAPI skills"],
+  fit_label: "Strong fit for you",
+  best_role: "Full-stack Developer",
+  role_fits: [{ role: "Full-stack Developer", fit: 88 }],
+  match_reasons: ["You know React, FastAPI"],
   matched_skills: ["React", "FastAPI"],
+  skills_to_pick_up: ["PostgreSQL"],
+  applicant_count: 3,
+  applicants_by_role: [{ role: "Full-stack Developer", count: 3 }],
   saved: false,
   applied: false,
   application_id: null,
@@ -134,6 +137,7 @@ const discoverBlueprintWire = {
   applied_role: null,
   applied_at: null,
   withdrawn_at: null,
+  created_at: now,
   updated_at: now,
 };
 
@@ -355,6 +359,7 @@ export async function mockAppApi(
           industries: ["HealthTech"],
           stages: ["MVP"],
           tech_stack: ["Next.js", "FastAPI", "PostgreSQL"],
+          roles: ["Full-stack Developer"],
         },
         items: [discoverBlueprintWire],
       });
@@ -406,6 +411,11 @@ export function discoverList(items: Wire[], extra: Wire = {}): Wire {
   const industries = [...new Set(items.map((i) => i.industry as string))];
   const stages = [...new Set(items.map((i) => i.stage as string))];
   const tech = [...new Set(items.flatMap((i) => (i.tech_stack as string[]) ?? []))];
+  const roles = [
+    ...new Set(
+      items.flatMap((i) => ((i.roles as { role: string }[]) ?? []).map((role) => role.role))
+    ),
+  ];
   return {
     total: items.length,
     limit: 100,
@@ -413,7 +423,7 @@ export function discoverList(items: Wire[], extra: Wire = {}): Wire {
     saved_count: items.filter((i) => i.saved).length,
     applications_count: items.filter((i) => i.applied).length,
     high_match_count: items.filter((i) => ((i.match_score as number) ?? 0) >= 85).length,
-    filter_options: { industries, stages, tech_stack: tech },
+    filter_options: { industries, stages, tech_stack: tech, roles },
     items,
     ...extra,
   };
