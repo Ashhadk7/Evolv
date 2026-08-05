@@ -406,11 +406,14 @@ export function BlueprintDetail({
               executiveSummary={content.synthesis.executiveSummary}
               keyAssumptions={content.synthesis.keyAssumptions}
               contradictions={content.synthesis.contradictions}
-              totalBuildCost={fmtMoney(cost.total)}
-              timelineLabel={cost.timelineLabel}
-              phaseCount={phases.length}
-              roleCount={roles.length}
-              mvpFeatureCount={content.mvpPlan.mustHave.length + content.mvpPlan.shouldHave.length}
+              snapshot={{
+                totalBuildCost: fmtMoney(cost.total),
+                timelineLabel: cost.timelineLabel,
+                phaseCount: phases.length,
+                roleCount: roles.length,
+                mvpFeatureCount:
+                  content.mvpPlan.mustHave.length + content.mvpPlan.shouldHave.length,
+              }}
             />
           </div>
 
