@@ -46,7 +46,7 @@ export function FinancialsSection({
             {rateBasis.source}. This is an estimate, not a fixed budget.
           </span>
         </div>
-        <div className="mb-[22px] grid grid-cols-4 gap-3.5">
+        <div className="mb-[22px] grid grid-cols-2 md:grid-cols-4 gap-3.5">
           {[
             {
               l: "Total Build Cost",
@@ -83,8 +83,7 @@ export function FinancialsSection({
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-[1fr_1.35fr] gap-[22px]">
-          {}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1.35fr] gap-5 md:gap-[22px]">
           <div>
             <Label>Where the money goes</Label>
             <div className="mb-3.5 flex h-3 overflow-hidden rounded-full">
@@ -112,7 +111,6 @@ export function FinancialsSection({
               ))}
             </div>
           </div>
-          {}
           <div>
             <Label>Milestone payments to developers</Label>
             <div className="border-bp-border-soft overflow-hidden rounded-xl border">
@@ -139,7 +137,7 @@ export function FinancialsSection({
                       </span>
                     </span>
                   </span>
-                  <span style={NUM} className="text-bp-success text-[13px] font-bold">
+                  <span style={NUM} className="text-bp-success text-[13px] font-bold shrink-0">
                     {fmtMoney(ph.cost)}
                   </span>
                 </div>
@@ -157,7 +155,6 @@ export function FinancialsSection({
         </div>
       </div>
 
-      {}
       <div style={cardStyle({ padding: "28px 30px" })}>
         <Label>Revenue &amp; break-even</Label>
         <p className="text-bp-muted mb-2.5 text-[13px] leading-[1.65]">
@@ -173,7 +170,7 @@ export function FinancialsSection({
             <strong>Illustrative model, not a forecast.</strong> {fin.assumptions.join(" · ")}
           </span>
         </div>
-        <div className="mb-6 grid grid-cols-3 gap-3.5">
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {[
             {
               l: "MRR by month 12",
@@ -216,31 +213,32 @@ export function FinancialsSection({
             </div>
           ))}
         </div>
-        <Label>Year-1 monthly recurring revenue</Label>
-        <div className="mt-1.5 flex h-[130px] items-end gap-1.5">
-          {fin.year1.map((y) => {
-            const isBreakEven = fin.breakEvenMonth === y.month;
-            return (
-              <div key={y.month} className="flex flex-1 flex-col items-center gap-1.5">
-                <span
-                  style={NUM}
-                  className={`text-[10px] font-bold ${isBreakEven ? "text-bp-success" : "text-bp-muted"}`}
-                >
-                  {fmtMoney(y.mrr)}
-                </span>
-                <motion.div
-                  initial={reduce ? false : { height: 0 }}
-                  whileInView={{ height: `${Math.max(4, (y.mrr / fin.eoyMrr) * 90)}px` }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8, ease: EASE, delay: y.month * 0.03 }}
-                  className={`w-full rounded-t-[6px] ${
-                    isBreakEven ? "bg-bp-forest" : "bg-[linear-gradient(180deg,#89d7b7,#cfe3d8)]"
-                  }`}
-                />
-                <span className="font-mono-app text-bp-label text-[9.5px]">M{y.month}</span>
-              </div>
-            );
-          })}
+        <div className="overflow-x-auto pb-2 scrollbar-none">
+          <div className="mt-1.5 flex h-[130px] items-end gap-0.5 sm:gap-1 md:gap-1.5 min-w-[420px] md:min-w-0">
+            {fin.year1.map((y) => {
+              const isBreakEven = fin.breakEvenMonth === y.month;
+              return (
+                <div key={y.month} className="flex flex-1 flex-col items-center gap-1 min-w-0">
+                  <span
+                    style={NUM}
+                    className={`text-[8px] sm:text-[9px] md:text-[10px] font-bold truncate ${isBreakEven ? "text-bp-success" : "text-bp-muted"}`}
+                  >
+                    {fmtMoney(y.mrr)}
+                  </span>
+                  <motion.div
+                    initial={reduce ? false : { height: 0 }}
+                    whileInView={{ height: `${Math.max(4, (y.mrr / fin.eoyMrr) * 90)}px` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, ease: EASE, delay: y.month * 0.03 }}
+                    className={`w-full rounded-t-[5px] ${
+                      isBreakEven ? "bg-bp-forest" : "bg-[linear-gradient(180deg,#89d7b7,#cfe3d8)]"
+                    }`}
+                  />
+                  <span className="font-mono-app text-bp-label text-[8px] sm:text-[9px]">M{y.month}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
         {fin.breakEvenMonth && fin.breakEvenMonth <= 12 && (
           <div className="mt-3.5 flex items-center gap-[7px]">

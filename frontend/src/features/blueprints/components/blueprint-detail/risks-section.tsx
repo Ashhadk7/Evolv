@@ -20,27 +20,29 @@ export function RisksSection({
           kicker="Risk"
           title="Risks & Mitigations"
         />
-        <div className="border-bp-border-soft overflow-hidden rounded-xl border">
-          <div className="font-mono-app text-bp-label bg-bp-tint grid grid-cols-[1.4fr_0.5fr_1.8fr] gap-2.5 px-[18px] py-2.5 text-[10px] font-bold tracking-[0.08em] uppercase">
-            <span>Risk</span>
-            <span>Severity</span>
-            <span>Mitigation</span>
-          </div>
-          {riskRows.map((r, i) => (
-            <div
-              key={i}
-              className="border-bp-border-soft grid grid-cols-[1.4fr_0.5fr_1.8fr] items-start gap-2.5 border-t px-[18px] py-3.5 text-[13px]"
-            >
-              <span className="text-bp-ink flex flex-wrap items-center gap-1.5 leading-[1.45] font-semibold">
-                {r.risk}
-                {r.basis === "assumption" ? <Chip tone="neutral">Assumption</Chip> : null}
-              </span>
-              <span>
-                <Chip tone={sevTone(r.sev)}>{r.sev}</Chip>
-              </span>
-              <span className="text-bp-muted leading-[1.5]">{r.mit}</span>
+        <div className="border-bp-border-soft overflow-x-auto rounded-xl border">
+          <div className="min-w-[500px]">
+            <div className="font-mono-app text-bp-label bg-bp-tint grid grid-cols-[1.4fr_0.5fr_1.8fr] gap-2.5 px-[18px] py-2.5 text-[10px] font-bold tracking-[0.08em] uppercase">
+              <span>Risk</span>
+              <span>Severity</span>
+              <span>Mitigation</span>
             </div>
-          ))}
+            {riskRows.map((r, i) => (
+              <div
+                key={i}
+                className="border-bp-border-soft grid grid-cols-[1.4fr_0.5fr_1.8fr] items-start gap-2.5 border-t px-[18px] py-3.5 text-[13px]"
+              >
+                <span className="text-bp-ink flex flex-wrap items-center gap-1.5 leading-[1.45] font-semibold">
+                  {r.risk}
+                  {r.basis === "assumption" ? <Chip tone="neutral">Assumption</Chip> : null}
+                </span>
+                <span>
+                  <Chip tone={sevTone(r.sev)}>{r.sev}</Chip>
+                </span>
+                <span className="text-bp-muted leading-[1.5]">{r.mit}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </Reveal>

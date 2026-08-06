@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, SavedBlueprint
-from app.models.blueprint import Blueprint
+from app.models.blueprint import Blueprint, BlueprintVisibility
 from app.models.user import DeveloperProfile, FounderProfile
 
 
@@ -79,18 +79,22 @@ def list_applications_for_blueprint(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[Application], int]:
-    """Return all applications for a specific blueprint (founder-facing)."""
+    """Live applications for a blueprint (founder-facing).
+
+    Withdrawn rows are excluded so the founder's list and the developer-facing
+    applicant count describe the same set of people.
+    """
     count_statement = (
         select(func.count())
         .select_from(Application)
-        .where(Application.blueprint_id == blueprint_id)
+        .where(Application.blueprint_id == blueprint_id, Application.status == "applied")
     )
     total = db.scalar(count_statement) or 0
 
     statement = (
         select(Application)
         .options(selectinload(Application.developer).selectinload(DeveloperProfile.user))
-        .where(Application.blueprint_id == blueprint_id)
+        .where(Application.blueprint_id == blueprint_id, Application.status == "applied")
         .order_by(Application.applied_at.desc())
         .offset(offset)
         .limit(limit)
@@ -109,7 +113,7 @@ def count_applications_for_founder_blueprints(
             func.count(Application.connection_id),
         )
         .join(Blueprint, Blueprint.id == Application.blueprint_id)
-        .where(Blueprint.founder_id == founder_id)
+        .where(Blueprint.founder_id == founder_id, Application.status == "applied")
         .group_by(Application.blueprint_id)
     )
     counts: dict[UUID, int] = {}
@@ -124,6 +128,37 @@ def count_applications_for_founder_blueprints(
         sum(counts.values()),
         sum(in_conversation_counts.values()),
     )
+
+
+def count_active_applications_by_role(db: Session) -> dict[UUID, dict[str | None, int]]:
+    """Applicant counts per public blueprint, broken down by role.
+
+    Developer-facing, so it returns counts only — never who applied. Withdrawn
+    applications are excluded: a withdrawn seat is open again.
+    """
+    statement = (
+        select(Application.blueprint_id, Application.role, func.count(Application.id))
+        .join(Blueprint, Blueprint.id == Application.blueprint_id)
+        .where(
+            Blueprint.visibility == BlueprintVisibility.PUBLIC,
+            Application.status == "applied",
+        )
+        .group_by(Application.blueprint_id, Application.role)
+    )
+
+    counts: dict[UUID, dict[str | None, int]] = {}
+    for blueprint_id, role, count in db.execute(statement).all():
+        counts.setdefault(blueprint_id, {})[role] = int(count or 0)
+    return counts
+
+
+def count_public_blueprints_by_founder(db: Session) -> dict[UUID, int]:
+    statement = (
+        select(Blueprint.founder_id, func.count(Blueprint.id))
+        .where(Blueprint.visibility == BlueprintVisibility.PUBLIC)
+        .group_by(Blueprint.founder_id)
+    )
+    return {founder_id: int(count or 0) for founder_id, count in db.execute(statement).all()}
 
 
 def list_application_blueprint_applied_at_by_developer(
@@ -143,16 +178,35 @@ def list_application_details_by_developer(
 
 
 def create_application(
-    db: Session, developer_id: UUID, blueprint_id: UUID, role: str | None
+    db: Session,
+    developer_id: UUID,
+    blueprint_id: UUID,
+    role: str | None,
+    message: str | None = None,
+    availability: str | None = None,
 ) -> Application:
-    application = Application(developer_id=developer_id, blueprint_id=blueprint_id, role=role)
+    application = Application(
+        developer_id=developer_id,
+        blueprint_id=blueprint_id,
+        role=role,
+        message=message,
+        availability=availability,
+    )
     db.add(application)
     db.flush()
     return application
 
 
-def reactivate_application(db: Session, application: Application, role: str | None) -> Application:
+def reactivate_application(
+    db: Session,
+    application: Application,
+    role: str | None,
+    message: str | None = None,
+    availability: str | None = None,
+) -> Application:
     application.role = role
+    application.message = message
+    application.availability = availability
     application.status = "applied"
     application.applied_at = datetime.now(UTC)
     application.withdrawn_at = None

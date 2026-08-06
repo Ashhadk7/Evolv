@@ -32,10 +32,10 @@ import { ProfileTabEdit } from "./profile-tab-edit";
 import { PaymentTab } from "./payment-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { SecurityTab } from "./security-tab";
-import { PreferencesTab } from "./preferences-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { getApiErrorMessage } from "@/lib/api";
-import { uploadAvatar } from "@/features/profiles/profile-api";
+import { DeveloperProfileMobileCard } from "@/features/profiles/components/developer-profile-mobile-card";
+import { uploadAvatar, uploadCertificationImage } from "@/features/profiles/profile-api";
 import {
   fetchNotificationPreferences,
   updateNotificationPreferences,
@@ -43,13 +43,13 @@ import {
 import { toast } from "sonner";
 
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_CERTIFICATE_BYTES = 5 * 1024 * 1024;
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "profile", label: "Profile", icon: "user" },
   { id: "payment", label: "Payment", icon: "credit-card" },
   { id: "notifications", label: "Notifications", icon: "bell" },
   { id: "security", label: "Security", icon: "lock" },
-  { id: "preferences", label: "Preferences", icon: "sliders-h" },
 ];
 
 const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
@@ -57,10 +57,6 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
   payment: { title: "Payment", subtitle: "Manage payout details, billing method, and earnings." },
   notifications: { title: "Notifications", subtitle: "Control which notifications you receive." },
   security: { title: "Security", subtitle: "Protect your developer account and login access." },
-  preferences: {
-    title: "Preferences",
-    subtitle: "Tune your startup match and opportunity preferences.",
-  },
 };
 
 const Settings = () => {
@@ -98,6 +94,8 @@ const Settings = () => {
           newMatch: preferences.newMatch,
           blueprintPublished: preferences.blueprintPublished,
           applicationUpdate: preferences.applicationUpdate,
+          projectInvite: preferences.projectInvite,
+          projectUpdate: preferences.projectUpdate,
           connectionRequest: preferences.connectionRequest,
           connectionAccepted: preferences.connectionAccepted,
           messageReceived: preferences.messageReceived,
@@ -247,6 +245,8 @@ const Settings = () => {
         newMatch: savedPreferences.newMatch,
         blueprintPublished: savedPreferences.blueprintPublished,
         applicationUpdate: savedPreferences.applicationUpdate,
+        projectInvite: savedPreferences.projectInvite,
+        projectUpdate: savedPreferences.projectUpdate,
         connectionRequest: savedPreferences.connectionRequest,
         connectionAccepted: savedPreferences.connectionAccepted,
         messageReceived: savedPreferences.messageReceived,
@@ -386,21 +386,47 @@ const Settings = () => {
     }));
   };
 
-  const handleCertificationImage = (id: string, file: File | null | undefined) => {
-    if (!file || !file.type?.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") updateCertification(id, { image: reader.result });
-    };
-    reader.readAsDataURL(file);
+  const handleCertificationImage = async (id: string, file: File | null | undefined) => {
+    if (!file) return;
+    setSaveError("");
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      setSaveError("Please choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+
+    if (file.size > MAX_CERTIFICATE_BYTES) {
+      setSaveError("Your certificate image must be smaller than 5 MB.");
+      return;
+    }
+
+    try {
+      updateCertification(id, { image: await uploadCertificationImage(file) });
+    } catch (error) {
+      setSaveError(getApiErrorMessage(error));
+    }
   };
 
   const sectionCopy = SECTION_COPY[visibleTab];
 
   return (
-    <div className={styles.container}>
-      <main className={styles.mainWrapper}>
-        <div className={styles.settingsLayout}>
+    <>
+      {/* ── Mobile Layout (Canva Screen 3) ── */}
+      {visibleTab === "profile" && !editing && (
+        <DeveloperProfileMobileCard
+          name={displayName}
+          title={profile.jobTitle || profile.role || "Senior AI Engineer - Freelance"}
+          location={profile.location || "Berlin"}
+          experienceYears={profile.experienceYears ? `${profile.experienceYears} yrs` : "8 yrs"}
+          avatarUrl={displayPhoto}
+          summaryText={profile.bio || "Senior AI engineer specialising in medical imaging and HIPAA-compliant ML pipelines."}
+          skills={skillEntries.map((s) => s.name).filter(Boolean)}
+        />
+      )}
+
+      <div className={`hidden md:block ${styles.container}`}>
+        <main className={styles.mainWrapper}>
+          <div className={styles.settingsLayout}>
           <SettingsSidebarNav
             tabs={TABS}
             activeTab={visibleTab}
@@ -481,26 +507,15 @@ const Settings = () => {
 
               {visibleTab === "security" && <SecurityTab />}
 
-              {visibleTab === "preferences" && (
-                <PreferencesTab
-                  rateAmount={profile.rateAmount}
-                  ratePeriod={profile.ratePeriod}
-                  experienceYears={profile.experienceYears}
-                  onChangeRateAmount={(value) => setProfile({ ...profile, rateAmount: value })}
-                  onChangeRatePeriod={(value) => setProfile({ ...profile, ratePeriod: value })}
-                  onChangeExperienceYears={(value) =>
-                    setProfile({ ...profile, experienceYears: value })
-                  }
-                  onSave={handleSave}
-                />
-              )}
+  
             </div>
           </div>
         </div>
       </main>
 
       <DeleteAccountModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
-    </div>
+      </div>
+    </>
   );
 };
 

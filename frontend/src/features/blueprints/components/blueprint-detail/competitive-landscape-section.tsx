@@ -30,19 +30,20 @@ export function CompetitiveLandscapeSection({
           desc="Named competitors found in live research — every named player links back to the sources that support it."
         />
         {competitorRows.length ? (
-          <div className="border-bp-border-soft overflow-hidden rounded-xl border">
-            <div className="font-mono-app text-bp-label bg-bp-tint grid grid-cols-[1.1fr_0.7fr_1.35fr_1.35fr_1.35fr] gap-2.5 px-[18px] py-2.5 text-[10px] font-bold tracking-[0.08em] uppercase">
-              <span>Player</span>
-              <span>Type</span>
-              <span>Why they win</span>
-              <span>Where they fall short</span>
-              <span>Opening for {bpName}</span>
-            </div>
-            {competitorRows.map((c, i) => (
-              <div
-                key={c.name + i}
-                className="border-bp-border-soft text-bp-ink grid grid-cols-[1.1fr_0.7fr_1.35fr_1.35fr_1.35fr] items-start gap-2.5 border-t px-[18px] py-3.5 text-[12.5px]"
-              >
+          <div className="border-bp-border-soft overflow-x-auto rounded-xl border">
+            <div className="min-w-[640px]">
+              <div className="font-mono-app text-bp-label bg-bp-tint grid grid-cols-[1.1fr_0.7fr_1.35fr_1.35fr_1.35fr] gap-2.5 px-[18px] py-2.5 text-[10px] font-bold tracking-[0.08em] uppercase">
+                <span>Player</span>
+                <span>Type</span>
+                <span>Why they win</span>
+                <span>Where they fall short</span>
+                <span>Opening for {bpName}</span>
+              </div>
+              {competitorRows.map((c, i) => (
+                <div
+                  key={c.name + i}
+                  className="border-bp-border-soft text-bp-ink grid grid-cols-[1.1fr_0.7fr_1.35fr_1.35fr_1.35fr] items-start gap-2.5 border-t px-[18px] py-3.5 text-[12.5px]"
+                >
                 <span className="font-bold">
                   {c.name}
                   <SourceChips indexes={c.sourceIndexes} sources={insight.sources} />
@@ -52,7 +53,8 @@ export function CompetitiveLandscapeSection({
                 <span className="text-bp-muted leading-[1.5]">{c.weaknesses.join("; ")}</span>
                 <span className="text-bp-body leading-[1.5]">{c.gap}</span>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
         ) : (
           <p className="text-bp-muted text-[12.5px]">

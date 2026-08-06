@@ -62,14 +62,29 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
   pendingProtectedAction: null,
 
   loadData: async () => {
+    // 1. Immediately surface session profile if available so UI renders without delay
+    const sessionUser = getSession()?.user;
+    if (sessionUser) {
+      set({
+        profile: {
+          ...DEFAULT_DEVELOPER_PROFILE,
+          firstName: sessionUser.firstName ?? "",
+          lastName: sessionUser.lastName ?? "",
+          email: sessionUser.email ?? "",
+        },
+        userName: [sessionUser.firstName, sessionUser.lastName].filter(Boolean).join(" "),
+        dataLoaded: true,
+      });
+    }
+
+    // 2. Fetch full developer profile in background and update
     try {
       const profile = await loadDeveloperProfile();
-      set({ profile, userName: profileDisplayName(profile) });
+      set({ profile, userName: profileDisplayName(profile), dataLoaded: true });
     } catch {
       const profile = profileFromSession();
-      set({ profile, userName: profileDisplayName(profile) });
+      set({ profile, userName: profileDisplayName(profile), dataLoaded: true });
     }
-    set({ dataLoaded: true });
   },
 
   completeProfile: async (updatedProfile) => {

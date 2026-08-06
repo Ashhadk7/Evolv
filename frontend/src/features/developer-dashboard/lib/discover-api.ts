@@ -2,6 +2,8 @@ import { apiFetch } from "@/lib/api";
 
 export type DeveloperDemand = "High" | "Medium" | "Low";
 export type ApplicationStatus = "applied" | "withdrawn";
+export type ApplicantAvailability = "full_time" | "part_time" | "weekends";
+export type DiscoverSort = "match" | "newest" | "applicants";
 
 export interface DiscoverBlueprintRole {
   role: string;
@@ -10,24 +12,37 @@ export interface DiscoverBlueprintRole {
   lead: boolean;
 }
 
+export interface DiscoverRoleFit {
+  role: string;
+  fit: number;
+}
+
+export interface DiscoverApplicantsByRole {
+  role: string;
+  count: number;
+}
+
 export interface DiscoverBlueprint {
   id: string;
   name: string;
   industry: string;
   founderId: string;
   founderName: string;
+  founderBlueprintCount: number;
   stage: string;
   summary: string;
-  differentiator: string;
   viability: number;
-  developerDemand: DeveloperDemand;
   techStack: string[];
   roles: DiscoverBlueprintRole[];
-  mvpFeatures: string[];
-  timeline: string;
-  matchScore: number;
+  matchScore: number | null;
+  fitLabel: string | null;
+  bestRole: string | null;
+  roleFits: DiscoverRoleFit[];
   matchReasons: string[];
   matchedSkills: string[];
+  skillsToPickUp: string[];
+  applicantCount: number;
+  applicantsByRole: DiscoverApplicantsByRole[];
   saved: boolean;
   applied: boolean;
   applicationId: string | null;
@@ -35,6 +50,7 @@ export interface DiscoverBlueprint {
   appliedRole: string | null;
   appliedAt: string | null;
   withdrawnAt: string | null;
+  createdAt: string;
   updatedAt: string;
   logo: string;
 }
@@ -50,15 +66,15 @@ export interface SavedDiscoverBlueprint {
 export interface DiscoverFilters {
   q?: string | null;
   industry?: string | null;
-  stage?: string | null;
   tech?: string | null;
-  minViability?: string | null;
+  role?: string | null;
 }
 
 export interface DiscoverFilterOptions {
   industries: string[];
   stages: string[];
   techStack: string[];
+  roles: string[];
 }
 
 export interface DiscoverResponse {
@@ -72,11 +88,10 @@ export interface DiscoverResponse {
   items: DiscoverBlueprint[];
 }
 
-interface DiscoverBlueprintRoleWire {
+export interface ApplyInput {
   role: string;
-  count: number;
-  skills: string[];
-  lead: boolean;
+  message?: string;
+  availability?: ApplicantAvailability;
 }
 
 interface DiscoverBlueprintWire {
@@ -85,18 +100,21 @@ interface DiscoverBlueprintWire {
   industry: string;
   founder_id: string;
   founder_name: string | null;
+  founder_blueprint_count: number;
   stage: string;
   summary: string;
-  differentiator: string | null;
   viability: number;
-  developer_demand: DeveloperDemand;
   tech_stack: string[];
-  roles: DiscoverBlueprintRoleWire[];
-  mvp_features: string[];
-  timeline: string | null;
-  match_score: number;
+  roles: DiscoverBlueprintRole[];
+  match_score: number | null;
+  fit_label: string | null;
+  best_role: string | null;
+  role_fits: DiscoverRoleFit[];
   match_reasons: string[];
   matched_skills: string[];
+  skills_to_pick_up: string[];
+  applicant_count: number;
+  applicants_by_role: DiscoverApplicantsByRole[];
   saved: boolean;
   applied: boolean;
   application_id: string | null;
@@ -104,6 +122,7 @@ interface DiscoverBlueprintWire {
   applied_role: string | null;
   applied_at: string | null;
   withdrawn_at: string | null;
+  created_at: string;
   updated_at: string;
 }
 
@@ -118,6 +137,7 @@ interface DiscoverResponseWire {
     industries: string[];
     stages: string[];
     tech_stack: string[];
+    roles: string[];
   };
   items: DiscoverBlueprintWire[];
 }
@@ -128,6 +148,8 @@ interface ApplicationWire {
   blueprint_id: string;
   connection_id: string | null;
   role: string | null;
+  message: string | null;
+  availability: ApplicantAvailability | null;
   status: ApplicationStatus;
   applied_at: string;
   withdrawn_at: string | null;
@@ -161,18 +183,21 @@ function fromWire(item: DiscoverBlueprintWire): DiscoverBlueprint {
     industry: item.industry,
     founderId: item.founder_id,
     founderName: item.founder_name ?? "Founder not listed",
+    founderBlueprintCount: item.founder_blueprint_count,
     stage: item.stage,
     summary: item.summary,
-    differentiator: item.differentiator ?? "",
     viability: item.viability,
-    developerDemand: item.developer_demand,
     techStack: item.tech_stack,
     roles: item.roles,
-    mvpFeatures: item.mvp_features,
-    timeline: item.timeline ?? "Timeline to be confirmed",
     matchScore: item.match_score,
+    fitLabel: item.fit_label,
+    bestRole: item.best_role,
+    roleFits: item.role_fits,
     matchReasons: item.match_reasons,
     matchedSkills: item.matched_skills,
+    skillsToPickUp: item.skills_to_pick_up,
+    applicantCount: item.applicant_count,
+    applicantsByRole: item.applicants_by_role,
     saved: item.saved,
     applied: item.applied,
     applicationId: item.application_id,
@@ -180,6 +205,7 @@ function fromWire(item: DiscoverBlueprintWire): DiscoverBlueprint {
     appliedRole: item.applied_role,
     appliedAt: item.applied_at,
     withdrawnAt: item.withdrawn_at,
+    createdAt: item.created_at,
     updatedAt: item.updated_at,
     logo: initialsFor(item.name).toUpperCase(),
   };
@@ -195,22 +221,31 @@ function savedFromWire(item: SavedDiscoverBlueprintWire): SavedDiscoverBlueprint
   };
 }
 
-function buildQuery(filters: DiscoverFilters, limit = 100) {
-  const params = new URLSearchParams({ limit: String(limit) });
+export const DISCOVER_PAGE_SIZE = 50;
+
+function buildQuery(filters: DiscoverFilters, sort: DiscoverSort, page: number, limit: number) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(page * limit),
+    sort,
+  });
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   if (filters.industry) params.set("industry", filters.industry);
-  if (filters.stage) params.set("stage", filters.stage);
   if (filters.tech) params.set("tech", filters.tech);
-  if (filters.minViability) params.set("min_viability", filters.minViability);
+  if (filters.role) params.set("role", filters.role);
   return params.toString();
 }
 
 export async function listDiscoverBlueprints(
-  filters: DiscoverFilters = {}
+  filters: DiscoverFilters = {},
+  sort: DiscoverSort = "match",
+  page = 0,
+  limit: number = DISCOVER_PAGE_SIZE
 ): Promise<DiscoverResponse> {
-  const data = await apiFetch<DiscoverResponseWire>(`/discover/blueprints?${buildQuery(filters)}`, {
-    auth: true,
-  });
+  const data = await apiFetch<DiscoverResponseWire>(
+    `/discover/blueprints?${buildQuery(filters, sort, page, limit)}`,
+    { auth: true }
+  );
   return {
     total: data.total,
     limit: data.limit,
@@ -222,6 +257,7 @@ export async function listDiscoverBlueprints(
       industries: data.filter_options.industries,
       stages: data.filter_options.stages,
       techStack: data.filter_options.tech_stack,
+      roles: data.filter_options.roles,
     },
     items: data.items.map(fromWire),
   };
@@ -237,12 +273,17 @@ export async function listSavedDiscoverBlueprints(): Promise<SavedDiscoverBluepr
 
 export async function applyToDiscoverBlueprint(
   blueprintId: string,
-  role: string
+  input: ApplyInput
 ): Promise<ApplicationWire> {
   return apiFetch<ApplicationWire>("/applications", {
     method: "POST",
     auth: true,
-    body: { blueprint_id: blueprintId, role },
+    body: {
+      blueprint_id: blueprintId,
+      role: input.role || null,
+      message: input.message?.trim() || null,
+      availability: input.availability ?? null,
+    },
   });
 }
 

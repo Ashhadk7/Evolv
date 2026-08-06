@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Index, Text, Uuid, func
 from sqlalchemy import Enum as SqlEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,6 +23,7 @@ class NotifType(StrEnum):
     APPLICATION = "application"
     NETWORK = "network"
     SYSTEM = "system"
+    PROJECT = "project"
 
 
 notif_type_enum = SqlEnum(
@@ -50,6 +52,7 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     tab: Mapped[str] = mapped_column(Text, nullable=False)
     action_label: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -40,47 +40,53 @@ export function BlueprintExecutiveSummarySection({
   executiveSummary,
   keyAssumptions,
   contradictions,
-  totalBuildCost,
-  timelineLabel,
-  phaseCount,
-  roleCount,
-  mvpFeatureCount,
+  snapshot,
 }: {
   bp: Blueprint;
   executiveSummary?: string;
   keyAssumptions?: string[];
+  /** The synthesis agent's audit of its own sections — founder-only. */
   contradictions?: string[];
-  totalBuildCost: string;
-  timelineLabel: string;
-  phaseCount: number;
-  roleCount: number;
-  mvpFeatureCount: number;
+  /** Cost and scope figures. Omitted for audiences that must not see budget. */
+  snapshot?: {
+    totalBuildCost: string;
+    timelineLabel: string;
+    phaseCount: number;
+    roleCount: number;
+    mvpFeatureCount: number;
+  };
 }) {
   // The founder's own timeline sits next to the derived one: build cost is
   // priced off the roadmap's weeks, so if the two disagree the founder must be
   // able to see it rather than read the derived number as agreed fact.
-  const snapshotRows = [
-    ["Total build cost", totalBuildCost],
-    ["Build time", timelineLabel],
-    ...(bp.intake?.timeline ? [["Founder's timeline", bp.intake.timeline]] : []),
-    ["Milestones", `${phaseCount} phases`],
-    ["Roles needed", `${roleCount}`],
-    ["MVP features", `${mvpFeatureCount} core`],
-  ];
+  const snapshotRows = snapshot
+    ? [
+        ["Total build cost", snapshot.totalBuildCost],
+        ["Build time", snapshot.timelineLabel],
+        ...(bp.intake?.timeline ? [["Founder's timeline", bp.intake.timeline]] : []),
+        ["Milestones", `${snapshot.phaseCount} phases`],
+        ["Roles needed", `${snapshot.roleCount}`],
+        ["MVP features", `${snapshot.mvpFeatureCount} core`],
+      ]
+    : [];
 
   return (
     <Reveal>
-      <div className="grid grid-cols-[1.6fr_1fr] gap-[22px]">
-        <div style={cardStyle({ padding: "28px 30px" })}>
+      <div
+        className={
+          snapshot ? "grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 md:gap-[22px]" : "grid grid-cols-1 gap-[22px]"
+        }
+      >
+        <div style={cardStyle({ padding: "22px 20px" })}>
           <SectionHead
             icon={<Notebook size={18} weight="duotone" className="text-bp-teal" />}
             kicker="Overview"
             title="Executive Summary"
           />
           {executiveSummary ? (
-            <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">{executiveSummary}</p>
+            <p className="text-bp-body mb-3.5 text-[13.5px] md:text-[14.5px] leading-[1.75]">{executiveSummary}</p>
           ) : (
-            <p className="text-bp-body mb-3.5 text-[14.5px] leading-[1.75]">
+            <p className="text-bp-body mb-3.5 text-[13.5px] md:text-[14.5px] leading-[1.75]">
               <strong className="text-bp-ink">{bp.name}</strong> is a {bp.industry} venture built
               around a simple thesis: {bp.differentiator.toLowerCase()}. {bp.ideaDesc}
             </p>
@@ -97,9 +103,6 @@ export function BlueprintExecutiveSummarySection({
               </ul>
             </div>
           )}
-          {/* The synthesis agent's cross-agent audit — where the sections
-              disagree with each other or with the brief. It was being computed
-              and never shown, which made the whole check pointless. */}
           {contradictions && contradictions.length > 0 && (
             <div className="border-bp-amber/40 mt-3 rounded-xl border bg-[#fef6e4] px-4 py-3">
               <div className="font-mono-app mb-1.5 text-[10px] font-bold tracking-[0.1em] text-[#a66a10] uppercase">
@@ -113,24 +116,26 @@ export function BlueprintExecutiveSummarySection({
             </div>
           )}
         </div>
-        <div style={cardStyle({ padding: "26px 28px" })}>
-          <Label>Build snapshot</Label>
-          <div className="flex flex-col">
-            {snapshotRows.map(([label, value], index) => (
-              <div
-                key={label}
-                className={`flex items-center justify-between py-[11px] ${
-                  index === 0 ? "border-t-0" : "border-bp-border-soft border-t"
-                }`}
-              >
-                <span className="text-bp-muted text-[12.5px]">{label}</span>
-                <span style={NUM} className="text-bp-ink text-[13px] font-bold">
-                  {value}
-                </span>
-              </div>
-            ))}
+        {snapshot && (
+          <div style={cardStyle({ padding: "22px 20px" })}>
+            <Label>Build snapshot</Label>
+            <div className="flex flex-col">
+              {snapshotRows.map(([label, value], index) => (
+                <div
+                  key={label}
+                  className={`flex items-center justify-between py-[11px] ${
+                    index === 0 ? "border-t-0" : "border-bp-border-soft border-t"
+                  }`}
+                >
+                  <span className="text-bp-muted text-[12.5px]">{label}</span>
+                  <span style={NUM} className="text-bp-ink text-[13px] font-bold">
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </Reveal>
   );
@@ -151,15 +156,15 @@ export function BlueprintSignalsSection({
         title="Signals & Activity"
         desc="How this blueprint is performing on the platform, and what to act on next."
       />
-      <div className="mb-[18px] grid grid-cols-3 gap-4">
+      <div className="mb-[18px] grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         {analytics.map((item) => (
           <motion.div
             key={item.label}
             whileHover={{ y: -3 }}
             transition={{ type: "spring", stiffness: 300, damping: 24 }}
-            style={cardStyle({ padding: "20px", textAlign: "center" })}
+            style={cardStyle({ padding: "18px 16px", textAlign: "center" })}
           >
-            <div style={NUM} className="text-bp-ink text-[28px] leading-none font-extrabold">
+            <div style={NUM} className="text-bp-ink text-[24px] md:text-[28px] leading-none font-extrabold">
               {item.value}
             </div>
             <div className="font-mono-app text-bp-label mt-[7px] text-[9.5px] font-bold tracking-[0.08em] uppercase">
@@ -177,9 +182,9 @@ export function BlueprintSignalsSection({
           </motion.div>
         ))}
       </div>
-      <div style={cardStyle({ padding: "24px 26px" })}>
+      <div style={cardStyle({ padding: "20px 20px" })}>
         <Label>Recommended next steps</Label>
-        <div className="grid grid-cols-2 gap-x-7 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-7 gap-y-3">
           {recommendations.map((recommendation, index) => (
             <div key={index} className="flex items-start gap-3">
               <Chip tone={priorityTone(recommendation.p)}>{recommendation.p}</Chip>

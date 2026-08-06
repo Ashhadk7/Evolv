@@ -9,6 +9,7 @@ export const NOTIF_ICONS: Record<NotifType, string> = {
   application: "solar:document-text-bold-duotone",
   network: "solar:handshake-bold-duotone",
   system: "solar:bolt-circle-bold-duotone",
+  project: "solar:layers-minimalistic-bold-duotone",
 };
 
 export const NOTIF_COLORS: Record<NotifType, string> = {
@@ -18,6 +19,7 @@ export const NOTIF_COLORS: Record<NotifType, string> = {
   application: "#f0a96e",
   network: "#c4a8f5",
   system: "#89d7b7",
+  project: "#5fb89a",
 };
 
 export const founderNotifs: AppNotif[] = [

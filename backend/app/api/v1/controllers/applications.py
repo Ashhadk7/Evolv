@@ -43,7 +43,12 @@ def create_application(
     current_user: CurrentUser,
 ) -> ApplicationResponse:
     application = application_service.create_application(
-        db, current_user, payload.blueprint_id, role=payload.role
+        db,
+        current_user,
+        payload.blueprint_id,
+        role=payload.role,
+        message=payload.message,
+        availability=payload.availability,
     )
     notification = notifications_service.notify_application_created(
         db,

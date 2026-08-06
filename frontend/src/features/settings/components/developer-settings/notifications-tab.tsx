@@ -18,6 +18,14 @@ const NOTIFICATION_ITEMS: Record<keyof DeveloperNotificationPrefs, { label: stri
       label: "New Blueprint Published",
       sub: "When a founder publishes a public blueprint in Discover",
     },
+    projectInvite: {
+      label: "Project Invitation",
+      sub: "When a founder invites you to work on a project phase",
+    },
+    projectUpdate: {
+      label: "Project Activity",
+      sub: "Issues assigned to you, comments, deadlines and payments",
+    },
     connectionRequest: {
       label: "New Connection Request",
       sub: "When someone sends you a connection or message request",

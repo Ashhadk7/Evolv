@@ -19,7 +19,8 @@ export function AddDeveloperModal({
   onConfirm: (amount: number) => void;
   onClose: () => void;
 }) {
-  const [amount, setAmount] = useState(defaultAmount);
+  const [amountStr, setAmountStr] = useState(defaultAmount.toString());
+  const amount = Number(amountStr) || 0;
   return (
     <ModalShell
       icon={<User size={16} weight="duotone" className="text-bp-teal" />}
@@ -48,8 +49,11 @@ export function AddDeveloperModal({
         </span>
         <input
           type="number"
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value) || 0)}
+          value={amountStr}
+          onChange={(e) => {
+            const val = e.target.value;
+            setAmountStr(val === "" ? "" : Number(val).toString());
+          }}
           className="text-bp-ink flex-1 text-[20px] font-extrabold border border-bp-border rounded-lg p-[8px_12px] outline-none font-inherit tabular-nums font-feature-settings-[_tnum_1,_ss01_1]"
         />
       </div>

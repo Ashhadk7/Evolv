@@ -77,7 +77,13 @@ def count_blueprint_applications(
 
 
 def create_application(
-    db: Session, current_user: User, blueprint_id: UUID, *, role: str | None = None
+    db: Session,
+    current_user: User,
+    blueprint_id: UUID,
+    *,
+    role: str | None = None,
+    message: str | None = None,
+    availability: str | None = None,
 ) -> Application:
     developer_id = _require_developer_profile(current_user)
 
@@ -89,7 +95,9 @@ def create_application(
     if existing is not None:
         if existing.status == "withdrawn":
             try:
-                application = applications_repository.reactivate_application(db, existing, role)
+                application = applications_repository.reactivate_application(
+                    db, existing, role, message, availability
+                )
                 db.commit()
                 db.refresh(application)
             except SQLAlchemyError as exc:
@@ -100,7 +108,7 @@ def create_application(
 
     try:
         application = applications_repository.create_application(
-            db, developer_id, blueprint_id, role
+            db, developer_id, blueprint_id, role, message, availability
         )
         db.commit()
         db.refresh(application)

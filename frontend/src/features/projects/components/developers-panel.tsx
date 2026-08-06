@@ -10,6 +10,12 @@ import type { FounderContactProfile } from "@/features/network/types";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
 import { listBlueprintApplications, type ApplicationWire } from "@/features/projects/applications-api";
 
+const AVAILABILITY_LABELS = {
+  full_time: "Full-time",
+  part_time: "Part-time",
+  weekends: "Weekends",
+} as const;
+
 export function DevelopersPanel({
   blueprintId,
   phases,
@@ -24,6 +30,8 @@ export function DevelopersPanel({
   onMessage,
   onViewProfile,
   onBrowseNetwork,
+  hiredInPhase,
+  pendingInPhase,
 }: {
   blueprintId?: string;
   phases: BlueprintContent["phases"];
@@ -38,6 +46,8 @@ export function DevelopersPanel({
   onMessage?: (contact: FounderNetworkMessageTarget) => void;
   onViewProfile: (dev: FounderContactProfile) => void;
   onBrowseNetwork?: () => void;
+  hiredInPhase?: Set<string>;
+  pendingInPhase?: Set<string>;
 }) {
   const [tab, setTab] = useState<"matched" | "connected" | "applied">("matched");
   const [query, setQuery] = useState("");
@@ -213,10 +223,13 @@ export function DevelopersPanel({
                           {jobTitle}
                         </div>
                       )}
-                      <div className="flex gap-1.5 mt-1">
+                      <div className="flex gap-1.5 mt-1 flex-wrap">
                         <Chip tone="mint">
                           {a.role ? `Role: ${a.role}` : "General Application"}
                         </Chip>
+                        {a.availability && (
+                          <Chip tone="neutral">{AVAILABILITY_LABELS[a.availability]}</Chip>
+                        )}
                       </div>
                       <div className="text-bp-label text-[10.5px] mt-0.5">
                         Applied {new Date(a.applied_at).toLocaleDateString("en-US", {
@@ -228,13 +241,29 @@ export function DevelopersPanel({
                     </div>
                   </div>
 
+                  {a.message && (
+                    <p className="text-bp-body bg-bp-tint border-bp-border-soft m-0 rounded-lg border p-2 text-[11.5px] leading-[1.5]">
+                      {a.message}
+                    </p>
+                  )}
+
                   <div className="flex gap-1.5 mt-0.5">
-                    <button
-                      onClick={() => onHire(selectedPhase, devProfile)}
-                      className="bp-primary-btn flex-1 text-[11px] font-bold py-1.75"
-                    >
-                      Add to phase
-                    </button>
+                    {hiredInPhase?.has(a.developer_id) ? (
+                      <span className="bp-primary-btn flex-1 text-[11px] font-bold py-1.75 opacity-50 cursor-not-allowed">
+                        Already hired
+                      </span>
+                    ) : pendingInPhase?.has(a.developer_id) ? (
+                      <span className="bp-primary-btn flex-1 text-[11px] font-bold py-1.75 opacity-50 cursor-not-allowed bg-amber-600 border-amber-700 text-white">
+                        Pending
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => onHire(selectedPhase, devProfile)}
+                        className="bp-primary-btn flex-1 text-[11px] font-bold py-1.75"
+                      >
+                        Add to phase
+                      </button>
+                    )}
                     {onMessage && (
                       <button
                         onClick={() => messageDev(devProfile)}
@@ -311,12 +340,22 @@ export function DevelopersPanel({
                     )}
                     {tab === "connected" && connected && (
                       <>
-                        <button
-                          onClick={() => onHire(selectedPhase, d)}
-                          className="bp-primary-btn flex-1"
-                        >
-                          Add to phase
-                        </button>
+                        {hiredInPhase?.has(d.id) ? (
+                          <span className="bp-primary-btn flex-1 opacity-50 cursor-not-allowed">
+                            Already hired
+                          </span>
+                        ) : pendingInPhase?.has(d.id) ? (
+                          <span className="bp-primary-btn flex-1 opacity-50 cursor-not-allowed bg-amber-600 border-amber-700 text-white">
+                            Pending
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onHire(selectedPhase, d)}
+                            className="bp-primary-btn flex-1"
+                          >
+                            Add to phase
+                          </button>
+                        )}
                         {onMessage && (
                           <button
                             onClick={() => messageDev(d)}

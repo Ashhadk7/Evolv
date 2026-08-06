@@ -161,6 +161,17 @@ export async function removeAvatar(): Promise<void> {
   await apiFetch("/me/avatar", { method: "DELETE", auth: true });
 }
 
+export async function uploadCertificationImage(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name || "certificate");
+  const { image_url } = await apiFetch<{ image_url: string }>("/me/certifications/image", {
+    method: "POST",
+    body: form,
+    auth: true,
+  });
+  return image_url;
+}
+
 async function upsert<T>(
   path: string,
   body: unknown,

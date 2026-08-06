@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { useId, type ReactNode } from "react";
 import { X } from "@phosphor-icons/react";
+import { ModalOverlay } from "@/components/shared/modal-overlay";
 
 export function ModalShell({
   icon,
@@ -17,47 +17,34 @@ export function ModalShell({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const titleId = useId();
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] bg-[#0f1c18]/45 backdrop-blur-[3px] flex items-center justify-center p-6"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 340, damping: 30 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-bp-card border border-bp-border rounded-2xl shadow-[0_1px_1px_rgba(19,36,29,0.03),0_2px_6px_rgba(19,36,29,0.03),0_16px_40px_-18px_rgba(19,36,29,0.14)] p-[26px_26px_22px] w-full max-w-[420px]"
-      >
-        <div className="flex items-start justify-between mb-4">
+    <ModalOverlay onClose={onClose} labelledBy={titleId}>
+      <div className="bg-bp-card border-bp-border blueprint-scroll mx-auto w-full max-w-[420px] overflow-y-auto rounded-2xl border p-[26px_26px_22px] shadow-[0_24px_60px_-20px_rgba(9,32,26,0.45)]">
+        <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="bg-bp-tint w-[34px] h-[34px] rounded-lg border border-bp-border-soft flex items-center justify-center">
+            <div className="bg-bp-tint border-bp-border-soft flex h-[34px] w-[34px] items-center justify-center rounded-lg border">
               {icon}
             </div>
             <div>
-              <div className="text-bp-ink text-[15px] font-extrabold">
+              <div id={titleId} className="text-bp-ink text-[15px] font-extrabold">
                 {title}
               </div>
-              {subtitle && (
-                <div className="text-bp-muted text-[11px]">
-                  {subtitle}
-                </div>
-              )}
+              {subtitle && <div className="text-bp-muted text-[11px]">{subtitle}</div>}
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="bg-bp-tint w-[30px] h-[30px] flex items-center justify-center rounded-lg border border-bp-border-soft cursor-pointer shrink-0"
+            aria-label="Close"
+            className="bg-bp-tint border-bp-border-soft text-bp-muted hover:text-bp-ink hover:border-bp-mint focus-visible:ring-bp-teal flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
-            <X size={13} className="text-bp-muted" />
+            <X size={13} />
           </button>
         </div>
         {children}
-      </motion.div>
-    </motion.div>
+      </div>
+    </ModalOverlay>
   );
 }

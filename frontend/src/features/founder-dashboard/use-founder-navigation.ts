@@ -24,7 +24,11 @@ function cleanupSetupParam() {
 
 export function useFounderNavigation() {
   const router = useRouter();
-  const go = (tab: string) => router.push(`/founder/${tab}`);
+  const go = (tab: string) => {
+    const route = `/founder/${tab}`;
+    router.prefetch(route);
+    router.push(route);
+  };
 
   const navigateFounder = (tab: string) => {
     const s = useFounderDashboardStore.getState();

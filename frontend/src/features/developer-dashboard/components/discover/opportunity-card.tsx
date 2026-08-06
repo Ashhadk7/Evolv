@@ -1,128 +1,117 @@
-import { Bookmark, BookmarkCheck, CheckCircle2, Eye, Layers3, UserRound } from "lucide-react";
+import { Bookmark, BookmarkCheck, CheckCircle2, Eye, Handshake, Users } from "lucide-react";
 
 import styles from "@/features/developer-dashboard/components/discover.module.css";
-import devPrimaryBtn from "@/components/shared/dev-primary-button.module.css";
+import { timeAgo } from "@/lib/utils";
+import { MatchRing } from "./match-ring";
 import type { Opportunity } from "./types";
+
+const MAX_TECH_CHIPS = 4;
 
 export function OpportunityCard({
   opportunity,
-  selected,
-  getViabilityColor,
-  onSelect,
-  onView,
-  onSave,
   busyAction,
+  onView,
+  onApply,
+  onSave,
 }: {
   opportunity: Opportunity;
-  selected: boolean;
-  getViabilityColor: (score: number) => string;
-  onSelect: (opportunity: Opportunity) => void;
-  onView: (opportunity: Opportunity) => void;
-  onSave: (opportunity: Opportunity) => void;
   busyAction?: "apply" | "save" | "withdraw";
+  onView: (opportunity: Opportunity) => void;
+  onApply: (opportunity: Opportunity) => void;
+  onSave: (opportunity: Opportunity) => void;
 }) {
-  const roleLabel =
-    opportunity.roles.length === 1
-      ? opportunity.roles[0].role
-      : `${opportunity.roles.length || "Open"} roles`;
-  const hasRoles = opportunity.roles.length > 0;
   const saving = busyAction === "save";
+  const hasRoles = opportunity.roles.length > 0;
+  const extraTech = Math.max(0, opportunity.techStack.length - MAX_TECH_CHIPS);
 
   return (
-    <article
-      className={`${styles.oppCard} ${selected ? styles.oppCardSelected : ""}`}
-      onClick={() => onSelect(opportunity)}
-    >
-      <div className={styles.oppTop}>
-        <div className={styles.oppLeft}>
-          <div className={styles.oppLogo}>{opportunity.logo}</div>
+    <article className={styles.oppCard}>
+      <header className={styles.oppHeader}>
+        <div className={styles.oppFounder}>
+          <span className={styles.avatarSm}>{opportunity.logo}</span>
           <div>
-            <div className={styles.oppName}>{opportunity.name}</div>
-            <div className={styles.oppFounder}>
-              <UserRound size={13} /> {opportunity.founderName}
-            </div>
+            <p className={styles.founderNameSm}>{opportunity.founderName}</p>
+            <p className={styles.oppPosted}>{timeAgo(opportunity.createdAt)}</p>
           </div>
         </div>
-        <div className={styles.oppRight}>
-          <span className={styles.oppMatch}>{opportunity.matchScore}% match</span>
-          <span
-            className={styles.oppViability}
-            style={{ color: getViabilityColor(opportunity.viability) }}
-          >
-            {opportunity.viability}% viable
+        <MatchRing score={opportunity.matchScore} size="sm" />
+      </header>
+
+      <div>
+        <div className={styles.oppTitleRow}>
+          <h3>{opportunity.name}</h3>
+          <span className={styles.pill}>
+            {opportunity.industry} · {opportunity.stage}
           </span>
         </div>
+        <p className={styles.oppPitch}>{opportunity.summary}</p>
       </div>
 
-      <p className={styles.oppDesc}>{opportunity.summary}</p>
-
-      <div className={styles.oppMeta}>
-        <span>{opportunity.industry}</span>
-        <span>{opportunity.stage}</span>
-        <span>{roleLabel}</span>
-        <span>{opportunity.timeline}</span>
-      </div>
-
-      {opportunity.matchedSkills.length > 0 && (
-        <div className={styles.matchStrip}>
-          <CheckCircle2 size={14} />
-          <span>{opportunity.matchedSkills.slice(0, 4).join(", ")}</span>
-        </div>
-      )}
-
-      <div className={styles.oppTechTags}>
-        {opportunity.techStack.slice(0, 5).map((tech) => (
-          <span key={tech} className={styles.techTag}>
-            {tech}
-          </span>
-        ))}
-      </div>
-
-      <div className={styles.oppActions}>
-        <button
-          className={`${devPrimaryBtn.button} ${styles.applyBtnSm}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onView(opportunity);
-          }}
-          disabled={!hasRoles || opportunity.applied}
-        >
-          {opportunity.applied ? <CheckCircle2 size={14} /> : <Layers3 size={14} />}
-          {opportunity.applied ? "Applied" : hasRoles ? "Choose Role" : "No roles yet"}
-        </button>
-        <button
-          className={`${styles.saveBtnSm} ${opportunity.saved ? styles.savedButton : ""}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSave(opportunity);
-          }}
-          disabled={saving}
-        >
-          {opportunity.saved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-          {opportunity.saved ? "Saved" : saving ? "Saving" : "Save"}
-        </button>
-        <button
-          className={styles.viewBtnSm}
-          onClick={(event) => {
-            event.stopPropagation();
-            onView(opportunity);
-          }}
-        >
-          <Eye size={14} /> View Blueprint
-        </button>
-      </div>
-
-      {opportunity.roles.length > 0 && (
-        <div className={styles.roleHint}>
-          <Layers3 size={14} />
-          <span>{opportunity.roles[0].role}</span>
-          {opportunity.roles[0].skills.slice(0, 3).map((skill) => (
-            <span key={skill} className={styles.roleSkill}>
-              {skill}
-            </span>
+      {opportunity.techStack.length > 0 && (
+        <ul className={styles.techChips}>
+          {opportunity.techStack.slice(0, MAX_TECH_CHIPS).map((tech) => (
+            <li key={tech}>{tech}</li>
           ))}
+          {extraTech > 0 && <li>+{extraTech} more</li>}
+        </ul>
+      )}
+
+      {hasRoles && (
+        <div className={styles.oppRoles}>
+          <span className={styles.oppRolesLabel}>Roles</span>
+          <ul
+            className={styles.roleChips}
+            tabIndex={0}
+            aria-label={`${opportunity.roles.length} open roles`}
+          >
+            {opportunity.roles.map((role) => (
+              <li key={role.role} className={styles.roleChip}>
+                <b>{role.count}</b> {role.role}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
+
+      <footer className={styles.oppFooter}>
+        <span className={styles.applicants}>
+          <Users size={13} aria-hidden="true" />
+          {opportunity.applicantCount} applied
+        </span>
+        <div className={styles.oppActions}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={() => onSave(opportunity)}
+            disabled={saving}
+            aria-label={
+              opportunity.saved ? `Unsave ${opportunity.name}` : `Save ${opportunity.name}`
+            }
+          >
+            {opportunity.saved ? (
+              <BookmarkCheck size={14} aria-hidden="true" />
+            ) : (
+              <Bookmark size={14} aria-hidden="true" />
+            )}
+          </button>
+          <button type="button" className={styles.btnGhostSm} onClick={() => onView(opportunity)}>
+            <Eye size={13} aria-hidden="true" /> View
+          </button>
+          <button
+            type="button"
+            className={styles.btnPrimarySm}
+            onClick={() => onApply(opportunity)}
+            disabled={opportunity.applied}
+          >
+            {opportunity.applied ? (
+              <CheckCircle2 size={13} aria-hidden="true" />
+            ) : (
+              <Handshake size={13} aria-hidden="true" />
+            )}
+            {opportunity.applied ? "Applied" : "Apply"}
+          </button>
+        </div>
+      </footer>
     </article>
   );
 }

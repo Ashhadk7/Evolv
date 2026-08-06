@@ -1,25 +1,29 @@
 "use client";
 
 import type { Phase, ProjectPhaseState } from "@/features/blueprints/blueprint-content";
+import type { Deliverable } from "@/features/projects/deliverables-api";
+import type { ProjectMemberWire } from "@/features/projects/projects-api";
 import { PhaseCard } from "./phase-card";
 
 export function PhaseBoard({
   phases,
   phaseStates,
+  pendingInvites,
+  acceptedMembers,
+  counteredMembers,
+  deliverablesByPhase,
+  deliverablesLoading = false,
   activeIdx,
   viewedPhaseIdx,
   budgetEditPhase,
   deadlineEditPhase,
   today,
-  newDeliverable,
   onSelectPhase,
   onStartPhase,
   onCompletePhase,
   onReopenPhase,
-  onToggleDeliverable,
-  onAddDeliverable,
-  onRemoveDeliverable,
-  onNewDeliverableChange,
+  onOpenDeliverable,
+  onCreateDeliverable,
   onSetPhaseDeadline,
   onUpdatePhaseBudget,
   onSetBudgetEditPhase,
@@ -27,30 +31,40 @@ export function PhaseBoard({
   onPay,
   onRemoveDev,
   onFindMatches,
+  onRevokeInvite,
+  onRespondToCounter,
 }: {
   phases: Phase[];
   phaseStates: ProjectPhaseState[];
+  pendingInvites: Map<number, ProjectMemberWire[]>;
+  acceptedMembers: Map<number, ProjectMemberWire[]>;
+  counteredMembers: Map<number, ProjectMemberWire[]>;
+  deliverablesByPhase: Map<number, Deliverable[]>;
+  deliverablesLoading?: boolean;
   activeIdx: number;
   viewedPhaseIdx: number;
   budgetEditPhase: number | null;
   deadlineEditPhase: number | null;
   today: string;
-  newDeliverable: string;
   onSelectPhase: (index: number) => void;
   onStartPhase: (index: number) => void;
   onCompletePhase: (index: number) => void;
   onReopenPhase: (index: number) => void;
-  onToggleDeliverable: (index: number, delivIdx: number) => void;
-  onAddDeliverable: (index: number, text: string) => void;
-  onRemoveDeliverable: (index: number, delivIdx: number) => void;
-  onNewDeliverableChange: (text: string) => void;
+  onOpenDeliverable: (deliverableId: string) => void;
+  onCreateDeliverable: (phaseIndex: number) => void;
   onSetPhaseDeadline: (index: number, date: string) => void;
   onUpdatePhaseBudget: (index: number, amount: number) => void;
   onSetBudgetEditPhase: (index: number | null) => void;
   onSetDeadlineEditPhase: (index: number | null) => void;
-  onPay: (index: number) => void;
-  onRemoveDev: (index: number) => void;
+  onPay: (member: ProjectMemberWire, phaseIdx: number) => void;
+  onRemoveDev: (memberId: string, phaseIdx: number) => void;
   onFindMatches: () => void;
+  onRevokeInvite: (memberId: string) => void;
+  onRespondToCounter: (
+    memberId: string,
+    action: "accept" | "reject" | "negotiate",
+    amountCents?: number
+  ) => void;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -65,33 +79,38 @@ export function PhaseBoard({
             ps.assignment && ps.status !== "Complete" && ps.deadline && ps.deadline < today
           );
 
-          return (
+        return (
             <PhaseCard
               key={phase.name}
               phase={phase}
               ps={ps}
+              pendingInvites={pendingInvites.get(i) ?? []}
+              acceptedMembers={acceptedMembers.get(i) ?? []}
+              counteredMembers={counteredMembers.get(i) ?? []}
               index={i}
               isSelected={isSelected}
               isActive={isActive}
               isBudgetEdit={budgetEditPhase === i}
               isDeadlineEdit={deadlineEditPhase === i}
               overdue={overdue}
-              newDeliverable={newDeliverable}
+              today={today}
+              deliverables={deliverablesByPhase.get(i) ?? []}
+              deliverablesLoading={deliverablesLoading}
               onSelect={() => onSelectPhase(i)}
               onStartPhase={() => onStartPhase(i)}
               onCompletePhase={() => onCompletePhase(i)}
               onReopenPhase={() => onReopenPhase(i)}
-              onToggleDeliverable={(delivIdx) => onToggleDeliverable(i, delivIdx)}
-              onAddDeliverable={(text) => onAddDeliverable(i, text)}
-              onRemoveDeliverable={(delivIdx) => onRemoveDeliverable(i, delivIdx)}
-              onNewDeliverableChange={onNewDeliverableChange}
+              onOpenDeliverable={onOpenDeliverable}
+              onCreateDeliverable={() => onCreateDeliverable(i)}
               onSetPhaseDeadline={(date) => onSetPhaseDeadline(i, date)}
               onUpdatePhaseBudget={(amount) => onUpdatePhaseBudget(i, amount)}
               onSetBudgetEditPhase={() => onSetBudgetEditPhase(i)}
               onSetDeadlineEditPhase={() => onSetDeadlineEditPhase(i)}
-              onPay={() => onPay(i)}
-              onRemoveDev={() => onRemoveDev(i)}
+              onPay={(member) => onPay(member, i)}
+              onRemoveDev={(memberId) => onRemoveDev(memberId, i)}
               onFindMatches={onFindMatches}
+              onRevokeInvite={onRevokeInvite}
+              onRespondToCounter={onRespondToCounter}
             />
           );
         })}

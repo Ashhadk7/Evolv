@@ -17,7 +17,10 @@ RoleSkills = Annotated[str, Field(min_length=1, max_length=140)]
 class TechStackLayer(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=True)
 
-    chosen: str = Field(min_length=1, max_length=70)
+    # Deliberately tight: the limit is what stops "PostgreSQL on Render free
+    # tier" landing in a field the UI renders as a tag. call_agent retries a
+    # ValidationError with the error attached, so an over-long answer self-corrects.
+    chosen: str = Field(min_length=1, max_length=32)
     reasoning: ShortReasoning
     monthly_cost: MonthlyCostUsd = Field(alias="monthlyCost")
 

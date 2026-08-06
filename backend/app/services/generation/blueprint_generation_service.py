@@ -370,11 +370,17 @@ def _update_generation(db: Session, blueprint_id: UUID, **changes: Any) -> None:
 
 
 def _finalize(db: Session, blueprint_id: UUID, content: BlueprintVersionCreate) -> None:
+    from app.services import blueprint_service
+
     version = _current_version(db, blueprint_id)
     if version is None:
         raise BlueprintPersistenceError("Generated blueprint version disappeared.")
     blueprints_repository.update_version(db, version, content)
     db.commit()
+
+    blueprint = blueprints_repository.get_blueprint_by_id(db, blueprint_id)
+    if blueprint is not None:
+        blueprint_service.sync_search_index(blueprint)
 
 
 def _require_founder_profile(user: User) -> UUID:

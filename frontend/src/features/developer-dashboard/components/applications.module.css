@@ -1,13 +1,22 @@
 .container {
   display: flex;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
 }
 
 .mainWrapper {
   flex: 1;
-  padding: 1.5rem 2rem 2rem;
+  padding: 1rem;
   overflow-x: hidden;
+  overflow-y: auto;
+  height: 100%;
   min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .mainWrapper {
+    padding: 1.5rem 2rem 2rem;
+  }
 }
 
 /* KPI Row */

@@ -14,6 +14,7 @@ import { Label } from "@/components/shared/label";
 import type { Blueprint } from "@/features/blueprints/types";
 import { fmtMoney } from "@/features/blueprints/blueprint-content";
 import { ProjectListCard } from "./project-list-card";
+import { ProjectSection } from "./project-section";
 import { StartProjectModal } from "./start-project-modal";
 import { ProjectDetail } from "./project-detail";
 import { useProjectsTab } from "@/features/projects/lib/use-projects-tab";
@@ -37,10 +38,13 @@ export function ProjectsTab({
     pickerOpen,
     setPickerOpen,
     toast,
-    projectBlueprints,
+    ongoingBlueprints,
+    closedBlueprints,
     startableBlueprints,
     startProject,
     selected,
+    issueParam,
+    deliverableParam,
     activeCount,
     totalDeployed,
     avgCompletion,
@@ -51,9 +55,11 @@ export function ProjectsTab({
 
   if (selected) {
     return (
-      <div className="bg-bp-page h-full px-[28px] pt-[16px] pb-[18px] overflow-hidden">
+      <div className="bg-bp-page h-full px-3 py-3 sm:px-6 sm:py-4 md:px-[28px] md:pt-[16px] md:pb-[18px] overflow-hidden">
         <ProjectDetail
           bp={selected}
+          initialIssueId={issueParam}
+          initialDeliverableId={deliverableParam}
           onUpdate={(mutate) => updateBlueprint(selected.id, mutate)}
           onBack={() => setSelectedId(null)}
           onViewBlueprint={onViewBlueprint}
@@ -97,35 +103,35 @@ export function ProjectsTab({
     "bg-bp-card border border-bp-border rounded-2xl shadow-[0_1px_1px_rgba(19,36,29,0.03),0_2px_6px_rgba(19,36,29,0.03),0_16px_40px_-18px_rgba(19,36,29,0.14)]";
 
   return (
-    <div className="blueprint-scroll bg-bp-page h-full overflow-y-auto px-[28px] pt-[24px] pb-[60px]">
-      <div className="max-w-[1180px] mx-auto flex flex-col gap-[22px]">
-        <div className="flex items-start justify-between gap-5 flex-wrap">
+    <div className="blueprint-scroll bg-bp-page h-full overflow-y-auto px-4 py-5 sm:px-6 md:px-[28px] md:pt-[24px] md:pb-[60px]">
+      <div className="max-w-[1180px] mx-auto flex flex-col gap-4 md:gap-[22px]">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <Kicker>Build Tracker</Kicker>
-            <h1 className="text-bp-ink text-[27px] font-extrabold tracking-[-0.02em]">
+            <h1 className="text-bp-ink text-[22px] md:text-[27px] font-extrabold tracking-[-0.02em]">
               Projects
             </h1>
-            <p className="text-bp-muted text-[13.5px] mt-1.5 max-w-[520px]">
+            <p className="text-bp-muted text-[12px] md:text-[13.5px] mt-1 md:mt-1.5 max-w-[520px]">
               Track everything you&apos;re building — assign a developer per phase, manage payments,
               and watch progress in real time.
             </p>
           </div>
           <button
             onClick={() => setPickerOpen(true)}
-            className="bp-primary-btn shrink-0"
+            className="bp-primary-btn shrink-0 !text-xs md:!text-sm !px-3 md:!px-4"
           >
             <Plus size={15} weight="bold" /> New Project
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {kpis.map((k) => (
-            <div key={k.label} className={`${bpCardClass} p-[16px_18px]`}>
+            <div key={k.label} className={`${bpCardClass} p-3.5 md:p-[16px_18px]`}>
               <div className="flex items-center justify-between">
                 <Label>{k.label}</Label>
                 {k.icon}
               </div>
-              <div className="text-bp-ink text-[21px] font-extrabold">
+              <div className="text-bp-ink text-lg md:text-[21px] font-extrabold mt-1">
                 {k.value}
               </div>
             </div>
@@ -133,7 +139,7 @@ export function ProjectsTab({
         </div>
 
         {summaries.length === 0 ? (
-          <div className={`${bpCardClass} p-[48px_32px] flex flex-col items-center text-center gap-3.5 border-[1.5px] border-dashed border-bp-border`}>
+          <div className={`${bpCardClass} p-8 md:p-[48px_32px] flex flex-col items-center text-center gap-3.5 border-[1.5px] border-dashed border-bp-border`}>
             <div className="bg-bp-tint w-[52px] h-[52px] rounded-[15px] flex items-center justify-center">
               <Buildings size={24} weight="duotone" className="text-bp-teal" />
             </div>
@@ -151,10 +157,21 @@ export function ProjectsTab({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-5">
-            {projectBlueprints.map((bp, i) => (
-              <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
-            ))}
+          <div className="flex flex-col gap-6">
+            <ProjectSection title="Ongoing" count={ongoingBlueprints.length}>
+              {ongoingBlueprints.map((bp, i) => (
+                <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
+              ))}
+            </ProjectSection>
+            <ProjectSection
+              title="Completed & cancelled"
+              count={closedBlueprints.length}
+              collapsible
+            >
+              {closedBlueprints.map((bp, i) => (
+                <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
+              ))}
+            </ProjectSection>
           </div>
         )}
       </div>

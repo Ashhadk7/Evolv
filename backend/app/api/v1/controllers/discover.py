@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentDeveloper, DbSession
@@ -7,6 +9,8 @@ from app.schemas.discover import DiscoverBlueprintListResponse, SavedDiscoverBlu
 from app.services import discover_service
 
 router = APIRouter()
+
+DiscoverSort = Literal["match", "newest", "applicants"]
 
 
 @router.get("/blueprints", response_model=DiscoverBlueprintListResponse)
@@ -16,8 +20,10 @@ def list_public_blueprints(
     industry: str | None = Query(default=None, max_length=255),
     stage: str | None = Query(default=None, max_length=120),
     tech: str | None = Query(default=None, max_length=120),
+    role: str | None = Query(default=None, max_length=255),
     min_viability: int | None = Query(default=None, ge=0, le=100),
     q: str | None = Query(default=None, max_length=120),
+    sort: DiscoverSort = "match",
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> DiscoverBlueprintListResponse:
@@ -27,8 +33,10 @@ def list_public_blueprints(
         industry=industry,
         stage=stage,
         tech=tech,
+        role=role,
         min_viability=min_viability,
         q=q,
+        sort=sort,
         limit=limit,
         offset=offset,
     )

@@ -22,6 +22,11 @@ from app.services.profile_helpers import (
     get_developer_review_responses,
     get_education_responses,
 )
+from app.services.profile_quality import (
+    has_meaningful_skills,
+    is_meaningful_paragraph,
+    is_meaningful_short_text,
+)
 
 
 def create_profile(
@@ -46,7 +51,7 @@ def create_profile(
     ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Developer profile could not be created.")
     db.refresh(profile)
-    sync_developer_embedding(profile.user_id, profile.skills)
+    sync_developer_embedding(profile)
     return build_response(db, profile)
 
 
@@ -64,7 +69,7 @@ def update_profile(
     ensure_complete_profile_fields(db, profile, payload.educations)
     commit_profile_change(db, "Developer profile could not be updated.")
     db.refresh(profile)
-    sync_developer_embedding(profile.user_id, profile.skills)
+    sync_developer_embedding(profile)
     return build_response(db, profile)
 
 
@@ -124,11 +129,11 @@ def ensure_complete_profile_fields(
     if not profile.profile_complete:
         return
     missing: list[str] = []
-    if not profile.job_title or not profile.job_title.strip():
+    if not is_meaningful_short_text(profile.job_title):
         missing.append("professional role")
-    if not profile.bio or not profile.bio.strip():
+    if not is_meaningful_paragraph(profile.bio):
         missing.append("bio")
-    if not profile.skills:
+    if not has_meaningful_skills(profile.skills):
         missing.append("skills")
     if not profile.github or not profile.github.strip():
         missing.append("GitHub")

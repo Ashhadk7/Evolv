@@ -68,7 +68,7 @@ export function ProfileTabEdit({
   onUpdateCertification: (id: string, patch: Partial<DeveloperCertification>) => void;
   onAddCertification: () => void;
   onRemoveCertification: (id: string) => void;
-  onCertificationImage: (id: string, file: File | null | undefined) => void;
+  onCertificationImage: (id: string, file: File | null | undefined) => void | Promise<void>;
   onCancel: () => void;
   onSave: () => void | Promise<void>;
 }) {

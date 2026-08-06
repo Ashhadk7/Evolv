@@ -31,7 +31,8 @@ export function BlueprintTechStackSection({
   draftTechStack: TechStackModel;
   architecture: ArchitectureModel;
   stack: StackCat[];
-  onToggleEditing: () => void;
+  /** Omitted for read-only audiences, which hides the edit affordance. */
+  onToggleEditing?: () => void;
   onChangeLayer: (key: StackLayerKey, value: string) => void;
 }) {
   return (
@@ -40,21 +41,27 @@ export function BlueprintTechStackSection({
         icon={<Cube size={18} weight="duotone" className="text-bp-teal" />}
         kicker="Engineering"
         title="Recommended Tech Stack & Architecture"
-        desc="A complete, opinionated stack - editable where you know better than the AI, plus the system diagram it produces."
+        desc={
+          onToggleEditing
+            ? "A complete, opinionated stack - editable where you know better than the AI, plus the system diagram it produces."
+            : "The stack the founder committed to for this build, plus the system diagram it produces."
+        }
         right={
-          <button
-            onClick={onToggleEditing}
-            className={`bp-icon-btn flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-[11px] border ${
-              editing ? "border-bp-forest bg-bp-forest" : "border-bp-border bg-bp-card"
-            }`}
-            title="Edit tech stack"
-          >
-            <PencilSimple
-              size={16}
-              weight="bold"
-              className={editing ? "text-bp-mint" : "text-bp-teal"}
-            />
-          </button>
+          onToggleEditing ? (
+            <button
+              onClick={onToggleEditing}
+              className={`bp-icon-btn flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-[11px] border ${
+                editing ? "border-bp-forest bg-bp-forest" : "border-bp-border bg-bp-card"
+              }`}
+              title="Edit tech stack"
+            >
+              <PencilSimple
+                size={16}
+                weight="bold"
+                className={editing ? "text-bp-mint" : "text-bp-teal"}
+              />
+            </button>
+          ) : undefined
         }
       />
       <div style={cardStyle({ padding: "20px 24px", marginBottom: 18 })}>
@@ -106,7 +113,7 @@ export function BlueprintTechStackSection({
           <ArchitectureDiagram nodes={architecture.nodes} edges={architecture.edges} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-[18px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-[18px]">
         {stack.map((category) => (
           <motion.div
             key={category.name}

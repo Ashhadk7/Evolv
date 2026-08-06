@@ -1,7 +1,24 @@
 """Import SQLAlchemy models here so Alembic can detect them."""
 
 from app.models.application import Application, SavedBlueprint
-from app.models.project import Project, ProjectStatus
+from app.models.project import (
+    DeadlineStatus,
+    IssuePriority,
+    IssueStatus,
+    PaymentProvider,
+    PaymentStatus,
+    Project,
+    ProjectAttachment,
+    ProjectDeadline,
+    ProjectDeadlineAssignee,
+    ProjectComment,
+    ProjectDeliverable,
+    ProjectIssue,
+    ProjectMember,
+    ProjectMemberStatus,
+    ProjectPayment,
+    ProjectStatus,
+)
 from app.models.blueprint import (
     Blueprint,
     BlueprintVersion,
@@ -43,7 +60,21 @@ __all__ = [
     "GoogleCalendarCredential",
     "Message",
     "MessageConnection",
+    "DeadlineStatus",
+    "IssuePriority",
+    "IssueStatus",
+    "PaymentProvider",
+    "PaymentStatus",
     "Project",
+    "ProjectAttachment",
+    "ProjectDeadline",
+    "ProjectDeadlineAssignee",
+    "ProjectDeliverable",
+    "ProjectComment",
+    "ProjectIssue",
+    "ProjectMember",
+    "ProjectMemberStatus",
+    "ProjectPayment",
     "ProjectStatus",
     "Skill",
     "Domain",

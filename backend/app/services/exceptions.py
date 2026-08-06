@@ -37,6 +37,9 @@ class ErrorCode(StrEnum):
     PROJECT_ACCESS_DENIED = "project_access_denied"
     PROJECT_PERSISTENCE = "project_persistence"
     PROJECT_INVALID_ASSIGNMENT = "project_invalid_assignment"
+    PROJECT_MEMBER_NOT_FOUND = "project_member_not_found"
+    PROJECT_MEMBER_CONFLICT = "project_member_conflict"
+    PROJECT_INVALID_PHASE = "project_invalid_phase"
 
 
 class AppError(Exception):
@@ -301,3 +304,24 @@ class ProjectInvalidAssignmentError(AppError):
 
     def __init__(self, message: str = "One or more assigned developers do not exist.") -> None:
         super().__init__(ErrorCode.PROJECT_INVALID_ASSIGNMENT, message)
+
+
+class ProjectMemberNotFoundError(AppError):
+    """The requested project membership or invitation does not exist."""
+
+    def __init__(self, message: str = "Invitation not found.") -> None:
+        super().__init__(ErrorCode.PROJECT_MEMBER_NOT_FOUND, message)
+
+
+class ProjectMemberConflictError(AppError):
+    """The membership is not in a state that allows the requested transition."""
+
+    def __init__(self, message: str = "This invitation can no longer be changed.") -> None:
+        super().__init__(ErrorCode.PROJECT_MEMBER_CONFLICT, message)
+
+
+class ProjectInvalidPhaseError(AppError):
+    """The referenced phase index does not exist on this project."""
+
+    def __init__(self, message: str = "That phase does not exist on this project.") -> None:
+        super().__init__(ErrorCode.PROJECT_INVALID_PHASE, message)

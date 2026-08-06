@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.user import DeveloperProfile, User, UserRole
+from app.repositories.users import discoverable_developer_filters
 
 
 def list_available_developers(db: Session) -> list[User]:
@@ -15,7 +16,7 @@ def list_available_developers(db: Session) -> list[User]:
         .options(selectinload(User.developer_profile))
         .where(
             User.role == UserRole.DEVELOPER,
-            User.email_verified.is_(True),
+            *discoverable_developer_filters(),
         )
     )
     return list(db.scalars(statement).all())
@@ -38,7 +39,7 @@ def get_developers_by_ids(db: Session, developer_ids: list[str]) -> list[User]:
         .where(
             User.id.in_(valid_ids),
             User.role == UserRole.DEVELOPER,
-            User.email_verified.is_(True),
+            *discoverable_developer_filters(),
         )
     )
     return list(db.scalars(statement).all())

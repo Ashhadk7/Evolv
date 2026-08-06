@@ -25,3 +25,9 @@ class CertificationResponse(CertificationBase):
 
     id: UUID
     user_id: UUID
+
+
+class CertificationImageResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    image_url: str
