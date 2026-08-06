@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -18,6 +19,7 @@ class NotificationResponse(BaseModel):
     body: str
     tab: str
     action_label: str
+    payload: dict[str, Any] | None = None
     # Populated manually from the ORM's read_at field
     read: bool
     created_at: datetime

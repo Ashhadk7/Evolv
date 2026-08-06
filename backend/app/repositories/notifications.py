@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -58,6 +59,7 @@ def create_notification(
     body: str,
     tab: str,
     action_label: str,
+    payload: dict[str, Any] | None = None,
 ) -> Notification:
     notification = Notification(
         user_id=user_id,
@@ -66,6 +68,7 @@ def create_notification(
         body=body,
         tab=tab,
         action_label=action_label,
+        payload=payload,
     )
     db.add(notification)
     return notification
