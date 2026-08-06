@@ -6,6 +6,7 @@ import {
   type Deliverable,
   type DeliverableDetail,
 } from "@/features/projects/deliverables-api";
+import { useProjectsLiveRefresh } from "./use-projects-live-refresh";
 
 export function useProjectDeliverables(
   projectId: string | undefined,
@@ -18,6 +19,7 @@ export function useProjectDeliverables(
   const [composing, setComposing] = useState(false);
   const [composerPhase, setComposerPhase] = useState(0);
   const [editing, setEditing] = useState<DeliverableDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const reload = useCallback(() => {
     if (!projectId) return Promise.resolve();
@@ -25,12 +27,15 @@ export function useProjectDeliverables(
       .then(setDeliverables)
       .catch((err) => {
         console.error("[projects] Failed to load deliverables:", err);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [projectId]);
 
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useProjectsLiveRefresh(reload);
 
   const byPhase = useMemo(() => {
     const grouped = new Map<number, Deliverable[]>();
@@ -56,6 +61,7 @@ export function useProjectDeliverables(
 
   return {
     deliverables,
+    loading,
     byPhase,
     openDeliverableId,
     setOpenDeliverableId,

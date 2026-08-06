@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarBlank, CheckSquare, PencilSimple, Plus, Square, Trash } from "@phosphor-icons/react";
 import { Chip } from "@/components/shared/chip";
 import { Kicker } from "@/components/shared/kicker";
+import { LoadingPanel } from "@/components/shared/loading-panel";
 import { ScrollArea } from "@/components/shared/scroll-area";
 import { fmtDate } from "@/features/blueprints/blueprint-content";
 import type { Deadline } from "@/features/projects/deadlines-api";
@@ -19,6 +20,7 @@ const SOURCE_LABEL = {
 
 export function DeadlinesPanel({
   deadlines,
+  loading = false,
   today,
   phaseNameFor,
   busyId,
@@ -28,6 +30,7 @@ export function DeadlinesPanel({
   onToggleMet,
 }: {
   deadlines: Deadline[];
+  loading?: boolean;
   today: string;
   phaseNameFor: (index: number) => string | undefined;
   busyId?: string | null;
@@ -88,7 +91,9 @@ export function DeadlinesPanel({
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {loading ? (
+        <LoadingPanel label="Loading deadlines…" />
+      ) : visible.length === 0 ? (
         <p className="text-bp-muted m-0 text-[12.5px]">
           {filter === EVERYONE
             ? "No deadlines set on this project yet."

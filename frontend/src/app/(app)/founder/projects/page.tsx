@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectsTab } from "@/features/projects/components/projects-tab";
+import { LoadingPanel } from "@/components/shared/loading-panel";
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-navigation";
 import type { Blueprint } from "@/features/blueprints/types";
 import { mergeBlueprintsWithProjects } from "@/features/projects/lib/project-helpers";
+import { useProjectsLiveRefresh } from "@/features/projects/lib/use-projects-live-refresh";
 import {
   listProjects,
   createProject,
@@ -64,6 +66,8 @@ export default function FounderProjectsPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  useProjectsLiveRefresh(loadProjects);
 
   // Derived, not stored: recomputed whenever either input changes, so it can
   // never fall out of sync with the backend project list.
@@ -187,8 +191,8 @@ export default function FounderProjectsPage() {
     // that already has one. An inert loading state makes that window
     // unreachable instead of papering over it.
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-bp-muted text-[13px]">Loading your projects…</div>
+      <div className="flex h-full items-center justify-center p-8">
+        <LoadingPanel label="Loading your projects…" />
       </div>
     );
   }

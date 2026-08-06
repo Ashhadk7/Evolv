@@ -31,7 +31,10 @@ export function ModalOverlay({
     document.addEventListener("keydown", onKeyDown);
     const { overflow } = document.body.style;
     document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    const firstFocusable = panelRef.current?.querySelector<HTMLElement>(
+      "input:not([disabled]),textarea:not([disabled]),button:not([disabled])"
+    );
+    (firstFocusable ?? panelRef.current)?.focus();
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);

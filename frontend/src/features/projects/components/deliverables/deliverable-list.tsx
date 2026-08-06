@@ -2,6 +2,7 @@
 
 import { CalendarBlank, ChatCircle, CheckSquare, Paperclip, Plus, Square } from "@phosphor-icons/react";
 import { Chip } from "@/components/shared/chip";
+import { LoadingPanel } from "@/components/shared/loading-panel";
 import { ScrollArea } from "@/components/shared/scroll-area";
 import { fmtDate } from "@/features/blueprints/blueprint-content";
 import type { Deliverable } from "@/features/projects/deliverables-api";
@@ -9,11 +10,13 @@ import { DELIVERABLE_STATUS_LABEL } from "@/features/projects/types";
 
 export function DeliverableList({
   deliverables,
+  loading = false,
   today,
   onOpen,
   onCreate,
 }: {
   deliverables: Deliverable[];
+  loading?: boolean;
   today: string;
   onOpen: (deliverableId: string) => void;
   onCreate?: () => void;
@@ -42,7 +45,11 @@ export function DeliverableList({
         </div>
       </div>
 
-      {deliverables.length === 0 ? (
+      {loading ? (
+        <div className="mb-5">
+          <LoadingPanel label="Loading deliverables…" />
+        </div>
+      ) : deliverables.length === 0 ? (
         <p className="text-bp-muted mb-5 text-[12.5px]">No deliverables listed for this phase yet.</p>
       ) : (
         <ScrollArea size="md">

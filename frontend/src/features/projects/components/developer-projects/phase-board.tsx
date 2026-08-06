@@ -19,6 +19,7 @@ export function DeveloperPhaseBoard({
   phases,
   phaseContent,
   deliverablesByPhase,
+  deliverablesLoading = false,
   expandedIndex,
   today,
   onSelectPhase,
@@ -27,6 +28,7 @@ export function DeveloperPhaseBoard({
   phases: DeveloperPhase[];
   phaseContent: Phase[];
   deliverablesByPhase: Map<number, Deliverable[]>;
+  deliverablesLoading?: boolean;
   expandedIndex: number;
   today: string;
   onSelectPhase: (index: number) => void;
@@ -109,6 +111,7 @@ export function DeveloperPhaseBoard({
                   <div className="p-5">
                     <DeliverableList
                       deliverables={deliverables}
+                      loading={deliverablesLoading}
                       today={today}
                       onOpen={onOpenDeliverable}
                     />

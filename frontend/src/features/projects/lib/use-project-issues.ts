@@ -8,6 +8,7 @@ import {
   type Issue,
   type IssueDetail,
 } from "@/features/projects/issues-api";
+import { useProjectsLiveRefresh } from "./use-projects-live-refresh";
 
 export function useProjectIssues(
   projectId: string | undefined,
@@ -21,19 +22,24 @@ export function useProjectIssues(
   const [openIssueId, setOpenIssueId] = useState<string | null>(initialIssueId);
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<IssueDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const reload = useCallback(() => {
     if (!projectId) return Promise.resolve();
     const work: Promise<unknown>[] = [listIssues(projectId).then(setIssues)];
     if (withAssignees) work.push(listAssignees(projectId).then(setAssignees));
-    return Promise.all(work).catch((err) => {
-      console.error("[projects] Failed to load issues:", err);
-    });
+    return Promise.all(work)
+      .catch((err) => {
+        console.error("[projects] Failed to load issues:", err);
+      })
+      .finally(() => setLoading(false));
   }, [projectId, withAssignees]);
 
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useProjectsLiveRefresh(reload);
 
   const openComposer = (issue: IssueDetail | null = null) => {
     setEditing(issue);
@@ -49,6 +55,7 @@ export function useProjectIssues(
   return {
     issues,
     assignees,
+    loading,
     openIssueId,
     setOpenIssueId,
     composing,

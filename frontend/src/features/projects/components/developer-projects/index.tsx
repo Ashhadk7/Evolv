@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Briefcase, CheckCircle, Coins, ListChecks, Warning } from "@phosphor-icons/react";
 import { Kicker } from "@/components/shared/kicker";
 import { Label } from "@/components/shared/label";
+import { LoadingPanel } from "@/components/shared/loading-panel";
 import { getApiErrorMessage } from "@/lib/api";
 import {
   fmtCents,
@@ -18,6 +19,7 @@ import {
   type DeveloperProjectSummary,
 } from "@/features/projects/developer-projects-api";
 import { isClosedStatus } from "@/features/projects/types";
+import { useProjectsLiveRefresh } from "@/features/projects/lib/use-projects-live-refresh";
 import { ProjectSection } from "../project-section";
 import { DeveloperProjectCard } from "./developer-project-card";
 import { InviteTray } from "./invite-tray";
@@ -25,6 +27,14 @@ import { DeveloperProjectDetailView } from "./project-detail";
 
 const CARD =
   "bg-bp-card border-bp-border rounded-2xl border shadow-[0_1px_1px_rgba(19,36,29,0.03),0_2px_6px_rgba(19,36,29,0.03),0_16px_40px_-18px_rgba(19,36,29,0.14)]";
+
+function ErrorBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-bp-red-line bg-bp-red-bg text-bp-red rounded-lg border px-4 py-2.5 text-[12.5px]">
+      {children}
+    </div>
+  );
+}
 
 export default function DeveloperProjects() {
   const router = useRouter();
@@ -60,6 +70,17 @@ export default function DeveloperProjects() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useProjectsLiveRefresh(load);
+
+  const reloadDetail = useCallback(() => {
+    if (!selectedId) return Promise.resolve();
+    return getDeveloperProject(selectedId)
+      .then((next) => setDetail(next))
+      .catch(() => undefined);
+  }, [selectedId]);
+
+  useProjectsLiveRefresh(reloadDetail);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -102,8 +123,30 @@ export default function DeveloperProjects() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-bp-muted text-[13px]">Loading your projects…</div>
+      <div className="flex h-full items-center justify-center p-8">
+        <LoadingPanel label="Loading your projects…" />
+      </div>
+    );
+  }
+
+  if (selectedId && !activeDetail) {
+    if (loadError) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+          <ErrorBanner>Couldn&apos;t load this project ({loadError}).</ErrorBanner>
+          <button
+            type="button"
+            onClick={() => select(null)}
+            className="text-bp-forest cursor-pointer text-[12.5px] font-bold underline underline-offset-2"
+          >
+            Back to your projects
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <LoadingPanel label="Loading project…" />
       </div>
     );
   }
@@ -180,7 +223,7 @@ export default function DeveloperProjects() {
         </div>
 
         {loadError && (
-          <div className="border-bp-red-line bg-bp-red-bg text-bp-red rounded-lg border px-4 py-2.5 text-[12.5px]">
+          <ErrorBanner>
             Couldn&apos;t load your projects ({loadError}) —{" "}
             <button
               type="button"
@@ -193,7 +236,7 @@ export default function DeveloperProjects() {
               retry
             </button>
             .
-          </div>
+          </ErrorBanner>
         )}
 
         <InviteTray invites={invites} onRespond={handleRespond} busyId={busyInviteId} />

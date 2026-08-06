@@ -201,6 +201,7 @@ export function DeveloperProjectDetailView({
             phases={project.phases}
             phaseContent={phaseContent}
             deliverablesByPhase={deliverableState.byPhase}
+            deliverablesLoading={deliverableState.loading}
             expandedIndex={expandedIndex}
             today={today}
             onSelectPhase={setExpandedIndex}
@@ -211,12 +212,14 @@ export function DeveloperProjectDetailView({
         <div className="flex flex-col gap-4">
           <IssuesPanel
             issues={issueState.issues}
+            loading={issueState.loading}
             phaseNameFor={phaseNameFor}
             onOpenIssue={issueState.setOpenIssueId}
             showMineFilter
           />
           <DeadlinesPanel
             deadlines={deadlineState.deadlines}
+            loading={deadlineState.loading}
             today={today}
             phaseNameFor={phaseNameFor}
             busyId={deadlineState.busyId}

@@ -7,12 +7,14 @@ import {
   setDeadlineMet,
   type Deadline,
 } from "@/features/projects/deadlines-api";
+import { useProjectsLiveRefresh } from "./use-projects-live-refresh";
 
 export function useProjectDeadlines(projectId: string | undefined) {
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<Deadline | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const reload = useCallback(() => {
     if (!projectId) return Promise.resolve();
@@ -20,12 +22,15 @@ export function useProjectDeadlines(projectId: string | undefined) {
       .then(setDeadlines)
       .catch((err) => {
         console.error("[projects] Failed to load deadlines:", err);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [projectId]);
 
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useProjectsLiveRefresh(reload);
 
   const openComposer = (deadline: Deadline | null = null) => {
     setEditing(deadline);
@@ -55,6 +60,7 @@ export function useProjectDeadlines(projectId: string | undefined) {
 
   return {
     deadlines,
+    loading,
     composing,
     editing,
     busyId,

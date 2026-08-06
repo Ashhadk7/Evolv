@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bug, CaretRight, ChatCircle, Paperclip, Plus } from "@phosphor-icons/react";
 import { Chip } from "@/components/shared/chip";
 import { Kicker } from "@/components/shared/kicker";
+import { LoadingPanel } from "@/components/shared/loading-panel";
 import { ScrollArea } from "@/components/shared/scroll-area";
 import { fmtDate } from "@/features/blueprints/blueprint-content";
 import type { IssueStatus } from "@/features/projects/developer-projects-api";
@@ -21,12 +22,14 @@ const GROUPS: { key: string; label: string; statuses: IssueStatus[] }[] = [
 
 export function IssuesPanel({
   issues,
+  loading = false,
   phaseNameFor,
   onOpenIssue,
   onCreate,
   showMineFilter = false,
 }: {
   issues: Issue[];
+  loading?: boolean;
   phaseNameFor: (index: number) => string | undefined;
   onOpenIssue: (issueId: string) => void;
   onCreate?: () => void;
@@ -89,7 +92,9 @@ export function IssuesPanel({
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {loading ? (
+        <LoadingPanel label="Loading issues…" />
+      ) : visible.length === 0 ? (
         <p className="text-bp-muted m-0 text-[12.5px]">
           {filter === EVERYONE
             ? "No issues raised — everything shipped so far matches the spec."
