@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.user import DeveloperProfile
 from app.repositories import matching as matching_repository
 from app.schemas.matching import (
     BlueprintMatchesResponse,
@@ -14,6 +15,7 @@ from app.schemas.matching import (
 )
 from app.services import embeddings_service, pinecone_service
 from app.services.developer_rates import median_weekly_usd, rate_of
+from app.services.profile_quality import is_developer_profile_matchable
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +89,8 @@ def _score_all(
     for user in developers:
         profile = user.developer_profile
         if profile is None or (profile.experience_years or 0) < min_experience:
+            continue
+        if not is_developer_profile_matchable(profile):
             continue
         score = _score_developer(
             profile.skills, required_skills, profile.experience_years, profile.availability
@@ -208,6 +212,8 @@ def get_matches_semantic(
         profile = user.developer_profile if user else None
         if profile is None or (profile.experience_years or 0) < min_experience:
             continue
+        if not is_developer_profile_matchable(profile):
+            continue
 
         rule_score = _score_developer(
             profile.skills, required_skills, profile.experience_years, profile.availability
@@ -222,13 +228,20 @@ def get_matches_semantic(
     return MatchListResponse(total=len(scored), items=scored[:limit])
 
 
-def sync_developer_embedding(user_id: UUID, skills: list[str]) -> None:
-    if not skills:
+def sync_developer_embedding(profile: DeveloperProfile) -> None:
+    if not is_developer_profile_matchable(profile):
+        # Profile no longer clears the matching bar (e.g. edited down to junk) -
+        # drop any stale vector rather than leaving an outdated one queryable.
+        logger.info(
+            "Skipping embedding sync for user %s: profile does not meet the matching quality bar",
+            profile.user_id,
+        )
+        remove_developer_embedding(profile.user_id)
         return
     _upsert(
         pinecone_service.upsert_developer,
-        str(user_id),
-        ", ".join(skills),
+        str(profile.user_id),
+        ", ".join(profile.skills),
         "developer",
     )
 
@@ -276,7 +289,7 @@ def reindex_developer_embeddings(db: Session) -> int:
     indexed = 0
     for user in developers:
         profile = user.developer_profile
-        if profile is None or not profile.skills:
+        if profile is None or not is_developer_profile_matchable(profile):
             continue
         embedding = embeddings_service.embed_text(
             ", ".join(profile.skills), input_type=embeddings_service.PASSAGE_INPUT_TYPE
