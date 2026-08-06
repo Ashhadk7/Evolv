@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.projects import (
@@ -75,8 +75,11 @@ def create_issue(
     payload: IssueCreate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> IssueResponse:
-    return project_issue_service.create_issue(db, project_id, current_user, payload)
+    return project_issue_service.create_issue(
+        db, project_id, current_user, payload, background_tasks=background_tasks
+    )
 
 
 @router.get("/{project_id}/deadlines", response_model=DeadlineListResponse)
@@ -99,8 +102,11 @@ def create_deadline(
     payload: DeadlineCreate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> DeadlineResponse:
-    return project_deadline_service.create_deadline(db, project_id, current_user, payload)
+    return project_deadline_service.create_deadline(
+        db, project_id, current_user, payload, background_tasks=background_tasks
+    )
 
 
 @router.patch("/deadlines/{deadline_id}", response_model=DeadlineResponse)
@@ -128,8 +134,11 @@ def set_deadline_met(
     payload: DeadlineMetUpdate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> DeadlineResponse:
-    return project_deadline_service.set_met(db, deadline_id, current_user, met=payload.met)
+    return project_deadline_service.set_met(
+        db, deadline_id, current_user, met=payload.met, background_tasks=background_tasks
+    )
 
 
 @router.get("/{project_id}/assignees", response_model=ProjectAssigneeListResponse)
@@ -158,8 +167,11 @@ def update_issue(
     payload: IssueUpdate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> IssueResponse:
-    return project_issue_service.update_issue(db, issue_id, current_user, payload)
+    return project_issue_service.update_issue(
+        db, issue_id, current_user, payload, background_tasks=background_tasks
+    )
 
 
 @router.patch("/issues/{issue_id}/status", response_model=IssueResponse)
@@ -168,8 +180,20 @@ def set_issue_status(
     payload: IssueStatusUpdate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> IssueResponse:
-    return project_issue_service.set_issue_status(db, issue_id, current_user, payload.status)
+    return project_issue_service.set_issue_status(
+        db, issue_id, current_user, payload.status, background_tasks=background_tasks
+    )
+
+
+@router.delete("/issues/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_issue(
+    issue_id: UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> None:
+    project_issue_service.delete_issue(db, issue_id, current_user)
 
 
 @router.post(
@@ -182,8 +206,11 @@ def add_issue_comment(
     payload: CommentCreate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> CommentResponse:
-    return project_issue_service.add_comment(db, issue_id, current_user, payload.body)
+    return project_issue_service.add_comment(
+        db, issue_id, current_user, payload.body, background_tasks=background_tasks
+    )
 
 
 @router.post(
@@ -274,9 +301,15 @@ def set_deliverable_status(
     payload: DeliverableStatusUpdate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> DeliverableSummaryResponse:
     return project_deliverable_service.set_status(
-        db, deliverable_id, current_user, status=payload.status, comment=payload.comment
+        db,
+        deliverable_id,
+        current_user,
+        status=payload.status,
+        comment=payload.comment,
+        background_tasks=background_tasks,
     )
 
 
@@ -290,8 +323,11 @@ def add_deliverable_comment(
     payload: CommentCreate,
     db: DbSession,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> CommentResponse:
-    return project_deliverable_service.add_comment(db, deliverable_id, current_user, payload.body)
+    return project_deliverable_service.add_comment(
+        db, deliverable_id, current_user, payload.body, background_tasks=background_tasks
+    )
 
 
 @router.post(

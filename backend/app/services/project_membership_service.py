@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -125,7 +126,11 @@ def _member_responses(db: Session, members: list[ProjectMember]) -> list[Project
 
 
 def invite_developer(
-    db: Session, project_id: UUID, current_user: User, payload: ProjectMemberInvite
+    db: Session,
+    project_id: UUID,
+    current_user: User,
+    payload: ProjectMemberInvite,
+    background_tasks: BackgroundTasks | None = None,
 ) -> ProjectMemberResponse:
     founder_id = _require_founder(current_user)
     project = _owned_project(db, project_id, founder_id)
@@ -169,7 +174,7 @@ def invite_developer(
 
     db.refresh(member)
     notifications_service.notify_project_invite(
-        db, member=member, project=project, founder=current_user
+        db, member=member, project=project, founder=current_user, background_tasks=background_tasks
     )
     return _member_response(db, member)
 
@@ -192,7 +197,12 @@ def _transition(
 
 
 def respond_to_invite(
-    db: Session, member_id: UUID, current_user: User, *, accept: bool
+    db: Session,
+    member_id: UUID,
+    current_user: User,
+    *,
+    accept: bool,
+    background_tasks: BackgroundTasks | None = None,
 ) -> ProjectMemberResponse:
     developer_id = _require_developer(current_user)
 
@@ -213,7 +223,12 @@ def respond_to_invite(
     project = projects_repository.get_project_by_id(db, member.project_id)
     if project is not None:
         notifications_service.notify_project_invite_response(
-            db, member=member, project=project, developer=current_user, accepted=accept
+            db,
+            member=member,
+            project=project,
+            developer=current_user,
+            accepted=accept,
+            background_tasks=background_tasks,
         )
     return _member_response(db, member)
 
@@ -234,7 +249,11 @@ def revoke_invite(db: Session, member_id: UUID, current_user: User) -> ProjectMe
 
 
 def remove_member(
-    db: Session, member_id: UUID, current_user: User, reason: str
+    db: Session,
+    member_id: UUID,
+    current_user: User,
+    reason: str,
+    background_tasks: BackgroundTasks | None = None,
 ) -> ProjectMemberResponse:
     founder_id = _require_founder(current_user)
 
@@ -248,13 +267,17 @@ def remove_member(
 
     _transition(db, member, ProjectMemberStatus.REMOVED, reason=reason)
     notifications_service.notify_project_member_removed(
-        db, member=member, project=project, founder=current_user
+        db, member=member, project=project, founder=current_user, background_tasks=background_tasks
     )
     return _member_response(db, member)
 
 
 def record_payment(
-    db: Session, member_id: UUID, current_user: User, payload: ProjectPaymentRecord
+    db: Session,
+    member_id: UUID,
+    current_user: User,
+    payload: ProjectPaymentRecord,
+    background_tasks: BackgroundTasks | None = None,
 ) -> ProjectMemberResponse:
     founder_id = _require_founder(current_user)
 
@@ -304,7 +327,11 @@ def record_payment(
         raise ProjectPersistenceError("The payment could not be recorded.") from exc
 
     notifications_service.notify_project_payment(
-        db, member=member, project=project, amount_cents=payload.amount_cents
+        db,
+        member=member,
+        project=project,
+        amount_cents=payload.amount_cents,
+        background_tasks=background_tasks,
     )
     return _member_response(db, member)
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -164,7 +165,11 @@ def list_assignees(db: Session, project_id: UUID, user: User) -> list[ProjectAss
 
 
 def create_issue(
-    db: Session, project_id: UUID, user: User, payload: IssueCreate
+    db: Session,
+    project_id: UUID,
+    user: User,
+    payload: IssueCreate,
+    background_tasks: BackgroundTasks | None = None,
 ) -> IssueResponse:
     access = require_access(db, project_id, user)
     if not access.is_founder:
@@ -188,12 +193,16 @@ def create_issue(
     _commit(db, "The issue could not be saved.")
     db.refresh(issue)
 
-    _notify_assignment(db, issue, access)
+    _notify_assignment(db, issue, access, background_tasks)
     return _issue_response(db, issue, access)
 
 
 def update_issue(
-    db: Session, issue_id: UUID, user: User, payload: IssueUpdate
+    db: Session,
+    issue_id: UUID,
+    user: User,
+    payload: IssueUpdate,
+    background_tasks: BackgroundTasks | None = None,
 ) -> IssueResponse:
     issue, access = _issue_access(db, issue_id, user)
     if not access.is_founder:
@@ -224,12 +233,24 @@ def update_issue(
     db.refresh(issue)
 
     if issue.assignee_id is not None and issue.assignee_id != previous_assignee:
-        _notify_assignment(db, issue, access)
+        _notify_assignment(db, issue, access, background_tasks)
     return _issue_response(db, issue, access)
 
 
+def delete_issue(db: Session, issue_id: UUID, user: User) -> None:
+    issue, access = _issue_access(db, issue_id, user)
+    if not access.is_founder:
+        raise ProjectAccessDeniedError("Only the founder can delete issues.")
+    db.delete(issue)
+    _commit(db, "The issue could not be deleted.")
+
+
 def set_issue_status(
-    db: Session, issue_id: UUID, user: User, status: IssueStatus
+    db: Session,
+    issue_id: UUID,
+    user: User,
+    status: IssueStatus,
+    background_tasks: BackgroundTasks | None = None,
 ) -> IssueResponse:
     issue, access = _issue_access(db, issue_id, user)
 
@@ -247,16 +268,22 @@ def set_issue_status(
     _commit(db, "The issue status could not be updated.")
     db.refresh(issue)
 
-    _notify_status(db, issue, access, status)
+    _notify_status(db, issue, access, status, background_tasks)
     return _issue_response(db, issue, access)
 
 
-def add_comment(db: Session, issue_id: UUID, user: User, body: str) -> CommentResponse:
+def add_comment(
+    db: Session,
+    issue_id: UUID,
+    user: User,
+    body: str,
+    background_tasks: BackgroundTasks | None = None,
+) -> CommentResponse:
     issue, access = _issue_access(db, issue_id, user)
     comment = project_collaboration_service.add_comment(
         db, issue_id=issue.id, author_id=user.id, body=body
     )
-    _notify_comment(db, issue, access)
+    _notify_comment(db, issue, access, background_tasks)
     return project_collaboration_service.comment_response(comment, access.user_id)
 
 
@@ -281,16 +308,26 @@ def add_attachment(
     return project_collaboration_service.attachment_response(attachment, access.user_id)
 
 
-def _notify_assignment(db: Session, issue: ProjectIssue, access: Access) -> None:
+def _notify_assignment(
+    db: Session, issue: ProjectIssue, access: Access, background_tasks: BackgroundTasks | None
+) -> None:
     if issue.assignee_id is None or issue.assignee_id == access.user_id:
         return
     notifications_service.notify_issue_assigned(
-        db, issue=issue, project=access.project, actor=access.user
+        db,
+        issue=issue,
+        project=access.project,
+        actor=access.user,
+        background_tasks=background_tasks,
     )
 
 
 def _notify_status(
-    db: Session, issue: ProjectIssue, access: Access, status: IssueStatus
+    db: Session,
+    issue: ProjectIssue,
+    access: Access,
+    status: IssueStatus,
+    background_tasks: BackgroundTasks | None,
 ) -> None:
     recipient = (
         access.project.founder_id if not access.is_founder else issue.assignee_id
@@ -304,15 +341,23 @@ def _notify_status(
         actor=access.user,
         status=status,
         recipient_id=recipient,
+        background_tasks=background_tasks,
     )
 
 
-def _notify_comment(db: Session, issue: ProjectIssue, access: Access) -> None:
+def _notify_comment(
+    db: Session, issue: ProjectIssue, access: Access, background_tasks: BackgroundTasks | None
+) -> None:
     recipient = (
         access.project.founder_id if not access.is_founder else issue.assignee_id
     )
     if recipient is None or recipient == access.user_id:
         return
     notifications_service.notify_issue_comment(
-        db, issue=issue, project=access.project, actor=access.user, recipient_id=recipient
+        db,
+        issue=issue,
+        project=access.project,
+        actor=access.user,
+        recipient_id=recipient,
+        background_tasks=background_tasks,
     )

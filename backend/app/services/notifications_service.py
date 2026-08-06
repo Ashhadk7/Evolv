@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -24,6 +25,7 @@ from app.repositories import messages as messages_repository
 from app.repositories import notifications as notifications_repository
 from app.repositories import users as users_repository
 from app.schemas.messages import MessageResponse
+from app.schemas.notifications import NotificationResponse
 from app.services.exceptions import (
     NotificationAccessDeniedError,
     NotificationNotFoundError,
@@ -311,8 +313,9 @@ def notify_project_invite(
     member: ProjectMember,
     project: Project,
     founder: User,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -331,6 +334,8 @@ def notify_project_invite(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_project_invite_response(
@@ -340,9 +345,10 @@ def notify_project_invite_response(
     project: Project,
     developer: User,
     accepted: bool,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     verb = "accepted" if accepted else "declined"
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -361,6 +367,8 @@ def notify_project_invite_response(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_project_member_removed(
@@ -369,8 +377,9 @@ def notify_project_member_removed(
     member: ProjectMember,
     project: Project,
     founder: User,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -389,6 +398,8 @@ def notify_project_member_removed(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_project_payment(
@@ -397,9 +408,10 @@ def notify_project_payment(
     member: ProjectMember,
     project: Project,
     amount_cents: int,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     amount = f"${amount_cents / 100:,.2f}"
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -415,14 +427,21 @@ def notify_project_payment(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_issue_assigned(
-    db: Session, *, issue: ProjectIssue, project: Project, actor: User
+    db: Session,
+    *,
+    issue: ProjectIssue,
+    project: Project,
+    actor: User,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     if issue.assignee_id is None:
         return None
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -441,6 +460,8 @@ def notify_issue_assigned(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_issue_status(
@@ -451,9 +472,10 @@ def notify_issue_status(
     actor: User,
     status: object,
     recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     label = str(getattr(status, "value", status)).replace("_", " ")
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -472,6 +494,8 @@ def notify_issue_status(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_issue_comment(
@@ -481,8 +505,9 @@ def notify_issue_comment(
     project: Project,
     actor: User,
     recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -501,6 +526,8 @@ def notify_issue_comment(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 DELIVERABLE_VERBS: dict[DeliverableStatus, str] = {
@@ -519,9 +546,10 @@ def notify_deliverable_status(
     actor: User,
     recipient_id: UUID,
     status: DeliverableStatus,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     verb = DELIVERABLE_VERBS[status]
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -540,6 +568,8 @@ def notify_deliverable_status(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_deliverable_comment(
@@ -549,8 +579,9 @@ def notify_deliverable_comment(
     project: Project,
     actor: User,
     recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -569,6 +600,8 @@ def notify_deliverable_comment(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def _deliverable_payload(deliverable: ProjectDeliverable) -> dict[str, object]:
@@ -586,10 +619,11 @@ def notify_deadline_assigned(
     project: Project,
     actor: User,
     recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     if recipient_id == actor.id:
         return None
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -608,6 +642,8 @@ def notify_deadline_assigned(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def notify_deadline_progress(
@@ -618,11 +654,12 @@ def notify_deadline_progress(
     actor: User,
     recipient_id: UUID,
     met: bool,
+    background_tasks: BackgroundTasks | None = None,
 ) -> Notification | None:
     if recipient_id == actor.id:
         return None
     verb = "marked as met" if met else "reopened"
-    return _commit_notifications(
+    notification = _commit_notifications(
         db,
         [
             _queue_notification_if_enabled(
@@ -641,6 +678,8 @@ def notify_deadline_progress(
             )
         ],
     )
+    _push_live(background_tasks, notification)
+    return notification
 
 
 def _deadline_payload(deadline: ProjectDeadline) -> dict[str, object]:
@@ -752,3 +791,16 @@ def _commit_notifications(
         return [] if many else None
 
     return created if many else created[0]
+
+
+def _push_live(background_tasks: BackgroundTasks | None, notification: Notification | None) -> None:
+    """Deferred import avoids a cycle: message_websocket already imports this module."""
+    if background_tasks is None or notification is None:
+        return
+    from app.services import message_websocket
+
+    background_tasks.add_task(
+        message_websocket.publish_notification_created,
+        notification.user_id,
+        NotificationResponse.model_validate(notification),
+    )

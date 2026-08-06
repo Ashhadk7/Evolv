@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 
 from app.api.deps import CurrentDeveloper, DbSession
 from app.schemas.projects import (
@@ -37,8 +37,11 @@ def accept_developer_invite(
     member_id: UUID,
     db: DbSession,
     current_user: CurrentDeveloper,
+    background_tasks: BackgroundTasks,
 ) -> ProjectMemberResponse:
-    return project_membership_service.respond_to_invite(db, member_id, current_user, accept=True)
+    return project_membership_service.respond_to_invite(
+        db, member_id, current_user, accept=True, background_tasks=background_tasks
+    )
 
 
 @router.post("/invites/{member_id}/decline", response_model=ProjectMemberResponse)
@@ -46,8 +49,11 @@ def decline_developer_invite(
     member_id: UUID,
     db: DbSession,
     current_user: CurrentDeveloper,
+    background_tasks: BackgroundTasks,
 ) -> ProjectMemberResponse:
-    return project_membership_service.respond_to_invite(db, member_id, current_user, accept=False)
+    return project_membership_service.respond_to_invite(
+        db, member_id, current_user, accept=False, background_tasks=background_tasks
+    )
 
 
 @router.get("/{project_id}", response_model=DeveloperProjectDetail)

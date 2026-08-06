@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -204,6 +205,7 @@ def set_status(
     *,
     status: DeliverableStatus,
     comment: str | None,
+    background_tasks: BackgroundTasks | None = None,
 ) -> DeliverableSummaryResponse:
     deliverable, access = _deliverable_access(db, deliverable_id, user)
 
@@ -242,11 +244,18 @@ def set_status(
             actor=user,
             recipient_id=recipient_id,
             status=status,
+            background_tasks=background_tasks,
         )
     return _summary(deliverable, access)
 
 
-def add_comment(db: Session, deliverable_id: UUID, user: User, body: str) -> CommentResponse:
+def add_comment(
+    db: Session,
+    deliverable_id: UUID,
+    user: User,
+    body: str,
+    background_tasks: BackgroundTasks | None = None,
+) -> CommentResponse:
     deliverable, access = _deliverable_access(db, deliverable_id, user)
     comment = project_collaboration_service.add_comment(
         db, deliverable_id=deliverable.id, author_id=user.id, body=body
@@ -259,6 +268,7 @@ def add_comment(db: Session, deliverable_id: UUID, user: User, body: str) -> Com
             project=access.project,
             actor=user,
             recipient_id=recipient_id,
+            background_tasks=background_tasks,
         )
     return project_collaboration_service.comment_response(comment, access.user_id)
 

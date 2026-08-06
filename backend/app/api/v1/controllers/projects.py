@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, BackgroundTasks, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentFounder, DbSession
@@ -134,8 +134,11 @@ def invite_project_member(
     payload: ProjectMemberInvite,
     db: DbSession,
     current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
 ) -> ProjectMemberResponse:
-    return project_membership_service.invite_developer(db, project_id, current_user, payload)
+    return project_membership_service.invite_developer(
+        db, project_id, current_user, payload, background_tasks=background_tasks
+    )
 
 
 @router.delete("/members/{member_id}", response_model=ProjectMemberResponse)
@@ -153,8 +156,11 @@ def remove_project_member(
     payload: ProjectMemberRemove,
     db: DbSession,
     current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
 ) -> ProjectMemberResponse:
-    return project_membership_service.remove_member(db, member_id, current_user, payload.reason)
+    return project_membership_service.remove_member(
+        db, member_id, current_user, payload.reason, background_tasks=background_tasks
+    )
 
 
 @router.post("/members/{member_id}/payments", response_model=ProjectMemberResponse)
@@ -163,8 +169,11 @@ def record_member_payment(
     payload: ProjectPaymentRecord,
     db: DbSession,
     current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
 ) -> ProjectMemberResponse:
-    return project_membership_service.record_payment(db, member_id, current_user, payload)
+    return project_membership_service.record_payment(
+        db, member_id, current_user, payload, background_tasks=background_tasks
+    )
 
 
 @router.patch("/{project_id}/developer", response_model=ProjectResponse)

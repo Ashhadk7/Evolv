@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -192,7 +193,11 @@ def list_deadlines(db: Session, project_id: UUID, user: User) -> list[DeadlineRe
 
 
 def create_deadline(
-    db: Session, project_id: UUID, user: User, payload: DeadlineCreate
+    db: Session,
+    project_id: UUID,
+    user: User,
+    payload: DeadlineCreate,
+    background_tasks: BackgroundTasks | None = None,
 ) -> DeadlineResponse:
     access = require_access(db, project_id, user)
     _require_founder(access)
@@ -214,7 +219,12 @@ def create_deadline(
 
     for assignee_id in payload.assignee_ids:
         notifications_service.notify_deadline_assigned(
-            db, deadline=deadline, project=access.project, actor=user, recipient_id=assignee_id
+            db,
+            deadline=deadline,
+            project=access.project,
+            actor=user,
+            recipient_id=assignee_id,
+            background_tasks=background_tasks,
         )
     return _response(db, deadline, access)
 
@@ -265,7 +275,14 @@ def delete_deadline(db: Session, deadline_id: UUID, user: User) -> None:
     _commit(db, "The deadline could not be removed.")
 
 
-def set_met(db: Session, deadline_id: UUID, user: User, *, met: bool) -> DeadlineResponse:
+def set_met(
+    db: Session,
+    deadline_id: UUID,
+    user: User,
+    *,
+    met: bool,
+    background_tasks: BackgroundTasks | None = None,
+) -> DeadlineResponse:
     deadline = projects_repository.get_deadline_by_id(db, deadline_id)
     if deadline is None:
         raise ProjectMemberNotFoundError("Deadline not found.")
@@ -293,5 +310,6 @@ def set_met(db: Session, deadline_id: UUID, user: User, *, met: bool) -> Deadlin
         actor=user,
         recipient_id=access.project.founder_id,
         met=met,
+        background_tasks=background_tasks,
     )
     return _response(db, deadline, access)
