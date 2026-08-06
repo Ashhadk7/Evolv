@@ -317,6 +317,16 @@ export async function mockAppApi(
       return;
     }
 
+    if (path.startsWith("/developer/projects/invites")) {
+      await fulfillJson(route, { total: 0, items: [] });
+      return;
+    }
+
+    if (path.startsWith("/developer/projects")) {
+      await fulfillJson(route, { total: 0, items: [] });
+      return;
+    }
+
     if (path.startsWith("/projects")) {
       await fulfillJson(route, { total: 0, limit: 100, offset: 0, items: [] });
       return;
@@ -401,6 +411,46 @@ export async function mockSignupStart(page: Page) {
 // specs read as test intent rather than wire format.
 
 type Wire = Record<string, unknown>;
+
+export function developerEarnings(overrides: Wire = {}): Wire {
+  return {
+    currency: "USD",
+    agreed_cents: 250_000,
+    paid_cents: 100_000,
+    outstanding_cents: 150_000,
+    payments: [],
+    ...overrides,
+  };
+}
+
+export function developerProject(overrides: Wire = {}): Wire {
+  return {
+    id: "proj-1",
+    blueprint_id: "bp-1",
+    title: "Nexus Health",
+    status: "active",
+    my_phase_indices: [0],
+    deliverables_done: 2,
+    deliverables_total: 5,
+    open_issues: 1,
+    next_deadline: null,
+    earnings: developerEarnings(),
+    ...overrides,
+  };
+}
+
+export function developerInvite(overrides: Wire = {}): Wire {
+  return {
+    id: "member-1",
+    project_id: "proj-2",
+    project_title: "Aura Logistics",
+    founder_name: "Fiona Founder",
+    phase_index: 1,
+    amount_agreed_cents: 320_000,
+    invited_at: now,
+    ...overrides,
+  };
+}
 
 export function discoverBlueprint(overrides: Wire = {}): Wire {
   return { ...discoverBlueprintWire, ...overrides };
