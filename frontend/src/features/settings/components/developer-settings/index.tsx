@@ -59,6 +59,10 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
   security: { title: "Security", subtitle: "Protect your developer account and login access." },
 };
 
+function formatDeveloperSettingsError(error: unknown): string {
+  return getApiErrorMessage(error).replace(/\bbio\b/g, "professional summary");
+}
+
 const Settings = () => {
   const dashboardProfile = useDeveloperDashboardStore((state) => state.profile);
   const completeProfile = useDeveloperDashboardStore((state) => state.completeProfile);
@@ -189,7 +193,7 @@ const Settings = () => {
         toast.success("Changes saved");
       }
     } catch (error) {
-      const message = getApiErrorMessage(error);
+      const message = formatDeveloperSettingsError(error);
       setSaveError(message);
       toast.error(message);
     } finally {
@@ -225,7 +229,7 @@ const Settings = () => {
         profile: { ...state.profile, avatarUrl: url, photo: url },
       }));
     } catch (error) {
-      setSaveError(getApiErrorMessage(error));
+      setSaveError(formatDeveloperSettingsError(error));
     } finally {
       setPhotoUploading(false);
       if (photoInputRef.current) photoInputRef.current.value = "";
@@ -257,7 +261,7 @@ const Settings = () => {
       });
       toast.success("Notification preferences saved");
     } catch (error) {
-      const message = getApiErrorMessage(error);
+      const message = formatDeveloperSettingsError(error);
       setSaveError(message);
       toast.error(message);
     }
@@ -403,7 +407,7 @@ const Settings = () => {
     try {
       updateCertification(id, { image: await uploadCertificationImage(file) });
     } catch (error) {
-      setSaveError(getApiErrorMessage(error));
+      setSaveError(formatDeveloperSettingsError(error));
     }
   };
 

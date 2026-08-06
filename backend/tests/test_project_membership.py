@@ -16,7 +16,9 @@ from sqlalchemy.orm import Session
 from app.db.session import engine
 from app.models.project import Project, ProjectMember, ProjectMemberStatus
 from app.models.user import DeveloperProfile, User, UserRole
+from app.repositories import projects as projects_repository
 from app.schemas.projects import ProjectMemberInvite, ProjectPaymentRecord
+from app.services import developer_project_service
 from app.services import project_membership_service as service
 from app.services.exceptions import (
     DeveloperProfileRequiredError,
@@ -232,6 +234,41 @@ def test_payment_totals_accumulate_and_are_idempotent(db) -> None:
     except ProjectMemberConflictError:
         return
     raise AssertionError("replaying an idempotency key must not double-charge")
+
+
+def test_developer_earnings_sum_multiple_phases_on_the_same_project(db) -> None:
+    project, founder, developer = _fixture(db)
+    if projects_repository.phase_count(project) < 2:
+        return
+
+    first = _invite(db, project, founder, developer, phase_index=0, cents=70_000)
+    second = _invite(db, project, founder, developer, phase_index=1, cents=30_000)
+    service.respond_to_invite(db, first.id, developer, accept=True)
+    service.respond_to_invite(db, second.id, developer, accept=True)
+
+    service.record_payment(
+        db,
+        first.id,
+        founder,
+        ProjectPaymentRecord(amount_cents=20_000, idempotency_key="phase-one-payment"),
+    )
+    service.record_payment(
+        db,
+        second.id,
+        founder,
+        ProjectPaymentRecord(amount_cents=30_000, idempotency_key="phase-two-payment"),
+    )
+
+    summary = next(
+        item
+        for item in developer_project_service.list_projects(db, developer)
+        if item.id == project.id
+    )
+    assert summary.earnings.agreed_cents == 100_000
+    assert summary.earnings.paid_cents == 50_000
+    assert summary.earnings.outstanding_cents == 50_000
+    assert summary.earnings.engagements[0].paid_cents == 20_000
+    assert summary.earnings.engagements[1].paid_cents == 30_000
 
 
 def test_a_founder_cannot_pay_a_member_on_another_founders_project(db) -> None:

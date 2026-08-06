@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Coins, CreditCard } from "@phosphor-icons/react";
+import { Coins, CreditCard, Lock } from "@phosphor-icons/react";
 import { Chip } from "@/components/shared/chip";
 import { Label } from "@/components/shared/label";
 import { fmtMoney } from "@/features/blueprints/blueprint-content";
@@ -12,6 +12,7 @@ export function PaymentModal({
   amountAgreed,
   amountPaid,
   feePct,
+  stripeConnected,
   onSend,
   onClose,
 }: {
@@ -19,6 +20,7 @@ export function PaymentModal({
   amountAgreed: number;
   amountPaid: number;
   feePct: number;
+  stripeConnected: boolean;
   onSend: (amount: number) => void;
   onClose: () => void;
 }) {
@@ -36,40 +38,31 @@ export function PaymentModal({
   return (
     <ModalShell
       icon={<CreditCard size={16} weight="duotone" className="text-bp-teal" />}
-      title={stripeConnected ? `Pay ${developerName}` : `Record a payment to ${developerName}`}
-      subtitle={stripeConnected ? "via Stripe Connect" : "Bookkeeping record"}
+      title={`Pay ${developerName}`}
+      subtitle={stripeConnected ? "via Stripe Checkout" : "Developer payout setup needed"}
       onClose={onClose}
     >
-      <>
-          <div className="grid grid-cols-3 gap-2.5 mb-4">
-            <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
-              <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
-                Agreed
-              </div>
-              <div className="text-bp-ink text-[15px] font-extrabold tabular-nums font-feature-settings-[_tnum_1,_ss01_1]">
-                {fmtMoney(amountAgreed)}
-              </div>
-            </div>
-            <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
-              <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
-                Paid
-              </div>
-              <div className="text-bp-success text-[15px] font-extrabold tabular-nums font-feature-settings-[_tnum_1,_ss01_1]">
-                {fmtMoney(amountPaid)}
-              </div>
-            </div>
-            <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
-              <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
-                Due
-              </div>
-              <div className={`${due > 0 ? "text-bp-amber" : "text-bp-success"} text-[15px] font-extrabold tabular-nums font-feature-settings-[_tnum_1,_ss01_1]`}>
-                {fmtMoney(due)}
-              </div>
-            </div>
+      <div className="grid grid-cols-3 gap-2.5 mb-4">
+        <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
+          <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
+            Agreed
+          </div>
+          <div className="text-bp-ink text-[15px] font-extrabold tabular-nums font-feature-settings-[_tnum_1,_ss01_1]">
+            {fmtMoney(amountAgreed)}
           </div>
         </div>
-        <div className="bg-bp-tint rounded-lg border border-bp-border-soft p-[10px_12px]">
-          <div className="text-bp-label text-[9.5px] uppercase tracking-wider">Due</div>
+        <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
+          <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
+            Paid
+          </div>
+          <div className="text-bp-success text-[15px] font-extrabold tabular-nums font-feature-settings-[_tnum_1,_ss01_1]">
+            {fmtMoney(amountPaid)}
+          </div>
+        </div>
+        <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
+          <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
+            Due
+          </div>
           <div
             className={`${due > 0 ? "text-bp-amber" : "text-bp-success"} text-[15px] font-extrabold tabular-nums font-feature-settings-[_tnum_1,_ss01_1]`}
           >
@@ -78,55 +71,68 @@ export function PaymentModal({
         </div>
       </div>
 
-          {stripeConnected ? (
-            <div className="bg-bp-tint flex flex-col gap-2 p-[14px_16px] border border-bp-border-soft rounded-xl mb-4.5">
-              <div className="flex justify-between text-[12.5px]">
-                <span className="text-bp-muted">Sent to Evolv platform account</span>
-                <span className="text-bp-ink font-bold">{fmtMoney(amount)}</span>
-              </div>
-              <div className="flex justify-between text-[12.5px]">
-                <span className="text-bp-muted">
-                  Evolv platform fee ({Math.round(feePct * 100)}%)
-                </span>
-                <span className="text-bp-amber font-bold">−{fmtMoney(fee)}</span>
-              </div>
-              <div className="bg-bp-border h-[1px] my-0.5" />
-              <div className="flex justify-between text-[13px]">
-                <span className="text-bp-ink font-bold">{developerName} receives</span>
-                <span className="text-bp-success font-extrabold">{fmtMoney(takeHome)}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-bp-amber-bg flex gap-2.5 items-start p-[14px_16px] border border-bp-amber-line rounded-xl mb-4.5">
-              <Lock size={14} weight="duotone" className="text-bp-amber shrink-0 mt-0.25" />
-              <div className="text-[12.5px] text-[#7a5c10] leading-relaxed">
-                Online payouts aren&apos;t live yet, so this records that you paid{" "}
-                {developerName.split(" ")[0]} {fmtMoney(amount)} outside Evolv. They&apos;ll see it
-                marked as reported by you, not as money received through the platform.
-                {onNavigateSettingsPayment && (
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onNavigateSettingsPayment();
-                    }}
-                    className="ml-1 cursor-pointer border-none bg-transparent p-0 font-semibold underline underline-offset-2"
-                  >
-                    Payout settings
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+      <Chip
+        tone={
+          statusLabel === "Paid in full"
+            ? "mint"
+            : statusLabel === "Partially paid"
+              ? "amber"
+              : "neutral"
+        }
+      >
+        {statusLabel}
+      </Chip>
 
-          <button
-            onClick={() => onSend(amount)}
-            disabled={amount <= 0 || due <= 0}
-            className="bp-primary-btn w-full flex items-center justify-center gap-2 text-[13.5px] font-bold p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Coins size={15} weight="fill" />{" "}
-            {stripeConnected ? "Send payment" : "Record payment"}
-          </button>
-        </>
+      <div className="mt-4">
+        <Label>Amount to pay now</Label>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-bp-ink text-[20px] font-extrabold">$</span>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value) || 0)}
+            className="text-bp-ink flex-1 text-[20px] font-extrabold border border-bp-border rounded-lg p-[8px_12px] outline-none font-inherit tabular-nums font-feature-settings-[_tnum_1,_ss01_1]"
+          />
+        </div>
+      </div>
+
+      {stripeConnected ? (
+        <div className="bg-bp-tint flex flex-col gap-2 p-[14px_16px] border border-bp-border-soft rounded-xl mb-4.5">
+          <div className="flex justify-between text-[12.5px]">
+            <span className="text-bp-muted">Charged through Stripe Checkout</span>
+            <span className="text-bp-ink font-bold">{fmtMoney(amount)}</span>
+          </div>
+          <div className="flex justify-between text-[12.5px]">
+            <span className="text-bp-muted">
+              Evolv platform fee ({Math.round(feePct * 100)}%)
+            </span>
+            <span className="text-bp-amber font-bold">-{fmtMoney(fee)}</span>
+          </div>
+          <div className="bg-bp-border h-[1px] my-0.5" />
+          <div className="flex justify-between text-[13px]">
+            <span className="text-bp-ink font-bold">{developerName} receives</span>
+            <span className="text-bp-success font-extrabold">{fmtMoney(takeHome)}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-bp-amber-bg flex gap-2.5 items-start p-[14px_16px] border border-bp-amber-line rounded-xl mb-4.5">
+          <Lock size={14} weight="duotone" className="text-bp-amber shrink-0 mt-0.25" />
+          <div className="text-[12.5px] text-[#7a5c10] leading-relaxed">
+            {developerName.split(" ")[0]} hasn&apos;t finished Stripe payout setup yet. Ask them
+            to connect Stripe from their developer payment settings before you send this phase
+            payment.
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => onSend(amount)}
+        disabled={!stripeConnected || amount <= 0 || due <= 0}
+        className="bp-primary-btn w-full flex items-center justify-center gap-2 text-[13.5px] font-bold p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Coins size={15} weight="fill" />{" "}
+        {stripeConnected ? "Continue to Stripe" : "Developer payout not ready"}
+      </button>
     </ModalShell>
   );
 }

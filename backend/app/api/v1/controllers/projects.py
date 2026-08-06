@@ -17,6 +17,9 @@ from app.schemas.projects import (
     ProjectMemberRemove,
     ProjectMemberResponse,
     ProjectMilestonesUpdate,
+    ProjectPaymentCheckoutCancel,
+    ProjectPaymentCheckoutSessionCreate,
+    ProjectPaymentCheckoutSessionResponse,
     ProjectPaymentRecord,
     ProjectResponse,
     ProjectStatusUpdate,
@@ -192,6 +195,55 @@ def record_member_payment(
 ) -> ProjectMemberResponse:
     return project_membership_service.record_payment(
         db, member_id, current_user, payload, background_tasks=background_tasks
+    )
+
+
+@router.post(
+    "/members/{member_id}/payments/stripe-checkout",
+    response_model=ProjectPaymentCheckoutSessionResponse,
+)
+def create_member_payment_checkout_session(
+    member_id: UUID,
+    payload: ProjectPaymentCheckoutSessionCreate,
+    db: DbSession,
+    current_user: CurrentFounder,
+) -> ProjectPaymentCheckoutSessionResponse:
+    return project_membership_service.create_payment_checkout_session(
+        db, member_id, current_user, payload
+    )
+
+
+@router.post(
+    "/payments/stripe-checkout/{session_id}/sync",
+    response_model=ProjectMemberResponse,
+)
+def sync_member_payment_checkout_session(
+    session_id: str,
+    db: DbSession,
+    current_user: CurrentFounder,
+    cancelled: bool = Query(default=False),
+) -> ProjectMemberResponse:
+    return project_membership_service.sync_payment_checkout_session(
+        db,
+        session_id=session_id,
+        current_user=current_user,
+        cancel_requested=cancelled,
+    )
+
+
+@router.post(
+    "/payments/stripe-checkout/cancel",
+    response_model=ProjectMemberResponse,
+)
+def cancel_member_payment_checkout_session(
+    payload: ProjectPaymentCheckoutCancel,
+    db: DbSession,
+    current_user: CurrentFounder,
+) -> ProjectMemberResponse:
+    return project_membership_service.cancel_payment_checkout_session(
+        db,
+        current_user=current_user,
+        payload=payload,
     )
 
 

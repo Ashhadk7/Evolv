@@ -178,7 +178,7 @@ export function getMissingDeveloperProfileDetailFields(profile: DeveloperProfile
   const missing: string[] = [];
 
   if (!getDeveloperRole(profile)) missing.push("professional role");
-  if (!profile.bio?.trim()) missing.push("professional bio");
+  if (!profile.bio?.trim()) missing.push("professional summary");
   if (!getDeveloperEducationSummary(profile)) missing.push("education");
   if (!getDeveloperSkillEntries(profile).some((entry) => entry.name?.trim()))
     missing.push("skills and tech stack");

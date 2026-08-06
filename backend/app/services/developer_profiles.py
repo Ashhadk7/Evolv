@@ -132,7 +132,7 @@ def ensure_complete_profile_fields(
     if not is_meaningful_short_text(profile.job_title):
         missing.append("professional role")
     if not is_meaningful_paragraph(profile.bio):
-        missing.append("bio")
+        missing.append("professional summary")
     if not has_meaningful_skills(profile.skills):
         missing.append("skills")
     if not profile.github or not profile.github.strip():

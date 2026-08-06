@@ -75,7 +75,7 @@ export const useFounderDashboardStore = create<FounderDashboardState>((set) => (
       if (storedBlueprints) {
         const parsed = JSON.parse(storedBlueprints) as Blueprint[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          set({ blueprints: parsed, dataLoaded: true });
+          set({ blueprints: parsed });
         }
       }
     } catch {

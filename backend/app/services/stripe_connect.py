@@ -144,8 +144,13 @@ def _stripe_get(path: str) -> dict[str, Any]:
     return _stripe_request("GET", path)
 
 
-def _stripe_post(path: str, data: dict[str, str | None]) -> dict[str, Any]:
-    return _stripe_request("POST", path, data=data)
+def _stripe_post(
+    path: str,
+    data: dict[str, str | None],
+    *,
+    idempotency_key: str | None = None,
+) -> dict[str, Any]:
+    return _stripe_request("POST", path, data=data, idempotency_key=idempotency_key)
 
 
 def _stripe_request(
@@ -153,10 +158,13 @@ def _stripe_request(
     path: str,
     *,
     data: dict[str, str | None] | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     secret_key = _stripe_secret()
     url = f"{settings.STRIPE_API_BASE_URL.rstrip('/')}{path}"
     headers = {"Authorization": f"Bearer {secret_key}"}
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key
 
     try:
         with httpx.Client(timeout=STRIPE_TIMEOUT_SECONDS) as client:

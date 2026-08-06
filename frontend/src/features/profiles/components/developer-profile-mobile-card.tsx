@@ -36,6 +36,16 @@ export function DeveloperProfileMobileCard({
   onConnect,
   onMessage,
 }: DeveloperProfileMobileCardProps) {
+  const safeAvatarUrl = avatarUrl.trim() || null;
+  const initials =
+    name
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "DV";
+
   return (
     <div className="block md:hidden w-full max-w-md mx-auto bg-[#f0f3f1] min-h-screen pb-12 font-sans text-[#15271f]">
       {/* ── Top Header ── */}
@@ -60,12 +70,18 @@ export function DeveloperProfileMobileCard({
           <div className="px-4 pb-4 -mt-10 relative">
             <div className="flex items-end justify-between mb-3">
               {/* Profile Avatar */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={avatarUrl}
-                alt={name}
-                className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md bg-white shrink-0"
-              />
+              {safeAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={safeAvatarUrl}
+                  alt={name}
+                  className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md bg-white shrink-0"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md bg-[#e7f4ed] text-[#2e7d5c] shrink-0 flex items-center justify-center text-xl font-black">
+                  {initials}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">

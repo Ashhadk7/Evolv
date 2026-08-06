@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ProjectsTab } from "@/features/projects/components/projects-tab";
 import { LoadingPanel } from "@/components/shared/loading-panel";
+import { getApiErrorMessage } from "@/lib/api";
 import { useFounderDashboardStore } from "@/features/founder-dashboard/store";
 import { useFounderNavigation } from "@/features/founder-dashboard/use-founder-navigation";
 import type { Blueprint } from "@/features/blueprints/types";
@@ -15,6 +17,8 @@ import {
   updateProjectMilestones,
   backendStatus,
   serialiseMilestones,
+  cancelProjectPaymentCheckoutSession,
+  syncProjectPaymentCheckoutSession,
   type ProjectWire,
 } from "@/features/projects/projects-api";
 
@@ -23,6 +27,11 @@ import {
 export default function FounderProjectsPage() {
   const { blueprints: storeBlueprints, saveBlueprints } = useFounderDashboardStore();
   const nav = useFounderNavigation();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const stripeSessionId = searchParams?.get("stripe_session_id") ?? null;
+  const stripeCancelled = searchParams?.get("stripe_payment") === "cancelled";
+  const stripePaymentKey = searchParams?.get("stripe_payment_key") ?? null;
 
   // The ONLY source of truth for "which blueprints have a backend project" is
   // this state, always populated straight from GET /projects. No ref cache,
@@ -66,6 +75,33 @@ export default function FounderProjectsPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  useEffect(() => {
+    if (!stripeSessionId && !(stripeCancelled && stripePaymentKey)) return;
+    let active = true;
+    const syncPayment = stripeSessionId
+      ? syncProjectPaymentCheckoutSession(stripeSessionId, stripeCancelled)
+      : cancelProjectPaymentCheckoutSession(stripePaymentKey ?? "");
+    syncPayment
+      .catch((error) => {
+        if (active) setLoadError(getApiErrorMessage(error));
+      })
+      .finally(() => {
+        if (!active) return;
+        void loadProjects();
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        params.delete("stripe_session_id");
+        params.delete("stripe_payment");
+        params.delete("stripe_payment_key");
+        router.replace(
+          params.toString() ? `/founder/projects?${params.toString()}` : "/founder/projects",
+          { scroll: false }
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadProjects, router, searchParams, stripeCancelled, stripePaymentKey, stripeSessionId]);
 
   useProjectsLiveRefresh(loadProjects);
 

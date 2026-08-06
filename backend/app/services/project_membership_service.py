@@ -17,14 +17,24 @@ from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models.project import Project, ProjectMember, ProjectMemberStatus
+from app.models.project import (
+    PaymentStatus,
+    Project,
+    ProjectMember,
+    ProjectMemberStatus,
+    ProjectPayment,
+)
 from app.models.user import User, UserRole
 from app.repositories import developer_profiles as developer_profiles_repository
 from app.repositories import projects as projects_repository
 from app.repositories import users as users_repository
 from app.schemas.projects import (
     DeveloperInviteResponse,
+    ProjectPaymentCheckoutCancel,
+    ProjectPaymentCheckoutSessionCreate,
+    ProjectPaymentCheckoutSessionResponse,
     ProjectMemberInvite,
+    ProjectMemberPaymentResponse,
     ProjectMemberResponse,
     ProjectPaymentRecord,
 )
@@ -78,14 +88,22 @@ def _commit(db: Session, message: str) -> None:
 
 
 def _member_response(
-    db: Session, member: ProjectMember, paid_cents: int | None = None
+    db: Session,
+    member: ProjectMember,
+    paid_cents: int | None = None,
+    payment_rows: list[ProjectPayment] | None = None,
 ) -> ProjectMemberResponse:
     developer = users_repository.get_user_by_id(db, member.developer_id)
     name = display_name(developer)
+    if payment_rows is None:
+        payment_rows = projects_repository.list_payments_for_members(db, [member.id])
     if paid_cents is None:
-        paid_cents = projects_repository.sum_settled_payments_by_member(db, [member.id]).get(
-            member.id, 0
+        paid_cents = sum(
+            payment.amount_cents
+            for payment in payment_rows
+            if payment.status == PaymentStatus.SUCCEEDED
         )
+    developer_profile = member.developer
     return ProjectMemberResponse(
         id=member.id,
         project_id=member.project_id,
@@ -97,6 +115,22 @@ def _member_response(
         amount_agreed_cents=member.amount_agreed_cents,
         counter_amount_cents=member.counter_amount_cents,
         amount_paid_cents=paid_cents,
+        developer_stripe_ready=payments.developer_stripe_ready(developer_profile),
+        developer_stripe_account_id=developer_profile.stripe_account_id
+        if developer_profile is not None
+        else None,
+        payments=[
+            ProjectMemberPaymentResponse(
+                id=payment.id,
+                amount_cents=payment.amount_cents,
+                currency=payment.currency,
+                status=payment.status,
+                provider=payment.provider,
+                created_at=payment.created_at,
+                settled_at=payment.settled_at,
+            )
+            for payment in payment_rows
+        ],
         invited_at=member.invited_at,
         responded_at=member.responded_at,
         removed_at=member.removed_at,
@@ -122,8 +156,21 @@ def members_by_project(
 
 
 def _member_responses(db: Session, members: list[ProjectMember]) -> list[ProjectMemberResponse]:
-    paid = projects_repository.sum_settled_payments_by_member(db, [m.id for m in members])
-    return [_member_response(db, member, paid.get(member.id, 0)) for member in members]
+    member_ids = [m.id for m in members]
+    paid = projects_repository.sum_settled_payments_by_member(db, member_ids)
+    payment_rows = projects_repository.list_payments_for_members(db, member_ids)
+    payments_by_member: dict[UUID, list[ProjectPayment]] = {}
+    for payment in payment_rows:
+        payments_by_member.setdefault(payment.member_id, []).append(payment)
+    return [
+        _member_response(
+            db,
+            member,
+            paid.get(member.id, 0),
+            payments_by_member.get(member.id, []),
+        )
+        for member in members
+    ]
 
 
 def invite_developer(
@@ -420,6 +467,123 @@ def record_payment(
         amount_cents=payload.amount_cents,
         background_tasks=background_tasks,
     )
+    return _member_response(db, member)
+
+
+def create_payment_checkout_session(
+    db: Session,
+    member_id: UUID,
+    current_user: User,
+    payload: ProjectPaymentCheckoutSessionCreate,
+) -> ProjectPaymentCheckoutSessionResponse:
+    founder_id = _require_founder(current_user)
+
+    member = projects_repository.get_member_by_id(db, member_id)
+    if member is None:
+        raise ProjectMemberNotFoundError("Membership not found.")
+    project = _owned_project(db, member.project_id, founder_id)
+
+    if member.status != ProjectMemberStatus.ACCEPTED:
+        raise ProjectMemberConflictError(
+            "You can only pay a developer who has accepted this engagement."
+        )
+
+    developer_profile = member.developer
+    if not payments.developer_stripe_ready(developer_profile):
+        raise ProjectMemberConflictError(
+            f"{_member_response(db, member).developer_name} has not finished Stripe payout setup yet."
+        )
+
+    counted_cents = projects_repository.sum_payments_by_member_statuses(
+        db,
+        [member.id],
+        (
+            PaymentStatus.PENDING,
+            PaymentStatus.PROCESSING,
+            PaymentStatus.SUCCEEDED,
+        ),
+    ).get(member.id, 0)
+    remaining_cents = max(0, member.amount_agreed_cents - counted_cents)
+    if payload.amount_cents > remaining_cents:
+        raise ProjectMemberConflictError(
+            "This payment is more than the remaining amount for this phase."
+        )
+
+    result = payments.create_checkout_session(
+        db,
+        project_id=project.id,
+        member_id=member.id,
+        developer_account_id=developer_profile.stripe_account_id or "",
+        developer_name=_member_response(db, member).developer_name,
+        project_title=project.title,
+        phase_index=member.phase_index,
+        founder=current_user,
+        amount_cents=payload.amount_cents,
+        currency=DEFAULT_CURRENCY,
+        idempotency_key=payload.idempotency_key,
+        success_url=payload.success_url,
+        cancel_url=payload.cancel_url,
+    )
+    return ProjectPaymentCheckoutSessionResponse(
+        session_id=result.session_id,
+        url=result.url,
+    )
+
+
+def sync_payment_checkout_session(
+    db: Session,
+    *,
+    session_id: str,
+    current_user: User,
+    cancel_requested: bool = False,
+) -> ProjectMemberResponse:
+    founder_id = _require_founder(current_user)
+    payment = projects_repository.get_payment_by_provider_ref(db, session_id)
+    if payment is None:
+        raise ProjectMemberNotFoundError("Payment session not found.")
+
+    member = projects_repository.get_member_by_id(db, payment.member_id)
+    if member is None:
+        raise ProjectMemberNotFoundError("Membership not found.")
+    _owned_project(db, member.project_id, founder_id)
+
+    payments.sync_checkout_session(db, session_id=session_id, cancel_requested=cancel_requested)
+    db.refresh(member)
+    return _member_response(db, member)
+
+
+def cancel_payment_checkout_session(
+    db: Session,
+    *,
+    current_user: User,
+    payload: ProjectPaymentCheckoutCancel,
+) -> ProjectMemberResponse:
+    founder_id = _require_founder(current_user)
+    payment = projects_repository.get_payment_by_idempotency_key(db, payload.idempotency_key)
+    if payment is None:
+        raise ProjectMemberNotFoundError("Payment session not found.")
+
+    member = projects_repository.get_member_by_id(db, payment.member_id)
+    if member is None:
+        raise ProjectMemberNotFoundError("Membership not found.")
+    _owned_project(db, member.project_id, founder_id)
+
+    if payment.provider_ref:
+        payments.sync_checkout_session(
+            db,
+            session_id=payment.provider_ref,
+            cancel_requested=True,
+        )
+    else:
+        projects_repository.update_payment_status(
+            payment,
+            status=PaymentStatus.CANCELLED,
+            failure_reason="Checkout was cancelled before payment.",
+            settled_at=None,
+        )
+        _commit(db, "Payment status could not be updated.")
+
+    db.refresh(member)
     return _member_response(db, member)
 
 

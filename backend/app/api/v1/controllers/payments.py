@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Header, Request
 
 from app.api.deps import CurrentDeveloper, DbSession
 from app.schemas.stripe_connect import (
@@ -6,6 +6,7 @@ from app.schemas.stripe_connect import (
     StripeConnectAccountLinkResponse,
     StripeConnectStatusResponse,
 )
+from app.services import payments as payments_service
 from app.services import stripe_connect as stripe_connect_service
 
 router = APIRouter()
@@ -30,3 +31,14 @@ def create_stripe_connect_account_link(
         current_user=current_user,
         payload=payload,
     )
+
+
+@router.post("/stripe/webhook")
+async def handle_stripe_webhook(
+    request: Request,
+    db: DbSession,
+    stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
+) -> dict[str, bool]:
+    payload = await request.body()
+    payments_service.handle_checkout_webhook(db, payload, stripe_signature)
+    return {"received": True}
