@@ -37,17 +37,17 @@ export const NotificationPanel = forwardRef<HTMLDivElement, NotificationPanelPro
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               onClick={onClose}
-              className="fixed inset-0 z-[39] bg-[#0f1c18]/18"
+              className="fixed inset-0 z-[39] bg-[#0f1c18]/30 backdrop-blur-[2px]"
             />
 
             {/* Panel */}
             <motion.div
               ref={ref}
-              initial={{ opacity: 0, x: -18 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -18 }}
-              transition={{ type: "spring", stiffness: 380, damping: 34 }}
-              className="fixed left-[240px] top-0 bottom-0 w-[340px] bg-[#fafbfa] border-r border-[#e4ebe6] shadow-[8px_0_36px_rgba(15,28,24,0.13)] z-[40] flex flex-col"
+              initial={{ opacity: 0, y: -12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              className="fixed left-3 right-3 top-[60px] max-h-[75vh] md:left-[240px] md:right-auto md:top-0 md:bottom-0 md:w-[340px] md:max-h-none bg-[#fafbfa] border border-[#e4ebe6] md:border-y-0 md:border-l-0 md:border-r shadow-[0_16px_40px_rgba(15,28,24,0.22)] md:shadow-[8px_0_36px_rgba(15,28,24,0.13)] rounded-2xl md:rounded-none z-[40] flex flex-col overflow-hidden"
             >
               {/* ── Header ── */}
               <div className="py-5 px-[18px] pb-4 border-b border-[#edf1ee] shrink-0 bg-white">

@@ -43,7 +43,9 @@ export function SignInForm() {
     try {
       const session = await signIn(email, password);
       saveSession(session, rememberMe);
-      router.push(session.user.role === "founder" ? "/founder/dashboard" : "/developer/dashboard");
+      const targetRoute = session.user.role === "founder" ? "/founder/dashboard" : "/developer/dashboard";
+      router.prefetch(targetRoute);
+      router.push(targetRoute);
     } catch (err: unknown) {
       const isNetworkError = err instanceof ApiError && err.status === 0;
       if (isNetworkError) {

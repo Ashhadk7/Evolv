@@ -58,20 +58,23 @@ export function Topbar({
       }}
     >
       {/* Greeting */}
-      <div>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <h1
           style={{
-            fontSize: "1.55rem",
+            fontSize: "clamp(1.15rem, 5vw, 1.55rem)",
             fontWeight: 800,
             color: "#1a2e26",
             letterSpacing: "-0.03em",
             lineHeight: 1.2,
             margin: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {fullText}
         </h1>
-        <p style={{ color: "#7a9e8e", fontSize: "0.85rem", marginTop: "0.15rem", marginBottom: 0 }}>
+        <p style={{ color: "#7a9e8e", fontSize: "clamp(0.72rem, 3vw, 0.85rem)", marginTop: "0.15rem", marginBottom: 0, lineHeight: 1.4 }}>
           {subtitle || "Here's your developer dashboard overview."}
         </p>
       </div>

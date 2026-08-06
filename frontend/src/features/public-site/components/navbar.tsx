@@ -124,6 +124,7 @@ export function Navbar() {
           <div className="hidden items-center gap-1 md:flex">
             <Link
               href="/sign-in"
+              prefetch={true}
               className="text-cream/48 hover:text-cream/75 px-4 py-2 text-sm transition-colors"
             >
               Sign in
@@ -131,6 +132,7 @@ export function Navbar() {
             <motion.div whileHover={{ scale: 1.025 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href="/sign-up"
+                prefetch={true}
                 className="bg-mint text-dark inline-block rounded-lg px-5 py-2 text-sm font-semibold"
                 style={{
                   boxShadow: "0 0 20px rgba(137,215,183,0.22), 0 2px 8px rgba(137,215,183,0.1)",

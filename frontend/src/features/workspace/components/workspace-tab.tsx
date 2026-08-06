@@ -139,7 +139,7 @@ export function WorkspaceTab({
 
   if (viewingBlueprint) {
     return (
-      <div className="bg-bp-page flex h-full flex-col overflow-hidden px-9 py-7">
+      <div className="bg-[#f5f6f4] flex h-full min-h-full flex-col overflow-hidden px-4 py-5 md:px-9 md:py-7">
         <BlueprintDetail
           bp={viewingBlueprint}
           startInEdit={openInEdit}
@@ -156,22 +156,22 @@ export function WorkspaceTab({
   }
 
   return (
-    <div className="bg-bp-page flex h-full flex-col overflow-hidden">
-      <header className="flex shrink-0 items-start justify-between gap-4 px-9 pt-[30px] pb-5">
-        <div>
-          <h1 className="text-bp-ink text-[28px] leading-none font-extrabold tracking-[-0.03em]">
+    <div className="bg-[#f5f6f4] flex h-full min-h-full flex-col overflow-hidden">
+      <header className="flex shrink-0 items-start justify-between gap-3 px-4 pt-5 pb-4 md:px-9 md:pt-[30px] md:pb-5">
+        <div className="min-w-0">
+          <h1 className="text-bp-ink text-[22px] md:text-[28px] leading-none font-extrabold tracking-[-0.03em]">
             Founder Workspace
           </h1>
-          <p className="text-bp-muted mt-2 text-[13.5px]">
+          <p className="text-bp-muted mt-1.5 text-[12px] md:text-[13.5px]">
             Track viability, momentum and reach across your startup blueprints.
           </p>
         </div>
-        <button type="button" onClick={() => setForgeOpen(true)} className="bp-primary-btn">
-          <PlusCircle size={16} weight="fill" aria-hidden /> New idea
+        <button type="button" onClick={() => setForgeOpen(true)} className="bp-primary-btn shrink-0 !text-xs md:!text-sm !px-3 md:!px-4">
+          <PlusCircle size={15} weight="fill" aria-hidden /> <span className="hidden sm:inline">New idea</span><span className="inline sm:hidden">New</span>
         </button>
       </header>
 
-      <div className="blueprint-scroll flex-1 overflow-y-auto px-9 pt-1 pb-8">
+      <div className="blueprint-scroll flex-1 overflow-y-auto px-4 pt-1 pb-8 md:px-9">
         <section
           aria-label="Workspace summary"
           className="mb-6 grid grid-cols-2 gap-[18px] lg:grid-cols-4"

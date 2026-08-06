@@ -321,7 +321,7 @@ export function BlueprintDetail({
       />
 
       {/* -- Scroll body -- */}
-      <div ref={scrollRef} onScroll={onScroll} className="blueprint-scroll flex-1 overflow-y-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="blueprint-scroll flex-1 overflow-y-auto px-3 py-4 md:px-0.5 md:pt-6 md:pb-2">
         <div className="mx-auto flex max-w-[1180px] flex-col gap-[22px] px-0.5 pt-6 pb-2">
           {/* Live Automated AI Refinement Status Banner */}
           {refineStatus !== "idle" && (

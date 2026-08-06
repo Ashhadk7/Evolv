@@ -118,6 +118,7 @@ export function DashboardSidebar({
   sticky = false,
   avatarFallback = "U",
 }: DashboardSidebarProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState<AppNotif[]>(initialNotifs);
@@ -328,9 +329,122 @@ export function DashboardSidebar({
 
   return (
     <>
-      {/* ── Sidebar ── */}
+      {/* ── Mobile Top Header (Screens < 768px) ── */}
+      <div className="flex md:hidden items-center justify-between px-4 py-3 bg-[#1a312c] border-b border-[rgba(137,215,183,0.1)] shrink-0 w-full z-40 sticky top-0">
+        <Logo dark compact />
+        <div className="flex items-center gap-3">
+          <button
+            ref={bellRef}
+            onClick={() => setNotifOpen((v) => !v)}
+            className="relative p-2 text-[#e8f4ef] rounded-lg bg-[rgba(255,255,255,0.05)]"
+          >
+            <Icon icon="solar:bell-bold-duotone" width={20} height={20} className="text-[#89d7b7]" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#89d7b7] text-[#0f1c18] text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="p-2 text-[#e8f4ef] rounded-lg bg-[rgba(255,255,255,0.05)] focus:outline-none"
+            aria-label="Toggle navigation menu"
+          >
+            <Icon icon={mobileMenuOpen ? "solar:close-square-bold" : "solar:hamburger-menu-bold"} width={24} height={24} className="text-[#89d7b7]" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Mobile Drawer Overlay ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 z-45 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile Slide-out Drawer ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed top-0 left-0 bottom-0 w-[280px] bg-[#1a312c] z-50 flex flex-col border-r border-[rgba(137,215,183,0.1)] md:hidden p-4 overflow-y-auto"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[rgba(137,215,183,0.1)]">
+              <Logo dark compact />
+              <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 text-[#89d7b7]">
+                <Icon icon="solar:close-circle-bold" width={24} height={24} />
+              </button>
+            </div>
+
+            <nav className="flex-1 mt-4 space-y-3">
+              {sections.map(({ group, items }, si) => (
+                <div key={group || si}>
+                  {group && <p className="text-[10px] tracking-widest text-[rgba(232,244,239,0.42)] uppercase font-semibold mb-1 px-2">{group}</p>}
+                  <div className="space-y-1">
+                    {items.map(({ id, label, icon, badge }) => {
+                      const isActive = activeId === id;
+                      const count = getBadge(badge);
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => {
+                            onNavigate(id);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left font-medium text-sm transition-all ${
+                            isActive ? "bg-[rgba(137,215,183,0.15)] text-[#e8f4ef]" : "text-[rgba(232,244,239,0.7)] hover:bg-[rgba(255,255,255,0.05)]"
+                          }`}
+                        >
+                          <Icon icon={icon} width={20} height={20} className={isActive ? "text-[#89d7b7]" : "text-[rgba(232,244,239,0.7)]"} />
+                          <span className="flex-1">{label}</span>
+                          {badge && count > 0 && (
+                            <span className="text-xs bg-[rgba(137,215,183,0.2)] text-[#89d7b7] font-bold px-2 py-0.5 rounded-full">
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+
+            <div className="pt-4 border-t border-[rgba(137,215,183,0.1)]">
+              <button
+                onClick={openProfile}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[#e8f4ef] hover:bg-[rgba(255,255,255,0.05)] text-left"
+              >
+                {renderAvatar(32, 12)}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{displayName}</p>
+                  <p className="text-xs text-[rgba(232,244,239,0.42)]">{roleLabel}</p>
+                </div>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] text-left font-medium text-sm"
+              >
+                <Icon icon="solar:logout-2-bold-duotone" width={18} height={18} />
+                <span>Log out</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Desktop Sidebar (Screens >= 768px) ── */}
       <motion.aside
-        className="flex shrink-0 flex-col"
+        className="hidden md:flex shrink-0 flex-col"
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}

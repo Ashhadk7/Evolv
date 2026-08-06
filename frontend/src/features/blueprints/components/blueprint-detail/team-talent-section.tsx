@@ -54,7 +54,7 @@ export function TeamTalentSection({
 
   return (
     <Reveal>
-      <div className="grid grid-cols-[1fr_1.4fr] items-start gap-[22px]">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] items-start gap-4 md:gap-[22px]">
         <div style={cardStyle({ padding: "26px 28px", alignSelf: "start" })}>
           <SectionHead
             icon={<Briefcase size={18} weight="duotone" className="text-bp-teal" />}
