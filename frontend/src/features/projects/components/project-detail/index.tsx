@@ -9,7 +9,6 @@ import { DevelopersPanel } from "../developers-panel";
 import { ProjectActionBar } from "./project-action-bar";
 import { ProjectSummaryBand } from "./project-summary-band";
 import { PhaseBoard } from "./phase-board";
-import { ProjectHealthCard } from "./project-health-card";
 import { IssuesPanel } from "../issues/issues-panel";
 import { IssueModal } from "../issues/issue-modal";
 import { IssueComposer } from "../issues/issue-composer";
@@ -66,6 +65,7 @@ export function ProjectDetail({
     matchedDevs,
     matchLoading,
     pendingInvites,
+    acceptedMembers,
     revokeInvite,
     toast,
     today,
@@ -181,7 +181,9 @@ export function ProjectDetail({
           phases={content.phases}
           phaseStates={bp.project.phaseStates}
           pendingInvites={pendingInvites}
+          acceptedMembers={acceptedMembers}
           deliverablesByPhase={deliverableState.byPhase}
+          deliverablesLoading={deliverableState.loading}
           activeIdx={activeIdx}
           viewedPhaseIdx={viewedPhaseIdx}
           budgetEditPhase={budgetEditPhase}
@@ -197,8 +199,10 @@ export function ProjectDetail({
           onUpdatePhaseBudget={updatePhaseBudget}
           onSetBudgetEditPhase={setBudgetEditPhase}
           onSetDeadlineEditPhase={setDeadlineEditPhase}
-          onPay={(phaseIdx) => modals.setPayModalPhase(phaseIdx)}
-          onRemoveDev={(phaseIdx) => modals.setRemoveDevPhase(phaseIdx)}
+          onPay={(member, phaseIdx) => modals.setPayModalTarget({ member, phaseIdx })}
+          onRemoveDev={(memberId, phaseIdx) =>
+            modals.setRemoveDevTarget({ memberId, phaseIdx })
+          }
           onRevokeInvite={revokeInvite}
           onFindMatches={() =>
             document.getElementById("dev-panel")?.scrollIntoView({ behavior: "smooth" })
@@ -206,14 +210,9 @@ export function ProjectDetail({
         />
 
         <div className="flex flex-col gap-4">
-          <ProjectHealthCard
-            health={displayHealth}
-            completion={completion}
-            verdictTone={verdictTone}
-          />
-
           <IssuesPanel
             issues={issueState.issues}
+            loading={issueState.loading}
             phaseNameFor={phaseNameFor}
             onOpenIssue={issueState.setOpenIssueId}
             onCreate={() => issueState.openComposer()}
@@ -221,6 +220,7 @@ export function ProjectDetail({
 
           <DeadlinesPanel
             deadlines={deadlineState.deadlines}
+            loading={deadlineState.loading}
             today={today}
             phaseNameFor={phaseNameFor}
             busyId={deadlineState.busyId}
@@ -244,6 +244,12 @@ export function ProjectDetail({
               onMessage={onMessage}
               onViewProfile={setSelectedDeveloper}
               onBrowseNetwork={onNavigateNetwork}
+              hiredInPhase={new Set(
+                (acceptedMembers.get(viewedPhaseIdx) ?? []).map((m) => m.developer_id)
+              )}
+              pendingInPhase={new Set(
+                (pendingInvites.get(viewedPhaseIdx) ?? []).map((m) => m.developer_id)
+              )}
             />
           </div>
         </div>

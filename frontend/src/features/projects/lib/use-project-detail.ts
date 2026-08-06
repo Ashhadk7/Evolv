@@ -22,10 +22,13 @@ import {
   inviteProjectMember,
   listProjectMembers,
   recordProjectPayment,
+  removeProjectMember,
   revokeProjectInvite,
   type ProjectMemberWire,
 } from "@/features/projects/projects-api";
+import { NOTIFICATION_REFRESH_EVENT } from "@/features/notifications/notification-events";
 import type { ProjectBlueprint } from "./project-helpers";
+import { useProjectsLiveRefresh } from "./use-projects-live-refresh";
 
 export function useProjectDetail({
   bp,
@@ -70,18 +73,28 @@ export function useProjectDetail({
     loadMembers();
   }, [loadMembers]);
 
+  useProjectsLiveRefresh(loadMembers);
+
   const pendingInvites = useMemo(() => {
-    const byPhase = new Map<number, ProjectMemberWire>();
+    const byPhase = new Map<number, ProjectMemberWire[]>();
     for (const member of members) {
-      if (member.status === "invited") byPhase.set(member.phase_index, member);
+      if (member.status === "invited") {
+        const list = byPhase.get(member.phase_index) ?? [];
+        list.push(member);
+        byPhase.set(member.phase_index, list);
+      }
     }
     return byPhase;
   }, [members]);
 
   const acceptedMembers = useMemo(() => {
-    const byPhase = new Map<number, ProjectMemberWire>();
+    const byPhase = new Map<number, ProjectMemberWire[]>();
     for (const member of members) {
-      if (member.status === "accepted") byPhase.set(member.phase_index, member);
+      if (member.status === "accepted") {
+        const list = byPhase.get(member.phase_index) ?? [];
+        list.push(member);
+        byPhase.set(member.phase_index, list);
+      }
     }
     return byPhase;
   }, [members]);
@@ -111,6 +124,8 @@ export function useProjectDetail({
     };
   }, []);
 
+  const currentSkillset = content.phases[viewedPhaseIdx]?.skillset?.join(',') || '';
+
   useEffect(() => {
     const phase = content.phases[viewedPhaseIdx];
     if (!phase) return;
@@ -133,12 +148,14 @@ export function useProjectDetail({
     return () => {
       cancelled = true;
     };
-  }, [viewedPhaseIdx, content.phases]);
+  }, [viewedPhaseIdx, currentSkillset]);
 
   const showToast = (m: string) => {
     setToast(m);
     window.setTimeout(() => setToast(null), 2200);
   };
+
+  const dispatchRefresh = () => window.dispatchEvent(new Event(NOTIFICATION_REFRESH_EVENT));
 
   const updateProject = (mutate: (p: ProjectState) => ProjectState) => {
     onUpdate((b) => {
@@ -212,6 +229,7 @@ export function useProjectDetail({
           },
         ],
       }));
+      dispatchRefresh();
       showToast(`Invitation sent to ${dev.name}`);
     } catch (err) {
       showToast(getApiErrorMessage(err));
@@ -222,37 +240,45 @@ export function useProjectDetail({
     try {
       await revokeProjectInvite(memberId);
       await loadMembers();
+      dispatchRefresh();
       showToast("Invitation cancelled");
     } catch (err) {
       showToast(getApiErrorMessage(err));
     }
   };
 
-  const removeDeveloper = (phaseIdx: number, reason: string) => {
+  const removeDeveloper = async (memberId: string, phaseIdx: number, reason: string) => {
     if (!reason.trim()) return;
     const assignment = bp.project.phaseStates[phaseIdx].assignment;
-    if (!assignment) return;
-
-    updatePhase(phaseIdx, (ps) => ({
-      ...ps,
-      assignment: null,
-      status: "Not Started",
-      removals: [
-        ...ps.removals,
-        {
-          developerId: assignment.developerId,
-          developerName: assignment.developerName,
-          reason: reason.trim(),
-          amountPaid: assignment.amountPaid,
-          date: todayISO(),
-        },
-      ],
-      history: [
-        ...ps.history,
-        { label: `Removed ${assignment.developerName} — ${reason.trim()}`, date: todayISO() },
-      ],
-    }));
-    showToast(`${assignment.developerName} removed from ${content.phases[phaseIdx].name}`);
+    try {
+      await removeProjectMember(memberId, reason.trim());
+      if (assignment) {
+        updatePhase(phaseIdx, (ps) => ({
+          ...ps,
+          assignment: null,
+          status: "Not Started",
+          removals: [
+            ...ps.removals,
+            {
+              developerId: assignment.developerId,
+              developerName: assignment.developerName,
+              reason: reason.trim(),
+              amountPaid: assignment.amountPaid,
+              date: todayISO(),
+            },
+          ],
+          history: [
+            ...ps.history,
+            { label: `Removed ${assignment.developerName} — ${reason.trim()}`, date: todayISO() },
+          ],
+        }));
+      }
+      await loadMembers();
+      dispatchRefresh();
+      showToast(assignment ? `${assignment.developerName} removed` : "Developer removed");
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
   };
 
   const requestConnect = (dev: FounderContactProfile) => {
@@ -304,13 +330,8 @@ export function useProjectDetail({
     }));
   };
 
-  const sendPayment = async (phaseIdx: number, amount: number) => {
+  const sendPayment = async (member: ProjectMemberWire, phaseIdx: number, amount: number) => {
     if (amount <= 0) return;
-    const member = acceptedMembers.get(phaseIdx);
-    if (!member) {
-      showToast("This phase has no accepted developer to pay.");
-      return;
-    }
     try {
       await recordProjectPayment(member.id, {
         amount_cents: Math.round(amount * 100),
@@ -327,6 +348,7 @@ export function useProjectDetail({
           },
         ],
       }));
+      dispatchRefresh();
       showToast(`${fmtMoney(amount)} recorded for ${member.developer_name}`);
     } catch (err) {
       showToast(getApiErrorMessage(err));
@@ -351,6 +373,7 @@ export function useProjectDetail({
     matchedDevs,
     matchLoading,
     pendingInvites,
+    acceptedMembers,
     revokeInvite,
     toast,
     today,

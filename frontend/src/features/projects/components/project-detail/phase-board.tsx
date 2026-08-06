@@ -9,7 +9,9 @@ export function PhaseBoard({
   phases,
   phaseStates,
   pendingInvites,
+  acceptedMembers,
   deliverablesByPhase,
+  deliverablesLoading = false,
   activeIdx,
   viewedPhaseIdx,
   budgetEditPhase,
@@ -32,8 +34,10 @@ export function PhaseBoard({
 }: {
   phases: Phase[];
   phaseStates: ProjectPhaseState[];
-  pendingInvites: Map<number, ProjectMemberWire>;
+  pendingInvites: Map<number, ProjectMemberWire[]>;
+  acceptedMembers: Map<number, ProjectMemberWire[]>;
   deliverablesByPhase: Map<number, Deliverable[]>;
+  deliverablesLoading?: boolean;
   activeIdx: number;
   viewedPhaseIdx: number;
   budgetEditPhase: number | null;
@@ -49,8 +53,8 @@ export function PhaseBoard({
   onUpdatePhaseBudget: (index: number, amount: number) => void;
   onSetBudgetEditPhase: (index: number | null) => void;
   onSetDeadlineEditPhase: (index: number | null) => void;
-  onPay: (index: number) => void;
-  onRemoveDev: (index: number) => void;
+  onPay: (member: ProjectMemberWire, phaseIdx: number) => void;
+  onRemoveDev: (memberId: string, phaseIdx: number) => void;
   onFindMatches: () => void;
   onRevokeInvite: (memberId: string) => void;
 }) {
@@ -67,12 +71,13 @@ export function PhaseBoard({
             ps.assignment && ps.status !== "Complete" && ps.deadline && ps.deadline < today
           );
 
-          return (
+        return (
             <PhaseCard
               key={phase.name}
               phase={phase}
               ps={ps}
-              pendingInvite={pendingInvites.get(i)}
+              pendingInvites={pendingInvites.get(i) ?? []}
+              acceptedMembers={acceptedMembers.get(i) ?? []}
               index={i}
               isSelected={isSelected}
               isActive={isActive}
@@ -81,6 +86,7 @@ export function PhaseBoard({
               overdue={overdue}
               today={today}
               deliverables={deliverablesByPhase.get(i) ?? []}
+              deliverablesLoading={deliverablesLoading}
               onSelect={() => onSelectPhase(i)}
               onStartPhase={() => onStartPhase(i)}
               onCompletePhase={() => onCompletePhase(i)}
@@ -91,8 +97,8 @@ export function PhaseBoard({
               onUpdatePhaseBudget={(amount) => onUpdatePhaseBudget(i, amount)}
               onSetBudgetEditPhase={() => onSetBudgetEditPhase(i)}
               onSetDeadlineEditPhase={() => onSetDeadlineEditPhase(i)}
-              onPay={() => onPay(i)}
-              onRemoveDev={() => onRemoveDev(i)}
+              onPay={(member) => onPay(member, i)}
+              onRemoveDev={(memberId) => onRemoveDev(memberId, i)}
               onFindMatches={onFindMatches}
               onRevokeInvite={onRevokeInvite}
             />

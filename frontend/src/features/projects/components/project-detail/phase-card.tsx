@@ -24,7 +24,8 @@ type StatusTag = "Completed" | "In Progress" | "Not Started" | "Upcoming";
 export function PhaseCard({
   phase,
   ps,
-  pendingInvite,
+  pendingInvites,
+  acceptedMembers,
   index,
   isSelected,
   isActive,
@@ -33,6 +34,7 @@ export function PhaseCard({
   overdue,
   today,
   deliverables,
+  deliverablesLoading = false,
   onSelect,
   onStartPhase,
   onCompletePhase,
@@ -50,7 +52,8 @@ export function PhaseCard({
 }: {
   phase: Phase;
   ps: ProjectPhaseState;
-  pendingInvite?: ProjectMemberWire;
+  pendingInvites: ProjectMemberWire[];
+  acceptedMembers: ProjectMemberWire[];
   index: number;
   isSelected: boolean;
   isActive: boolean;
@@ -59,6 +62,7 @@ export function PhaseCard({
   overdue: boolean | "" | null;
   today: string;
   deliverables: Deliverable[];
+  deliverablesLoading?: boolean;
   onSelect: () => void;
   onStartPhase: () => void;
   onCompletePhase: () => void;
@@ -69,8 +73,8 @@ export function PhaseCard({
   onUpdatePhaseBudget: (amount: number) => void;
   onSetBudgetEditPhase: () => void;
   onSetDeadlineEditPhase: () => void;
-  onPay: () => void;
-  onRemoveDev: () => void;
+  onPay: (member: ProjectMemberWire) => void;
+  onRemoveDev: (memberId: string) => void;
   onFindMatches: () => void;
   onRevokeInvite: (memberId: string) => void;
 }) {
@@ -248,17 +252,18 @@ export function PhaseCard({
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="p-5">
+            <div className="p-[22px_26px_26px]">
               <DeliverableList
                 deliverables={deliverables}
+                loading={deliverablesLoading}
                 today={today}
                 onOpen={onOpenDeliverable}
                 onCreate={onCreateDeliverable}
               />
 
               <PhaseAssignment
-                ps={ps}
-                pendingInvite={pendingInvite}
+                pendingInvites={pendingInvites}
+                acceptedMembers={acceptedMembers}
                 onPay={onPay}
                 onRemoveDev={onRemoveDev}
                 onFindMatches={onFindMatches}
