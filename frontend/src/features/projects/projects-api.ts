@@ -13,6 +13,9 @@ export interface ProjectWire {
   status: BackendProjectStatus;
   title: string;
   milestones: Record<string, unknown>[] | null;
+  members?: ProjectMemberWire[];
+  deliverables_done?: number;
+  deliverables_total?: number;
   created_at: string;
   updated_at: string;
 }
@@ -26,18 +29,33 @@ interface ProjectListWire {
 
 // ─── Status bridge ────────────────────────────────────────────────────────────
 
+/**
+ * The two maps are exact inverses. Collapsing distinct backend statuses onto one
+ * frontend status would round-trip a cancelled project back as completed on the
+ * next save, so every value keeps its own identity.
+ */
+const STATUS_TO_BACKEND: Record<ProjectStatus, BackendProjectStatus> = {
+  ONBOARDING: "paused",
+  IN_DEVELOPMENT: "active",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+};
+
+const STATUS_TO_FRONTEND: Record<BackendProjectStatus, ProjectStatus> = {
+  paused: "ONBOARDING",
+  active: "IN_DEVELOPMENT",
+  completed: "COMPLETED",
+  cancelled: "CANCELLED",
+};
+
 /** Map backend → frontend project status. */
 export function frontendStatus(s: BackendProjectStatus): ProjectStatus {
-  if (s === "completed" || s === "cancelled") return "COMPLETED";
-  if (s === "paused") return "ONBOARDING";
-  return "IN_DEVELOPMENT"; // "active"
+  return STATUS_TO_FRONTEND[s] ?? "IN_DEVELOPMENT";
 }
 
 /** Map frontend → backend project status. */
 export function backendStatus(s: ProjectStatus): BackendProjectStatus {
-  if (s === "COMPLETED") return "completed";
-  if (s === "ONBOARDING") return "paused";
-  return "active"; // "IN_DEVELOPMENT"
+  return STATUS_TO_BACKEND[s] ?? "active";
 }
 
 // ─── Milestones serialisation ─────────────────────────────────────────────────
@@ -108,6 +126,77 @@ export async function updateProjectStatus(
     method: "PATCH",
     auth: true,
     body: { status },
+  });
+}
+
+export type ProjectMemberStatus =
+  | "invited"
+  | "accepted"
+  | "declined"
+  | "revoked"
+  | "removed";
+
+export interface ProjectMemberWire {
+  id: string;
+  project_id: string;
+  developer_id: string;
+  developer_name: string;
+  developer_initials: string;
+  phase_index: number;
+  status: ProjectMemberStatus;
+  amount_agreed_cents: number;
+  amount_paid_cents: number;
+  invited_at: string;
+  responded_at: string | null;
+  removed_at: string | null;
+  removal_reason: string | null;
+}
+
+export async function listProjectMembers(projectId: string): Promise<ProjectMemberWire[]> {
+  const data = await apiFetch<{ total: number; items: ProjectMemberWire[] }>(
+    `/projects/${projectId}/members`,
+    { auth: true }
+  );
+  return data.items;
+}
+
+export async function inviteProjectMember(
+  projectId: string,
+  payload: { developer_id: string; phase_index: number; amount_agreed_cents: number }
+): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>(`/projects/${projectId}/members`, {
+    method: "POST",
+    auth: true,
+    body: payload,
+  });
+}
+
+export async function revokeProjectInvite(memberId: string): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>(`/projects/members/${memberId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export async function recordProjectPayment(
+  memberId: string,
+  payload: { amount_cents: number; idempotency_key: string }
+): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>(`/projects/members/${memberId}/payments`, {
+    method: "POST",
+    auth: true,
+    body: payload,
+  });
+}
+
+export async function removeProjectMember(
+  memberId: string,
+  reason: string
+): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>(`/projects/members/${memberId}/remove`, {
+    method: "POST",
+    auth: true,
+    body: { reason },
   });
 }
 
