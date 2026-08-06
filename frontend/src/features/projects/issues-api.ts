@@ -131,3 +131,7 @@ export async function uploadAttachment(issueId: string, file: File): Promise<Att
     body: form,
   });
 }
+
+export async function deleteIssue(issueId: string): Promise<void> {
+  await apiFetch(`/projects/issues/${issueId}`, { method: "DELETE", auth: true });
+}

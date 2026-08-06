@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, PencilSimple } from "@phosphor-icons/react";
+import { ArrowRight, PencilSimple, Trash } from "@phosphor-icons/react";
 import { Avatar } from "@/components/shared/avatar";
 import { Chip } from "@/components/shared/chip";
 import { Label } from "@/components/shared/label";
@@ -13,6 +13,7 @@ import {
   ISSUE_PRIORITY_LABEL,
   ISSUE_STATUS_LABEL,
   addComment,
+  deleteIssue,
   getIssue,
   setIssueStatus,
   uploadAttachment,
@@ -101,16 +102,27 @@ export function IssueModal({
         </>
       }
       actions={
-        issue.can_edit &&
-        onEdit && (
-          <button
-            type="button"
-            onClick={() => onEdit(issue)}
-            aria-label="Edit issue"
-            className="bg-bp-card border-bp-border-soft text-bp-muted hover:text-bp-ink hover:border-bp-mint focus-visible:ring-bp-teal flex h-[32px] w-[32px] cursor-pointer items-center justify-center rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <PencilSimple size={14} />
-          </button>
+        issue.can_edit && (
+          <div className="flex items-center gap-1.5">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(issue)}
+                aria-label="Edit issue"
+                className="bg-bp-card border-bp-border-soft text-bp-muted hover:text-bp-ink hover:border-bp-mint focus-visible:ring-bp-teal flex h-[32px] w-[32px] cursor-pointer items-center justify-center rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <PencilSimple size={14} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => run(() => deleteIssue(issue.id).then(onClose))}
+              aria-label="Delete issue"
+              className="bg-bp-card border-bp-border-soft text-bp-red hover:border-bp-red-line focus-visible:ring-bp-red flex h-[32px] w-[32px] cursor-pointer items-center justify-center rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <Trash size={14} />
+            </button>
+          </div>
         )
       }
       sidebar={
