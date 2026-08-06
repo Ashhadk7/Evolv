@@ -101,7 +101,7 @@ export function DeveloperProjectDetailView({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <header className="bg-bp-forest overflow-hidden rounded-2xl shadow-[0_18px_44px_-20px_rgba(9,32,26,0.55)]">
+      <header className="bg-bp-forest shrink-0 overflow-hidden rounded-2xl shadow-[0_18px_44px_-20px_rgba(9,32,26,0.55)]">
         <div className="flex flex-wrap items-start justify-between gap-4 p-[18px_22px]">
           <div className="min-w-0">
             <button
@@ -187,14 +187,14 @@ export function DeveloperProjectDetailView({
       </header>
 
       {document && (
-        <div className={`${CARD} p-[14px_18px]`}>
+        <div className={`${CARD} shrink-0 p-[14px_18px]`}>
           <p className="text-bp-body m-0 text-[12.5px] leading-relaxed">
             {document.blueprint.ideaDesc}
           </p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
+      <div className="grid shrink-0 grid-cols-1 items-start gap-4 pb-1 lg:grid-cols-[1.6fr_1fr]">
         <div className="flex flex-col gap-3.5">
           <Kicker>Development roadmap</Kicker>
           <DeveloperPhaseBoard
