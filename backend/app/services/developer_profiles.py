@@ -108,6 +108,10 @@ def build_response(db: Session, profile: DeveloperProfile) -> DeveloperProfileRe
         **stored_profile_fields(profile),
         user_id=profile.user_id,
         rating_avg=float(profile.rating_avg or 0),
+        stripe_account_id=profile.stripe_account_id,
+        stripe_onboarding_complete=profile.stripe_onboarding_complete,
+        stripe_charges_enabled=profile.stripe_charges_enabled,
+        stripe_payouts_enabled=profile.stripe_payouts_enabled,
         profile_complete=bool(profile.profile_complete and profile.user.phone_verified),
         educations=get_education_responses(db, profile.user_id),
         certifications=get_certification_responses(db, profile.user_id),
@@ -128,7 +132,7 @@ def ensure_complete_profile_fields(
     if not is_meaningful_short_text(profile.job_title):
         missing.append("professional role")
     if not is_meaningful_paragraph(profile.bio):
-        missing.append("bio")
+        missing.append("professional summary")
     if not has_meaningful_skills(profile.skills):
         missing.append("skills")
     if not profile.github or not profile.github.strip():

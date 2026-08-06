@@ -33,8 +33,6 @@ export function ProjectDetail({
   onViewBlueprint,
   onNavigateNetwork,
   onMessage,
-  stripeConnected,
-  onNavigateSettingsPayment,
 }: {
   bp: ProjectBlueprint;
   initialIssueId?: string | null;
@@ -44,8 +42,6 @@ export function ProjectDetail({
   onViewBlueprint?: (id: string) => void;
   onNavigateNetwork?: () => void;
   onMessage?: (contact: FounderNetworkMessageTarget) => void;
-  stripeConnected: boolean;
-  onNavigateSettingsPayment?: () => void;
 }) {
   const {
     content,
@@ -264,8 +260,6 @@ export function ProjectDetail({
         content={content}
         totalBudget={health.budget.total}
         spentBudget={health.budget.spent}
-        stripeConnected={stripeConnected}
-        onNavigateSettingsPayment={onNavigateSettingsPayment}
         assignDeveloper={assignDeveloper}
         removeDeveloper={removeDeveloper}
         sendPayment={sendPayment}

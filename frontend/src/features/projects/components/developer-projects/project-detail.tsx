@@ -117,6 +117,9 @@ export function DeveloperProjectDetailView({
             <h1 className="mt-1 text-[23px] font-extrabold tracking-[-0.02em] text-white">
               {project.title}
             </h1>
+            <p className="mt-1.5 text-[12px] font-semibold text-white/58">
+              Founder: {project.founder_name}
+            </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               {project.my_phase_indices.map((index) => (
                 <span

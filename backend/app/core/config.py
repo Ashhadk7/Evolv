@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = Field(default=5, ge=0, le=20)
     DB_POOL_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)
     DB_POOL_RECYCLE_SECONDS: int = Field(default=1800, ge=30, le=86400)
+    STRIPE_SECRET_KEY: SecretStr | None = None
+    STRIPE_WEBHOOK_SECRET: SecretStr | None = None
+    STRIPE_API_BASE_URL: str = "https://api.stripe.com/v1"
+    STRIPE_PLATFORM_FEE_BPS: int = Field(default=800, ge=0, le=10000)
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

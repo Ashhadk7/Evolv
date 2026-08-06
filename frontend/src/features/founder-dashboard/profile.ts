@@ -40,7 +40,7 @@ export const DEFAULT_FOUNDER_PROFILE: FounderProfile = {
   billingPlan: "Founder Launch",
   billingEmail: "",
   billingCurrency: "USD",
-  billingBudgetRange: "$50K - $100K",
+  billingBudgetRange: "",
   paymentMethod: "card",
   billingCompanyName: "",
 };

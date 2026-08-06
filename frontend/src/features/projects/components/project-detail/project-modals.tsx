@@ -15,8 +15,6 @@ export function ProjectModals({
   content,
   totalBudget,
   spentBudget,
-  stripeConnected,
-  onNavigateSettingsPayment,
   assignDeveloper,
   removeDeveloper,
   sendPayment,
@@ -27,8 +25,6 @@ export function ProjectModals({
   content: BlueprintContent;
   totalBudget: number;
   spentBudget: number;
-  stripeConnected: boolean;
-  onNavigateSettingsPayment?: () => void;
   assignDeveloper: (phaseIdx: number, dev: FounderContactProfile, amount: number) => void;
   removeDeveloper: (memberId: string, phaseIdx: number, reason: string) => void;
   sendPayment: (member: ProjectMemberWire, phaseIdx: number, amount: number) => void;
@@ -41,6 +37,29 @@ export function ProjectModals({
     removeDevTarget, setRemoveDevTarget,
     spendModalOpen, setSpendModalOpen,
   } = modals;
+  const paymentExpenses: ProjectExpense[] = bp.project.phaseStates.flatMap((phase, phaseIdx) =>
+    phase.assignment?.payments.map((payment, paymentIdx) => ({
+      id: `payment-${phase.assignment?.developerId ?? "dev"}-${phaseIdx}-${payment.date}-${paymentIdx}`,
+      label: `${phase.assignment?.developerName ?? "Developer"} - ${
+        content.phases[phaseIdx]?.name ?? `Phase ${phaseIdx + 1}`
+      }`,
+      category: "Developer Payment" as const,
+      amount: payment.amount,
+      date: payment.date,
+      phaseIndex: phaseIdx,
+    })) ?? []
+  );
+  const loggedDeveloperExpenses = bp.project.expenses.filter(
+    (expense) => expense.category === "Developer Payment"
+  );
+  const loggedOtherExpenses = bp.project.expenses.filter(
+    (expense) => expense.category !== "Developer Payment"
+  );
+  const spendHistoryExpenses = [
+    ...paymentExpenses,
+    ...(paymentExpenses.length > 0 ? [] : loggedDeveloperExpenses),
+    ...loggedOtherExpenses,
+  ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <>
@@ -51,11 +70,7 @@ export function ProjectModals({
             amountAgreed={payModalTarget.member.amount_agreed_cents / 100}
             amountPaid={payModalTarget.member.amount_paid_cents / 100}
             feePct={content.costModel.platformFeePct}
-            stripeConnected={stripeConnected}
-            onNavigateSettingsPayment={() => {
-              setPayModalTarget(null);
-              onNavigateSettingsPayment?.();
-            }}
+            stripeConnected={payModalTarget.member.developer_stripe_ready}
             onSend={(amount) => {
               sendPayment(payModalTarget.member, payModalTarget.phaseIdx, amount);
               setPayModalTarget(null);
@@ -102,7 +117,7 @@ export function ProjectModals({
       <AnimatePresence>
         {spendModalOpen && (
           <SpendHistoryModal
-            expenses={bp.project.expenses}
+            expenses={spendHistoryExpenses}
             phases={content.phases}
             total={totalBudget}
             spent={spentBudget}

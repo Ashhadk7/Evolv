@@ -16,6 +16,7 @@ import {
 } from "@/features/developer-dashboard/lib/discover-api";
 import { getApiErrorMessage } from "@/lib/api";
 import { DeveloperBlueprintDetail } from "./discover/developer-blueprint-detail";
+import { canApply } from "./discover/apply-state";
 
 const APPLIED_STATUS = {
   color: "#5BC8A0",
@@ -58,6 +59,7 @@ function applicationStatus(app: DiscoverBlueprint): ApplicationStatus {
 }
 
 function isApplicationRecord(app: DiscoverBlueprint) {
+  if (app.engagementStatus !== null) return false;
   return app.applied || app.applicationStatus === "applied" || app.applicationStatus === "withdrawn";
 }
 
@@ -149,7 +151,7 @@ const Applications = ({ onNavigate }: DeveloperPageProps) => {
   };
 
   const handleApply = async (app: DiscoverBlueprint, role: string) => {
-    if (app.applied) return;
+    if (!canApply(app)) return;
 
     setBusyBlueprintId(app.id);
     setBusyAction("apply");

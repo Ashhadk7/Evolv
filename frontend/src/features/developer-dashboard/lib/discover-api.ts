@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api";
 
 export type DeveloperDemand = "High" | "Medium" | "Low";
 export type ApplicationStatus = "applied" | "withdrawn";
+export type EngagementStatus = "invited" | "accepted" | "countered";
 export type ApplicantAvailability = "full_time" | "part_time" | "weekends";
 export type DiscoverSort = "match" | "newest" | "applicants";
 
@@ -50,6 +51,9 @@ export interface DiscoverBlueprint {
   appliedRole: string | null;
   appliedAt: string | null;
   withdrawnAt: string | null;
+  engagementStatus: EngagementStatus | null;
+  engagementProjectId: string | null;
+  engagementProjectTitle: string | null;
   createdAt: string;
   updatedAt: string;
   logo: string;
@@ -122,6 +126,9 @@ interface DiscoverBlueprintWire {
   applied_role: string | null;
   applied_at: string | null;
   withdrawn_at: string | null;
+  engagement_status: EngagementStatus | null;
+  engagement_project_id: string | null;
+  engagement_project_title: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -205,6 +212,9 @@ function fromWire(item: DiscoverBlueprintWire): DiscoverBlueprint {
     appliedRole: item.applied_role,
     appliedAt: item.applied_at,
     withdrawnAt: item.withdrawn_at,
+    engagementStatus: item.engagement_status,
+    engagementProjectId: item.engagement_project_id,
+    engagementProjectTitle: item.engagement_project_title,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
     logo: initialsFor(item.name).toUpperCase(),

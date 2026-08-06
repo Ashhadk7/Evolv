@@ -68,6 +68,9 @@ class DiscoverBlueprintResponse(BaseModel):
     applied_role: str | None = None
     applied_at: datetime | None = None
     withdrawn_at: datetime | None = None
+    engagement_status: str | None = None
+    engagement_project_id: UUID | None = None
+    engagement_project_title: str | None = None
     created_at: datetime
     updated_at: datetime
 

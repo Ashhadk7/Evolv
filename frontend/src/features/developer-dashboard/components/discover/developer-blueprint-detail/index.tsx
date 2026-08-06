@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Bookmark,
   BookmarkCheck,
+  CheckCircle2,
   Handshake,
   MessageSquare,
   RefreshCcw,
@@ -27,6 +28,7 @@ import { BlueprintProductScopeSection } from "@/features/blueprints/components/b
 import { BlueprintTechStackSection } from "@/features/blueprints/components/blueprint-tech-stack-section";
 import { buildInfoGrid } from "@/features/blueprints/components/blueprint-detail/blueprint-detail-data";
 import { deriveStack } from "@/features/blueprints/components/derive-stack";
+import { applyButtonLabel, canApply, engagementNotice } from "../apply-state";
 import { useDeveloperBlueprint } from "../use-developer-blueprint";
 import { RoadmapSection } from "./document-sections";
 import { ApplicantsCard, FounderCard, MatchCard, RolesCard } from "./match-rail";
@@ -55,6 +57,9 @@ export function DeveloperBlueprintDetail({
   const saving = busyAction === "save";
   const withdrawing = busyAction === "withdraw";
   const isWithdrawn = blueprint.applicationStatus === "withdrawn";
+  const canSubmitApplication = canApply(blueprint);
+  const applyLabel = applyButtonLabel(blueprint, "long");
+  const engagementMessage = engagementNotice(blueprint);
 
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState(() => defaultFounderMessage(blueprint));
@@ -128,8 +133,10 @@ export function DeveloperBlueprintDetail({
     }
   };
 
-  const applyForBestRole = () =>
+  const applyForBestRole = () => {
+    if (!canSubmitApplication) return;
     onApply(blueprint, blueprint.bestRole ?? blueprint.roles[0]?.role ?? "");
+  };
 
   return (
     <div className={styles.detailPage}>
@@ -171,8 +178,18 @@ export function DeveloperBlueprintDetail({
               {withdrawing ? "Withdrawing" : "Withdraw"}
             </button>
           ) : (
-            <button type="button" className={styles.btnPrimary} onClick={applyForBestRole}>
-              <Handshake size={14} aria-hidden="true" /> Apply to build
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={applyForBestRole}
+              disabled={!canSubmitApplication}
+            >
+              {canSubmitApplication ? (
+                <Handshake size={14} aria-hidden="true" />
+              ) : (
+                <CheckCircle2 size={14} aria-hidden="true" />
+              )}
+              {applyLabel}
             </button>
           )}
         </div>
@@ -193,6 +210,11 @@ export function DeveloperBlueprintDetail({
           <p className={styles.withdrawnNotice}>
             <XCircle size={15} aria-hidden="true" /> Application withdrawn. You can apply again for
             an available role.
+          </p>
+        )}
+        {engagementMessage && (
+          <p className={styles.withdrawnNotice}>
+            <CheckCircle2 size={15} aria-hidden="true" /> {engagementMessage}
           </p>
         )}
       </header>
@@ -244,7 +266,12 @@ export function DeveloperBlueprintDetail({
         <aside className={styles.detailRail}>
           <MatchCard blueprint={blueprint} onApply={applyForBestRole} />
           <ApplicantsCard blueprint={blueprint} />
-          <RolesCard blueprint={blueprint} onApply={(role) => onApply(blueprint, role)} />
+          <RolesCard
+            blueprint={blueprint}
+            onApply={(role) => {
+              if (canSubmitApplication) onApply(blueprint, role);
+            }}
+          />
           <FounderCard
             blueprint={blueprint}
             messagePending={messagePending}

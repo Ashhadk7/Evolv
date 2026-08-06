@@ -8,7 +8,21 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, SavedBlueprint
 from app.models.blueprint import Blueprint, BlueprintVisibility
+from app.models.project import ACTIVE_MEMBER_STATUSES, Project, ProjectMember
 from app.models.user import DeveloperProfile, FounderProfile
+
+
+def _already_active_project_member():
+    return (
+        select(ProjectMember.id)
+        .join(Project, Project.id == ProjectMember.project_id)
+        .where(
+            Project.blueprint_id == Application.blueprint_id,
+            ProjectMember.developer_id == Application.developer_id,
+            ProjectMember.status.in_(ACTIVE_MEMBER_STATUSES),
+        )
+        .exists()
+    )
 
 
 def get_application_by_id(db: Session, application_id: UUID) -> Application | None:
@@ -40,6 +54,7 @@ def get_latest_active_application_between_founder_and_developer(
             Blueprint.founder_id == founder_id,
             Application.developer_id == developer_id,
             Application.status == "applied",
+            ~_already_active_project_member(),
         )
         .order_by(Application.applied_at.desc())
         .limit(1)
@@ -57,13 +72,13 @@ def list_applications_for_developer(
     count_statement = (
         select(func.count())
         .select_from(Application)
-        .where(Application.developer_id == developer_id)
+        .where(Application.developer_id == developer_id, ~_already_active_project_member())
     )
     total = db.scalar(count_statement) or 0
 
     statement = (
         select(Application)
-        .where(Application.developer_id == developer_id)
+        .where(Application.developer_id == developer_id, ~_already_active_project_member())
         .order_by(Application.applied_at.desc())
         .offset(offset)
         .limit(limit)
@@ -87,14 +102,22 @@ def list_applications_for_blueprint(
     count_statement = (
         select(func.count())
         .select_from(Application)
-        .where(Application.blueprint_id == blueprint_id, Application.status == "applied")
+        .where(
+            Application.blueprint_id == blueprint_id,
+            Application.status == "applied",
+            ~_already_active_project_member(),
+        )
     )
     total = db.scalar(count_statement) or 0
 
     statement = (
         select(Application)
         .options(selectinload(Application.developer).selectinload(DeveloperProfile.user))
-        .where(Application.blueprint_id == blueprint_id, Application.status == "applied")
+        .where(
+            Application.blueprint_id == blueprint_id,
+            Application.status == "applied",
+            ~_already_active_project_member(),
+        )
         .order_by(Application.applied_at.desc())
         .offset(offset)
         .limit(limit)
@@ -113,7 +136,11 @@ def count_applications_for_founder_blueprints(
             func.count(Application.connection_id),
         )
         .join(Blueprint, Blueprint.id == Application.blueprint_id)
-        .where(Blueprint.founder_id == founder_id, Application.status == "applied")
+        .where(
+            Blueprint.founder_id == founder_id,
+            Application.status == "applied",
+            ~_already_active_project_member(),
+        )
         .group_by(Application.blueprint_id)
     )
     counts: dict[UUID, int] = {}
@@ -142,6 +169,7 @@ def count_active_applications_by_role(db: Session) -> dict[UUID, dict[str | None
         .where(
             Blueprint.visibility == BlueprintVisibility.PUBLIC,
             Application.status == "applied",
+            ~_already_active_project_member(),
         )
         .group_by(Application.blueprint_id, Application.role)
     )
@@ -165,7 +193,8 @@ def list_application_blueprint_applied_at_by_developer(
     db: Session, developer_id: UUID
 ) -> dict[UUID, datetime]:
     statement = select(Application.blueprint_id, Application.applied_at).where(
-        Application.developer_id == developer_id
+        Application.developer_id == developer_id,
+        ~_already_active_project_member(),
     )
     return {blueprint_id: applied_at for blueprint_id, applied_at in db.execute(statement).all()}
 
@@ -173,7 +202,10 @@ def list_application_blueprint_applied_at_by_developer(
 def list_application_details_by_developer(
     db: Session, developer_id: UUID
 ) -> dict[UUID, Application]:
-    statement = select(Application).where(Application.developer_id == developer_id)
+    statement = select(Application).where(
+        Application.developer_id == developer_id,
+        ~_already_active_project_member(),
+    )
     return {application.blueprint_id: application for application in db.scalars(statement).all()}
 
 

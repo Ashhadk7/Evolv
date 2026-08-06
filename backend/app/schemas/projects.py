@@ -163,6 +163,36 @@ class ProjectPaymentRecord(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=255)
 
 
+class ProjectPaymentCheckoutSessionCreate(ProjectPaymentRecord):
+    success_url: str = Field(min_length=1, max_length=2000)
+    cancel_url: str = Field(min_length=1, max_length=2000)
+
+
+class ProjectPaymentCheckoutCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    idempotency_key: str = Field(min_length=8, max_length=255)
+
+
+class ProjectPaymentCheckoutSessionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    url: str
+
+
+class ProjectMemberPaymentResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    amount_cents: int
+    currency: str
+    status: PaymentStatus
+    provider: PaymentProvider
+    created_at: datetime
+    settled_at: datetime | None = None
+
+
 class ProjectMemberResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -176,6 +206,9 @@ class ProjectMemberResponse(BaseModel):
     amount_agreed_cents: int
     counter_amount_cents: int | None = None
     amount_paid_cents: int = 0
+    developer_stripe_ready: bool = False
+    developer_stripe_account_id: str | None = None
+    payments: list[ProjectMemberPaymentResponse] = Field(default_factory=list)
     invited_at: datetime
     responded_at: datetime | None = None
     removed_at: datetime | None = None
@@ -507,6 +540,8 @@ class DeveloperProjectSummary(BaseModel):
 
     id: UUID
     blueprint_id: UUID
+    founder_id: UUID
+    founder_name: str
     title: str
     status: ProjectStatus
     my_phase_indices: list[int]

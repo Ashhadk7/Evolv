@@ -1,18 +1,102 @@
 "use client";
 
-import type { PaymentData } from "./developer-settings-types";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  createStripeConnectAccountLink,
+  fetchStripeConnectStatus,
+  type StripeConnectStatus,
+} from "@/features/payments/stripe-connect-api";
+import type { DeveloperSettingsProfile } from "@/features/settings/data/developer-settings-data";
+import { getApiErrorMessage } from "@/lib/api";
 import styles from "./developer-settings.module.css";
-import { SaveButton } from "./save-button";
+
+function statusFromProfile(profile: DeveloperSettingsProfile): StripeConnectStatus {
+  return {
+    account_id: profile.stripeAccountId || null,
+    onboarding_complete: Boolean(profile.stripeOnboardingComplete),
+    charges_enabled: Boolean(profile.stripeChargesEnabled),
+    payouts_enabled: Boolean(profile.stripePayoutsEnabled),
+    currently_due: [],
+    disabled_reason: null,
+  };
+}
 
 export function PaymentTab({
-  payData,
-  onChangePayData,
-  onSave,
+  profile,
 }: {
-  payData: PaymentData;
-  onChangePayData: (patch: Partial<PaymentData>) => void;
-  onSave: () => void | Promise<void>;
+  profile: DeveloperSettingsProfile;
 }) {
+  const profileStatus = statusFromProfile(profile);
+  const [remoteStatus, setRemoteStatus] = useState<StripeConnectStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const status = remoteStatus ?? profileStatus;
+
+  useEffect(() => {
+    let active = true;
+    fetchStripeConnectStatus()
+      .then((nextStatus) => {
+        if (active) setRemoteStatus(nextStatus);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const statusCopy = useMemo(() => {
+    if (status.payouts_enabled) {
+      return {
+        label: "Connected",
+        detail: "Stripe payouts are ready.",
+        color: "#1d6e47",
+        background: "rgba(91,200,160,0.14)",
+      };
+    }
+    if (status.account_id) {
+      return {
+        label: "Setup needed",
+        detail: "Finish Stripe onboarding to receive payouts.",
+        color: "#8a6a18",
+        background: "rgba(242,180,75,0.16)",
+      };
+    }
+    return {
+      label: "Not connected",
+      detail: "Connect Stripe to receive project payouts.",
+      color: "#7a7a7a",
+      background: "rgba(0,0,0,0.04)",
+    };
+  }, [status]);
+
+  const handleConnect = async () => {
+    if (typeof window === "undefined" || connecting) return;
+    setConnecting(true);
+    try {
+      const settingsUrl = `${window.location.origin}/developer/settings`;
+      const accountLink = await createStripeConnectAccountLink({
+        refreshUrl: settingsUrl,
+        returnUrl: settingsUrl,
+      });
+      setRemoteStatus(accountLink);
+      window.location.assign(accountLink.url);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+      setConnecting(false);
+    }
+  };
+
+  const buttonLabel = status.account_id
+    ? status.payouts_enabled
+      ? "Update Stripe account"
+      : "Continue Stripe setup"
+    : "Connect Stripe";
+
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>
@@ -21,111 +105,74 @@ export function PaymentTab({
         </span>
       </div>
 
-      <div className={styles.sectionDivider}>Payment Method</div>
+      <div className={styles.sectionDivider}>Stripe Connect</div>
       <div className={styles.formGrid}>
         <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-          <label>Preferred Method</label>
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            {["bank", "paypal", "stripe"].map((m) => (
-              <button
-                key={m}
-                onClick={() => onChangePayData({ method: m })}
-                style={{
-                  padding: "0.5rem 1.2rem",
-                  borderRadius: "8px",
-                  border: `1.5px solid ${payData.method === m ? "#5BC8A0" : "rgba(255,255,255,0.08)"}`,
-                  background:
-                    payData.method === m ? "rgba(91,200,160,0.12)" : "rgba(255,255,255,0.03)",
-                  color: payData.method === m ? "#5BC8A0" : "#a0a0a0",
-                  fontWeight: payData.method === m ? 700 : 400,
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  textTransform: "capitalize",
-                  transition: "all 0.2s",
-                }}
-              >
-                <i
-                  className={`fas fa-${m === "bank" ? "university" : m === "paypal" ? "paypal" : "credit-card"}`}
-                  style={{ marginRight: "0.4rem" }}
-                />
-                {m === "bank" ? "Bank Transfer" : m === "paypal" ? "PayPal" : "Stripe"}
-              </button>
-            ))}
+          <div
+            style={{
+              alignItems: "center",
+              border: "1px solid rgba(0,0,0,0.08)",
+              borderRadius: 8,
+              display: "flex",
+              gap: "1rem",
+              justifyContent: "space-between",
+              padding: "1rem 1.2rem",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <span
+                  style={{
+                    background: statusCopy.background,
+                    borderRadius: 999,
+                    color: statusCopy.color,
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    padding: "0.25rem 0.65rem",
+                  }}
+                >
+                  {loading ? "Checking..." : statusCopy.label}
+                </span>
+                <span style={{ color: "#1f2f29", fontSize: "0.92rem", fontWeight: 800 }}>
+                  Stripe payouts
+                </span>
+              </div>
+              <p className={styles.emptyState} style={{ margin: "0.6rem 0 0", padding: 0 }}>
+                {statusCopy.detail}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleConnect()}
+              disabled={connecting}
+              className="bp-gradient-btn"
+              style={{
+                borderRadius: 8,
+                fontSize: "0.85rem",
+                fontWeight: 800,
+                minHeight: 42,
+                padding: "0.55rem 1.15rem",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {connecting ? "Opening Stripe..." : buttonLabel}
+            </button>
           </div>
+        </div>
+        <div className={styles.formGroup}>
+          <label>Account</label>
+          <input value={status.account_id ?? "Not connected"} readOnly />
+        </div>
+        <div className={styles.formGroup}>
+          <label>Currency</label>
+          <input value="USD" readOnly />
         </div>
       </div>
-
-      {payData.method === "bank" && (
-        <div className={styles.formGrid}>
-          <div className={styles.formGroup}>
-            <label>Account Name</label>
-            <input
-              type="text"
-              value={payData.accountName}
-              onChange={(e) => onChangePayData({ accountName: e.target.value })}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Account Number</label>
-            <input
-              type="text"
-              value={payData.accountNumber}
-              onChange={(e) => onChangePayData({ accountNumber: e.target.value })}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Bank Name</label>
-            <input
-              type="text"
-              value={payData.bankName}
-              onChange={(e) => onChangePayData({ bankName: e.target.value })}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Currency</label>
-            <select
-              value={payData.currency}
-              onChange={(e) => onChangePayData({ currency: e.target.value })}
-            >
-              <option>USD</option>
-              <option>EUR</option>
-              <option>GBP</option>
-              <option>PKR</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {payData.method === "paypal" && (
-        <div className={styles.formGrid}>
-          <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-            <label>PayPal Email</label>
-            <input
-              type="email"
-              value={payData.paypal}
-              onChange={(e) => onChangePayData({ paypal: e.target.value })}
-            />
-          </div>
-        </div>
-      )}
-
-      {payData.method === "stripe" && (
-        <div className={styles.formGrid}>
-          <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-            <label>Stripe Account Email</label>
-            <input type="email" placeholder="your@email.com" />
-          </div>
-        </div>
-      )}
 
       <div className={styles.sectionDivider}>Payout Summary</div>
       <p className={styles.emptyState} style={{ margin: 0, padding: "0 1.2rem 1.5rem" }}>
         Payout history will appear once project payments are connected.
       </p>
-
-      <div className={styles.cardFooter}>
-        <SaveButton label="Save Payment Info" onSave={onSave} />
-      </div>
     </div>
   );
 }

@@ -101,6 +101,9 @@ export function DeveloperProjectCard({
             <div className="text-[15.5px] font-bold leading-tight tracking-[-0.01em] text-[#fff4e1]/97">
               {project.title}
             </div>
+            <div className="mt-0.75 text-[11px] font-semibold text-[#9fe3c6]/72">
+              Founder: {project.founder_name}
+            </div>
             <div className="mt-0.75 text-[11px] text-[#fff4e1]/50">
               Your agreed fee {fmtCents(project.earnings.agreed_cents, project.earnings.currency)}
             </div>

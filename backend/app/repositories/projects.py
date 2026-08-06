@@ -175,6 +175,31 @@ def list_accepted_memberships_for_developer(
     )
 
 
+def list_active_memberships_by_blueprint_for_developer(
+    db: Session, developer_id: UUID
+) -> dict[UUID, tuple[ProjectMember, Project]]:
+    rows = db.execute(
+        select(ProjectMember, Project)
+        .join(Project, Project.id == ProjectMember.project_id)
+        .where(
+            ProjectMember.developer_id == developer_id,
+            ProjectMember.status.in_(ACTIVE_MEMBER_STATUSES),
+        )
+        .order_by(Project.created_at.desc(), ProjectMember.invited_at.desc())
+    ).all()
+    priority = {
+        ProjectMemberStatus.ACCEPTED: 0,
+        ProjectMemberStatus.COUNTERED: 1,
+        ProjectMemberStatus.INVITED: 2,
+    }
+    by_blueprint: dict[UUID, tuple[ProjectMember, Project]] = {}
+    for member, project in rows:
+        existing = by_blueprint.get(project.blueprint_id)
+        if existing is None or priority[member.status] < priority[existing[0].status]:
+            by_blueprint[project.blueprint_id] = (member, project)
+    return by_blueprint
+
+
 def list_memberships_on_project(
     db: Session, project_id: UUID, developer_id: UUID
 ) -> list[ProjectMember]:
@@ -245,6 +270,34 @@ def create_payment(
     return payment
 
 
+def get_payment_by_idempotency_key(
+    db: Session, idempotency_key: str
+) -> ProjectPayment | None:
+    return db.scalar(
+        select(ProjectPayment).where(ProjectPayment.idempotency_key == idempotency_key)
+    )
+
+
+def get_payment_by_provider_ref(db: Session, provider_ref: str) -> ProjectPayment | None:
+    return db.scalar(select(ProjectPayment).where(ProjectPayment.provider_ref == provider_ref))
+
+
+def update_payment_status(
+    payment: ProjectPayment,
+    *,
+    status: PaymentStatus,
+    provider_ref: str | None = None,
+    failure_reason: str | None = None,
+    settled_at: datetime | None = None,
+) -> ProjectPayment:
+    payment.status = status
+    if provider_ref is not None:
+        payment.provider_ref = provider_ref
+    payment.failure_reason = failure_reason
+    payment.settled_at = settled_at
+    return payment
+
+
 def sum_settled_payments_by_member(db: Session, member_ids: list[UUID]) -> dict[UUID, int]:
     if not member_ids:
         return {}
@@ -253,6 +306,22 @@ def sum_settled_payments_by_member(db: Session, member_ids: list[UUID]) -> dict[
         .where(
             ProjectPayment.member_id.in_(member_ids),
             ProjectPayment.status == PaymentStatus.SUCCEEDED,
+        )
+        .group_by(ProjectPayment.member_id)
+    ).all()
+    return {row[0]: int(row[1] or 0) for row in rows}
+
+
+def sum_payments_by_member_statuses(
+    db: Session, member_ids: list[UUID], statuses: tuple[PaymentStatus, ...]
+) -> dict[UUID, int]:
+    if not member_ids:
+        return {}
+    rows = db.execute(
+        select(ProjectPayment.member_id, func.sum(ProjectPayment.amount_cents))
+        .where(
+            ProjectPayment.member_id.in_(member_ids),
+            ProjectPayment.status.in_(statuses),
         )
         .group_by(ProjectPayment.member_id)
     ).all()

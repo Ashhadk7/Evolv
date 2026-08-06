@@ -61,6 +61,8 @@ export interface DeveloperEarnings {
 export interface DeveloperProjectSummary {
   id: string;
   blueprint_id: string;
+  founder_id: string;
+  founder_name: string;
   title: string;
   status: BackendProjectStatus;
   my_phase_indices: number[];

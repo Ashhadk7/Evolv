@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, CheckCircle, HandCoins, User, X } from "@phosphor-icons/react";
+import { Check, HandCoins, User, X } from "@phosphor-icons/react";
 import { Avatar } from "@/components/shared/avatar";
 import { fmtDate, fmtMoney } from "@/features/blueprints/blueprint-content";
 import type { ProjectMemberWire } from "@/features/projects/projects-api";
@@ -9,6 +9,29 @@ import type { ProjectMemberWire } from "@/features/projects/projects-api";
 function initialsOf(name: string): string {
   const [first = "", last = ""] = name.split(" ");
   return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() || "D";
+}
+
+const PAYMENT_STATUS_STYLE: Record<
+  ProjectMemberWire["payments"][number]["status"],
+  string
+> = {
+  pending: "bg-bp-amber-bg text-bp-amber border-bp-amber-line",
+  processing: "bg-bp-amber-bg text-bp-amber border-bp-amber-line",
+  succeeded: "bg-[#e8f5ef] text-[#1d6e47] border-[#cfeadd]",
+  failed: "bg-[#fbeceb] text-bp-red border-[#f3c5c0]",
+  cancelled: "bg-bp-tint text-bp-muted border-bp-border-soft",
+};
+
+function paymentStatusLabel(status: ProjectMemberWire["payments"][number]["status"]): string {
+  if (status === "succeeded") return "Paid";
+  if (status === "processing") return "Processing";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "failed") return "Failed";
+  return "Pending";
+}
+
+function paymentProviderLabel(provider: ProjectMemberWire["payments"][number]["provider"]): string {
+  return provider === "stripe" ? "Stripe" : "Manual";
 }
 
 function MemberDetailPopup({
@@ -25,7 +48,7 @@ function MemberDetailPopup({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#08160f]/60 p-4 backdrop-blur-[3px]">
-      <div className="bg-bp-card border-bp-border w-full max-w-[320px] rounded-2xl border p-[22px_24px] shadow-[0_24px_60px_-20px_rgba(9,32,26,0.45)]">
+      <div className="bg-bp-card border-bp-border w-full max-w-[380px] rounded-2xl border p-[22px_24px] shadow-[0_24px_60px_-20px_rgba(9,32,26,0.45)]">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Avatar initials={initialsOf(member.developer_name)} size={34} />
@@ -65,6 +88,43 @@ function MemberDetailPopup({
             />
           </div>
           <div className="text-bp-muted text-right text-[11px] tabular-nums">{pct}% paid</div>
+        </div>
+
+        <div className="border-bp-border-soft mt-4 border-t pt-4">
+          <div className="text-bp-forest mb-2 text-[10.5px] font-extrabold uppercase tracking-[0.08em]">
+            Phase payment history
+          </div>
+          {member.payments.length === 0 ? (
+            <div className="text-bp-muted rounded-lg border border-dashed border-bp-border-soft bg-bp-tint px-3 py-3 text-center text-[11.5px]">
+              No payments sent for this phase yet.
+            </div>
+          ) : (
+            <div className="flex max-h-[190px] flex-col gap-2 overflow-y-auto pr-1">
+              {member.payments.map((payment) => {
+                const paymentDate = (payment.settled_at ?? payment.created_at).slice(0, 10);
+                return (
+                  <div
+                    key={payment.id}
+                    className="border-bp-border-soft rounded-lg border bg-bp-tint px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-bp-ink text-[12.5px] font-extrabold tabular-nums">
+                        {fmtMoney(payment.amount_cents / 100)}
+                      </div>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[9.5px] font-extrabold ${PAYMENT_STATUS_STYLE[payment.status]}`}
+                      >
+                        {paymentStatusLabel(payment.status)}
+                      </span>
+                    </div>
+                    <div className="text-bp-muted mt-1 text-[10.5px]">
+                      {paymentProviderLabel(payment.provider)} - {fmtDate(paymentDate)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -196,8 +256,15 @@ export function PhaseAssignment({
             <div className="text-bp-muted mt-0.5 text-[11.5px]">
               {fmtMoney(member.amount_paid_cents / 100)} / {fmtMoney(member.amount_agreed_cents / 100)} paid
             </div>
+            {!member.developer_stripe_ready && (
+              <div className="text-bp-amber mt-0.5 text-[11px] font-bold">
+                Stripe payout setup needed
+              </div>
+            )}
           </div>
-          <button onClick={() => onPay(member)} className="bp-primary-btn">Pay</button>
+          <button onClick={() => onPay(member)} className="bp-primary-btn">
+            {member.developer_stripe_ready ? "Pay" : "Check payout"}
+          </button>
           <button
             onClick={() => onRemoveDev(member.id)}
             className="text-bp-red cursor-pointer border-none bg-transparent px-2 py-1.5 text-[11.5px] font-semibold"

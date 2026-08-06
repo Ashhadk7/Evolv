@@ -1031,7 +1031,17 @@ export function computeProjectHealth(
     0
   );
 
-  const spent = (project.expenses ?? []).reduce((s, e) => s + e.amount, 0);
+  const loggedNonDeveloperSpend = (project.expenses ?? [])
+    .filter((expense) => expense.category !== "Developer Payment")
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  const loggedDeveloperSpend = (project.expenses ?? [])
+    .filter((expense) => expense.category === "Developer Payment")
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  const liveDeveloperSpend = project.phaseStates.reduce(
+    (sum, phase) => sum + (phase.totalPaid || phase.assignment?.amountPaid || 0),
+    0
+  );
+  const spent = loggedNonDeveloperSpend + Math.max(loggedDeveloperSpend, liveDeveloperSpend);
   const verdict: ProjectHealth["verdict"] =
     delayedCount === 0 ? "On track" : delayedCount === 1 ? "Attention needed" : "At risk";
 

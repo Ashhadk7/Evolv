@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.models.application import Application
 from app.models.blueprint import Blueprint, BlueprintVisibility
+from app.models.project import Project, ProjectMember
 from app.models.user import DeveloperProfile, User, UserRole
 from app.repositories import applications as applications_repository
 from app.repositories import blueprints as blueprints_repository
+from app.repositories import projects as projects_repository
 from app.schemas.discover import (
     DiscoverApplicantsByRole,
     DiscoverBlueprintListResponse,
@@ -68,6 +70,9 @@ def list_public_blueprints(
     application_by_blueprint = applications_repository.list_application_details_by_developer(
         db, developer.user_id
     )
+    engagement_by_blueprint = projects_repository.list_active_memberships_by_blueprint_for_developer(
+        db, developer.user_id
+    )
     applicant_counts = applications_repository.count_active_applications_by_role(db)
     blueprints_by_founder = applications_repository.count_public_blueprints_by_founder(db)
     scorable = [
@@ -86,6 +91,7 @@ def list_public_blueprints(
                 developer,
                 saved_ids,
                 application_by_blueprint,
+                engagement_by_blueprint,
                 applicant_counts,
                 blueprints_by_founder,
                 similarities,
@@ -142,6 +148,9 @@ def list_saved_blueprints(
     application_by_blueprint = applications_repository.list_application_details_by_developer(
         db, developer.user_id
     )
+    engagement_by_blueprint = projects_repository.list_active_memberships_by_blueprint_for_developer(
+        db, developer.user_id
+    )
     applicant_counts = applications_repository.count_active_applications_by_role(db)
     blueprints_by_founder = applications_repository.count_public_blueprints_by_founder(db)
     similarities = _semantic_similarities(
@@ -172,6 +181,7 @@ def list_saved_blueprints(
                 developer,
                 saved_ids,
                 application_by_blueprint,
+                engagement_by_blueprint,
                 applicant_counts,
                 blueprints_by_founder,
                 similarities,
@@ -292,6 +302,7 @@ def _blueprint_to_discover_item(
     developer: DeveloperProfile,
     saved_ids: set[UUID],
     application_by_blueprint: dict[UUID, Application],
+    engagement_by_blueprint: dict[UUID, tuple[ProjectMember, Project]],
     applicant_counts: dict[UUID, dict[str | None, int]],
     blueprints_by_founder: dict[UUID, int],
     similarities: dict[str, float],
@@ -319,7 +330,9 @@ def _blueprint_to_discover_item(
         semantic_similarity=_similarity_for(similarities, blueprint.id),
     )
 
-    application = application_by_blueprint.get(blueprint.id)
+    engagement = engagement_by_blueprint.get(blueprint.id)
+    member, project = engagement if engagement is not None else (None, None)
+    application = None if member is not None else application_by_blueprint.get(blueprint.id)
     by_role = applicant_counts.get(blueprint.id, {})
 
     return DiscoverBlueprintResponse(
@@ -357,6 +370,9 @@ def _blueprint_to_discover_item(
         applied_role=application.role if application is not None else None,
         applied_at=application.applied_at if application is not None else None,
         withdrawn_at=application.withdrawn_at if application is not None else None,
+        engagement_status=member.status.value if member is not None else None,
+        engagement_project_id=project.id if project is not None else None,
+        engagement_project_title=version.name if project is not None else None,
         created_at=blueprint.created_at,
         updated_at=blueprint.updated_at,
     )

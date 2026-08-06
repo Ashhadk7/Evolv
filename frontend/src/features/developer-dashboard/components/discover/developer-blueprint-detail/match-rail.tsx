@@ -1,6 +1,7 @@
 import { ArrowUp, CheckCircle2, Handshake, MessageSquare, Star } from "lucide-react";
 
 import styles from "@/features/developer-dashboard/components/discover.module.css";
+import { applyButtonLabel, canApply } from "../apply-state";
 import { MatchRing } from "../match-ring";
 import type { Opportunity } from "../types";
 
@@ -13,6 +14,8 @@ export function MatchCard({
 }) {
   const hasScore = blueprint.matchScore !== null;
   const bestRoleFit = blueprint.roleFits.find((fit) => fit.role === blueprint.bestRole);
+  const canSubmitApplication = canApply(blueprint);
+  const applyLabel = applyButtonLabel(blueprint, "long");
 
   return (
     <section className={styles.railCard} aria-labelledby="match-card-heading">
@@ -74,10 +77,14 @@ export function MatchCard({
         type="button"
         className={styles.btnPrimaryBlock}
         onClick={onApply}
-        disabled={blueprint.applied}
+        disabled={!canSubmitApplication}
       >
-        <Handshake size={15} aria-hidden="true" />
-        {blueprint.applied ? "Applied" : "Apply to build"}
+        {canSubmitApplication ? (
+          <Handshake size={15} aria-hidden="true" />
+        ) : (
+          <CheckCircle2 size={15} aria-hidden="true" />
+        )}
+        {applyLabel}
       </button>
     </section>
   );
@@ -94,6 +101,8 @@ export function RolesCard({
 
   const seats = blueprint.roles.reduce((total, role) => total + role.count, 0);
   const fitFor = (role: string) => blueprint.roleFits.find((fit) => fit.role === role)?.fit ?? null;
+  const canSubmitApplication = canApply(blueprint);
+  const applyLabel = applyButtonLabel(blueprint);
 
   return (
     <section className={styles.railCard} aria-labelledby="roles-heading">
@@ -128,9 +137,9 @@ export function RolesCard({
                 type="button"
                 className={styles.btnPrimarySm}
                 onClick={() => onApply(role.role)}
-                disabled={blueprint.applied}
+                disabled={!canSubmitApplication}
               >
-                {blueprint.applied ? "Applied" : "Apply"}
+                {applyLabel}
               </button>
             </li>
           );

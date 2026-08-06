@@ -193,7 +193,6 @@ export default function DeveloperProjects() {
   const ongoing = projects.filter((p) => !isClosedStatus(p.status));
   const closed = projects.filter((p) => isClosedStatus(p.status));
 
-  const totalAgreed = projects.reduce((sum, p) => sum + p.earnings.agreed_cents, 0);
   const totalPaid = projects.reduce((sum, p) => sum + p.earnings.paid_cents, 0);
   const deliverablesDone = projects.reduce((sum, p) => sum + p.deliverables_done, 0);
   const deliverablesTotal = projects.reduce((sum, p) => sum + p.deliverables_total, 0);
@@ -239,12 +238,6 @@ export default function DeveloperProjects() {
               Every project you&apos;ve joined — track your phases, tick off deliverables, and
               follow what you&apos;ve earned.
             </p>
-          </div>
-          <div className="text-right">
-            <Label>Agreed across all projects</Label>
-            <div className="text-bp-ink text-[21px] font-extrabold tabular-nums">
-              {fmtCents(totalAgreed)}
-            </div>
           </div>
         </div>
 

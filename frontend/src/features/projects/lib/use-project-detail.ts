@@ -19,9 +19,9 @@ import {
 import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
 import type { FounderContactProfile } from "@/features/network/types";
 import {
+  createProjectPaymentCheckoutSession,
   inviteProjectMember,
   listProjectMembers,
-  recordProjectPayment,
   removeProjectMember,
   respondToMemberCounter,
   revokeProjectInvite,
@@ -366,24 +366,33 @@ export function useProjectDetail({
 
   const sendPayment = async (member: ProjectMemberWire, phaseIdx: number, amount: number) => {
     if (amount <= 0) return;
+    if (!member.developer_stripe_ready) {
+      showToast(`${member.developer_name} needs to finish Stripe payout setup first.`);
+      return;
+    }
     try {
-      await recordProjectPayment(member.id, {
+      const origin = window.location.origin;
+      const paymentKey =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? `${member.id}-${crypto.randomUUID()}`
+          : `${member.id}-${Date.now()}`;
+      const session = await createProjectPaymentCheckoutSession(member.id, {
         amount_cents: Math.round(amount * 100),
-        idempotency_key: `${member.id}-${Date.now()}`,
+        idempotency_key: paymentKey,
+        success_url: `${origin}/founder/projects?stripe_session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/founder/projects?stripe_payment=cancelled&stripe_payment_key=${encodeURIComponent(paymentKey)}`,
       });
-      await loadMembers();
       updatePhase(phaseIdx, (ps) => ({
         ...ps,
         history: [
           ...ps.history,
           {
-            label: `${fmtMoney(amount)} recorded for ${member.developer_name}`,
+            label: `${fmtMoney(amount)} checkout opened for ${member.developer_name}`,
             date: todayISO(),
           },
         ],
       }));
-      dispatchRefresh();
-      showToast(`${fmtMoney(amount)} recorded for ${member.developer_name}`);
+      window.location.assign(session.url);
     } catch (err) {
       showToast(getApiErrorMessage(err));
     }

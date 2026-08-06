@@ -137,6 +137,19 @@ export type ProjectMemberStatus =
   | "removed"
   | "countered";
 
+export type ProjectPaymentStatus = "pending" | "processing" | "succeeded" | "failed" | "cancelled";
+export type ProjectPaymentProvider = "manual" | "stripe";
+
+export interface ProjectPaymentWire {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  status: ProjectPaymentStatus;
+  provider: ProjectPaymentProvider;
+  created_at: string;
+  settled_at: string | null;
+}
+
 export interface ProjectMemberWire {
   id: string;
   project_id: string;
@@ -148,6 +161,9 @@ export interface ProjectMemberWire {
   amount_agreed_cents: number;
   counter_amount_cents: number | null;
   amount_paid_cents: number;
+  developer_stripe_ready: boolean;
+  developer_stripe_account_id: string | null;
+  payments: ProjectPaymentWire[];
   invited_at: string;
   responded_at: string | null;
   removed_at: string | null;
@@ -201,6 +217,48 @@ export async function recordProjectPayment(
     method: "POST",
     auth: true,
     body: payload,
+  });
+}
+
+export async function createProjectPaymentCheckoutSession(
+  memberId: string,
+  payload: {
+    amount_cents: number;
+    idempotency_key: string;
+    success_url: string;
+    cancel_url: string;
+  }
+): Promise<{ session_id: string; url: string }> {
+  return apiFetch<{ session_id: string; url: string }>(
+    `/projects/members/${memberId}/payments/stripe-checkout`,
+    {
+      method: "POST",
+      auth: true,
+      body: payload,
+    }
+  );
+}
+
+export async function syncProjectPaymentCheckoutSession(
+  sessionId: string,
+  cancelled = false
+): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>(
+    `/projects/payments/stripe-checkout/${encodeURIComponent(sessionId)}/sync?cancelled=${cancelled ? "true" : "false"}`,
+    {
+      method: "POST",
+      auth: true,
+    }
+  );
+}
+
+export async function cancelProjectPaymentCheckoutSession(
+  idempotencyKey: string
+): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>("/projects/payments/stripe-checkout/cancel", {
+    method: "POST",
+    auth: true,
+    body: { idempotency_key: idempotencyKey },
   });
 }
 

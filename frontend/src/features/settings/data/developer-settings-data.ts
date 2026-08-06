@@ -28,6 +28,10 @@ export type DeveloperSettingsProfile = DeveloperProfile & {
   rateAmount: string;
   ratePeriod: string;
   rateCurrency: string;
+  stripeAccountId: string;
+  stripeOnboardingComplete: boolean;
+  stripeChargesEnabled: boolean;
+  stripePayoutsEnabled: boolean;
   experienceYears: string;
   rating: number;
   reviews: DeveloperSettingsReview[];
@@ -66,6 +70,10 @@ export const defaultProfile: DeveloperSettingsProfile = {
   rateAmount: "",
   ratePeriod: DEFAULT_RATE_PERIOD,
   rateCurrency: DEFAULT_RATE_CURRENCY,
+  stripeAccountId: "",
+  stripeOnboardingComplete: false,
+  stripeChargesEnabled: false,
+  stripePayoutsEnabled: false,
   experienceYears: "",
   avatarUrl: "",
   tags: [],
@@ -160,6 +168,10 @@ export const hydrateDeveloperProfile = (
     rateAmount: user.rateAmount || "",
     ratePeriod: user.ratePeriod || DEFAULT_RATE_PERIOD,
     rateCurrency: user.rateCurrency || DEFAULT_RATE_CURRENCY,
+    stripeAccountId: user.stripeAccountId || "",
+    stripeOnboardingComplete: Boolean(user.stripeOnboardingComplete),
+    stripeChargesEnabled: Boolean(user.stripeChargesEnabled),
+    stripePayoutsEnabled: Boolean(user.stripePayoutsEnabled),
     experienceYears: user.experienceYears || user.experience || "",
     tags: Array.isArray(user.tags) ? user.tags : [],
     techStack: Array.isArray(user.techStack)

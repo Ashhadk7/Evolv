@@ -23,7 +23,7 @@ import {
   getProfileInitials,
   hydrateDeveloperProfile,
 } from "@/features/settings/data/developer-settings-data";
-import type { PaymentData, SettingsTab } from "./developer-settings-types";
+import type { SettingsTab } from "./developer-settings-types";
 import styles from "./developer-settings.module.css";
 import { DeleteAccountModal } from "@/features/settings/components/delete-account-modal";
 import { SettingsSidebarNav } from "./settings-sidebar-nav";
@@ -34,7 +34,6 @@ import { NotificationsTab } from "./notifications-tab";
 import { SecurityTab } from "./security-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { getApiErrorMessage } from "@/lib/api";
-import { DeveloperProfileMobileCard } from "@/features/profiles/components/developer-profile-mobile-card";
 import { uploadAvatar, uploadCertificationImage } from "@/features/profiles/profile-api";
 import {
   fetchNotificationPreferences,
@@ -61,6 +60,10 @@ const SECTION_COPY: Record<SettingsTab, { title: string; subtitle: string }> = {
   security: { title: "Security", subtitle: "Protect your developer account and login access." },
 };
 
+function formatDeveloperSettingsError(error: unknown): string {
+  return getApiErrorMessage(error).replace(/\bbio\b/g, "professional summary");
+}
+
 const Settings = () => {
   const dashboardProfile = useDeveloperDashboardStore((state) => state.profile);
   const completeProfile = useDeveloperDashboardStore((state) => state.completeProfile);
@@ -75,14 +78,6 @@ const Settings = () => {
   const [saveError, setSaveError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [payData, setPayData] = useState<PaymentData>({
-    method: "bank",
-    accountName: "",
-    accountNumber: "",
-    bankName: "",
-    currency: "USD",
-    paypal: "",
-  });
   const router = useRouter();
   const [mobileDetailActive, setMobileDetailActive] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -191,6 +186,7 @@ const Settings = () => {
         lastName,
         jobTitle: profile.role,
         role: profile.role,
+        rateCurrency: "USD",
         education: formatFounderEducations(profile.educations || []),
       });
       await completeProfile(normalized);
@@ -205,7 +201,7 @@ const Settings = () => {
         toast.success("Changes saved");
       }
     } catch (error) {
-      const message = getApiErrorMessage(error);
+      const message = formatDeveloperSettingsError(error);
       setSaveError(message);
       toast.error(message);
     } finally {
@@ -241,7 +237,7 @@ const Settings = () => {
         profile: { ...state.profile, avatarUrl: url, photo: url },
       }));
     } catch (error) {
-      setSaveError(getApiErrorMessage(error));
+      setSaveError(formatDeveloperSettingsError(error));
     } finally {
       setPhotoUploading(false);
       if (photoInputRef.current) photoInputRef.current.value = "";
@@ -252,10 +248,6 @@ const Settings = () => {
     key: "name" | "email" | "role" | "github" | "linkedin" | "portfolioLink" | "bio",
     value: string
   ) => setProfile((p) => ({ ...p, [key]: value }));
-
-  const handlePaySave = () => {
-    toast.success("Payment details saved");
-  };
 
   const handleNotificationSave = async () => {
     setSaveError("");
@@ -277,7 +269,7 @@ const Settings = () => {
       });
       toast.success("Notification preferences saved");
     } catch (error) {
-      const message = getApiErrorMessage(error);
+      const message = formatDeveloperSettingsError(error);
       setSaveError(message);
       toast.error(message);
     }
@@ -423,7 +415,7 @@ const Settings = () => {
     try {
       updateCertification(id, { image: await uploadCertificationImage(file) });
     } catch (error) {
-      setSaveError(getApiErrorMessage(error));
+      setSaveError(formatDeveloperSettingsError(error));
     }
   };
 
@@ -617,11 +609,7 @@ const Settings = () => {
             ))}
 
           {visibleTab === "payment" && (
-            <PaymentTab
-              payData={payData}
-              onChangePayData={(patch) => setPayData((prev) => ({ ...prev, ...patch }))}
-              onSave={handlePaySave}
-            />
+            <PaymentTab profile={profile} />
           )}
 
           {visibleTab === "notifications" && (
@@ -702,26 +690,26 @@ const Settings = () => {
                     />
                   ))}
 
-                {visibleTab === "payment" && (
-                  <PaymentTab
-                    payData={payData}
-                    onChangePayData={(patch) => setPayData((prev) => ({ ...prev, ...patch }))}
-                    onSave={handlePaySave}
-                  />
-                )}
+              {visibleTab === "payment" && (
+                <PaymentTab profile={profile} />
+              )}
 
-                {visibleTab === "notifications" && (
-                  <NotificationsTab
-                    notifications={notifications}
-                    onToggle={(key) => setNotifications({ ...notifications, [key]: !notifications[key] })}
-                    onSave={handleNotificationSave}
-                  />
-                )}
+              {visibleTab === "notifications" && (
+                <NotificationsTab
+                  notifications={notifications}
+                  onToggle={(key) =>
+                    setNotifications({ ...notifications, [key]: !notifications[key] })
+                  }
+                  onSave={handleNotificationSave}
+                />
+              )}
 
-                {visibleTab === "security" && <SecurityTab />}
-              </div>
+              {visibleTab === "security" && <SecurityTab />}
+
+  
             </div>
           </div>
+        </div>
         </main>
       </div>
 

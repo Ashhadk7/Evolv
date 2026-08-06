@@ -53,7 +53,12 @@ export function applyMembersToProject(
           hiredAt: (member.responded_at ?? member.invited_at).slice(0, 10),
           amountAgreed: member.amount_agreed_cents / 100,
           amountPaid,
-          payments: ps.assignment?.payments ?? [],
+          payments: member.payments
+            .filter((payment) => payment.status === "succeeded")
+            .map((payment) => ({
+              amount: payment.amount_cents / 100,
+              date: (payment.settled_at ?? payment.created_at).slice(0, 10),
+            })),
         },
       };
     }),

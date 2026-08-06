@@ -73,7 +73,6 @@ export const useDeveloperDashboardStore = create<DeveloperDashboardState>((set, 
           email: sessionUser.email ?? "",
         },
         userName: [sessionUser.firstName, sessionUser.lastName].filter(Boolean).join(" "),
-        dataLoaded: true,
       });
     }
 
