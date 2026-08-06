@@ -176,11 +176,17 @@ export function ForgeModal({ onClose, onCreated }: ForgeModalProps) {
                     placeholder="small clinics, founders, restaurant owners"
                     note={notes.target_customer}
                   />
-                  <Field
+                  <SelectField
                     label="Stage"
                     value={stage}
                     onChange={setStage}
-                    placeholder="Idea, validation, MVP, launched"
+                    options={[
+                      { value: "", label: "Select stage..." },
+                      { value: "Idea", label: "Idea" },
+                      { value: "Validation", label: "Validation" },
+                      { value: "MVP", label: "MVP" },
+                      { value: "Launched", label: "Launched" },
+                    ]}
                     note={notes.stage}
                   />
                   <Field
@@ -465,6 +471,47 @@ function Field({
           note ? FLAGGED_INPUT[note.tone] : "border-[#d8e8e0] bg-[#f5f8f6]"
         }`}
       />
+      <FieldNoteText note={note} />
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  note,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  note?: FieldNote;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-[11px] font-bold tracking-[0.04em] text-[#5a8070] uppercase">
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`h-11 w-full appearance-none rounded-xl border px-3.5 pr-8 font-[inherit] text-[13px] text-[#1a2e26] outline-none cursor-pointer ${
+            note ? FLAGGED_INPUT[note.tone] : "border-[#d8e8e0] bg-[#f5f8f6]"
+          }`}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-[#7a9e8e]">
+          ▼
+        </div>
+      </div>
       <FieldNoteText note={note} />
     </div>
   );

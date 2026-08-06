@@ -77,15 +77,7 @@ export function BlueprintActionBar({
               <Broadcast size={14} weight="bold" /> <span className="hidden sm:inline">{published ? "Unpublish" : "Publish"}</span>
             </button>
           )}
-          {!bp.project && (
-            <button
-              onClick={onCopyLink}
-              className="bp-icon-btn border-bp-border bg-bp-card flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-[11px] border"
-              title="Copy link"
-            >
-              <LinkSimple size={16} weight="bold" className="text-bp-teal" />
-            </button>
-          )}
+
           <button
             onClick={() => window.print()}
             className="bp-icon-btn border-bp-border bg-bp-card flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-[11px] border"
