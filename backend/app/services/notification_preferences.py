@@ -9,6 +9,8 @@ DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
     "connectionRequest": True,
     "connectionAccepted": True,
     "blueprintPublished": True,
+    "projectInvite": True,
+    "projectUpdate": True,
     "weeklyDigest": True,
     "founderViewed": False,
     "investorView": True,

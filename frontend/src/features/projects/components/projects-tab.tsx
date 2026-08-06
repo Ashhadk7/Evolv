@@ -14,6 +14,7 @@ import { Label } from "@/components/shared/label";
 import type { Blueprint } from "@/features/blueprints/types";
 import { fmtMoney } from "@/features/blueprints/blueprint-content";
 import { ProjectListCard } from "./project-list-card";
+import { ProjectSection } from "./project-section";
 import { StartProjectModal } from "./start-project-modal";
 import { ProjectDetail } from "./project-detail";
 import { useProjectsTab } from "@/features/projects/lib/use-projects-tab";
@@ -37,15 +38,17 @@ export function ProjectsTab({
   onNavigateSettingsPayment?: () => void;
 }) {
   const {
-    selectedId,
     setSelectedId,
     pickerOpen,
     setPickerOpen,
     toast,
-    projectBlueprints,
+    ongoingBlueprints,
+    closedBlueprints,
     startableBlueprints,
     startProject,
     selected,
+    issueParam,
+    deliverableParam,
     activeCount,
     totalDeployed,
     avgCompletion,
@@ -59,6 +62,8 @@ export function ProjectsTab({
       <div className="bg-bp-page h-full px-3 py-3 sm:px-6 sm:py-4 md:px-[28px] md:pt-[16px] md:pb-[18px] overflow-hidden">
         <ProjectDetail
           bp={selected}
+          initialIssueId={issueParam}
+          initialDeliverableId={deliverableParam}
           onUpdate={(mutate) => updateBlueprint(selected.id, mutate)}
           onBack={() => setSelectedId(null)}
           onViewBlueprint={onViewBlueprint}
@@ -158,10 +163,25 @@ export function ProjectsTab({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-            {projectBlueprints.map((bp, i) => (
-              <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
-            ))}
+          <div className="flex flex-col gap-6">
+            <ProjectSection title="Ongoing" count={ongoingBlueprints.length}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                {ongoingBlueprints.map((bp, i) => (
+                  <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
+                ))}
+              </div>
+            </ProjectSection>
+            <ProjectSection
+              title="Completed & cancelled"
+              count={closedBlueprints.length}
+              collapsible
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                {closedBlueprints.map((bp, i) => (
+                  <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
+                ))}
+              </div>
+            </ProjectSection>
           </div>
         )}
       </div>

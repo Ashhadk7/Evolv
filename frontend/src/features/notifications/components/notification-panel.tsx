@@ -4,6 +4,7 @@ import { forwardRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClientIcon as Icon } from "@/components/ui/client-icon";
 import { NOTIF_COLORS, NOTIF_ICONS } from "../data";
+import { notificationDestination } from "../destination";
 import type { AppNotif } from "../types";
 
 interface NotificationPanelProps {
@@ -165,7 +166,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, NotificationPanelPro
                           animate={{ opacity: 1, y: 0 }}
                           onClick={() => {
                             onMarkRead(notif.id);
-                            onNavigate(notif.tab);
+                            onNavigate(notificationDestination(notif));
                             onClose();
                           }}
                           className={`group flex w-full cursor-pointer items-start text-left gap-3 py-3.5 pr-[18px] pl-[15px] border-b border-[#edf1ee] transition-all duration-150 ${

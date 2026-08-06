@@ -1,24 +1,18 @@
 "use client";
 
-import type { ComponentType } from "react";
-import ProjectsRaw from "@/features/projects/components/developer-projects";
-import { isDeveloperProfileComplete } from "@/features/developer-dashboard/profile-utils";
-import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
-import { useDeveloperNavigation } from "@/features/developer-dashboard/use-developer-navigation";
-import type { DeveloperPageProps } from "@/features/developer-dashboard/types";
-
-const Projects = ProjectsRaw as ComponentType<DeveloperPageProps>;
+import { Suspense } from "react";
+import DeveloperProjects from "@/features/projects/components/developer-projects";
 
 export default function DevProjectsPage() {
-  const { profile } = useDeveloperDashboardStore();
-  const nav = useDeveloperNavigation();
-  const profileComplete = isDeveloperProfileComplete(profile);
-
   return (
-    <Projects
-      onNavigate={nav.navigateDeveloper}
-      profileComplete={profileComplete}
-      onRequireProfile={nav.requireDeveloperProfile}
-    />
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center">
+          <div className="text-bp-muted text-[13px]">Loading your projects…</div>
+        </div>
+      }
+    >
+      <DeveloperProjects />
+    </Suspense>
   );
 }

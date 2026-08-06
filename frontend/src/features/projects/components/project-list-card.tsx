@@ -16,6 +16,7 @@ const PROJECT_LIVE_LABEL: Record<ProjectState["status"], string> = {
   ONBOARDING: "Project onboarding",
   IN_DEVELOPMENT: "Build in progress",
   COMPLETED: "Project complete",
+  CANCELLED: "Project cancelled",
 };
 
 export function ProjectListCard({
@@ -32,8 +33,12 @@ export function ProjectListCard({
   const phaseIdx = currentPhaseIndex(bp.project);
   const currentPhase = content.phases[phaseIdx];
   const currentAssignment = bp.project.phaseStates[phaseIdx]?.assignment;
-  const completion = health.deliverables.total
-    ? Math.round((health.deliverables.done / health.deliverables.total) * 100)
+  // Deliverables are relational, not part of the blob health is computed from —
+  // the list view has no per-project fetch, so it uses the wire's aggregate.
+  const deliverablesDone = bp._deliverablesDone ?? 0;
+  const deliverablesTotal = bp._deliverablesTotal ?? 0;
+  const completion = deliverablesTotal
+    ? Math.round((deliverablesDone / deliverablesTotal) * 100)
     : 0;
   const phasesComplete = bp.project.phaseStates.filter((ps) => ps.status === "Complete").length;
   const live = bp.project.status === "IN_DEVELOPMENT";
@@ -42,7 +47,7 @@ export function ProjectListCard({
     {
       label: "Deliverables",
       value: completion,
-      display: `${health.deliverables.done}/${health.deliverables.total}`,
+      display: `${deliverablesDone}/${deliverablesTotal}`,
     },
     { label: "Budget deployed", value: health.budget.pct, display: fmtMoney(health.budget.spent) },
     {

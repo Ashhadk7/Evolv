@@ -4,7 +4,7 @@
 
 import type { ReactNode } from "react";
 import { Lightning, Users, Warning } from "@phosphor-icons/react";
-import { computeProjectHealth, type BlueprintContent } from "@/features/blueprints/blueprint-content";
+import type { BlueprintContent } from "@/features/blueprints/blueprint-content";
 import type { Blueprint } from "@/features/blueprints/types";
 
 // Re-export the real domain type instead of a parallel mock shape — these
@@ -200,13 +200,12 @@ export function computeVentureProgress(
       )
     : 0;
 
-  const executionReadiness = bp.project
-    ? (() => {
-        const health = computeProjectHealth(content, bp.project!);
-        return health.deliverables.total
-          ? Math.round((health.deliverables.done / health.deliverables.total) * 100)
-          : 0;
-      })()
+  // Deliverables are relational, not part of the blob computeProjectHealth
+  // reads from — mergeBlueprintsWithProjects attaches the real aggregate.
+  const deliverableTotal = (bp as { _deliverablesTotal?: number })._deliverablesTotal ?? 0;
+  const deliverableDone = (bp as { _deliverablesDone?: number })._deliverablesDone ?? 0;
+  const executionReadiness = deliverableTotal
+    ? Math.round((deliverableDone / deliverableTotal) * 100)
     : 0;
 
   return { marketStrength, designCompleteness, developerAvailability, executionReadiness };

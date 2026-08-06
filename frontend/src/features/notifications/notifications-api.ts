@@ -10,6 +10,8 @@ export type NotificationPreferenceKey =
   | "connectionRequest"
   | "connectionAccepted"
   | "blueprintPublished"
+  | "projectInvite"
+  | "projectUpdate"
   | "weeklyDigest"
   | "founderViewed"
   | "investorView"
@@ -30,6 +32,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   connectionRequest: true,
   connectionAccepted: true,
   blueprintPublished: true,
+  projectInvite: true,
+  projectUpdate: true,
   weeklyDigest: true,
   founderViewed: false,
   investorView: true,
@@ -47,6 +51,7 @@ export interface NotifWire {
   body: string;
   tab: string;
   action_label: string;
+  payload?: Record<string, unknown> | null;
   read: boolean;
   created_at: string;
 }
@@ -93,6 +98,7 @@ export function notificationFromWire(n: NotifWire): AppNotif {
     body: n.body,
     tab: n.tab,
     actionLabel: n.action_label,
+    payload: n.payload ?? null,
     read: n.read,
     time,
   };

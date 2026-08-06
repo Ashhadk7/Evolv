@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getApiErrorMessage } from "@/lib/api";
 import type { Blueprint } from "@/features/blueprints/types";
 import {
   buildBlueprintContent,
@@ -6,9 +7,7 @@ import {
   deriveProjectStatus,
   todayISO,
   fmtMoney,
-  type ProjectDeadline,
   type ProjectExpense,
-  type ProjectIssue,
   type ProjectPhaseState,
   type ProjectState,
 } from "@/features/blueprints/blueprint-content";
@@ -19,7 +18,17 @@ import {
 } from "@/features/network/lib/network-api";
 import { fetchMatchingDevelopers } from "@/features/network/lib/matching-api";
 import type { FounderContactProfile } from "@/features/network/types";
+import {
+  inviteProjectMember,
+  listProjectMembers,
+  recordProjectPayment,
+  removeProjectMember,
+  revokeProjectInvite,
+  type ProjectMemberWire,
+} from "@/features/projects/projects-api";
+import { NOTIFICATION_REFRESH_EVENT } from "@/features/notifications/notification-events";
 import type { ProjectBlueprint } from "./project-helpers";
+import { useProjectsLiveRefresh } from "./use-projects-live-refresh";
 
 export function useProjectDetail({
   bp,
@@ -41,13 +50,54 @@ export function useProjectDetail({
   const [selectedDeveloper, setSelectedDeveloper] = useState<FounderContactProfile | null>(null);
   const [budgetEditPhase, setBudgetEditPhase] = useState<number | null>(null);
   const [deadlineEditPhase, setDeadlineEditPhase] = useState<number | null>(null);
-  const [newDeliverable, setNewDeliverable] = useState("");
+  const [members, setMembers] = useState<ProjectMemberWire[]>([]);
   const [connections, setConnections] = useState<Record<string, boolean>>({});
   const [connectionIdByUser, setConnectionIdByUser] = useState<Record<string, string>>({});
   const [networkDevs, setNetworkDevs] = useState<FounderContactProfile[]>([]);
   const [matchedDevs, setMatchedDevs] = useState<FounderContactProfile[]>([]);
   const [matchLoading, setMatchLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const projectId = bp._projectId;
+
+  const loadMembers = useCallback(() => {
+    if (!projectId) return Promise.resolve();
+    return listProjectMembers(projectId)
+      .then(setMembers)
+      .catch((err) => {
+        console.error("[projects] Failed to load project members:", err);
+      });
+  }, [projectId]);
+
+  useEffect(() => {
+    loadMembers();
+  }, [loadMembers]);
+
+  useProjectsLiveRefresh(loadMembers);
+
+  const pendingInvites = useMemo(() => {
+    const byPhase = new Map<number, ProjectMemberWire[]>();
+    for (const member of members) {
+      if (member.status === "invited") {
+        const list = byPhase.get(member.phase_index) ?? [];
+        list.push(member);
+        byPhase.set(member.phase_index, list);
+      }
+    }
+    return byPhase;
+  }, [members]);
+
+  const acceptedMembers = useMemo(() => {
+    const byPhase = new Map<number, ProjectMemberWire[]>();
+    for (const member of members) {
+      if (member.status === "accepted") {
+        const list = byPhase.get(member.phase_index) ?? [];
+        list.push(member);
+        byPhase.set(member.phase_index, list);
+      }
+    }
+    return byPhase;
+  }, [members]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +124,8 @@ export function useProjectDetail({
     };
   }, []);
 
+  const currentSkillset = content.phases[viewedPhaseIdx]?.skillset?.join(',') || '';
+
   useEffect(() => {
     const phase = content.phases[viewedPhaseIdx];
     if (!phase) return;
@@ -96,12 +148,14 @@ export function useProjectDetail({
     return () => {
       cancelled = true;
     };
-  }, [viewedPhaseIdx, content.phases]);
+  }, [viewedPhaseIdx, currentSkillset]);
 
   const showToast = (m: string) => {
     setToast(m);
     window.setTimeout(() => setToast(null), 2200);
   };
+
+  const dispatchRefresh = () => window.dispatchEvent(new Event(NOTIFICATION_REFRESH_EVENT));
 
   const updateProject = (mutate: (p: ProjectState) => ProjectState) => {
     onUpdate((b) => {
@@ -144,97 +198,87 @@ export function useProjectDetail({
     showToast(`${content.phases[phaseIdx].name} re-opened`);
   };
 
-  const toggleDeliverable = (phaseIdx: number, delivIdx: number) => {
-    updatePhase(phaseIdx, (ps) => {
-      if (ps.status === "Not Started") return ps;
-      const deliverables = ps.deliverables.map((d, k) =>
-        k === delivIdx ? { ...d, done: !d.done } : d
-      );
-      const allDone = deliverables.length > 0 && deliverables.every((d) => d.done);
-      const status = allDone ? "Complete" : ps.status === "Complete" ? "In Progress" : ps.status;
-      const verb = deliverables[delivIdx].done ? "Checked off" : "Unchecked";
-      return {
-        ...ps,
-        deliverables,
-        status,
-        history: [
-          ...ps.history,
-          { label: `${verb}: ${deliverables[delivIdx].text}`, date: todayISO() },
-        ],
-      };
-    });
-  };
-
-  const addDeliverable = (phaseIdx: number, text: string) => {
-    if (!text.trim()) return;
-    updatePhase(phaseIdx, (ps) => ({
-      ...ps,
-      deliverables: [...ps.deliverables, { text: text.trim(), done: false }],
-      history: [...ps.history, { label: `Added deliverable: ${text.trim()}`, date: todayISO() }],
-    }));
-    setNewDeliverable("");
-  };
-
-  const removeDeliverable = (phaseIdx: number, delivIdx: number) => {
-    updatePhase(phaseIdx, (ps) => ({
-      ...ps,
-      deliverables: ps.deliverables.filter((_, k) => k !== delivIdx),
-    }));
-  };
-
   const setPhaseDeadline = (phaseIdx: number, date: string) => {
     updatePhase(phaseIdx, (ps) => ({ ...ps, deadline: date || null }));
     setDeadlineEditPhase(null);
   };
 
-  const assignDeveloper = (phaseIdx: number, dev: FounderContactProfile, amount: number) => {
-    updatePhase(phaseIdx, (ps) => ({
-      ...ps,
-      assignment: {
-        developerId: dev.id,
-        developerName: dev.name,
-        developerInitials: dev.initials,
-        hiredAt: todayISO(),
-        amountAgreed: amount,
-        amountPaid: 0,
-        payments: [],
-      },
-      history: [
-        ...ps.history,
-        {
-          label: `Hired ${dev.name} — agreed ${fmtMoney(amount)}`,
-          date: todayISO(),
-        },
-      ],
-    }));
-    showToast(`${dev.name} hired for ${content.phases[phaseIdx].name}`);
+  const assignDeveloper = async (
+    phaseIdx: number,
+    dev: FounderContactProfile,
+    amount: number
+  ) => {
+    if (!projectId) {
+      showToast("This project is still being created — try again in a moment.");
+      return;
+    }
+    try {
+      await inviteProjectMember(projectId, {
+        developer_id: dev.id,
+        phase_index: phaseIdx,
+        amount_agreed_cents: Math.round(amount * 100),
+      });
+      await loadMembers();
+      updatePhase(phaseIdx, (ps) => ({
+        ...ps,
+        history: [
+          ...ps.history,
+          {
+            label: `Invited ${dev.name} — offered ${fmtMoney(amount)}`,
+            date: todayISO(),
+          },
+        ],
+      }));
+      dispatchRefresh();
+      showToast(`Invitation sent to ${dev.name}`);
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
   };
 
-  const removeDeveloper = (phaseIdx: number, reason: string) => {
+  const revokeInvite = async (memberId: string) => {
+    try {
+      await revokeProjectInvite(memberId);
+      await loadMembers();
+      dispatchRefresh();
+      showToast("Invitation cancelled");
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
+  };
+
+  const removeDeveloper = async (memberId: string, phaseIdx: number, reason: string) => {
     if (!reason.trim()) return;
     const assignment = bp.project.phaseStates[phaseIdx].assignment;
-    if (!assignment) return;
-
-    updatePhase(phaseIdx, (ps) => ({
-      ...ps,
-      assignment: null,
-      status: "Not Started",
-      removals: [
-        ...ps.removals,
-        {
-          developerId: assignment.developerId,
-          developerName: assignment.developerName,
-          reason: reason.trim(),
-          amountPaid: assignment.amountPaid,
-          date: todayISO(),
-        },
-      ],
-      history: [
-        ...ps.history,
-        { label: `Removed ${assignment.developerName} — ${reason.trim()}`, date: todayISO() },
-      ],
-    }));
-    showToast(`${assignment.developerName} removed from ${content.phases[phaseIdx].name}`);
+    try {
+      await removeProjectMember(memberId, reason.trim());
+      if (assignment) {
+        updatePhase(phaseIdx, (ps) => ({
+          ...ps,
+          assignment: null,
+          status: "Not Started",
+          removals: [
+            ...ps.removals,
+            {
+              developerId: assignment.developerId,
+              developerName: assignment.developerName,
+              reason: reason.trim(),
+              amountPaid: assignment.amountPaid,
+              date: todayISO(),
+            },
+          ],
+          history: [
+            ...ps.history,
+            { label: `Removed ${assignment.developerName} — ${reason.trim()}`, date: todayISO() },
+          ],
+        }));
+      }
+      await loadMembers();
+      dispatchRefresh();
+      showToast(assignment ? `${assignment.developerName} removed` : "Developer removed");
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
   };
 
   const requestConnect = (dev: FounderContactProfile) => {
@@ -286,89 +330,29 @@ export function useProjectDetail({
     }));
   };
 
-  const sendPayment = (phaseIdx: number, amount: number) => {
+  const sendPayment = async (member: ProjectMemberWire, phaseIdx: number, amount: number) => {
     if (amount <= 0) return;
-    const devName = bp.project.phaseStates[phaseIdx].assignment?.developerName ?? "the developer";
-    updatePhase(phaseIdx, (ps) =>
-      ps.assignment
-        ? {
-            ...ps,
-            assignment: {
-              ...ps.assignment,
-              amountPaid: ps.assignment.amountPaid + amount,
-              payments: [...ps.assignment.payments, { amount, date: todayISO() }],
-            },
-            totalPaid: ps.totalPaid + amount,
-            history: [
-              ...ps.history,
-              { label: `${fmtMoney(amount)} paid to ${devName}`, date: todayISO() },
-            ],
-          }
-        : ps
-    );
-    addExpense({
-      label: `Payment to ${devName} — ${content.phases[phaseIdx].name}`,
-      category: "Developer Payment",
-      amount,
-      date: todayISO(),
-      phaseIndex: phaseIdx,
-    });
-    showToast(`${fmtMoney(amount)} paid to ${devName}`);
-  };
-
-  const addIssue = (draft: { title: string; description: string; priority: ProjectIssue["priority"]; phaseIndex: number | null }) => {
-    const { title, description, priority, phaseIndex } = draft;
-    if (!title.trim()) return;
-    const issue: ProjectIssue = {
-      id: `iss-${Date.now()}`,
-      title: title.trim(),
-      description: description.trim(),
-      priority,
-      status: "Open",
-      phaseIndex,
-      createdAt: todayISO(),
-      history: [{ label: "Issue raised", date: todayISO() }],
-    };
-    updateProject((p) => ({ ...p, issues: [issue, ...p.issues] }));
-    showToast("Issue raised");
-  };
-
-  const setIssueStatus = (id: string, status: ProjectIssue["status"]) => {
-    updateProject((p) => ({
-      ...p,
-      issues: p.issues.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              status,
-              history: [...i.history, { label: `Marked ${status}`, date: todayISO() }],
-            }
-          : i
-      ),
-    }));
-  };
-
-  const addDeadline = (draft: { note: string; priority: ProjectDeadline["priority"]; phaseIndex: number | null; date: string }) => {
-    const { note, priority, phaseIndex, date } = draft;
-    if (!note.trim() || !date) return;
-    const deadline: ProjectDeadline = {
-      id: `dl-${Date.now()}`,
-      note: note.trim(),
-      priority,
-      phaseIndex,
-      date,
-      status: "Pending",
-      createdAt: todayISO(),
-    };
-    updateProject((p) => ({ ...p, deadlines: [deadline, ...p.deadlines] }));
-    showToast("Deadline set");
-  };
-
-  const setDeadlineStatus = (id: string, status: ProjectDeadline["status"]) => {
-    updateProject((p) => ({
-      ...p,
-      deadlines: p.deadlines.map((dl) => (dl.id === id ? { ...dl, status } : dl)),
-    }));
+    try {
+      await recordProjectPayment(member.id, {
+        amount_cents: Math.round(amount * 100),
+        idempotency_key: `${member.id}-${Date.now()}`,
+      });
+      await loadMembers();
+      updatePhase(phaseIdx, (ps) => ({
+        ...ps,
+        history: [
+          ...ps.history,
+          {
+            label: `${fmtMoney(amount)} recorded for ${member.developer_name}`,
+            date: todayISO(),
+          },
+        ],
+      }));
+      dispatchRefresh();
+      showToast(`${fmtMoney(amount)} recorded for ${member.developer_name}`);
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
   };
 
   return {
@@ -384,20 +368,18 @@ export function useProjectDetail({
     setBudgetEditPhase,
     deadlineEditPhase,
     setDeadlineEditPhase,
-    newDeliverable,
-    setNewDeliverable,
     connections,
     networkDevs,
     matchedDevs,
     matchLoading,
+    pendingInvites,
+    acceptedMembers,
+    revokeInvite,
     toast,
     today,
     startPhase,
     completePhase,
     reopenPhase,
-    toggleDeliverable,
-    addDeliverable,
-    removeDeliverable,
     setPhaseDeadline,
     assignDeveloper,
     removeDeveloper,
@@ -406,9 +388,5 @@ export function useProjectDetail({
     updatePhaseBudget,
     addExpense,
     sendPayment,
-    addIssue,
-    setIssueStatus,
-    addDeadline,
-    setDeadlineStatus,
   };
 }

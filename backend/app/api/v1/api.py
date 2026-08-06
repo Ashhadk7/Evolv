@@ -8,6 +8,7 @@ from app.api.v1.controllers import (
     calendar,
     connections,
     developer_profiles,
+    developer_projects,
     discover,
     domains,
     founder_profiles,
@@ -17,6 +18,7 @@ from app.api.v1.controllers import (
     messages,
     notifications,
     phone,
+    project_issues,
     projects,
     skills,
     tags,
@@ -48,3 +50,7 @@ api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"]
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(matching.router, tags=["matching"])
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
+api_router.include_router(project_issues.router, prefix="/projects", tags=["project-issues"])
+api_router.include_router(
+    developer_projects.router, prefix="/developer/projects", tags=["developer-projects"]
+)

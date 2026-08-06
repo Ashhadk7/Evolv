@@ -8,7 +8,7 @@ import {
   PencilSimple,
 } from "@phosphor-icons/react";
 import { Chip } from "@/components/shared/chip";
-import { PhaseDeliverables } from "./phase-deliverables";
+import { DeliverableList } from "../deliverables/deliverable-list";
 import { PhaseAssignment } from "./phase-assignment";
 import {
   fmtDate,
@@ -16,27 +16,31 @@ import {
   type Phase,
   type ProjectPhaseState,
 } from "@/features/blueprints/blueprint-content";
+import type { Deliverable } from "@/features/projects/deliverables-api";
+import type { ProjectMemberWire } from "@/features/projects/projects-api";
 
 type StatusTag = "Completed" | "In Progress" | "Not Started" | "Upcoming";
 
 export function PhaseCard({
   phase,
   ps,
+  pendingInvites,
+  acceptedMembers,
   index,
   isSelected,
   isActive,
   isBudgetEdit,
   isDeadlineEdit,
   overdue,
-  newDeliverable,
+  today,
+  deliverables,
+  deliverablesLoading = false,
   onSelect,
   onStartPhase,
   onCompletePhase,
   onReopenPhase,
-  onToggleDeliverable,
-  onAddDeliverable,
-  onRemoveDeliverable,
-  onNewDeliverableChange,
+  onOpenDeliverable,
+  onCreateDeliverable,
   onSetPhaseDeadline,
   onUpdatePhaseBudget,
   onSetBudgetEditPhase,
@@ -44,34 +48,36 @@ export function PhaseCard({
   onPay,
   onRemoveDev,
   onFindMatches,
+  onRevokeInvite,
 }: {
   phase: Phase;
   ps: ProjectPhaseState;
+  pendingInvites: ProjectMemberWire[];
+  acceptedMembers: ProjectMemberWire[];
   index: number;
   isSelected: boolean;
   isActive: boolean;
   isBudgetEdit: boolean;
   isDeadlineEdit: boolean;
   overdue: boolean | "" | null;
-  newDeliverable: string;
+  today: string;
+  deliverables: Deliverable[];
+  deliverablesLoading?: boolean;
   onSelect: () => void;
   onStartPhase: () => void;
   onCompletePhase: () => void;
   onReopenPhase: () => void;
-  onToggleDeliverable: (delivIdx: number) => void;
-  onAddDeliverable: (text: string) => void;
-  onRemoveDeliverable: (delivIdx: number) => void;
-  onNewDeliverableChange: (text: string) => void;
+  onOpenDeliverable: (deliverableId: string) => void;
+  onCreateDeliverable: () => void;
   onSetPhaseDeadline: (date: string) => void;
   onUpdatePhaseBudget: (amount: number) => void;
   onSetBudgetEditPhase: () => void;
   onSetDeadlineEditPhase: () => void;
-  onPay: () => void;
-  onRemoveDev: () => void;
+  onPay: (member: ProjectMemberWire) => void;
+  onRemoveDev: (memberId: string) => void;
   onFindMatches: () => void;
+  onRevokeInvite: (memberId: string) => void;
 }) {
-  const doneCount = ps.deliverables.filter((d) => d.done).length;
-
   const statusTag: StatusTag =
     ps.status === "Complete"
       ? "Completed"
@@ -246,21 +252,22 @@ export function PhaseCard({
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="p-5">
-              <PhaseDeliverables
-                ps={ps}
-                newDeliverable={newDeliverable}
-                onToggleDeliverable={onToggleDeliverable}
-                onAddDeliverable={onAddDeliverable}
-                onRemoveDeliverable={onRemoveDeliverable}
-                onNewDeliverableChange={onNewDeliverableChange}
+            <div className="p-[22px_26px_26px]">
+              <DeliverableList
+                deliverables={deliverables}
+                loading={deliverablesLoading}
+                today={today}
+                onOpen={onOpenDeliverable}
+                onCreate={onCreateDeliverable}
               />
 
               <PhaseAssignment
-                ps={ps}
+                pendingInvites={pendingInvites}
+                acceptedMembers={acceptedMembers}
                 onPay={onPay}
                 onRemoveDev={onRemoveDev}
                 onFindMatches={onFindMatches}
+                onRevokeInvite={onRevokeInvite}
               />
             </div>
           </motion.div>

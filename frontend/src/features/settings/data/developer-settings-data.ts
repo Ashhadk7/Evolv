@@ -89,6 +89,8 @@ export type DeveloperNotificationPrefs = Pick<
   | "newMatch"
   | "blueprintPublished"
   | "applicationUpdate"
+  | "projectInvite"
+  | "projectUpdate"
   | "connectionRequest"
   | "connectionAccepted"
   | "messageReceived"
@@ -102,6 +104,8 @@ export const defaultNotifications: DeveloperNotificationPrefs = {
   newMatch: true,
   blueprintPublished: true,
   applicationUpdate: true,
+  projectInvite: true,
+  projectUpdate: true,
   connectionRequest: true,
   connectionAccepted: true,
   messageReceived: true,

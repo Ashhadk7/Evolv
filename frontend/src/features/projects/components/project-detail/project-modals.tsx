@@ -3,13 +3,12 @@
 import { AnimatePresence } from "framer-motion";
 import { PaymentModal } from "../payment-modal";
 import { AddDeveloperModal, RemoveDeveloperModal } from "../add-remove-developer-modals";
-import { IssueModal } from "../issue-modal";
-import { DeadlineModal } from "../deadline-modal";
 import { SpendHistoryModal } from "../spend-history-modal";
-import type { BlueprintContent, ProjectDeadline, ProjectExpense, ProjectIssue, ProjectPhaseState } from "@/features/blueprints/blueprint-content";
+import type { BlueprintContent, ProjectExpense } from "@/features/blueprints/blueprint-content";
 import type { FounderContactProfile } from "@/features/network/types";
 import { useProjectModals } from "@/features/projects/lib/use-project-modals";
 import { ProjectBlueprint } from "@/features/projects/lib/project-helpers";
+import type { ProjectMemberWire } from "@/features/projects/projects-api";
 
 export function ProjectModals({
   bp,
@@ -22,9 +21,7 @@ export function ProjectModals({
   removeDeveloper,
   sendPayment,
   addExpense,
-  addIssue,
-  addDeadline,
-  modals
+  modals,
 }: {
   bp: ProjectBlueprint;
   content: BlueprintContent;
@@ -33,45 +30,37 @@ export function ProjectModals({
   stripeConnected: boolean;
   onNavigateSettingsPayment?: () => void;
   assignDeveloper: (phaseIdx: number, dev: FounderContactProfile, amount: number) => void;
-  removeDeveloper: (phaseIdx: number, reason: string) => void;
-  sendPayment: (phaseIdx: number, amount: number) => void;
+  removeDeveloper: (memberId: string, phaseIdx: number, reason: string) => void;
+  sendPayment: (member: ProjectMemberWire, phaseIdx: number, amount: number) => void;
   addExpense: (expense: Omit<ProjectExpense, "id">) => void;
-  addIssue: (draft: { title: string; description: string; priority: ProjectIssue["priority"]; phaseIndex: number | null }) => void;
-  addDeadline: (draft: { note: string; priority: ProjectDeadline["priority"]; phaseIndex: number | null; date: string }) => void;
   modals: ReturnType<typeof useProjectModals>;
 }) {
   const {
-    payModalPhase, setPayModalPhase,
+    payModalTarget, setPayModalTarget,
     addDevTarget, setAddDevTarget,
-    removeDevPhase, setRemoveDevPhase,
-    issueModalOpen, setIssueModalOpen,
-    issueDraft, setIssueDraft,
-    deadlineModalOpen, setDeadlineModalOpen,
-    deadlineDraft, setDeadlineDraft,
+    removeDevTarget, setRemoveDevTarget,
     spendModalOpen, setSpendModalOpen,
   } = modals;
 
   return (
     <>
       <AnimatePresence>
-        {payModalPhase !== null && (
+        {payModalTarget !== null && (
           <PaymentModal
-            developerName={
-              bp.project.phaseStates[payModalPhase].assignment?.developerName ?? "developer"
-            }
-            amountAgreed={bp.project.phaseStates[payModalPhase].assignment?.amountAgreed ?? 0}
-            amountPaid={bp.project.phaseStates[payModalPhase].assignment?.amountPaid ?? 0}
+            developerName={payModalTarget.member.developer_name}
+            amountAgreed={payModalTarget.member.amount_agreed_cents / 100}
+            amountPaid={payModalTarget.member.amount_paid_cents / 100}
             feePct={content.costModel.platformFeePct}
             stripeConnected={stripeConnected}
             onNavigateSettingsPayment={() => {
-              setPayModalPhase(null);
+              setPayModalTarget(null);
               onNavigateSettingsPayment?.();
             }}
             onSend={(amount) => {
-              sendPayment(payModalPhase, amount);
-              setPayModalPhase(null);
+              sendPayment(payModalTarget.member, payModalTarget.phaseIdx, amount);
+              setPayModalTarget(null);
             }}
-            onClose={() => setPayModalPhase(null)}
+            onClose={() => setPayModalTarget(null)}
           />
         )}
       </AnimatePresence>
@@ -91,48 +80,21 @@ export function ProjectModals({
       </AnimatePresence>
 
       <AnimatePresence>
-        {removeDevPhase !== null && bp.project.phaseStates[removeDevPhase].assignment && (
+        {removeDevTarget && (
           <RemoveDeveloperModal
-            developerName={bp.project.phaseStates[removeDevPhase].assignment!.developerName}
-            phaseName={content.phases[removeDevPhase].name}
-            amountPaid={bp.project.phaseStates[removeDevPhase].assignment!.amountPaid}
+            developerName={
+              bp.project.phaseStates[removeDevTarget.phaseIdx].assignment?.developerName ??
+              "Developer"
+            }
+            phaseName={content.phases[removeDevTarget.phaseIdx].name}
+            amountPaid={
+              bp.project.phaseStates[removeDevTarget.phaseIdx].assignment?.amountPaid ?? 0
+            }
             onConfirm={(reason) => {
-              removeDeveloper(removeDevPhase, reason);
-              setRemoveDevPhase(null);
+              removeDeveloper(removeDevTarget.memberId, removeDevTarget.phaseIdx, reason);
+              setRemoveDevTarget(null);
             }}
-            onClose={() => setRemoveDevPhase(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {issueModalOpen && (
-          <IssueModal
-            phases={content.phases}
-            draft={issueDraft}
-            onChange={setIssueDraft}
-            onSubmit={() => {
-              addIssue(issueDraft);
-              setIssueDraft({ title: "", description: "", priority: "Medium", phaseIndex: null });
-              setIssueModalOpen(false);
-            }}
-            onClose={() => setIssueModalOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {deadlineModalOpen && (
-          <DeadlineModal
-            phases={content.phases}
-            draft={deadlineDraft}
-            onChange={setDeadlineDraft}
-            onSubmit={() => {
-              addDeadline(deadlineDraft);
-              setDeadlineDraft({ note: "", priority: "Medium", phaseIndex: null, date: "" });
-              setDeadlineModalOpen(false);
-            }}
-            onClose={() => setDeadlineModalOpen(false)}
+            onClose={() => setRemoveDevTarget(null)}
           />
         )}
       </AnimatePresence>

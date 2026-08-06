@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Annotated
+
 import httpx
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy.exc import DataError, SQLAlchemyError
@@ -12,6 +14,7 @@ from app.schemas.account import (
     DeleteAccountRequest,
     MessageResponse,
 )
+from app.schemas.certifications import CertificationImageResponse
 from app.services import storage as storage_service
 from app.services.exceptions import (
     AuthProviderError,
@@ -87,6 +90,33 @@ async def upload_avatar(
     db.commit()
     db.refresh(current_user)
     return AccountProfileResponse.model_validate(current_user)
+
+
+@router.post("/certifications/image", response_model=CertificationImageResponse)
+async def upload_certification_image(
+    current_user: CurrentUser,
+    file: Annotated[UploadFile, File()],
+) -> CertificationImageResponse:
+    content_type = (file.content_type or "").lower()
+    if content_type not in storage_service.ALLOWED_AVATAR_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Certificate image must be a PNG, JPEG, or WebP image.",
+        )
+    data = await file.read()
+    if len(data) > storage_service.MAX_CERTIFICATE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Your certificate image must be smaller than 5 MB.",
+        )
+    try:
+        image_url = storage_service.upload_certificate_image(current_user.id, data, content_type)
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="We couldn't upload your certificate image right now. Please try again.",
+        ) from exc
+    return CertificationImageResponse(image_url=image_url)
 
 
 @router.delete("/avatar", response_model=AccountProfileResponse)

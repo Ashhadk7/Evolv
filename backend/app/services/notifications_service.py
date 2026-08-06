@@ -3,12 +3,21 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.application import Application
 from app.models.messaging import ConnectionStatus as MessageConnectionStatus
 from app.models.notification import Notification, NotifType
+from app.models.project import (
+    DeliverableStatus,
+    Project,
+    ProjectDeadline,
+    ProjectDeliverable,
+    ProjectIssue,
+    ProjectMember,
+)
 from app.models.user import User, UserRole
 from app.repositories import applications as applications_repository
 from app.repositories import blueprints as blueprints_repository
@@ -16,14 +25,15 @@ from app.repositories import messages as messages_repository
 from app.repositories import notifications as notifications_repository
 from app.repositories import users as users_repository
 from app.schemas.messages import MessageResponse
-from app.services.notification_preferences import (
-    DEFAULT_NOTIFICATION_PREFERENCES,
-    normalize_preferences,
-)
+from app.schemas.notifications import NotificationResponse
 from app.services.exceptions import (
     NotificationAccessDeniedError,
     NotificationNotFoundError,
     NotificationPersistenceError,
+)
+from app.services.notification_preferences import (
+    DEFAULT_NOTIFICATION_PREFERENCES,
+    normalize_preferences,
 )
 
 logger = logging.getLogger(__name__)
@@ -297,6 +307,405 @@ def notify_blueprint_published(
     return _commit_notifications(db, notifications, many=True)
 
 
+def notify_project_invite(
+    db: Session,
+    *,
+    member: ProjectMember,
+    project: Project,
+    founder: User,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=member.developer_id,
+                preference_key="projectInvite",
+                type=NotifType.PROJECT,
+                title="New project invitation",
+                body=(
+                    f"{display_name(founder)} invited you to phase "
+                    f"{member.phase_index + 1} of {project.title}."
+                ),
+                tab="projects",
+                action_label="Review Invitation",
+                payload=_project_payload(member),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_project_invite_response(
+    db: Session,
+    *,
+    member: ProjectMember,
+    project: Project,
+    developer: User,
+    accepted: bool,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    verb = "accepted" if accepted else "declined"
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=project.founder_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title=f"Invitation {verb}",
+                body=(
+                    f"{display_name(developer)} {verb} phase "
+                    f"{member.phase_index + 1} of {project.title}."
+                ),
+                tab="projects",
+                action_label="View Project",
+                payload=_project_payload(member),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_project_member_removed(
+    db: Session,
+    *,
+    member: ProjectMember,
+    project: Project,
+    founder: User,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=member.developer_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="Removed from a project",
+                body=(
+                    f"{display_name(founder)} removed you from phase "
+                    f"{member.phase_index + 1} of {project.title}."
+                ),
+                tab="projects",
+                action_label="View Projects",
+                payload=_project_payload(member),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_project_payment(
+    db: Session,
+    *,
+    member: ProjectMember,
+    project: Project,
+    amount_cents: int,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    amount = f"${amount_cents / 100:,.2f}"
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=member.developer_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="Payment recorded",
+                body=f"{amount} was recorded against your work on {project.title}.",
+                tab="projects",
+                action_label="View Earnings",
+                payload=_project_payload(member),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_issue_assigned(
+    db: Session,
+    *,
+    issue: ProjectIssue,
+    project: Project,
+    actor: User,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    if issue.assignee_id is None:
+        return None
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=issue.assignee_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="Issue assigned to you",
+                body=(
+                    f"{display_name(actor)} assigned you "
+                    f"“{preview(issue.title, 60)}” on {project.title}."
+                ),
+                tab="projects",
+                action_label="Open Issue",
+                payload=_issue_payload(issue),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_issue_status(
+    db: Session,
+    *,
+    issue: ProjectIssue,
+    project: Project,
+    actor: User,
+    status: object,
+    recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    label = str(getattr(status, "value", status)).replace("_", " ")
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=recipient_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title=f"Issue moved to {label}",
+                body=(
+                    f"{display_name(actor)} moved "
+                    f"“{preview(issue.title, 60)}” on {project.title}."
+                ),
+                tab="projects",
+                action_label="Open Issue",
+                payload=_issue_payload(issue),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_issue_comment(
+    db: Session,
+    *,
+    issue: ProjectIssue,
+    project: Project,
+    actor: User,
+    recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=recipient_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="New comment on an issue",
+                body=(
+                    f"{display_name(actor)} commented on "
+                    f"“{preview(issue.title, 60)}” ({project.title})."
+                ),
+                tab="projects",
+                action_label="Open Issue",
+                payload=_issue_payload(issue),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+DELIVERABLE_VERBS: dict[DeliverableStatus, str] = {
+    DeliverableStatus.TODO: "reopened",
+    DeliverableStatus.IN_PROGRESS: "started work on",
+    DeliverableStatus.IN_REVIEW: "sent for review",
+    DeliverableStatus.DONE: "signed off",
+}
+
+
+def notify_deliverable_status(
+    db: Session,
+    *,
+    deliverable: ProjectDeliverable,
+    project: Project,
+    actor: User,
+    recipient_id: UUID,
+    status: DeliverableStatus,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    verb = DELIVERABLE_VERBS[status]
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=recipient_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title=f"Deliverable {verb}",
+                body=(
+                    f"{display_name(actor)} {verb} "
+                    f"“{preview(deliverable.text, 60)}” on {project.title}."
+                ),
+                tab="projects",
+                action_label="Open Deliverable",
+                payload=_deliverable_payload(deliverable),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_deliverable_comment(
+    db: Session,
+    *,
+    deliverable: ProjectDeliverable,
+    project: Project,
+    actor: User,
+    recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=recipient_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="New comment on a deliverable",
+                body=(
+                    f"{display_name(actor)} commented on "
+                    f"“{preview(deliverable.text, 60)}” ({project.title})."
+                ),
+                tab="projects",
+                action_label="Open Deliverable",
+                payload=_deliverable_payload(deliverable),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def _deliverable_payload(deliverable: ProjectDeliverable) -> dict[str, object]:
+    return {
+        "projectId": str(deliverable.project_id),
+        "deliverableId": str(deliverable.id),
+        "phaseIndex": deliverable.phase_index,
+    }
+
+
+def notify_deadline_assigned(
+    db: Session,
+    *,
+    deadline: ProjectDeadline,
+    project: Project,
+    actor: User,
+    recipient_id: UUID,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    if recipient_id == actor.id:
+        return None
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=recipient_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="New deadline assigned",
+                body=(
+                    f"{display_name(actor)} set “{preview(deadline.note, 60)}” "
+                    f"due {deadline.due_date:%d %b} on {project.title}."
+                ),
+                tab="projects",
+                action_label="View Deadline",
+                payload=_deadline_payload(deadline),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_deadline_progress(
+    db: Session,
+    *,
+    deadline: ProjectDeadline,
+    project: Project,
+    actor: User,
+    recipient_id: UUID,
+    met: bool,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    if recipient_id == actor.id:
+        return None
+    verb = "marked as met" if met else "reopened"
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=recipient_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title=f"Deadline {verb}",
+                body=(
+                    f"{display_name(actor)} {verb} “{preview(deadline.note, 60)}” "
+                    f"on {project.title}."
+                ),
+                tab="projects",
+                action_label="View Deadline",
+                payload=_deadline_payload(deadline),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def _deadline_payload(deadline: ProjectDeadline) -> dict[str, object]:
+    return {
+        "projectId": str(deadline.project_id),
+        "deadlineId": str(deadline.id),
+        "phaseIndex": deadline.phase_index,
+    }
+
+
+def _issue_payload(issue: ProjectIssue) -> dict[str, object]:
+    return {
+        "projectId": str(issue.project_id),
+        "issueId": str(issue.id),
+        "phaseIndex": issue.phase_index,
+    }
+
+
+def _project_payload(member: ProjectMember) -> dict[str, object]:
+    return {
+        "projectId": str(member.project_id),
+        "memberId": str(member.id),
+        "phaseIndex": member.phase_index,
+    }
+
+
 def preference_enabled(user: User, preference_key: str) -> bool:
     preferences = normalize_preferences(user.notification_preferences)
     return preferences.get(preference_key, True)
@@ -345,6 +754,7 @@ def _queue_notification_if_enabled(
     body: str,
     tab: str,
     action_label: str,
+    payload: dict[str, object] | None = None,
 ) -> Notification | None:
     recipient = users_repository.get_user_by_id(db, user_id)
     if recipient is None or not preference_enabled(recipient, preference_key):
@@ -357,6 +767,7 @@ def _queue_notification_if_enabled(
         body=body,
         tab=tab,
         action_label=action_label,
+        payload=payload,
     )
 
 
@@ -380,3 +791,16 @@ def _commit_notifications(
         return [] if many else None
 
     return created if many else created[0]
+
+
+def _push_live(background_tasks: BackgroundTasks | None, notification: Notification | None) -> None:
+    """Deferred import avoids a cycle: message_websocket already imports this module."""
+    if background_tasks is None or notification is None:
+        return
+    from app.services import message_websocket
+
+    background_tasks.add_task(
+        message_websocket.publish_notification_created,
+        notification.user_id,
+        NotificationResponse.model_validate(notification),
+    )

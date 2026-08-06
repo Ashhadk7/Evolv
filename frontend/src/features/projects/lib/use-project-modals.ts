@@ -1,50 +1,32 @@
 import { useState } from "react";
-import type { ProjectDeadline, ProjectIssue } from "@/features/blueprints/blueprint-content";
 import type { FounderContactProfile } from "@/features/network/types";
+import type { ProjectMemberWire } from "@/features/projects/projects-api";
 
 export function useProjectModals() {
-  const [payModalPhase, setPayModalPhase] = useState<number | null>(null);
-  
+  const [payModalTarget, setPayModalTarget] = useState<{
+    member: ProjectMemberWire;
+    phaseIdx: number;
+  } | null>(null);
+
   const [addDevTarget, setAddDevTarget] = useState<{
     phaseIdx: number;
     dev: FounderContactProfile;
   } | null>(null);
-  
-  const [removeDevPhase, setRemoveDevPhase] = useState<number | null>(null);
-  
-  const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [issueDraft, setIssueDraft] = useState<{
-    title: string;
-    description: string;
-    priority: ProjectIssue["priority"];
-    phaseIndex: number | null;
-  }>({ title: "", description: "", priority: "Medium", phaseIndex: null });
-  
-  const [deadlineModalOpen, setDeadlineModalOpen] = useState(false);
-  const [deadlineDraft, setDeadlineDraft] = useState<{
-    note: string;
-    priority: ProjectDeadline["priority"];
-    phaseIndex: number | null;
-    date: string;
-  }>({ note: "", priority: "Medium", phaseIndex: null, date: "" });
-  
+
+  const [removeDevTarget, setRemoveDevTarget] = useState<{
+    memberId: string;
+    phaseIdx: number;
+  } | null>(null);
+
   const [spendModalOpen, setSpendModalOpen] = useState(false);
 
   return {
-    payModalPhase,
-    setPayModalPhase,
+    payModalTarget,
+    setPayModalTarget,
     addDevTarget,
     setAddDevTarget,
-    removeDevPhase,
-    setRemoveDevPhase,
-    issueModalOpen,
-    setIssueModalOpen,
-    issueDraft,
-    setIssueDraft,
-    deadlineModalOpen,
-    setDeadlineModalOpen,
-    deadlineDraft,
-    setDeadlineDraft,
+    removeDevTarget,
+    setRemoveDevTarget,
     spendModalOpen,
     setSpendModalOpen,
   };

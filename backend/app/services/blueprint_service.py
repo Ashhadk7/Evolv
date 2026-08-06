@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 from app.models.blueprint import Blueprint, BlueprintVisibility, VersionState
 from app.models.user import User, UserRole
 from app.repositories import blueprints as blueprints_repository
+from app.repositories import projects as projects_repository
 from app.schemas.blueprints import (
     BlueprintContentUpdate,
     BlueprintCreate,
     BlueprintUpdate,
 )
+from app.services import developer_project_service
 from app.services.exceptions import (
     BlueprintAccessDeniedError,
     BlueprintNotFoundError,
@@ -76,7 +78,17 @@ def get_blueprint(
     if not require_ownership and blueprint.visibility.value == "public":
         return blueprint
 
+    if not require_ownership and _is_accepted_project_member(db, blueprint.id, current_user):
+        return blueprint
+
     raise BlueprintAccessDeniedError("You do not have access to this blueprint.")
+
+
+def _is_accepted_project_member(db: Session, blueprint_id: UUID, user: User) -> bool:
+    project = projects_repository.get_project_by_blueprint_id(db, blueprint_id)
+    if project is None:
+        return False
+    return developer_project_service.is_accepted_member(db, project.id, user)
 
 
 def create_blueprint(db: Session, current_user: User, payload: BlueprintCreate) -> Blueprint:

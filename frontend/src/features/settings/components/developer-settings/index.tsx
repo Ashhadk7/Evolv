@@ -35,7 +35,7 @@ import { SecurityTab } from "./security-tab";
 import { useDeveloperDashboardStore } from "@/features/developer-dashboard/store";
 import { getApiErrorMessage } from "@/lib/api";
 import { DeveloperProfileMobileCard } from "@/features/profiles/components/developer-profile-mobile-card";
-import { uploadAvatar } from "@/features/profiles/profile-api";
+import { uploadAvatar, uploadCertificationImage } from "@/features/profiles/profile-api";
 import {
   fetchNotificationPreferences,
   updateNotificationPreferences,
@@ -43,6 +43,7 @@ import {
 import { toast } from "sonner";
 
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_CERTIFICATE_BYTES = 5 * 1024 * 1024;
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "profile", label: "Profile", icon: "user" },
@@ -101,6 +102,8 @@ const Settings = () => {
           newMatch: preferences.newMatch,
           blueprintPublished: preferences.blueprintPublished,
           applicationUpdate: preferences.applicationUpdate,
+          projectInvite: preferences.projectInvite,
+          projectUpdate: preferences.projectUpdate,
           connectionRequest: preferences.connectionRequest,
           connectionAccepted: preferences.connectionAccepted,
           messageReceived: preferences.messageReceived,
@@ -253,6 +256,8 @@ const Settings = () => {
         newMatch: savedPreferences.newMatch,
         blueprintPublished: savedPreferences.blueprintPublished,
         applicationUpdate: savedPreferences.applicationUpdate,
+        projectInvite: savedPreferences.projectInvite,
+        projectUpdate: savedPreferences.projectUpdate,
         connectionRequest: savedPreferences.connectionRequest,
         connectionAccepted: savedPreferences.connectionAccepted,
         messageReceived: savedPreferences.messageReceived,
@@ -392,13 +397,25 @@ const Settings = () => {
     }));
   };
 
-  const handleCertificationImage = (id: string, file: File | null | undefined) => {
-    if (!file || !file.type?.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") updateCertification(id, { image: reader.result });
-    };
-    reader.readAsDataURL(file);
+  const handleCertificationImage = async (id: string, file: File | null | undefined) => {
+    if (!file) return;
+    setSaveError("");
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      setSaveError("Please choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+
+    if (file.size > MAX_CERTIFICATE_BYTES) {
+      setSaveError("Your certificate image must be smaller than 5 MB.");
+      return;
+    }
+
+    try {
+      updateCertification(id, { image: await uploadCertificationImage(file) });
+    } catch (error) {
+      setSaveError(getApiErrorMessage(error));
+    }
   };
 
   const sectionCopy = SECTION_COPY[visibleTab];
