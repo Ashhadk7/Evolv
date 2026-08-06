@@ -95,6 +95,7 @@ def _member_response(
         phase_index=member.phase_index,
         status=member.status,
         amount_agreed_cents=member.amount_agreed_cents,
+        counter_amount_cents=member.counter_amount_cents,
         amount_paid_cents=paid_cents,
         invited_at=member.invited_at,
         responded_at=member.responded_at,
@@ -233,6 +234,92 @@ def respond_to_invite(
     return _member_response(db, member)
 
 
+def propose_counter(
+    db: Session,
+    member_id: UUID,
+    current_user: User,
+    *,
+    amount_cents: int,
+    background_tasks: BackgroundTasks | None = None,
+) -> ProjectMemberResponse:
+    """Developer counters the founder's invite instead of accepting/declining it."""
+    developer_id = _require_developer(current_user)
+
+    member = projects_repository.get_member_by_id(db, member_id)
+    if member is None or member.developer_id != developer_id:
+        raise ProjectMemberNotFoundError()
+    if member.status != ProjectMemberStatus.INVITED:
+        raise ProjectMemberConflictError(
+            f"This invitation was already {member.status.value}."
+        )
+
+    member.counter_amount_cents = amount_cents
+    _transition(db, member, ProjectMemberStatus.COUNTERED)
+
+    project = projects_repository.get_project_by_id(db, member.project_id)
+    if project is not None:
+        notifications_service.notify_project_invite_countered(
+            db,
+            member=member,
+            project=project,
+            developer=current_user,
+            background_tasks=background_tasks,
+        )
+    return _member_response(db, member)
+
+
+def respond_to_counter(
+    db: Session,
+    member_id: UUID,
+    current_user: User,
+    *,
+    action: str,
+    amount_cents: int | None = None,
+    background_tasks: BackgroundTasks | None = None,
+) -> ProjectMemberResponse:
+    """Founder accepts, rejects, or re-counters the developer's counter-offer."""
+    founder_id = _require_founder(current_user)
+
+    member = projects_repository.get_member_by_id(db, member_id)
+    if member is None:
+        raise ProjectMemberNotFoundError()
+    project = _owned_project(db, member.project_id, founder_id)
+
+    if member.status != ProjectMemberStatus.COUNTERED:
+        raise ProjectMemberConflictError(
+            "There is no counter-offer awaiting your response on this invitation."
+        )
+
+    if action == "accept":
+        member.amount_agreed_cents = member.counter_amount_cents or member.amount_agreed_cents
+        member.counter_amount_cents = None
+        _transition(db, member, ProjectMemberStatus.ACCEPTED)
+        outcome = "accepted"
+    elif action == "reject":
+        member.counter_amount_cents = None
+        _transition(db, member, ProjectMemberStatus.DECLINED)
+        outcome = "rejected"
+    elif action == "negotiate":
+        if amount_cents is None:
+            raise ProjectMemberConflictError("A counter amount is required to negotiate.")
+        member.amount_agreed_cents = amount_cents
+        member.counter_amount_cents = None
+        _transition(db, member, ProjectMemberStatus.INVITED)
+        outcome = "countered"
+    else:
+        raise ProjectMemberConflictError("Unknown action.")
+
+    notifications_service.notify_project_counter_response(
+        db,
+        member=member,
+        project=project,
+        founder=current_user,
+        outcome=outcome,
+        background_tasks=background_tasks,
+    )
+    return _member_response(db, member)
+
+
 def revoke_invite(db: Session, member_id: UUID, current_user: User) -> ProjectMemberResponse:
     founder_id = _require_founder(current_user)
 
@@ -362,7 +449,9 @@ def list_invites(db: Session, current_user: User) -> list[DeveloperInviteRespons
                 project_title=project.title,
                 founder_name=display_name(founder),
                 phase_index=invite.phase_index,
+                status=invite.status,
                 amount_agreed_cents=invite.amount_agreed_cents,
+                counter_amount_cents=invite.counter_amount_cents,
                 invited_at=invite.invited_at,
             )
         )

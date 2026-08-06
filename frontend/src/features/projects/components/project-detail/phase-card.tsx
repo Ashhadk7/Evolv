@@ -26,6 +26,7 @@ export function PhaseCard({
   ps,
   pendingInvites,
   acceptedMembers,
+  counteredMembers,
   index,
   isSelected,
   isActive,
@@ -49,11 +50,13 @@ export function PhaseCard({
   onRemoveDev,
   onFindMatches,
   onRevokeInvite,
+  onRespondToCounter,
 }: {
   phase: Phase;
   ps: ProjectPhaseState;
   pendingInvites: ProjectMemberWire[];
   acceptedMembers: ProjectMemberWire[];
+  counteredMembers: ProjectMemberWire[];
   index: number;
   isSelected: boolean;
   isActive: boolean;
@@ -77,6 +80,11 @@ export function PhaseCard({
   onRemoveDev: (memberId: string) => void;
   onFindMatches: () => void;
   onRevokeInvite: (memberId: string) => void;
+  onRespondToCounter: (
+    memberId: string,
+    action: "accept" | "reject" | "negotiate",
+    amountCents?: number
+  ) => void;
 }) {
   const statusTag: StatusTag =
     ps.status === "Complete"
@@ -264,10 +272,12 @@ export function PhaseCard({
               <PhaseAssignment
                 pendingInvites={pendingInvites}
                 acceptedMembers={acceptedMembers}
+                counteredMembers={counteredMembers}
                 onPay={onPay}
                 onRemoveDev={onRemoveDev}
                 onFindMatches={onFindMatches}
                 onRevokeInvite={onRevokeInvite}
+                onRespondToCounter={onRespondToCounter}
               />
             </div>
           </motion.div>

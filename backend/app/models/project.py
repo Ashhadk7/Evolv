@@ -52,6 +52,7 @@ class ProjectMemberStatus(StrEnum):
     DECLINED = "declined"
     REVOKED = "revoked"
     REMOVED = "removed"
+    COUNTERED = "countered"
 
 
 class IssuePriority(StrEnum):
@@ -102,7 +103,11 @@ deadline_status_enum = _pg_enum(DeadlineStatus, "project_deadline_status")
 payment_status_enum = _pg_enum(PaymentStatus, "project_payment_status")
 payment_provider_enum = _pg_enum(PaymentProvider, "project_payment_provider")
 
-ACTIVE_MEMBER_STATUSES = (ProjectMemberStatus.INVITED, ProjectMemberStatus.ACCEPTED)
+ACTIVE_MEMBER_STATUSES = (
+    ProjectMemberStatus.INVITED,
+    ProjectMemberStatus.ACCEPTED,
+    ProjectMemberStatus.COUNTERED,
+)
 
 
 class Project(Base):
@@ -216,6 +221,10 @@ class ProjectMember(Base):
         default=ProjectMemberStatus.INVITED,
     )
     amount_agreed_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The developer's single counter-proposal, cleared once resolved. No
+    # back-and-forth thread — status + amount_agreed_cents + this column is
+    # the whole state of whatever offer is currently on the table.
+    counter_amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     invited_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

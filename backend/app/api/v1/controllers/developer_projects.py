@@ -7,6 +7,7 @@ from app.schemas.projects import (
     DeveloperInviteListResponse,
     DeveloperProjectDetail,
     DeveloperProjectListResponse,
+    ProjectMemberNegotiate,
     ProjectMemberResponse,
 )
 from app.services import developer_project_service, project_membership_service
@@ -53,6 +54,23 @@ def decline_developer_invite(
 ) -> ProjectMemberResponse:
     return project_membership_service.respond_to_invite(
         db, member_id, current_user, accept=False, background_tasks=background_tasks
+    )
+
+
+@router.post("/invites/{member_id}/negotiate", response_model=ProjectMemberResponse)
+def negotiate_developer_invite(
+    member_id: UUID,
+    payload: ProjectMemberNegotiate,
+    db: DbSession,
+    current_user: CurrentDeveloper,
+    background_tasks: BackgroundTasks,
+) -> ProjectMemberResponse:
+    return project_membership_service.propose_counter(
+        db,
+        member_id,
+        current_user,
+        amount_cents=payload.amount_cents,
+        background_tasks=background_tasks,
     )
 
 

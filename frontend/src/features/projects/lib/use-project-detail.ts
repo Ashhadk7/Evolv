@@ -23,6 +23,7 @@ import {
   listProjectMembers,
   recordProjectPayment,
   removeProjectMember,
+  respondToMemberCounter,
   revokeProjectInvite,
   type ProjectMemberWire,
 } from "@/features/projects/projects-api";
@@ -91,6 +92,18 @@ export function useProjectDetail({
     const byPhase = new Map<number, ProjectMemberWire[]>();
     for (const member of members) {
       if (member.status === "accepted") {
+        const list = byPhase.get(member.phase_index) ?? [];
+        list.push(member);
+        byPhase.set(member.phase_index, list);
+      }
+    }
+    return byPhase;
+  }, [members]);
+
+  const counteredMembers = useMemo(() => {
+    const byPhase = new Map<number, ProjectMemberWire[]>();
+    for (const member of members) {
+      if (member.status === "countered") {
         const list = byPhase.get(member.phase_index) ?? [];
         list.push(member);
         byPhase.set(member.phase_index, list);
@@ -236,6 +249,27 @@ export function useProjectDetail({
     }
   };
 
+  const respondToCounter = async (
+    memberId: string,
+    action: "accept" | "reject" | "negotiate",
+    amountCents?: number
+  ) => {
+    try {
+      await respondToMemberCounter(memberId, action, amountCents);
+      await loadMembers();
+      dispatchRefresh();
+      showToast(
+        action === "accept"
+          ? "Counter-offer accepted"
+          : action === "reject"
+            ? "Counter-offer declined"
+            : "New offer sent"
+      );
+    } catch (err) {
+      showToast(getApiErrorMessage(err));
+    }
+  };
+
   const revokeInvite = async (memberId: string) => {
     try {
       await revokeProjectInvite(memberId);
@@ -374,7 +408,9 @@ export function useProjectDetail({
     matchLoading,
     pendingInvites,
     acceptedMembers,
+    counteredMembers,
     revokeInvite,
+    respondToCounter,
     toast,
     today,
     startPhase,

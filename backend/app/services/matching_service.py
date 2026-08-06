@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.user import DeveloperProfile
 from app.repositories import matching as matching_repository
 from app.schemas.matching import (
     BlueprintMatchesResponse,
@@ -14,6 +15,7 @@ from app.schemas.matching import (
 )
 from app.services import embeddings_service, pinecone_service
 from app.services.developer_rates import median_weekly_usd, rate_of
+from app.services.profile_quality import is_developer_profile_matchable
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,8 @@ def _score_all(
         profile = user.developer_profile
         if profile is None or (profile.experience_years or 0) < min_experience:
             continue
+        if not is_developer_profile_matchable(profile):
+            continue
         score = _score_developer(
             profile.skills, required_skills, profile.experience_years, profile.availability
         )
@@ -142,8 +146,13 @@ def get_matches_for_blueprint_roles(
     min_experience: int = 0,
     limit: int = 10,
 ) -> BlueprintMatchesResponse:
-    developers = matching_repository.list_available_developers(db)
+    """Match developers against each blueprint role.
 
+    Uses the same rule+semantic blend as `get_matches_semantic` per role (falling
+    back to rule-only when embeddings are unavailable), so a founder viewing a
+    blueprint's matches sees the same kind of ranked similarity a developer sees
+    on Discover, rather than a plain skill-overlap count.
+    """
     role_matches: list[RoleMatchResponse] = []
     for role in roles:
         if not isinstance(role, dict):
@@ -152,13 +161,19 @@ def get_matches_for_blueprint_roles(
             role.get("role") or role.get("title") or role.get("role_title") or "Unspecified Role"
         )
         skills = parse_role_skills(role.get("skills"))
-        scored = _score_all(developers, skills, min_experience)
+        semantic = get_matches_semantic(
+            db,
+            required_skills=skills,
+            role_description=title,
+            min_experience=min_experience,
+            limit=limit,
+        )
         role_matches.append(
             RoleMatchResponse(
                 role_title=title,
                 required_skills=skills,
-                total_matches=len(scored),
-                matches=scored[:limit],
+                total_matches=semantic.total,
+                matches=semantic.items,
             )
         )
 
@@ -208,6 +223,8 @@ def get_matches_semantic(
         profile = user.developer_profile if user else None
         if profile is None or (profile.experience_years or 0) < min_experience:
             continue
+        if not is_developer_profile_matchable(profile):
+            continue
 
         rule_score = _score_developer(
             profile.skills, required_skills, profile.experience_years, profile.availability
@@ -222,13 +239,31 @@ def get_matches_semantic(
     return MatchListResponse(total=len(scored), items=scored[:limit])
 
 
-def sync_developer_embedding(user_id: UUID, skills: list[str]) -> None:
-    if not skills:
+def _developer_embedding_text(profile: DeveloperProfile) -> str:
+    """The developer's semantic fingerprint: role, bio and skills together.
+
+    Skills alone match a role's skill list but miss everything a natural-language
+    role_description asks about (domain, seniority, what they've actually built).
+    Job title and bio carry that signal, so all three are embedded together.
+    """
+    parts = [profile.job_title or "", profile.bio or "", ", ".join(profile.skills or [])]
+    return ". ".join(part for part in parts if part)
+
+
+def sync_developer_embedding(profile: DeveloperProfile) -> None:
+    if not is_developer_profile_matchable(profile):
+        # Profile no longer clears the matching bar (e.g. edited down to junk) -
+        # drop any stale vector rather than leaving an outdated one queryable.
+        logger.info(
+            "Skipping embedding sync for user %s: profile does not meet the matching quality bar",
+            profile.user_id,
+        )
+        remove_developer_embedding(profile.user_id)
         return
     _upsert(
         pinecone_service.upsert_developer,
-        str(user_id),
-        ", ".join(skills),
+        str(profile.user_id),
+        _developer_embedding_text(profile),
         "developer",
     )
 
@@ -276,10 +311,10 @@ def reindex_developer_embeddings(db: Session) -> int:
     indexed = 0
     for user in developers:
         profile = user.developer_profile
-        if profile is None or not profile.skills:
+        if profile is None or not is_developer_profile_matchable(profile):
             continue
         embedding = embeddings_service.embed_text(
-            ", ".join(profile.skills), input_type=embeddings_service.PASSAGE_INPUT_TYPE
+            _developer_embedding_text(profile), input_type=embeddings_service.PASSAGE_INPUT_TYPE
         )
         if not embedding:
             continue

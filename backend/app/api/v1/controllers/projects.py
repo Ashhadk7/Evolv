@@ -11,6 +11,7 @@ from app.schemas.projects import (
     ProjectCreate,
     ProjectDeveloperAssign,
     ProjectListResponse,
+    ProjectMemberCounterRespond,
     ProjectMemberInvite,
     ProjectMemberListResponse,
     ProjectMemberRemove,
@@ -160,6 +161,24 @@ def remove_project_member(
 ) -> ProjectMemberResponse:
     return project_membership_service.remove_member(
         db, member_id, current_user, payload.reason, background_tasks=background_tasks
+    )
+
+
+@router.post("/members/{member_id}/counter-respond", response_model=ProjectMemberResponse)
+def respond_to_member_counter(
+    member_id: UUID,
+    payload: ProjectMemberCounterRespond,
+    db: DbSession,
+    current_user: CurrentFounder,
+    background_tasks: BackgroundTasks,
+) -> ProjectMemberResponse:
+    return project_membership_service.respond_to_counter(
+        db,
+        member_id,
+        current_user,
+        action=payload.action,
+        amount_cents=payload.amount_cents,
+        background_tasks=background_tasks,
     )
 
 

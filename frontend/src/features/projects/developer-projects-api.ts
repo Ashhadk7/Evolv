@@ -83,7 +83,9 @@ export interface DeveloperInvite {
   project_title: string;
   founder_name: string;
   phase_index: number;
+  status: MemberStatus;
   amount_agreed_cents: number;
+  counter_amount_cents: number | null;
   invited_at: string;
 }
 
@@ -114,5 +116,14 @@ export async function respondToInvite(memberId: string, accept: boolean): Promis
   await apiFetch(`/developer/projects/invites/${memberId}/${accept ? "accept" : "decline"}`, {
     method: "POST",
     auth: true,
+  });
+}
+
+/** Developer proposes a different rate instead of accepting/declining the invite. */
+export async function negotiateInvite(memberId: string, amountCents: number): Promise<void> {
+  await apiFetch(`/developer/projects/invites/${memberId}/negotiate`, {
+    method: "POST",
+    auth: true,
+    body: { amount_cents: amountCents },
   });
 }

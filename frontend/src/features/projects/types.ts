@@ -12,7 +12,13 @@ export const DELIVERABLE_STATUS_LABEL: Record<DeliverableStatus, string> = {
 export type DeadlineStatus = "pending" | "met" | "missed";
 export type PaymentStatus = "pending" | "processing" | "succeeded" | "failed" | "cancelled";
 export type PaymentProvider = "manual" | "stripe";
-export type MemberStatus = "invited" | "accepted" | "declined" | "revoked" | "removed";
+export type MemberStatus =
+  | "invited"
+  | "accepted"
+  | "declined"
+  | "revoked"
+  | "removed"
+  | "countered";
 
 /** A project no longer being worked on — shown apart from the active roster. */
 export function isClosedStatus(status: BackendProjectStatus): boolean {

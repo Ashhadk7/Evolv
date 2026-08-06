@@ -134,7 +134,8 @@ export type ProjectMemberStatus =
   | "accepted"
   | "declined"
   | "revoked"
-  | "removed";
+  | "removed"
+  | "countered";
 
 export interface ProjectMemberWire {
   id: string;
@@ -145,6 +146,7 @@ export interface ProjectMemberWire {
   phase_index: number;
   status: ProjectMemberStatus;
   amount_agreed_cents: number;
+  counter_amount_cents: number | null;
   amount_paid_cents: number;
   invited_at: string;
   responded_at: string | null;
@@ -175,6 +177,19 @@ export async function revokeProjectInvite(memberId: string): Promise<ProjectMemb
   return apiFetch<ProjectMemberWire>(`/projects/members/${memberId}`, {
     method: "DELETE",
     auth: true,
+  });
+}
+
+/** Founder's response to a developer's counter-offer. */
+export async function respondToMemberCounter(
+  memberId: string,
+  action: "accept" | "reject" | "negotiate",
+  amountCents?: number
+): Promise<ProjectMemberWire> {
+  return apiFetch<ProjectMemberWire>(`/projects/members/${memberId}/counter-respond`, {
+    method: "POST",
+    auth: true,
+    body: { action, amount_cents: amountCents ?? null },
   });
 }
 

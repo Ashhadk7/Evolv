@@ -234,7 +234,7 @@ def notify_application_created(
     if blueprint is None:
         return None
 
-    role = f" for {application.role}" if application.role else ""
+    role = f" as {application.role}" if application.role else ""
     return _commit_notifications(
         db,
         [
@@ -245,11 +245,12 @@ def notify_application_created(
                 type=NotifType.APPLICATION,
                 title="New developer application",
                 body=(
-                    f"{display_name(developer)} applied{role} "
-                    f"on {application_blueprint_name(application)}."
+                    f"{display_name(developer)} applied to your blueprint "
+                    f"{application_blueprint_name(application)}{role}."
                 ),
                 tab="workspace",
-                action_label="Review Blueprint",
+                action_label="Review Application",
+                payload=_application_payload(application),
             )
         ],
     )
@@ -363,6 +364,92 @@ def notify_project_invite_response(
                 ),
                 tab="projects",
                 action_label="View Project",
+                payload=_project_payload(member),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_project_invite_countered(
+    db: Session,
+    *,
+    member: ProjectMember,
+    project: Project,
+    developer: User,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    amount = f"${(member.counter_amount_cents or 0) / 100:,.2f}"
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=project.founder_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title="Counter-offer received",
+                body=(
+                    f"{display_name(developer)} proposed {amount} for phase "
+                    f"{member.phase_index + 1} of {project.title}."
+                ),
+                tab="workspace",
+                action_label="Review Counter-Offer",
+                payload=_project_payload(member),
+            )
+        ],
+    )
+    _push_live(background_tasks, notification)
+    return notification
+
+
+def notify_project_counter_response(
+    db: Session,
+    *,
+    member: ProjectMember,
+    project: Project,
+    founder: User,
+    outcome: str,
+    background_tasks: BackgroundTasks | None = None,
+) -> Notification | None:
+    """Founder accepted/rejected/re-countered the developer's counter-offer."""
+    if outcome == "accepted":
+        title = "Counter-offer accepted"
+        amount = f"${member.amount_agreed_cents / 100:,.2f}"
+        body = (
+            f"{display_name(founder)} accepted your counter-offer of {amount} for phase "
+            f"{member.phase_index + 1} of {project.title}."
+        )
+        action_label = "View Project"
+    elif outcome == "rejected":
+        title = "Counter-offer declined"
+        body = (
+            f"{display_name(founder)} declined your counter-offer for phase "
+            f"{member.phase_index + 1} of {project.title}."
+        )
+        action_label = "View Project"
+    else:
+        title = "New counter-offer"
+        amount = f"${member.amount_agreed_cents / 100:,.2f}"
+        body = (
+            f"{display_name(founder)} proposed {amount} for phase "
+            f"{member.phase_index + 1} of {project.title}."
+        )
+        action_label = "Respond to Offer"
+
+    notification = _commit_notifications(
+        db,
+        [
+            _queue_notification_if_enabled(
+                db,
+                user_id=member.developer_id,
+                preference_key="projectUpdate",
+                type=NotifType.PROJECT,
+                title=title,
+                body=body,
+                tab="projects",
+                action_label=action_label,
                 payload=_project_payload(member),
             )
         ],
@@ -703,6 +790,14 @@ def _project_payload(member: ProjectMember) -> dict[str, object]:
         "projectId": str(member.project_id),
         "memberId": str(member.id),
         "phaseIndex": member.phase_index,
+    }
+
+
+def _application_payload(application: Application) -> dict[str, object]:
+    return {
+        "applicationId": str(application.id),
+        "blueprintId": str(application.blueprint_id),
+        "developerId": str(application.developer_id),
     }
 
 

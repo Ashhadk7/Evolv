@@ -13,6 +13,7 @@ import {
   getDeveloperProject,
   listDeveloperInvites,
   listDeveloperProjects,
+  negotiateInvite,
   respondToInvite,
   type DeveloperInvite,
   type DeveloperProjectDetail,
@@ -39,7 +40,8 @@ function ErrorBanner({ children }: { children: React.ReactNode }) {
 export default function DeveloperProjects() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedId = searchParams?.get("project") ?? null;
+  const requestedProjectId = searchParams?.get("project") ?? null;
+  const highlightMemberId = searchParams?.get("member") ?? null;
 
   const [projects, setProjects] = useState<DeveloperProjectSummary[]>([]);
   const [invites, setInvites] = useState<DeveloperInvite[]>([]);
@@ -53,6 +55,17 @@ export default function DeveloperProjects() {
     setToast(message);
     window.setTimeout(() => setToast(null), 2400);
   };
+
+  // A notification for a still-pending invite links here with `?member=<id>`.
+  // That membership has no accepted access yet, so opening it as a project
+  // (`?project=<id>`, also present in that link) 403s. Once invites have
+  // loaded, treat a `member` match as "review this invite" instead — stay on
+  // the list and let InviteTray below handle it — rather than fetching a
+  // project detail the developer isn't authorized to see yet.
+  const highlightedInvite = !loading && highlightMemberId
+    ? (invites.find((invite) => invite.id === highlightMemberId) ?? null)
+    : null;
+  const selectedId = loading || highlightedInvite ? null : requestedProjectId;
 
   const load = useCallback(
     () =>
@@ -114,6 +127,19 @@ export default function DeveloperProjects() {
       showToast(
         accept ? `You joined ${invite.project_title}` : `Invitation to ${invite.project_title} declined`
       );
+    } catch (error) {
+      showToast(getApiErrorMessage(error));
+    } finally {
+      setBusyInviteId(null);
+    }
+  };
+
+  const handleNegotiate = async (invite: DeveloperInvite, amountCents: number) => {
+    setBusyInviteId(invite.id);
+    try {
+      await negotiateInvite(invite.id, amountCents);
+      await load();
+      showToast(`Counter-offer sent for ${invite.project_title}`);
     } catch (error) {
       showToast(getApiErrorMessage(error));
     } finally {
@@ -239,7 +265,13 @@ export default function DeveloperProjects() {
           </ErrorBanner>
         )}
 
-        <InviteTray invites={invites} onRespond={handleRespond} busyId={busyInviteId} />
+        <InviteTray
+          invites={invites}
+          onRespond={handleRespond}
+          onNegotiate={handleNegotiate}
+          busyId={busyInviteId}
+          highlightId={highlightedInvite?.id ?? null}
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((kpi) => (

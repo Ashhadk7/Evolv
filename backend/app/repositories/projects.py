@@ -151,7 +151,9 @@ def list_pending_invites_for_developer(db: Session, developer_id: UUID) -> list[
             select(ProjectMember)
             .where(
                 ProjectMember.developer_id == developer_id,
-                ProjectMember.status == ProjectMemberStatus.INVITED,
+                ProjectMember.status.in_(
+                    (ProjectMemberStatus.INVITED, ProjectMemberStatus.COUNTERED)
+                ),
             )
             .order_by(ProjectMember.invited_at.desc())
         ).all()

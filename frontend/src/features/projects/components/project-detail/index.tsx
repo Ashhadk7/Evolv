@@ -66,7 +66,9 @@ export function ProjectDetail({
     matchLoading,
     pendingInvites,
     acceptedMembers,
+    counteredMembers,
     revokeInvite,
+    respondToCounter,
     toast,
     today,
     startPhase,
@@ -182,6 +184,7 @@ export function ProjectDetail({
           phaseStates={bp.project.phaseStates}
           pendingInvites={pendingInvites}
           acceptedMembers={acceptedMembers}
+          counteredMembers={counteredMembers}
           deliverablesByPhase={deliverableState.byPhase}
           deliverablesLoading={deliverableState.loading}
           activeIdx={activeIdx}
@@ -204,6 +207,7 @@ export function ProjectDetail({
             modals.setRemoveDevTarget({ memberId, phaseIdx })
           }
           onRevokeInvite={revokeInvite}
+          onRespondToCounter={respondToCounter}
           onFindMatches={() =>
             document.getElementById("dev-panel")?.scrollIntoView({ behavior: "smooth" })
           }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, User, X } from "@phosphor-icons/react";
+import { Check, CheckCircle, HandCoins, User, X } from "@phosphor-icons/react";
 import { Avatar } from "@/components/shared/avatar";
 import { fmtDate, fmtMoney } from "@/features/blueprints/blueprint-content";
 import type { ProjectMemberWire } from "@/features/projects/projects-api";
@@ -71,23 +71,101 @@ function MemberDetailPopup({
   );
 }
 
+function CounterRespondRow({
+  member,
+  onRespond,
+}: {
+  member: ProjectMemberWire;
+  onRespond: (action: "accept" | "reject" | "negotiate", amountCents?: number) => void;
+}) {
+  const [negotiating, setNegotiating] = useState(false);
+  const [amount, setAmount] = useState(() =>
+    String((member.counter_amount_cents ?? member.amount_agreed_cents) / 100)
+  );
+
+  if (negotiating) {
+    return (
+      <div className="border-bp-border bg-bp-card mt-2 flex w-full items-center gap-2 rounded-lg border p-2">
+        <span className="text-bp-ink text-[13px] font-extrabold">$</span>
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          autoFocus
+          className="text-bp-ink min-w-0 flex-1 border-none bg-transparent text-[13px] font-bold outline-none"
+        />
+        <button
+          type="button"
+          disabled={!(Number(amount) > 0)}
+          onClick={() => onRespond("negotiate", Math.round(Number(amount) * 100))}
+          className="bp-primary-btn disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Send offer
+        </button>
+        <button
+          type="button"
+          onClick={() => setNegotiating(false)}
+          className="text-bp-muted cursor-pointer border-none bg-transparent px-2 py-1 text-[11.5px] font-semibold"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onRespond("accept")}
+        className="bp-primary-btn"
+      >
+        <Check size={14} weight="bold" /> Accept
+      </button>
+      <button
+        type="button"
+        onClick={() => setNegotiating(true)}
+        className="border-bp-border text-bp-muted flex cursor-pointer items-center gap-1.5 rounded-[9px] border bg-transparent px-3.5 py-[7px] text-xs font-bold"
+      >
+        <HandCoins size={13} weight="bold" /> Counter
+      </button>
+      <button
+        type="button"
+        onClick={() => onRespond("reject")}
+        className="text-bp-red cursor-pointer border-none bg-transparent px-2 py-1.5 text-[11.5px] font-semibold"
+      >
+        <X size={13} weight="bold" /> Reject
+      </button>
+    </div>
+  );
+}
+
 export function PhaseAssignment({
   pendingInvites,
   acceptedMembers,
+  counteredMembers,
   onPay,
   onRemoveDev,
   onFindMatches,
   onRevokeInvite,
+  onRespondToCounter,
 }: {
   pendingInvites: ProjectMemberWire[];
   acceptedMembers: ProjectMemberWire[];
+  counteredMembers: ProjectMemberWire[];
   onPay: (member: ProjectMemberWire) => void;
   onRemoveDev: (memberId: string) => void;
   onFindMatches: () => void;
   onRevokeInvite: (memberId: string) => void;
+  onRespondToCounter: (
+    memberId: string,
+    action: "accept" | "reject" | "negotiate",
+    amountCents?: number
+  ) => void;
 }) {
   const [detailMember, setDetailMember] = useState<ProjectMemberWire | null>(null);
-  const hasAnyone = pendingInvites.length > 0 || acceptedMembers.length > 0;
+  const hasAnyone =
+    pendingInvites.length > 0 || acceptedMembers.length > 0 || counteredMembers.length > 0;
 
   return (
     <>
@@ -126,6 +204,27 @@ export function PhaseAssignment({
           >
             Remove
           </button>
+        </div>
+      ))}
+
+      {counteredMembers.map((member) => (
+        <div
+          key={member.id}
+          className="border-bp-amber-line bg-bp-amber-bg mb-2 flex flex-wrap items-center gap-3 rounded-xl border px-[18px] py-3.5"
+        >
+          <Avatar initials={initialsOf(member.developer_name)} size={36} />
+          <div className="min-w-[150px] flex-1">
+            <div className="text-bp-ink text-[13.5px] font-bold">{member.developer_name}</div>
+            <div className="text-bp-muted mt-0.5 text-[11.5px]">
+              Countered with{" "}
+              {fmtMoney((member.counter_amount_cents ?? member.amount_agreed_cents) / 100)} ·
+              you offered {fmtMoney(member.amount_agreed_cents / 100)}
+            </div>
+          </div>
+          <CounterRespondRow
+            member={member}
+            onRespond={(action, amountCents) => onRespondToCounter(member.id, action, amountCents)}
+          />
         </div>
       ))}
 

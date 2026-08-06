@@ -10,6 +10,7 @@ export function PhaseBoard({
   phaseStates,
   pendingInvites,
   acceptedMembers,
+  counteredMembers,
   deliverablesByPhase,
   deliverablesLoading = false,
   activeIdx,
@@ -31,11 +32,13 @@ export function PhaseBoard({
   onRemoveDev,
   onFindMatches,
   onRevokeInvite,
+  onRespondToCounter,
 }: {
   phases: Phase[];
   phaseStates: ProjectPhaseState[];
   pendingInvites: Map<number, ProjectMemberWire[]>;
   acceptedMembers: Map<number, ProjectMemberWire[]>;
+  counteredMembers: Map<number, ProjectMemberWire[]>;
   deliverablesByPhase: Map<number, Deliverable[]>;
   deliverablesLoading?: boolean;
   activeIdx: number;
@@ -57,6 +60,11 @@ export function PhaseBoard({
   onRemoveDev: (memberId: string, phaseIdx: number) => void;
   onFindMatches: () => void;
   onRevokeInvite: (memberId: string) => void;
+  onRespondToCounter: (
+    memberId: string,
+    action: "accept" | "reject" | "negotiate",
+    amountCents?: number
+  ) => void;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -78,6 +86,7 @@ export function PhaseBoard({
               ps={ps}
               pendingInvites={pendingInvites.get(i) ?? []}
               acceptedMembers={acceptedMembers.get(i) ?? []}
+              counteredMembers={counteredMembers.get(i) ?? []}
               index={i}
               isSelected={isSelected}
               isActive={isActive}
@@ -101,6 +110,7 @@ export function PhaseBoard({
               onRemoveDev={(memberId) => onRemoveDev(memberId, i)}
               onFindMatches={onFindMatches}
               onRevokeInvite={onRevokeInvite}
+              onRespondToCounter={onRespondToCounter}
             />
           );
         })}

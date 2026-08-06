@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -133,6 +133,29 @@ class ProjectMemberRemove(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
 
 
+class ProjectMemberNegotiate(BaseModel):
+    """Developer's counter-offer on a pending invite."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    amount_cents: int = Field(gt=0)
+
+
+class ProjectMemberCounterRespond(BaseModel):
+    """Founder's response to a developer's counter-offer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["accept", "reject", "negotiate"]
+    amount_cents: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def _amount_required_for_negotiate(self) -> "ProjectMemberCounterRespond":
+        if self.action == "negotiate" and self.amount_cents is None:
+            raise ValueError("amount_cents is required when action is 'negotiate'.")
+        return self
+
+
 class ProjectPaymentRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -151,6 +174,7 @@ class ProjectMemberResponse(BaseModel):
     phase_index: int
     status: ProjectMemberStatus
     amount_agreed_cents: int
+    counter_amount_cents: int | None = None
     amount_paid_cents: int = 0
     invited_at: datetime
     responded_at: datetime | None = None
@@ -175,7 +199,9 @@ class DeveloperInviteResponse(BaseModel):
     project_title: str
     founder_name: str
     phase_index: int
+    status: ProjectMemberStatus
     amount_agreed_cents: int
+    counter_amount_cents: int | None = None
     invited_at: datetime
 
 
