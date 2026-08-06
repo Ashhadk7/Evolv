@@ -19,6 +19,7 @@ import {
   type DiscoverSort,
 } from "@/features/developer-dashboard/lib/discover-api";
 import { ApplyModal } from "./apply-modal";
+import { canApply, engagementNotice } from "./apply-state";
 import { DeveloperBlueprintDetail } from "./developer-blueprint-detail";
 import { FeaturedMatchCard } from "./featured-match-card";
 import { FilterBar, type DiscoverView } from "./filter-bar";
@@ -140,6 +141,13 @@ const Discover = ({ profileComplete = true, onRequireProfile }: DeveloperPagePro
 
   const handleOpenApply = (blueprint: Opportunity) => {
     if (requireProfile(() => handleOpenApply(blueprint))) return;
+    if (!canApply(blueprint)) {
+      setNotice({
+        tone: "success",
+        text: engagementNotice(blueprint) ?? "You have already applied to this blueprint.",
+      });
+      return;
+    }
     setApplyError(null);
     setApplySubmitted(false);
     setApplyTarget(blueprint);
@@ -147,6 +155,13 @@ const Discover = ({ profileComplete = true, onRequireProfile }: DeveloperPagePro
 
   const handleApplyFromDetail = (blueprint: Opportunity, role: string) => {
     if (requireProfile(() => handleApplyFromDetail(blueprint, role))) return;
+    if (!canApply(blueprint)) {
+      setNotice({
+        tone: "success",
+        text: engagementNotice(blueprint) ?? "You have already applied to this blueprint.",
+      });
+      return;
+    }
     setApplyError(null);
     setApplySubmitted(false);
     setApplyTarget({ ...blueprint, bestRole: role || blueprint.bestRole });
@@ -175,6 +190,24 @@ const Discover = ({ profileComplete = true, onRequireProfile }: DeveloperPagePro
       if (caught instanceof ApiError && caught.code === "already_applied") {
         updateBlueprint(target.id, { applied: true, applicationStatus: "applied" });
         setApplyError("You have already applied to this blueprint.");
+        return;
+      }
+      if (caught instanceof ApiError && caught.code === "already_engaged") {
+        const data = caught.data as
+          | {
+              engagement_status?: Opportunity["engagementStatus"];
+              engagement_project_id?: string;
+              engagement_project_title?: string;
+            }
+          | null;
+        updateBlueprint(target.id, {
+          applied: false,
+          applicationStatus: null,
+          engagementStatus: data?.engagement_status ?? "accepted",
+          engagementProjectId: data?.engagement_project_id ?? null,
+          engagementProjectTitle: data?.engagement_project_title ?? target.name,
+        });
+        setApplyError(caught.detail);
         return;
       }
       setApplyError(getApiErrorMessage(caught));

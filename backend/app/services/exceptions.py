@@ -25,6 +25,7 @@ class ErrorCode(StrEnum):
     FOUNDER_PROFILE_REQUIRED = "founder_profile_required"
     DEVELOPER_PROFILE_REQUIRED = "developer_profile_required"
     ALREADY_APPLIED = "already_applied"
+    ALREADY_ENGAGED = "already_engaged"
     ALREADY_SAVED = "already_saved"
     APPLICATION_NOT_FOUND = "application_not_found"
     SAVED_BLUEPRINT_NOT_FOUND = "saved_blueprint_not_found"
@@ -208,6 +209,17 @@ class AlreadyAppliedError(AppError):
 
     def __init__(self, message: str = "You have already applied to this blueprint.") -> None:
         super().__init__(ErrorCode.ALREADY_APPLIED, message)
+
+
+class AlreadyEngagedError(AppError):
+    """The developer already has a pending or active project membership."""
+
+    def __init__(
+        self,
+        message: str = "You are already connected to this project.",
+        extra: dict[str, object] | None = None,
+    ) -> None:
+        super().__init__(ErrorCode.ALREADY_ENGAGED, message, extra)
 
 
 class AlreadySavedError(AppError):

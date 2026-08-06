@@ -10,8 +10,10 @@ from app.models.blueprint import Blueprint, BlueprintVisibility
 from app.models.user import User, UserRole
 from app.repositories import applications as applications_repository
 from app.repositories import blueprints as blueprints_repository
+from app.repositories import projects as projects_repository
 from app.services.exceptions import (
     AlreadyAppliedError,
+    AlreadyEngagedError,
     AlreadySavedError,
     ApplicationAccessDeniedError,
     ApplicationNotFoundError,
@@ -87,7 +89,29 @@ def create_application(
 ) -> Application:
     developer_id = _require_developer_profile(current_user)
 
-    _get_public_blueprint(db, blueprint_id)
+    blueprint = _get_public_blueprint(db, blueprint_id)
+
+    active_engagement = projects_repository.list_active_memberships_by_blueprint_for_developer(
+        db, developer_id
+    ).get(blueprint_id)
+    if active_engagement is not None:
+        member, project = active_engagement
+        if member.status.value == "accepted":
+            message = "You are already working on this project."
+        else:
+            message = "You already have a pending project invitation for this blueprint."
+        raise AlreadyEngagedError(
+            message,
+            {
+                "engagement_status": member.status.value,
+                "engagement_project_id": str(project.id),
+                "engagement_project_title": (
+                    blueprint.current_version.name
+                    if blueprint.current_version is not None
+                    else project.title
+                ),
+            },
+        )
 
     existing = applications_repository.get_application_by_developer_and_blueprint(
         db, developer_id, blueprint_id

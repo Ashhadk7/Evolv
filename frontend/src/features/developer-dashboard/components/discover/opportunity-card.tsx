@@ -2,6 +2,7 @@ import { Bookmark, BookmarkCheck, CheckCircle2, Eye, Handshake, Users } from "lu
 
 import styles from "@/features/developer-dashboard/components/discover.module.css";
 import { timeAgo } from "@/lib/utils";
+import { applyButtonLabel, canApply } from "./apply-state";
 import { MatchRing } from "./match-ring";
 import type { Opportunity } from "./types";
 
@@ -23,6 +24,8 @@ export function OpportunityCard({
   const saving = busyAction === "save";
   const hasRoles = opportunity.roles.length > 0;
   const extraTech = Math.max(0, opportunity.techStack.length - MAX_TECH_CHIPS);
+  const canSubmitApplication = canApply(opportunity);
+  const applyLabel = applyButtonLabel(opportunity);
 
   return (
     <article className={styles.oppCard}>
@@ -101,14 +104,14 @@ export function OpportunityCard({
             type="button"
             className={styles.btnPrimarySm}
             onClick={() => onApply(opportunity)}
-            disabled={opportunity.applied}
+            disabled={!canSubmitApplication}
           >
-            {opportunity.applied ? (
-              <CheckCircle2 size={13} aria-hidden="true" />
-            ) : (
+            {canSubmitApplication ? (
               <Handshake size={13} aria-hidden="true" />
+            ) : (
+              <CheckCircle2 size={13} aria-hidden="true" />
             )}
-            {opportunity.applied ? "Applied" : "Apply"}
+            {applyLabel}
           </button>
         </div>
       </footer>

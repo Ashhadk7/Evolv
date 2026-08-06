@@ -25,6 +25,7 @@ from app.models.project import (
 )
 from app.models.user import User, UserRole
 from app.repositories import projects as projects_repository
+from app.repositories import users as users_repository
 from app.schemas.projects import (
     DeveloperEarningsResponse,
     DeveloperEngagementResponse,
@@ -43,6 +44,7 @@ from app.services.exceptions import (
     ProjectAccessDeniedError,
     ProjectNotFoundError,
 )
+from app.services.project_access import display_name
 
 DEFAULT_CURRENCY = "USD"
 OPEN_ISSUE_STATUSES = (IssueStatus.OPEN, IssueStatus.IN_PROGRESS, IssueStatus.IN_REVIEW)
@@ -141,11 +143,15 @@ def _summary(
     total: int,
     open_issues: int,
     next_deadline: date | None,
+    founder_name: str,
 ) -> DeveloperProjectSummary:
+    version = project.blueprint.current_version if project.blueprint is not None else None
     return DeveloperProjectSummary(
         id=project.id,
         blueprint_id=project.blueprint_id,
-        title=project.title,
+        founder_id=project.founder_id,
+        founder_name=founder_name,
+        title=version.name if version is not None else project.title,
         status=project.status,
         my_phase_indices=sorted({m.phase_index for m in memberships}),
         deliverables_done=done,
@@ -182,6 +188,7 @@ def list_projects(db: Session, current_user: User) -> list[DeveloperProjectSumma
         issues = projects_repository.list_issues(db, project.id)
         deadlines = projects_repository.list_deadlines(db, project.id)
         deliverables = projects_repository.list_deliverables(db, project.id)
+        founder = users_repository.get_user_by_id(db, project.founder_id)
         upcoming = [d.due_date for d in deadlines if d.status == DeadlineStatus.PENDING]
         upcoming.extend(
             i.due_date for i in issues if i.due_date and i.status in OPEN_ISSUE_STATUSES
@@ -196,6 +203,7 @@ def list_projects(db: Session, current_user: User) -> list[DeveloperProjectSumma
                 total,
                 sum(1 for i in issues if i.status in OPEN_ISSUE_STATUSES),
                 min(upcoming) if upcoming else None,
+                display_name(founder),
             )
         )
     return summaries
@@ -242,6 +250,7 @@ def get_project(db: Session, project_id: UUID, current_user: User) -> DeveloperP
 
     deliverables_done = sum(1 for d in deliverable_summaries if d.done)
     upcoming = [d.due_date for d in deadlines if d.status == DeadlineStatus.PENDING]
+    founder = users_repository.get_user_by_id(db, project.founder_id)
 
     summary = _summary(
         project,
@@ -251,6 +260,7 @@ def get_project(db: Session, project_id: UUID, current_user: User) -> DeveloperP
         len(deliverable_summaries),
         sum(1 for i in issues if i.status in OPEN_ISSUE_STATUSES),
         min(upcoming) if upcoming else None,
+        display_name(founder),
     )
 
     return DeveloperProjectDetail(

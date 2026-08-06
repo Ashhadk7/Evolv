@@ -540,6 +540,8 @@ class DeveloperProjectSummary(BaseModel):
 
     id: UUID
     blueprint_id: UUID
+    founder_id: UUID
+    founder_name: str
     title: str
     status: ProjectStatus
     my_phase_indices: list[int]

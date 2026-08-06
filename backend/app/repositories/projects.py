@@ -175,6 +175,31 @@ def list_accepted_memberships_for_developer(
     )
 
 
+def list_active_memberships_by_blueprint_for_developer(
+    db: Session, developer_id: UUID
+) -> dict[UUID, tuple[ProjectMember, Project]]:
+    rows = db.execute(
+        select(ProjectMember, Project)
+        .join(Project, Project.id == ProjectMember.project_id)
+        .where(
+            ProjectMember.developer_id == developer_id,
+            ProjectMember.status.in_(ACTIVE_MEMBER_STATUSES),
+        )
+        .order_by(Project.created_at.desc(), ProjectMember.invited_at.desc())
+    ).all()
+    priority = {
+        ProjectMemberStatus.ACCEPTED: 0,
+        ProjectMemberStatus.COUNTERED: 1,
+        ProjectMemberStatus.INVITED: 2,
+    }
+    by_blueprint: dict[UUID, tuple[ProjectMember, Project]] = {}
+    for member, project in rows:
+        existing = by_blueprint.get(project.blueprint_id)
+        if existing is None or priority[member.status] < priority[existing[0].status]:
+            by_blueprint[project.blueprint_id] = (member, project)
+    return by_blueprint
+
+
 def list_memberships_on_project(
     db: Session, project_id: UUID, developer_id: UUID
 ) -> list[ProjectMember]:

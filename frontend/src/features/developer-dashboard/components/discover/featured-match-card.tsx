@@ -10,6 +10,7 @@ import {
 
 import styles from "@/features/developer-dashboard/components/discover.module.css";
 import { timeAgo } from "@/lib/utils";
+import { applyButtonLabel, canApply } from "./apply-state";
 import { MatchRing } from "./match-ring";
 import type { Opportunity } from "./types";
 
@@ -30,6 +31,8 @@ export function FeaturedMatchCard({
 
   const saving = busyAction === "save";
   const hasRoles = featuredMatch.roles.length > 0;
+  const canSubmitApplication = canApply(featuredMatch);
+  const applyLabel = applyButtonLabel(featuredMatch, "long");
 
   return (
     <section className={styles.featured} aria-labelledby="featured-heading">
@@ -82,14 +85,14 @@ export function FeaturedMatchCard({
               type="button"
               className={styles.btnBright}
               onClick={() => onApply(featuredMatch)}
-              disabled={featuredMatch.applied}
+              disabled={!canSubmitApplication}
             >
-              {featuredMatch.applied ? (
-                <CheckCircle2 size={15} aria-hidden="true" />
-              ) : (
+              {canSubmitApplication ? (
                 <Handshake size={15} aria-hidden="true" />
+              ) : (
+                <CheckCircle2 size={15} aria-hidden="true" />
               )}
-              {featuredMatch.applied ? "Applied" : "Apply to build"}
+              {applyLabel}
             </button>
             <button
               type="button"

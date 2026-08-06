@@ -13,14 +13,19 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from app.models.application import Application
+from app.models.blueprint import BlueprintVisibility
 from app.db.session import engine
 from app.models.project import Project, ProjectMember, ProjectMemberStatus
 from app.models.user import DeveloperProfile, User, UserRole
+from app.repositories import applications as applications_repository
 from app.repositories import projects as projects_repository
+from app.services import application_service
 from app.schemas.projects import ProjectMemberInvite, ProjectPaymentRecord
 from app.services import developer_project_service
 from app.services import project_membership_service as service
 from app.services.exceptions import (
+    AlreadyEngagedError,
     DeveloperProfileRequiredError,
     FounderProfileRequiredError,
     ProjectAccessDeniedError,
@@ -269,6 +274,66 @@ def test_developer_earnings_sum_multiple_phases_on_the_same_project(db) -> None:
     assert summary.earnings.outstanding_cents == 50_000
     assert summary.earnings.engagements[0].paid_cents == 20_000
     assert summary.earnings.engagements[1].paid_cents == 30_000
+
+
+def test_hired_developer_cannot_apply_to_the_same_blueprint(db) -> None:
+    project, founder, developer = _fixture(db)
+    project.blueprint.visibility = BlueprintVisibility.PUBLIC
+    db.flush()
+
+    member = _invite(db, project, founder, developer)
+    service.respond_to_invite(db, member.id, developer, accept=True)
+
+    try:
+        application_service.create_application(db, developer, project.blueprint_id)
+    except AlreadyEngagedError:
+        return
+    raise AssertionError("an accepted project member must not be able to apply")
+
+
+def test_project_members_are_hidden_from_application_lists_and_counts(db) -> None:
+    project, founder, developer = _fixture(db)
+    project.blueprint.visibility = BlueprintVisibility.PUBLIC
+    db.flush()
+
+    member = _invite(db, project, founder, developer)
+    service.respond_to_invite(db, member.id, developer, accept=True)
+
+    _, before_total = applications_repository.list_applications_for_blueprint(
+        db, project.blueprint_id, limit=500, offset=0
+    )
+    before_counts, _, _, _ = applications_repository.count_applications_for_founder_blueprints(
+        db, founder.founder_profile.user_id
+    )
+
+    existing = applications_repository.get_application_by_developer_and_blueprint(
+        db, developer.developer_profile.user_id, project.blueprint_id
+    )
+    if existing is None:
+        db.add(
+            Application(
+                developer_id=developer.developer_profile.user_id,
+                blueprint_id=project.blueprint_id,
+                role="Engineer",
+            )
+        )
+    else:
+        existing.status = "applied"
+        existing.withdrawn_at = None
+    db.flush()
+
+    applications, after_total = applications_repository.list_applications_for_blueprint(
+        db, project.blueprint_id, limit=500, offset=0
+    )
+    after_counts, _, _, _ = applications_repository.count_applications_for_founder_blueprints(
+        db, founder.founder_profile.user_id
+    )
+
+    assert after_total == before_total
+    assert after_counts.get(project.blueprint_id, 0) == before_counts.get(project.blueprint_id, 0)
+    assert developer.developer_profile.user_id not in {
+        application.developer_id for application in applications
+    }
 
 
 def test_a_founder_cannot_pay_a_member_on_another_founders_project(db) -> None:

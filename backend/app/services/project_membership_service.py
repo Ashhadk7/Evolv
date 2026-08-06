@@ -606,11 +606,12 @@ def list_invites(db: Session, current_user: User) -> list[DeveloperInviteRespons
         if project is None:
             continue
         founder = users_repository.get_user_by_id(db, project.founder_id)
+        version = project.blueprint.current_version if project.blueprint is not None else None
         responses.append(
             DeveloperInviteResponse(
                 id=invite.id,
                 project_id=project.id,
-                project_title=project.title,
+                project_title=version.name if version is not None else project.title,
                 founder_name=display_name(founder),
                 phase_index=invite.phase_index,
                 status=invite.status,

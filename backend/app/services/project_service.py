@@ -139,6 +139,14 @@ def create_project(
     existing = projects_repository.get_project_by_blueprint_id(db, payload.blueprint_id)
     if existing is not None:
         _assert_project_owner(existing, founder_id)
+        if existing.title != payload.title:
+            try:
+                existing.title = payload.title
+                db.commit()
+                db.refresh(existing)
+            except SQLAlchemyError as exc:
+                db.rollback()
+                raise ProjectPersistenceError("Project could not be updated.") from exc
         return existing
 
     try:
