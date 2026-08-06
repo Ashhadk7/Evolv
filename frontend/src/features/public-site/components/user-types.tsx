@@ -99,7 +99,7 @@ export function UserTypes() {
             className="mb-4 text-3xl leading-[1.08] font-bold tracking-[-0.02em] sm:text-4xl md:text-[2.8rem]"
             style={{ color: "#0f1e1a" }}
           >
-            One platform, <span style={{ color: "#428475" }}>three precise workflows</span>
+            One platform, <span style={{ color: "#428475" }}>two precise workflows</span>
           </h2>
           <p className="text-[15px] leading-relaxed" style={{ color: "rgba(15,30,26,0.5)" }}>
             Evolv gives each side of the venture market the right level of structure, signal, and

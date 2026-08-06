@@ -152,15 +152,19 @@ export function DashboardOverview({
               .map((ps) => ps.assignment?.developerId)
               .filter((id): id is string => Boolean(id))
           ).size;
+        }
 
-          try {
-            const content = buildBlueprintContent(bp);
-            const phaseIdx = currentPhaseIndex(bp.project);
-            const skillset = content.phases[phaseIdx]?.skillset ?? [];
-            if (skillset.length) matchedDevelopers = await fetchMatchingDevelopers(skillset);
-          } catch (err) {
-            console.error(`[dashboard] Failed to fetch matches for blueprint ${bp.id}:`, err);
-          }
+        try {
+          const content = buildBlueprintContent(bp);
+          const phaseIdx = bp.project ? currentPhaseIndex(bp.project) : 0;
+          const skillset =
+            content.phases[phaseIdx]?.skillset?.length
+              ? content.phases[phaseIdx].skillset
+              : [bp.techStack.frontend, bp.techStack.backend, bp.techStack.db].filter(Boolean);
+
+          if (skillset.length) matchedDevelopers = await fetchMatchingDevelopers(skillset);
+        } catch (err) {
+          console.error(`[dashboard] Failed to fetch matches for blueprint ${bp.id}:`, err);
         }
         matchedEntries.push([bp.id, matchedDevelopers]);
 

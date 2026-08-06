@@ -34,10 +34,16 @@ import { TopbarWithModal } from "./topbar-with-modal";
 import { FeaturedMatchWithModal } from "./featured-match-with-modal";
 import { MatchCardWithModal } from "./match-card-with-modal";
 
+import {
+  listDeveloperProjects,
+  type DeveloperProjectSummary,
+} from "@/features/projects/developer-projects-api";
+
 const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
   const profile = useDeveloperDashboardStore((state) => state.profile);
   const greetingName = profile.firstName || "";
   const [overview, setOverview] = useState<DiscoverResponse | null>(null);
+  const [devProjects, setDevProjects] = useState<DeveloperProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,8 +57,14 @@ const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
       setLoading(true);
       setError("");
       try {
-        const response = await listDiscoverBlueprints();
-        if (!cancelled) setOverview(response);
+        const [response, projectsRes] = await Promise.all([
+          listDiscoverBlueprints(),
+          listDeveloperProjects().catch(() => []),
+        ]);
+        if (!cancelled) {
+          setOverview(response);
+          setDevProjects(projectsRes);
+        }
       } catch (err) {
         if (!cancelled) {
           setOverview(null);
@@ -202,10 +214,51 @@ const DeveloperDashboard = ({ onNavigate }: DeveloperPageProps) => {
               <span className={dashboardStyles.panelTitle}>
                 <i className="fas fa-calendar-check" /> Active Projects
               </span>
+              {devProjects.length > 0 && (
+                <a
+                  href="#"
+                  className={dashboardStyles.panelLink}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onNavigate("projects");
+                  }}
+                >
+                  View all ({devProjects.length})
+                </a>
+              )}
             </div>
-            <p className={dashboardStyles.panelEmpty}>
-              Active projects will appear here once an application moves forward.
-            </p>
+
+            <div className={dashboardStyles.listStack}>
+              {devProjects.map((proj) => {
+                const pct = proj.deliverables_total
+                  ? Math.round((proj.deliverables_done / proj.deliverables_total) * 100)
+                  : 0;
+                return (
+                  <button
+                    key={proj.id}
+                    type="button"
+                    className={dashboardStyles.listItem}
+                    onClick={() => onNavigate("projects")}
+                  >
+                    <div>
+                      <strong>{proj.title}</strong>
+                      <span>
+                        {proj.my_phase_indices.length > 0
+                          ? `Phase ${proj.my_phase_indices.map((i) => i + 1).join(", ")}`
+                          : "Active"}{" "}
+                        · {pct}% deliverables
+                      </span>
+                    </div>
+                    <small>{proj.next_deadline ? formatDate(proj.next_deadline) : proj.status}</small>
+                  </button>
+                );
+              })}
+              {!loading && !error && devProjects.length === 0 && (
+                <p className={dashboardStyles.panelEmpty}>
+                  Active projects will appear here once an application moves forward and you are assigned to a phase.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

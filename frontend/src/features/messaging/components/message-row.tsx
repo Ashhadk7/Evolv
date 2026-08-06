@@ -82,22 +82,25 @@ export function MessageRow({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex items-start gap-3 ${mine ? "justify-end" : "justify-start"}`}
+      transition={{ duration: 0.2 }}
+      className={`flex items-start gap-2.5 sm:gap-3 w-full max-w-full overflow-hidden ${mine ? "justify-end" : "justify-start"}`}
     >
       {!mine && (
-        <Avatar
-          name={contact.name}
-          initials={contact.initials}
-          avatarUrl={contact.avatarUrl}
-          size={42}
-        />
+        <div className="shrink-0 mt-1">
+          <Avatar
+            name={contact.name}
+            initials={contact.initials}
+            avatarUrl={contact.avatarUrl}
+            size={34}
+          />
+        </div>
       )}
 
-      <div className={`flex max-w-[74%] flex-col ${mine ? "items-end" : "items-start"}`}>
+      <div className={`flex max-w-[calc(100%-44px)] sm:max-w-[78%] flex-col min-w-0 ${mine ? "items-end" : "items-start"}`}>
         <div
-          className={`mb-2 flex flex-wrap items-center gap-2 text-[12px] leading-5 ${mine ? "justify-end" : "justify-start"}`}
+          className={`mb-1 flex flex-wrap items-center gap-1.5 text-[11px] leading-4 ${mine ? "justify-end text-right" : "justify-start"}`}
           style={{ color: DIM }}
         >
           {!mine && (
@@ -116,32 +119,43 @@ export function MessageRow({
         </div>
 
         <div
-          className="px-4 py-3 text-[13px] leading-6"
+          className="px-3.5 py-2.5 sm:px-4 sm:py-3 text-[13px] leading-relaxed max-w-full overflow-hidden shadow-sm"
           style={
             mine
-              ? { background: DARK, color: "#e8f5ef", borderRadius: "18px 18px 4px 18px" }
+              ? {
+                  background: "linear-gradient(135deg, #1a312c 0%, #122420 100%)",
+                  color: "#e8f5ef",
+                  borderRadius: "18px 18px 4px 18px",
+                  border: "1px solid rgba(137,215,183,0.18)",
+                  wordBreak: "break-word",
+                  overflowWrap: "anywhere",
+                }
               : {
-                  background: "#fff",
+                  background: "#ffffff",
                   color: TEXT,
                   border: "1px solid #e4ebe7",
                   borderRadius: "18px 18px 18px 4px",
+                  wordBreak: "break-word",
+                  overflowWrap: "anywhere",
                 }
           }
         >
-          <p className="whitespace-pre-wrap break-words">
+          <p className="whitespace-pre-wrap break-words min-w-0 max-w-full overflow-hidden m-0">
             <LinkifiedMessage text={msg.text} mine={mine} />
           </p>
         </div>
       </div>
 
       {mine && (
-        <Avatar
-          name={currentUserName}
-          initials={currentUserInitials}
-          avatarUrl={currentUser?.avatarUrl}
-          size={42}
-          dark
-        />
+        <div className="shrink-0 mt-1">
+          <Avatar
+            name={currentUserName}
+            initials={currentUserInitials}
+            avatarUrl={currentUser?.avatarUrl}
+            size={34}
+            dark
+          />
+        </div>
       )}
     </motion.div>
   );

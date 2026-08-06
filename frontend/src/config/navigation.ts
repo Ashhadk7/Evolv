@@ -64,7 +64,7 @@ export const developerNav: NavSection[] = [
   {
     group: "Work",
     items: [
-      { id: "projects", label: "Projects", icon: "solar:rocket-bold-duotone" },
+      { id: "projects", label: "Projects", icon: "solar:layers-minimalistic-bold-duotone" },
       {
         id: "network",
         label: "Network",

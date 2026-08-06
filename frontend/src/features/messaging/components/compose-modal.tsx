@@ -35,24 +35,24 @@ export function ComposeModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center px-5"
-      style={{ background: "rgba(15,28,24,0.34)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5"
+      style={{ background: "rgba(15,28,24,0.45)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        exit={{ opacity: 0, y: 12, scale: 0.96 }}
         transition={{ type: "spring", stiffness: 360, damping: 32 }}
-        className="w-full max-w-[780px] overflow-hidden bg-white shadow-2xl"
-        style={{ borderRadius: 14, border: `1px solid ${BORDER}` }}
+        className="w-full max-w-[620px] max-h-[90vh] overflow-y-auto bg-white shadow-2xl rounded-2xl"
+        style={{ border: `1px solid ${BORDER}` }}
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className="flex items-center justify-between px-7 py-5"
+          className="flex items-center justify-between px-4 py-3.5 sm:px-7 sm:py-5"
           style={{ background: DARK, color: "#e8f5ef" }}
         >
-          <h3 className="text-[1.05rem] font-extrabold">New Message</h3>
+          <h3 className="text-base sm:text-[1.05rem] font-extrabold">New Message</h3>
           <button
             type="button"
             onClick={onClose}
@@ -63,10 +63,10 @@ export function ComposeModal({
           </button>
         </div>
 
-        <div>
-          <div className="grid grid-cols-[92px_1fr] items-center gap-4 border-b border-[#edf1ee] px-7 py-3">
+        <div className="p-4 sm:p-7 flex flex-col gap-4">
+          <div className="flex flex-col sm:grid sm:grid-cols-[72px_1fr] items-start sm:items-center gap-1.5 sm:gap-4">
             <label
-              className="text-[12px] font-extrabold tracking-[0.12em] uppercase"
+              className="text-[11px] sm:text-[12px] font-extrabold tracking-[0.12em] uppercase shrink-0"
               style={{ color: "#777" }}
             >
               To
@@ -76,14 +76,14 @@ export function ComposeModal({
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="Recipient email..."
-              className="h-14 rounded-2xl border px-4 text-[15px] transition outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+              className="h-11 sm:h-12 w-full min-w-0 rounded-xl sm:rounded-2xl border px-3.5 sm:px-4 text-xs sm:text-[14px] transition outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
               style={{ borderColor: "#cfdcd6", color: TEXT }}
             />
           </div>
 
-          <div className="grid grid-cols-[92px_1fr] gap-4 border-b border-[#edf1ee] px-7 py-4">
+          <div className="flex flex-col sm:grid sm:grid-cols-[72px_1fr] items-start gap-1.5 sm:gap-4">
             <label
-              className="pt-3 text-[12px] font-extrabold tracking-[0.12em] uppercase"
+              className="sm:pt-3 text-[11px] sm:text-[12px] font-extrabold tracking-[0.12em] uppercase shrink-0"
               style={{ color: "#777" }}
             >
               Message
@@ -92,15 +92,15 @@ export function ComposeModal({
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               placeholder="Write your message..."
-              rows={7}
-              className="resize-none rounded-2xl border px-4 py-3 text-[15px] leading-6 transition outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
+              rows={5}
+              className="w-full min-w-0 resize-none rounded-xl sm:rounded-2xl border px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-[14px] leading-relaxed transition outline-none focus:border-[#428475] focus:ring-4 focus:ring-[#89d7b7]/20"
               style={{ borderColor: "#cfdcd6", color: TEXT }}
             />
           </div>
         </div>
 
         <div
-          className="flex flex-col gap-3 px-7 py-5 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 px-4 py-4 sm:px-7 sm:py-5 sm:flex-row sm:items-center sm:justify-between border-t border-[#edf1ee]"
           style={{ background: "#fbfcfb" }}
         >
           <AnimatePresence>
@@ -118,11 +118,11 @@ export function ComposeModal({
             )}
           </AnimatePresence>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="h-12 rounded-xl border bg-white px-6 text-[14px] font-semibold transition hover:bg-[#f5f7f5]"
+              className="flex-1 sm:flex-initial h-10 sm:h-12 rounded-xl border bg-white px-4 sm:px-6 text-xs sm:text-[14px] font-semibold transition hover:bg-[#f5f7f5]"
               style={{ borderColor: "#ded9d0", color: TEXT }}
             >
               Cancel
@@ -133,7 +133,7 @@ export function ComposeModal({
               disabled={sending}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
-              className="bp-gradient-btn flex h-12 items-center gap-2 rounded-xl px-7 text-[14px] font-extrabold"
+              className="bp-gradient-btn flex-1 sm:flex-initial flex h-10 sm:h-12 items-center justify-center gap-2 rounded-xl px-5 sm:px-7 text-xs sm:text-[14px] font-extrabold"
             >
               <PaperPlaneTilt size={15} weight="fill" />
               {sending ? "Sending..." : "Send Message"}

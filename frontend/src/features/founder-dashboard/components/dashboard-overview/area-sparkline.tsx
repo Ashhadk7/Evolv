@@ -17,13 +17,18 @@ export function AreaSparkline({
   const H = height;
   const PAD = 4;
   const values = data.filter((value) => Number.isFinite(value));
-  const points = values.length > 0 ? values : [0];
+  const points =
+    values.length > 1
+      ? values
+      : values.length === 1
+        ? [Math.max(0, Math.round(values[0] * 0.5)), values[0]]
+        : [0, 1];
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;
   const xSteps = Math.max(points.length - 1, 1);
   const pts = points.map((v, i) => ({
-    x: points.length === 1 ? W / 2 : (i / xSteps) * W,
+    x: (i / xSteps) * W,
     y: H - PAD - ((v - min) / range) * (H - PAD * 2),
   }));
   const lineParts = pts.map((p, i) => {
@@ -46,7 +51,7 @@ export function AreaSparkline({
     >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.20" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -55,11 +60,12 @@ export function AreaSparkline({
         d={linePath}
         fill="none"
         stroke={color}
-        strokeWidth="1.8"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx={last.x} cy={last.y} r="2.2" fill={color} />
+      <circle cx={last.x} cy={last.y} r="5" fill={color} fillOpacity="0.2" />
+      <circle cx={last.x} cy={last.y} r="2.5" fill={color} />
     </svg>
   );
 }

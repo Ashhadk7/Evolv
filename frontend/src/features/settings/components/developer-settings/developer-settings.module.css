@@ -4,12 +4,19 @@
  * Rules are unchanged from the original — only the selector names lost their
  * "Settings_" prefix, since CSS Modules scope class names automatically.
  */
-.container {
-  display: flex;
-  height: 100vh;
-  min-height: 0;
-  background: #f5f6f4;
-  overflow: hidden;
+@media (max-width: 767px) {
+  .container {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
+  .container {
+    display: flex;
+    height: 100vh;
+    min-height: 0;
+    background: #f5f6f4;
+    overflow: hidden;
+  }
 }
 .mainWrapper {
   flex: 1;
@@ -1047,39 +1054,6 @@
   }
 }
 @media (max-width: 980px) {
-  .container {
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-  }
-  .mainWrapper {
-    height: auto;
-    overflow: visible;
-  }
-  .settingsLayout {
-    grid-template-columns: 1fr;
-    height: auto;
-    overflow: visible;
-  }
-  .tabsCol {
-    height: auto;
-    overflow-x: auto;
-    overflow-y: visible;
-    flex-direction: row;
-    padding: 1rem;
-    border-right: 0;
-    border-bottom: 1px solid #e0e9e3;
-  }
-  .sideTitle {
-    display: none;
-  }
-  .contentCol {
-    overflow: visible;
-    padding: 1.5rem;
-  }
-  .dangerZone {
-    display: none;
-  }
   .devProfileHero {
     grid-template-columns: auto minmax(0, 1fr);
   }

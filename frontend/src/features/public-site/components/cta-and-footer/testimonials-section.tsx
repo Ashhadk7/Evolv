@@ -15,7 +15,7 @@ export function Testimonials() {
         <FadeIn className="mx-auto mb-12 max-w-2xl text-center">
           <div className="text-mint mb-3 text-xs uppercase">Early users</div>
           <h2 className="text-cream text-3xl leading-tight font-bold sm:text-4xl md:text-5xl">
-            Founders, developers, and investors are already using the same source of truth
+            Founders and developers are already using the same source of truth
           </h2>
         </FadeIn>
         <FadeIn className="flex justify-center">

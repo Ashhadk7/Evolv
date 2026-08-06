@@ -89,7 +89,6 @@ export function Hero() {
                     boxShadow: "0 0 40px rgba(137,215,183,0.28), 0 4px 16px rgba(137,215,183,0.14)",
                   }}
                 >
-                  <RocketLaunch size={15} weight="bold" />
                   Forge your blueprint
                 </Link>
               </motion.div>
@@ -108,33 +107,6 @@ export function Hero() {
                   className="transition-transform duration-300 group-hover:translate-x-0.5"
                 />
               </motion.button>
-            </motion.div>
-
-            {/* Social proof */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.42 }}
-              className="mb-5 flex items-center gap-3"
-            >
-              <div className="flex" style={{ gap: 0 }}>
-                {AVATARS.map((avatar, i) => (
-                  <div
-                    key={avatar.initials}
-                    className="border-dark text-dark flex h-7 w-7 items-center justify-center rounded-full border-2 text-[9px] font-bold"
-                    style={{
-                      background: avatar.bg,
-                      marginLeft: i === 0 ? 0 : "-0.5rem",
-                      zIndex: AVATARS.length - i,
-                    }}
-                  >
-                    {avatar.initials}
-                  </div>
-                ))}
-              </div>
-              <p className="text-cream/36 text-[11px]">
-                <span className="text-cream/58 font-semibold">400+</span> founders already building
-              </p>
             </motion.div>
 
             {/* Mobile card */}
