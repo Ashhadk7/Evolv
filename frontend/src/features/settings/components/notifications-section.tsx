@@ -13,6 +13,7 @@ type FounderNotificationPrefs = Pick<
   NotificationPreferences,
   | "developerMatch"
   | "applicationReceived"
+  | "projectUpdate"
   | "connectionRequest"
   | "connectionAccepted"
   | "investorView"
@@ -28,6 +29,7 @@ type FounderNotificationPrefs = Pick<
 const DEFAULT_FOUNDER_NOTIFICATIONS: FounderNotificationPrefs = {
   developerMatch: true,
   applicationReceived: true,
+  projectUpdate: true,
   connectionRequest: true,
   connectionAccepted: true,
   investorView: true,
@@ -44,6 +46,7 @@ function pickFounderPreferences(preferences: NotificationPreferences): FounderNo
   return {
     developerMatch: preferences.developerMatch,
     applicationReceived: preferences.applicationReceived,
+    projectUpdate: preferences.projectUpdate,
     connectionRequest: preferences.connectionRequest,
     connectionAccepted: preferences.connectionAccepted,
     investorView: preferences.investorView,
@@ -104,6 +107,11 @@ export function NotificationsSection() {
           key: "applicationReceived" as const,
           label: "Developer applied",
           desc: "When a developer applies to one of your public blueprints",
+        },
+        {
+          key: "projectUpdate" as const,
+          label: "Project activity",
+          desc: "Invitation responses, issue progress, deadlines and payments",
         },
         {
           key: "connectionRequest" as const,

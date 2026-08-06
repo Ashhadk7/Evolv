@@ -40,36 +40,11 @@ export function PaymentModal({
   return (
     <ModalShell
       icon={<CreditCard size={16} weight="duotone" className="text-bp-teal" />}
-      title={`Pay ${developerName}`}
-      subtitle="via Stripe Connect"
+      title={stripeConnected ? `Pay ${developerName}` : `Record a payment to ${developerName}`}
+      subtitle={stripeConnected ? "via Stripe Connect" : "Bookkeeping record"}
       onClose={onClose}
     >
-      {!stripeConnected ? (
-        <div className="bg-bp-amber-bg flex gap-2.5 items-start p-[14px_16px] border border-bp-amber-line rounded-xl">
-          <Lock
-            size={14}
-            weight="duotone"
-            className="text-bp-amber shrink-0 mt-0.25"
-          />
-          <div className="flex-1">
-            <div className="text-[12.5px] text-[#7a5c10] leading-relaxed mb-2.5">
-              Connect your Stripe account to pay developers — funds route through Evolv&apos;s
-              platform account, the platform fee is deducted, and the rest releases to their
-              connected account.
-            </div>
-            <button
-              onClick={() => {
-                onClose();
-                onNavigateSettingsPayment?.();
-              }}
-              className="bp-gradient-btn text-[12px] font-bold p-[8px_15px] rounded-lg cursor-pointer"
-            >
-              Connect Stripe account
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
+      <>
           <div className="grid grid-cols-3 gap-2.5 mb-4">
             <div className="bg-bp-tint p-[10px_12px] rounded-lg border border-bp-border-soft">
               <div className="text-bp-label text-[9.5px] uppercase tracking-wider">
@@ -123,41 +98,55 @@ export function PaymentModal({
             </div>
           </div>
 
-          <div className="bg-bp-tint flex flex-col gap-2 p-[14px_16px] border border-bp-border-soft rounded-xl mb-4.5">
-            <div className="flex justify-between text-[12.5px]">
-              <span className="text-bp-muted">Sent to Evolv platform account</span>
-              <span className="text-bp-ink font-bold">
-                {fmtMoney(amount)}
-              </span>
+          {stripeConnected ? (
+            <div className="bg-bp-tint flex flex-col gap-2 p-[14px_16px] border border-bp-border-soft rounded-xl mb-4.5">
+              <div className="flex justify-between text-[12.5px]">
+                <span className="text-bp-muted">Sent to Evolv platform account</span>
+                <span className="text-bp-ink font-bold">{fmtMoney(amount)}</span>
+              </div>
+              <div className="flex justify-between text-[12.5px]">
+                <span className="text-bp-muted">
+                  Evolv platform fee ({Math.round(feePct * 100)}%)
+                </span>
+                <span className="text-bp-amber font-bold">−{fmtMoney(fee)}</span>
+              </div>
+              <div className="bg-bp-border h-[1px] my-0.5" />
+              <div className="flex justify-between text-[13px]">
+                <span className="text-bp-ink font-bold">{developerName} receives</span>
+                <span className="text-bp-success font-extrabold">{fmtMoney(takeHome)}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-[12.5px]">
-              <span className="text-bp-muted">
-                Evolv platform fee ({Math.round(feePct * 100)}%)
-              </span>
-              <span className="text-bp-amber font-bold">
-                −{fmtMoney(fee)}
-              </span>
+          ) : (
+            <div className="bg-bp-amber-bg flex gap-2.5 items-start p-[14px_16px] border border-bp-amber-line rounded-xl mb-4.5">
+              <Lock size={14} weight="duotone" className="text-bp-amber shrink-0 mt-0.25" />
+              <div className="text-[12.5px] text-[#7a5c10] leading-relaxed">
+                Online payouts aren&apos;t live yet, so this records that you paid{" "}
+                {developerName.split(" ")[0]} {fmtMoney(amount)} outside Evolv. They&apos;ll see it
+                marked as reported by you, not as money received through the platform.
+                {onNavigateSettingsPayment && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onNavigateSettingsPayment();
+                    }}
+                    className="ml-1 cursor-pointer border-none bg-transparent p-0 font-semibold underline underline-offset-2"
+                  >
+                    Payout settings
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="bg-bp-border h-[1px] my-0.5" />
-            <div className="flex justify-between text-[13px]">
-              <span className="text-bp-ink font-bold">
-                {developerName} receives
-              </span>
-              <span className="text-bp-success font-extrabold">
-                {fmtMoney(takeHome)}
-              </span>
-            </div>
-          </div>
+          )}
 
           <button
             onClick={() => onSend(amount)}
             disabled={amount <= 0 || due <= 0}
             className="bp-primary-btn w-full flex items-center justify-center gap-2 text-[13.5px] font-bold p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Coins size={15} weight="fill" /> Send payment
+            <Coins size={15} weight="fill" />{" "}
+            {stripeConnected ? "Send payment" : "Record payment"}
           </button>
         </>
-      )}
     </ModalShell>
   );
 }

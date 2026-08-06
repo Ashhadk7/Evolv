@@ -1,26 +1,60 @@
 "use client";
 
-import { CheckCircle, User } from "@phosphor-icons/react";
+import { CheckCircle, HourglassMedium, User } from "@phosphor-icons/react";
 import { Avatar } from "@/components/shared/avatar";
 import { fmtDate, fmtMoney, type ProjectPhaseState } from "@/features/blueprints/blueprint-content";
+import type { ProjectMemberWire } from "@/features/projects/projects-api";
+
+function initialsOf(name: string): string {
+  const [first = "", last = ""] = name.split(" ");
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() || "D";
+}
 
 export function PhaseAssignment({
   ps,
+  pendingInvite,
   onPay,
   onRemoveDev,
   onFindMatches,
+  onRevokeInvite,
 }: {
   ps: ProjectPhaseState;
+  pendingInvite?: ProjectMemberWire;
   onPay: () => void;
   onRemoveDev: () => void;
   onFindMatches: () => void;
+  onRevokeInvite: (memberId: string) => void;
 }) {
   return (
     <>
       <div className="text-bp-forest mb-3 text-[11px] font-extrabold tracking-[0.08em] uppercase">
         Phase Assignment
       </div>
-      {ps.assignment ? (
+      {pendingInvite ? (
+        <div className="border-bp-amber-line bg-bp-amber-bg flex flex-wrap items-center gap-3 rounded-xl border px-[18px] py-3.5">
+          <Avatar initials={initialsOf(pendingInvite.developer_name)} size={36} />
+          <div className="min-w-[150px] flex-1">
+            <div className="text-bp-ink text-[13.5px] font-bold">
+              {pendingInvite.developer_name}
+            </div>
+            <div className="text-bp-muted mt-0.5 text-[11.5px]">
+              Invited {fmtDate(pendingInvite.invited_at.slice(0, 10))} — awaiting their response
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <HourglassMedium size={16} weight="duotone" className="text-bp-amber" />
+            <span className="text-bp-amber text-[12px] font-extrabold tabular-nums">
+              {fmtMoney(pendingInvite.amount_agreed_cents / 100)} offered
+            </span>
+          </div>
+          <button
+            onClick={() => onRevokeInvite(pendingInvite.id)}
+            className="text-bp-red cursor-pointer border-none bg-transparent px-2 py-1.5 text-[11.5px] font-semibold"
+          >
+            Cancel invite
+          </button>
+        </div>
+      ) : ps.assignment ? (
         <div className="border-bp-border-soft bg-bp-card flex flex-wrap items-center gap-3 rounded-xl border px-[18px] py-3.5">
           <Avatar initials={ps.assignment.developerInitials} size={36} />
           <div className="min-w-[150px] flex-1">

@@ -3,10 +3,8 @@
 import { AnimatePresence } from "framer-motion";
 import { PaymentModal } from "../payment-modal";
 import { AddDeveloperModal, RemoveDeveloperModal } from "../add-remove-developer-modals";
-import { IssueModal } from "../issue-modal";
-import { DeadlineModal } from "../deadline-modal";
 import { SpendHistoryModal } from "../spend-history-modal";
-import type { BlueprintContent, ProjectDeadline, ProjectExpense, ProjectIssue, ProjectPhaseState } from "@/features/blueprints/blueprint-content";
+import type { BlueprintContent, ProjectExpense } from "@/features/blueprints/blueprint-content";
 import type { FounderContactProfile } from "@/features/network/types";
 import { useProjectModals } from "@/features/projects/lib/use-project-modals";
 import { ProjectBlueprint } from "@/features/projects/lib/project-helpers";
@@ -22,8 +20,6 @@ export function ProjectModals({
   removeDeveloper,
   sendPayment,
   addExpense,
-  addIssue,
-  addDeadline,
   modals
 }: {
   bp: ProjectBlueprint;
@@ -36,18 +32,12 @@ export function ProjectModals({
   removeDeveloper: (phaseIdx: number, reason: string) => void;
   sendPayment: (phaseIdx: number, amount: number) => void;
   addExpense: (expense: Omit<ProjectExpense, "id">) => void;
-  addIssue: (draft: { title: string; description: string; priority: ProjectIssue["priority"]; phaseIndex: number | null }) => void;
-  addDeadline: (draft: { note: string; priority: ProjectDeadline["priority"]; phaseIndex: number | null; date: string }) => void;
   modals: ReturnType<typeof useProjectModals>;
 }) {
   const {
     payModalPhase, setPayModalPhase,
     addDevTarget, setAddDevTarget,
     removeDevPhase, setRemoveDevPhase,
-    issueModalOpen, setIssueModalOpen,
-    issueDraft, setIssueDraft,
-    deadlineModalOpen, setDeadlineModalOpen,
-    deadlineDraft, setDeadlineDraft,
     spendModalOpen, setSpendModalOpen,
   } = modals;
 
@@ -101,38 +91,6 @@ export function ProjectModals({
               setRemoveDevPhase(null);
             }}
             onClose={() => setRemoveDevPhase(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {issueModalOpen && (
-          <IssueModal
-            phases={content.phases}
-            draft={issueDraft}
-            onChange={setIssueDraft}
-            onSubmit={() => {
-              addIssue(issueDraft);
-              setIssueDraft({ title: "", description: "", priority: "Medium", phaseIndex: null });
-              setIssueModalOpen(false);
-            }}
-            onClose={() => setIssueModalOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {deadlineModalOpen && (
-          <DeadlineModal
-            phases={content.phases}
-            draft={deadlineDraft}
-            onChange={setDeadlineDraft}
-            onSubmit={() => {
-              addDeadline(deadlineDraft);
-              setDeadlineDraft({ note: "", priority: "Medium", phaseIndex: null, date: "" });
-              setDeadlineModalOpen(false);
-            }}
-            onClose={() => setDeadlineModalOpen(false)}
           />
         )}
       </AnimatePresence>

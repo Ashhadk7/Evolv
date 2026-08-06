@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Blueprint } from "@/features/blueprints/types";
 import { NetworkProfileDetailScreen } from "@/features/network/components/network-profile-detail";
 import type { FounderNetworkMessageTarget } from "@/features/network/types";
@@ -10,8 +10,16 @@ import { ProjectActionBar } from "./project-action-bar";
 import { ProjectSummaryBand } from "./project-summary-band";
 import { PhaseBoard } from "./phase-board";
 import { ProjectHealthCard } from "./project-health-card";
-import { IssuesPanel } from "./issues-panel";
-import { DeadlinesPanel } from "./deadlines-panel";
+import { IssuesPanel } from "../issues/issues-panel";
+import { IssueModal } from "../issues/issue-modal";
+import { IssueComposer } from "../issues/issue-composer";
+import { useProjectIssues } from "@/features/projects/lib/use-project-issues";
+import { DeadlinesPanel } from "../deadlines/deadlines-panel";
+import { DeadlineComposer } from "../deadlines/deadline-composer";
+import { useProjectDeadlines } from "@/features/projects/lib/use-project-deadlines";
+import { DeliverableModal } from "../deliverables/deliverable-modal";
+import { DeliverableComposer } from "../deliverables/deliverable-composer";
+import { useProjectDeliverables } from "@/features/projects/lib/use-project-deliverables";
 import { ProjectToast } from "./project-toast";
 import { ProjectModals } from "./project-modals";
 import { useProjectDetail } from "@/features/projects/lib/use-project-detail";
@@ -19,6 +27,8 @@ import { useProjectModals } from "@/features/projects/lib/use-project-modals";
 
 export function ProjectDetail({
   bp,
+  initialIssueId = null,
+  initialDeliverableId = null,
   onUpdate,
   onBack,
   onViewBlueprint,
@@ -28,6 +38,8 @@ export function ProjectDetail({
   onNavigateSettingsPayment,
 }: {
   bp: ProjectBlueprint;
+  initialIssueId?: string | null;
+  initialDeliverableId?: string | null;
   onUpdate: (mutate: (b: Blueprint) => Blueprint) => void;
   onBack: () => void;
   onViewBlueprint?: (id: string) => void;
@@ -49,20 +61,17 @@ export function ProjectDetail({
     setBudgetEditPhase,
     deadlineEditPhase,
     setDeadlineEditPhase,
-    newDeliverable,
-    setNewDeliverable,
     connections,
     networkDevs,
     matchedDevs,
     matchLoading,
+    pendingInvites,
+    revokeInvite,
     toast,
     today,
     startPhase,
     completePhase,
     reopenPhase,
-    toggleDeliverable,
-    addDeliverable,
-    removeDeliverable,
     setPhaseDeadline,
     assignDeveloper,
     removeDeveloper,
@@ -71,13 +80,22 @@ export function ProjectDetail({
     updatePhaseBudget,
     addExpense,
     sendPayment,
-    addIssue,
-    setIssueStatus,
-    addDeadline,
-    setDeadlineStatus,
   } = useProjectDetail({ bp, onUpdate });
 
   const modals = useProjectModals();
+  const issueState = useProjectIssues(bp._projectId, {
+    withAssignees: true,
+    initialIssueId,
+  });
+  const deadlineState = useProjectDeadlines(bp._projectId);
+  const deliverableState = useProjectDeliverables(bp._projectId, { initialDeliverableId });
+
+  // The deadline calendar derives entries from issue and deliverable due dates
+  // (never duplicates them), so any change to either must refresh it too.
+  const reloadIssuesAndDeadlines = () =>
+    Promise.all([issueState.reload(), deadlineState.reload()]);
+  const reloadDeliverablesAndDeadlines = () =>
+    Promise.all([deliverableState.reload(), deadlineState.reload()]);
 
   const verdictTone =
     health.verdict === "On track"
@@ -85,11 +103,19 @@ export function ProjectDetail({
       : health.verdict === "Attention needed"
         ? "amber"
         : "red";
-  const completion = health.deliverables.total
-    ? Math.round((health.deliverables.done / health.deliverables.total) * 100)
+  // Deliverables now live in the relational table, not the blob health reads
+  // from — the live list already loaded here is the real count.
+  const deliverablesDone = deliverableState.deliverables.filter((d) => d.done).length;
+  const deliverablesTotal = deliverableState.deliverables.length;
+  const completion = deliverablesTotal
+    ? Math.round((deliverablesDone / deliverablesTotal) * 100)
     : 0;
+  const displayHealth = {
+    ...health,
+    deliverables: { done: deliverablesDone, total: deliverablesTotal },
+  };
 
-  const openIssues = bp.project.issues.filter((i) => i.status !== "Resolved").length;
+  const openIssues = issueState.issues.filter((i) => i.status !== "resolved").length;
   const phaseNameFor = (phaseIndex: number) => content.phases[phaseIndex]?.name;
 
   // ── Full-page developer profile view ──────────────────────────────────────
@@ -140,8 +166,8 @@ export function ProjectDetail({
         phaseCount={content.phases.length}
         completion={completion}
         spent={health.budget.spent}
-        deliverablesDone={health.deliverables.done}
-        deliverablesTotal={health.deliverables.total}
+        deliverablesDone={deliverablesDone}
+        deliverablesTotal={deliverablesTotal}
         activePhaseLabel={
           allComplete ? "All phases" : `Phase ${activeIdx + 1} of ${content.phases.length}`
         }
@@ -154,48 +180,53 @@ export function ProjectDetail({
         <PhaseBoard
           phases={content.phases}
           phaseStates={bp.project.phaseStates}
+          pendingInvites={pendingInvites}
+          deliverablesByPhase={deliverableState.byPhase}
           activeIdx={activeIdx}
           viewedPhaseIdx={viewedPhaseIdx}
           budgetEditPhase={budgetEditPhase}
           deadlineEditPhase={deadlineEditPhase}
           today={today}
-          newDeliverable={newDeliverable}
           onSelectPhase={setViewedPhaseIdx}
           onStartPhase={startPhase}
           onCompletePhase={completePhase}
           onReopenPhase={reopenPhase}
-          onToggleDeliverable={toggleDeliverable}
-          onAddDeliverable={addDeliverable}
-          onRemoveDeliverable={removeDeliverable}
-          onNewDeliverableChange={setNewDeliverable}
+          onOpenDeliverable={deliverableState.setOpenDeliverableId}
+          onCreateDeliverable={(phaseIdx) => deliverableState.openComposer(phaseIdx)}
           onSetPhaseDeadline={setPhaseDeadline}
           onUpdatePhaseBudget={updatePhaseBudget}
           onSetBudgetEditPhase={setBudgetEditPhase}
           onSetDeadlineEditPhase={setDeadlineEditPhase}
           onPay={(phaseIdx) => modals.setPayModalPhase(phaseIdx)}
           onRemoveDev={(phaseIdx) => modals.setRemoveDevPhase(phaseIdx)}
+          onRevokeInvite={revokeInvite}
           onFindMatches={() =>
             document.getElementById("dev-panel")?.scrollIntoView({ behavior: "smooth" })
           }
         />
 
         <div className="flex flex-col gap-4">
-          <ProjectHealthCard health={health} completion={completion} verdictTone={verdictTone} />
+          <ProjectHealthCard
+            health={displayHealth}
+            completion={completion}
+            verdictTone={verdictTone}
+          />
 
           <IssuesPanel
-            issues={bp.project.issues}
-            openIssues={openIssues}
+            issues={issueState.issues}
             phaseNameFor={phaseNameFor}
-            onOpenModal={() => modals.setIssueModalOpen(true)}
-            onSetStatus={setIssueStatus}
+            onOpenIssue={issueState.setOpenIssueId}
+            onCreate={() => issueState.openComposer()}
           />
 
           <DeadlinesPanel
-            deadlines={bp.project.deadlines}
+            deadlines={deadlineState.deadlines}
             today={today}
             phaseNameFor={phaseNameFor}
-            onOpenModal={() => modals.setDeadlineModalOpen(true)}
-            onSetStatus={setDeadlineStatus}
+            busyId={deadlineState.busyId}
+            onCreate={() => deadlineState.openComposer()}
+            onEdit={(deadline) => deadlineState.openComposer(deadline)}
+            onDelete={deadlineState.remove}
           />
 
           <div id="dev-panel">
@@ -229,10 +260,67 @@ export function ProjectDetail({
         removeDeveloper={removeDeveloper}
         sendPayment={sendPayment}
         addExpense={addExpense}
-        addIssue={addIssue}
-        addDeadline={addDeadline}
         modals={modals}
       />
+
+      <AnimatePresence>
+        {issueState.openIssueId && (
+          <IssueModal
+            issueId={issueState.openIssueId}
+            phaseNameFor={phaseNameFor}
+            onClose={() => issueState.setOpenIssueId(null)}
+            onChanged={reloadIssuesAndDeadlines}
+            onEdit={(issue) => issueState.openComposer(issue)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deliverableState.openDeliverableId && (
+          <DeliverableModal
+            deliverableId={deliverableState.openDeliverableId}
+            phaseNameFor={phaseNameFor}
+            onClose={() => deliverableState.setOpenDeliverableId(null)}
+            onChanged={reloadDeliverablesAndDeadlines}
+            onEdit={(deliverable) =>
+              deliverableState.openComposer(deliverable.phase_index, deliverable)
+            }
+          />
+        )}
+      </AnimatePresence>
+
+      {deadlineState.composing && bp._projectId && (
+        <DeadlineComposer
+          projectId={bp._projectId}
+          phases={content.phases}
+          assignees={issueState.assignees}
+          editing={deadlineState.editing}
+          onSaved={deadlineState.reload}
+          onClose={deadlineState.closeComposer}
+        />
+      )}
+
+      {issueState.composing && bp._projectId && (
+        <IssueComposer
+          projectId={bp._projectId}
+          phases={content.phases}
+          assignees={issueState.assignees}
+          editing={issueState.editing}
+          onSaved={reloadIssuesAndDeadlines}
+          onClose={issueState.closeComposer}
+        />
+      )}
+
+      {deliverableState.composing && bp._projectId && (
+        <DeliverableComposer
+          projectId={bp._projectId}
+          phaseIndex={deliverableState.composerPhase}
+          phaseName={phaseNameFor(deliverableState.composerPhase) ?? "This phase"}
+          editing={deliverableState.editing}
+          onSaved={reloadDeliverablesAndDeadlines}
+          onClose={deliverableState.closeComposer}
+        />
+      )}
 
       <ProjectToast toast={toast} />
     </motion.div>

@@ -816,18 +816,23 @@ export function buildBlueprintContent(bp: Blueprint): BlueprintContent {
   };
 }
 
-export type ProjectStatus = "ONBOARDING" | "IN_DEVELOPMENT" | "COMPLETED";
+export type ProjectStatus = "ONBOARDING" | "IN_DEVELOPMENT" | "COMPLETED" | "CANCELLED";
 
 export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   ONBOARDING: "Onboarding Project",
   IN_DEVELOPMENT: "In Development",
   COMPLETED: "Project Completed",
+  CANCELLED: "Project Cancelled",
 };
 export const PROJECT_STATUS_STYLE: Record<ProjectStatus, { bg: string; color: string }> = {
   ONBOARDING: { bg: "#fef6e4", color: "#a66a10" },
   IN_DEVELOPMENT: { bg: "#dcf0e6", color: "#1d6e47" },
   COMPLETED: { bg: "#eef0ee", color: "#4f6358" },
+  CANCELLED: { bg: "#fbeceb", color: "#a33a30" },
 };
+
+/** Closed projects live in their own section, away from the active roster. */
+export const CLOSED_PROJECT_STATUSES: ProjectStatus[] = ["COMPLETED", "CANCELLED"];
 
 export type PhaseAssignment = {
   developerId: string;

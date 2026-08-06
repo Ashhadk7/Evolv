@@ -1,163 +1,270 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-
-import { Topbar } from "@/features/developer-dashboard/components/topbar";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { Briefcase, CheckCircle, Coins, ListChecks, Warning } from "@phosphor-icons/react";
 import { Kicker } from "@/components/shared/kicker";
-import type { DeveloperTab } from "@/features/developer-dashboard/types";
+import { Label } from "@/components/shared/label";
+import { getApiErrorMessage } from "@/lib/api";
 import {
-  CURRENT_DEV,
-  getMockProjects,
-} from "@/features/projects/data/developer-projects-mock-data";
-import { DevProjectListCard } from "./dev-project-list-card";
-import { PhaseHeader } from "./phase-header";
-import { DeliverablesPanel } from "./deliverables-panel";
-import { PhaseIssuesPanel } from "./phase-issues-panel";
-import { PaymentStatusPanel } from "./payment-status-panel";
+  fmtCents,
+  getDeveloperProject,
+  listDeveloperInvites,
+  listDeveloperProjects,
+  respondToInvite,
+  type DeveloperInvite,
+  type DeveloperProjectDetail,
+  type DeveloperProjectSummary,
+} from "@/features/projects/developer-projects-api";
+import { isClosedStatus } from "@/features/projects/types";
+import { ProjectSection } from "../project-section";
+import { DeveloperProjectCard } from "./developer-project-card";
+import { InviteTray } from "./invite-tray";
+import { DeveloperProjectDetailView } from "./project-detail";
 
-export default function Projects({ onNavigate }: { onNavigate?: (tab: DeveloperTab) => void }) {
+const CARD =
+  "bg-bp-card border-bp-border rounded-2xl border shadow-[0_1px_1px_rgba(19,36,29,0.03),0_2px_6px_rgba(19,36,29,0.03),0_16px_40px_-18px_rgba(19,36,29,0.14)]";
+
+export default function DeveloperProjects() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [projectsData, setProjectsData] = useState(() => getMockProjects());
+  const selectedId = searchParams?.get("project") ?? null;
 
-  const projectIdParam = searchParams?.get("project");
-  const defaultIdx = projectsData.findIndex((p) => p.bp.id === projectIdParam);
-  const selectedIdx = defaultIdx >= 0 ? defaultIdx : 0;
-  const selected = projectsData[selectedIdx];
+  const [projects, setProjects] = useState<DeveloperProjectSummary[]>([]);
+  const [invites, setInvites] = useState<DeveloperInvite[]>([]);
+  const [detail, setDetail] = useState<DeveloperProjectDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2400);
+  };
+
+  const load = useCallback(
+    () =>
+      Promise.all([listDeveloperProjects(), listDeveloperInvites()])
+        .then(([nextProjects, nextInvites]) => {
+          setProjects(nextProjects);
+          setInvites(nextInvites);
+          setLoadError(null);
+        })
+        .catch((error) => setLoadError(getApiErrorMessage(error)))
+        .finally(() => setLoading(false)),
+    []
+  );
 
   useEffect(() => {
-    if (selected && projectIdParam !== selected.bp.id) {
-      const p = new URLSearchParams(searchParams?.toString() || "");
-      p.set("project", selected.bp.id);
-      router.push(`?${p.toString()}`, { scroll: false });
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    let active = true;
+    getDeveloperProject(selectedId)
+      .then((next) => {
+        if (active) setDetail(next);
+      })
+      .catch((error) => {
+        if (active) setLoadError(getApiErrorMessage(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedId]);
+
+  const activeDetail = selectedId && detail?.id === selectedId ? detail : null;
+
+  const select = (projectId: string | null) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (projectId) params.set("project", projectId);
+    else params.delete("project");
+    router.push(params.toString() ? `?${params.toString()}` : "?", { scroll: false });
+  };
+
+  const handleRespond = async (invite: DeveloperInvite, accept: boolean) => {
+    setBusyInviteId(invite.id);
+    try {
+      await respondToInvite(invite.id, accept);
+      await load();
+      showToast(
+        accept ? `You joined ${invite.project_title}` : `Invitation to ${invite.project_title} declined`
+      );
+    } catch (error) {
+      showToast(getApiErrorMessage(error));
+    } finally {
+      setBusyInviteId(null);
     }
-  }, [selected, router, searchParams, projectIdParam]);
-
-  const activePhaseIdx = selected.project.phaseStates.findIndex(
-    (p) => p.assignment?.developerId === CURRENT_DEV.id
-  );
-  const activePhase = selected.content.phases[activePhaseIdx];
-  const activePhaseState = selected.project.phaseStates[activePhaseIdx];
-
-  const toggleDeliverable = (dIdx: number) => {
-    setProjectsData((prev) => {
-      const next = [...prev];
-      const p = { ...next[selectedIdx] };
-      const proj = { ...p.project };
-      const phases = [...proj.phaseStates];
-      const ps = { ...phases[activePhaseIdx] };
-      const delivs = [...ps.deliverables];
-      delivs[dIdx] = { ...delivs[dIdx], done: !delivs[dIdx].done };
-      ps.deliverables = delivs;
-      phases[activePhaseIdx] = ps;
-      proj.phaseStates = phases;
-      p.project = proj;
-      next[selectedIdx] = p;
-      return next;
-    });
   };
 
-  const toggleIssue = (issueId: string) => {
-    setProjectsData((prev) => {
-      const next = [...prev];
-      const p = { ...next[selectedIdx] };
-      const proj = { ...p.project };
-      const issues = [...proj.issues];
-      const idx = issues.findIndex((i) => i.id === issueId);
-      if (idx !== -1) {
-        issues[idx] = {
-          ...issues[idx],
-          status: issues[idx].status === "Resolved" ? "Open" : "Resolved",
-        };
-      }
-      proj.issues = issues;
-      p.project = proj;
-      next[selectedIdx] = p;
-      return next;
-    });
-  };
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-bp-muted text-[13px]">Loading your projects…</div>
+      </div>
+    );
+  }
+
+  if (activeDetail) {
+    return (
+      <div className="bg-bp-page h-full overflow-hidden px-[28px] pt-[16px] pb-[18px]">
+        <DeveloperProjectDetailView
+          project={activeDetail}
+          onBack={() => select(null)}
+          initialIssueId={searchParams?.get("issue") ?? null}
+          initialDeliverableId={searchParams?.get("deliverable") ?? null}
+        />
+      </div>
+    );
+  }
+
+  const ongoing = projects.filter((p) => !isClosedStatus(p.status));
+  const closed = projects.filter((p) => isClosedStatus(p.status));
+
+  const totalAgreed = projects.reduce((sum, p) => sum + p.earnings.agreed_cents, 0);
+  const totalPaid = projects.reduce((sum, p) => sum + p.earnings.paid_cents, 0);
+  const deliverablesDone = projects.reduce((sum, p) => sum + p.deliverables_done, 0);
+  const deliverablesTotal = projects.reduce((sum, p) => sum + p.deliverables_total, 0);
+  const openIssues = projects.reduce((sum, p) => sum + p.open_issues, 0);
+
+  const kpis = [
+    {
+      label: "Active Projects",
+      value: String(ongoing.length),
+      icon: <Briefcase size={16} weight="duotone" className="text-bp-teal" />,
+    },
+    {
+      label: "Earnings Received",
+      value: fmtCents(totalPaid),
+      icon: <Coins size={16} weight="duotone" className="text-bp-success" />,
+    },
+    {
+      label: "Deliverables Done",
+      value: `${deliverablesDone}/${deliverablesTotal}`,
+      icon: <ListChecks size={16} weight="duotone" className="text-bp-teal" />,
+    },
+    {
+      label: "Open Issues",
+      value: String(openIssues),
+      icon: (
+        <Warning
+          size={16}
+          weight="duotone"
+          className={openIssues > 0 ? "text-bp-amber" : "text-bp-teal"}
+        />
+      ),
+    },
+  ];
 
   return (
-    <div className="flex min-h-screen">
-      <main className="flex-1 p-[1.5rem_2rem_2rem] overflow-x-hidden min-w-0 flex flex-col">
-        <Topbar
-          title="My Projects"
-          subtitle="Manage your assigned phases, deliverables, and payments."
-          onNavigate={onNavigate}
-        />
-
-        <div className="flex-1 flex flex-col lg:flex-row gap-6 mt-4 min-h-0">
-          <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4">
-            <Kicker>Active Projects</Kicker>
-            {projectsData.map((data, i) => {
-              const pIdx = data.project.phaseStates.findIndex(
-                (p) => p.assignment?.developerId === CURRENT_DEV.id
-              );
-              const pState = data.project.phaseStates[pIdx];
-              const pContent = data.content.phases[pIdx];
-              const doneCount = pState?.deliverables.filter((d) => d.done).length || 0;
-              const totalCount = pState?.deliverables.length || 1;
-              const progress = Math.round((doneCount / totalCount) * 100);
-
-              return (
-                <DevProjectListCard
-                  key={data.bp.id}
-                  name={data.bp.name}
-                  industry={data.bp.industry}
-                  phaseName={pContent?.name || "Unassigned"}
-                  progress={progress}
-                  isActive={selectedIdx === i}
-                  onClick={() => {
-                    const p = new URLSearchParams(searchParams?.toString() || "");
-                    p.set("project", data.bp.id);
-                    router.push(`?${p.toString()}`, { scroll: false });
-                  }}
-                />
-              );
-            })}
+    <div className="blueprint-scroll bg-bp-page h-full overflow-y-auto px-[28px] pt-[24px] pb-[60px]">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-[22px]">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <Kicker>Your Work</Kicker>
+            <h1 className="text-bp-ink text-[27px] font-extrabold tracking-[-0.02em]">Projects</h1>
+            <p className="text-bp-muted mt-1.5 max-w-[520px] text-[13.5px]">
+              Every project you&apos;ve joined — track your phases, tick off deliverables, and
+              follow what you&apos;ve earned.
+            </p>
           </div>
-
-          <div className="flex-1 flex flex-col min-w-0">
-            {activePhaseIdx === -1 ? (
-              <div className="text-bp-muted bg-bp-card border border-bp-border rounded-2xl p-10 text-center">
-                You are not assigned to any phase in this project.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6 max-w-[900px]">
-                <PhaseHeader
-                  founderName={selected.bp.name}
-                  industry={selected.bp.industry}
-                  phaseName={activePhase.name}
-                  primarySkill={activePhase.primarySkill}
-                  weeks={activePhase.weeks}
-                  deadline={activePhaseState.deadline}
-                />
-
-                <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
-                  <div className="flex flex-col gap-6 min-w-0">
-                    <DeliverablesPanel
-                      deliverables={activePhaseState.deliverables}
-                      onToggle={toggleDeliverable}
-                    />
-
-                    <PhaseIssuesPanel
-                      issues={selected.project.issues.filter(
-                        (i) => i.phaseIndex === activePhaseIdx || i.phaseIndex === null
-                      )}
-                      onToggle={toggleIssue}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-6 min-w-0">
-                    <PaymentStatusPanel assignment={activePhaseState.assignment} />
-                  </div>
-                </div>
-              </div>
-            )}
+          <div className="text-right">
+            <Label>Agreed across all projects</Label>
+            <div className="text-bp-ink text-[21px] font-extrabold tabular-nums">
+              {fmtCents(totalAgreed)}
+            </div>
           </div>
         </div>
-      </main>
+
+        {loadError && (
+          <div className="border-bp-red-line bg-bp-red-bg text-bp-red rounded-lg border px-4 py-2.5 text-[12.5px]">
+            Couldn&apos;t load your projects ({loadError}) —{" "}
+            <button
+              type="button"
+              className="cursor-pointer font-semibold underline underline-offset-2"
+              onClick={() => {
+                setLoading(true);
+                load();
+              }}
+            >
+              retry
+            </button>
+            .
+          </div>
+        )}
+
+        <InviteTray invites={invites} onRespond={handleRespond} busyId={busyInviteId} />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((kpi) => (
+            <div key={kpi.label} className={`${CARD} p-[16px_18px]`}>
+              <div className="flex items-center justify-between">
+                <Label>{kpi.label}</Label>
+                {kpi.icon}
+              </div>
+              <div className="text-bp-ink text-[21px] font-extrabold tabular-nums">
+                {kpi.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {projects.length === 0 ? (
+          <div
+            className={`${CARD} border-bp-border flex flex-col items-center gap-3.5 border-[1.5px] border-dashed p-[48px_32px] text-center`}
+          >
+            <div className="bg-bp-tint flex h-[52px] w-[52px] items-center justify-center rounded-[15px]">
+              <Briefcase size={24} weight="duotone" className="text-bp-teal" />
+            </div>
+            <div>
+              <div className="text-bp-ink text-[16px] font-extrabold">No projects yet</div>
+              <p className="text-bp-muted mt-1.5 max-w-[380px] text-[13px]">
+                When a founder invites you to a phase, the invitation appears here. Accept it and
+                the project shows up with its roadmap, deliverables and payments.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <ProjectSection title="Ongoing" count={ongoing.length}>
+              {ongoing.map((project, index) => (
+                <DeveloperProjectCard
+                  key={project.id}
+                  project={project}
+                  idx={index}
+                  onClick={() => select(project.id)}
+                />
+              ))}
+            </ProjectSection>
+            <ProjectSection title="Completed & cancelled" count={closed.length} collapsible>
+              {closed.map((project, index) => (
+                <DeveloperProjectCard
+                  key={project.id}
+                  project={project}
+                  idx={index}
+                  onClick={() => select(project.id)}
+                />
+              ))}
+            </ProjectSection>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="bg-bp-forest text-bp-mint fixed bottom-[30px] left-1/2 z-[90] flex -translate-x-1/2 items-center gap-2 rounded-xl px-5 py-[11px] text-[13px] font-semibold shadow-[0_14px_40px_rgba(11,34,27,0.42)]"
+          >
+            <CheckCircle size={16} weight="fill" /> {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
