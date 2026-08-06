@@ -165,22 +165,18 @@ export function ProjectsTab({
         ) : (
           <div className="flex flex-col gap-6">
             <ProjectSection title="Ongoing" count={ongoingBlueprints.length}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                {ongoingBlueprints.map((bp, i) => (
-                  <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
-                ))}
-              </div>
+              {ongoingBlueprints.map((bp, i) => (
+                <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
+              ))}
             </ProjectSection>
             <ProjectSection
               title="Completed & cancelled"
               count={closedBlueprints.length}
               collapsible
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                {closedBlueprints.map((bp, i) => (
-                  <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
-                ))}
-              </div>
+              {closedBlueprints.map((bp, i) => (
+                <ProjectListCard key={bp.id} bp={bp} idx={i} onClick={() => setSelectedId(bp.id)} />
+              ))}
             </ProjectSection>
           </div>
         )}
