@@ -56,8 +56,8 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
     setDeleteAccountOpen(true);
   };
 
-  const displayName = profile.name || profile.firstName ? `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() : profile.email || "Founder";
-  const roleLabel = profile.role || "Founder - Web3";
+  const displayName = profile.firstName ? `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() : profile.email || "Founder";
+  const roleLabel = profile.headline || `Founder · ${profile.domains?.[0] || "Web3"}`;
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: "#f5f6f4" }}>
@@ -162,8 +162,8 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
             className="w-full bg-white rounded-[16px] p-4 flex items-center gap-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 text-left"
           >
             <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
-              {profile.avatarUrl || profile.photo ? (
-                <img src={profile.avatarUrl || profile.photo} alt="Avatar" className="w-full h-full object-cover" />
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4cb896] to-[#89d7b7] text-[#0f1c18] font-bold text-lg">
                   {displayName.charAt(0).toUpperCase()}
