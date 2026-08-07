@@ -4,10 +4,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.error_handlers import register_exception_handlers
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.db.session import SessionLocal
 from app.services.generation.blueprint_generation_service import fail_interrupted_generations
 
@@ -47,6 +49,9 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    application.state.limiter = limiter
+    application.add_middleware(SlowAPIMiddleware)
+
     application.include_router(api_router, prefix=settings.API_V1_STR)
     register_exception_handlers(application)
 

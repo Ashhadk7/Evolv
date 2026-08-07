@@ -2,6 +2,7 @@ import logging
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app.services.exceptions import AppError, AuthServiceUnavailableError, ErrorCode
 from app.services.generation.agent_service import AgentRateLimitError, AgentServiceError
@@ -110,6 +111,17 @@ def register_exception_handlers(application: FastAPI) -> None:
             content={
                 "detail": "The AI service is unavailable right now. Please try again shortly.",
                 "code": "ai_unavailable",
+            },
+        )
+
+    @application.exception_handler(RateLimitExceeded)
+    async def handle_rate_limit_exceeded(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+        logger.warning("Rate limit exceeded on %s %s: %s", request.method, request.url.path, exc.detail)
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "detail": "Too many requests. Please slow down and try again shortly.",
+                "code": "rate_limited",
             },
         )
 

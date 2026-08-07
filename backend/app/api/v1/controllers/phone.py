@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.limiter import limiter
 from app.repositories import users as users_repository
 from app.core.config import settings
 from app.schemas.phone import (
@@ -29,7 +30,9 @@ def get_phone_status(current_user: CurrentUser) -> PhoneStatusResponse:
 
 
 @router.post("/send-otp", response_model=PhoneSendOtpResponse)
+@limiter.limit("5/minute")
 def send_phone_otp(
+    request: Request,
     payload: PhoneSendOtpRequest,
     db: DbSession,
     current_user: CurrentUser,

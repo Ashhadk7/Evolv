@@ -1,8 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Query, status
+from fastapi import APIRouter, BackgroundTasks, Query, Request, status
 
 from app.api.deps import CurrentFounder, CurrentUser, DbSession
+from app.core.limiter import limiter
 from app.schemas.applications import (
     BlueprintApplicationCountResponse,
     BlueprintApplicationCountsResponse,
@@ -61,7 +62,9 @@ def create_blueprint(
 
 
 @router.post("/generate", response_model=BlueprintResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def generate_blueprint(
+    request: Request,
     payload: BlueprintGenerateRequest,
     db: DbSession,
     current_user: CurrentFounder,
@@ -190,7 +193,9 @@ def unsave_blueprint(blueprint_id: UUID, db: DbSession, current_user: CurrentUse
 
 
 @router.post("/{blueprint_id}/chat", response_model=ChatResponse)
+@limiter.limit("20/minute")
 def blueprint_chat(
+    request: Request,
     blueprint_id: UUID,
     payload: ChatRequest,
     db: DbSession,
@@ -225,7 +230,9 @@ def list_blueprint_applications(
 
 
 @router.post("/{blueprint_id}/refine", response_model=BlueprintRefineResponse)
+@limiter.limit("5/minute")
 async def refine_blueprint(
+    request: Request,
     blueprint_id: UUID,
     payload: BlueprintRefineRequest,
     db: DbSession,

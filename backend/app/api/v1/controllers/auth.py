@@ -1,9 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.api.deps import AuthServiceDep, CurrentUser, DbSession, bearer_scheme
+from app.core.limiter import limiter
 from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -37,8 +38,9 @@ router = APIRouter()
     response_model_exclude_none=True,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("5/minute")
 def signup(
-    signup_data: SignupRequest, db: DbSession, auth_service: AuthServiceDep
+    request: Request, signup_data: SignupRequest, db: DbSession, auth_service: AuthServiceDep
 ) -> SignupStartResponse:
     try:
         return auth_service.start_signup(db, signup_data)
@@ -87,8 +89,9 @@ def verify_signup_email(
     response_model_exclude_none=True,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("5/minute")
 def resend_signup_otp(
-    resend_data: SignupResendOtpRequest, db: DbSession, auth_service: AuthServiceDep
+    request: Request, resend_data: SignupResendOtpRequest, db: DbSession, auth_service: AuthServiceDep
 ) -> SignupStartResponse:
     try:
         return auth_service.resend_signup_otp(db, resend_data)
@@ -104,8 +107,9 @@ def resend_signup_otp(
 
 
 @router.post("/signin", response_model=SigninResponse)
+@limiter.limit("10/minute")
 def signin(
-    signin_data: SigninRequest, db: DbSession, auth_service: AuthServiceDep
+    request: Request, signin_data: SigninRequest, db: DbSession, auth_service: AuthServiceDep
 ) -> SigninResponse:
     try:
         return auth_service.signin(db, signin_data)
@@ -135,8 +139,9 @@ def signin(
     response_model=ForgotPasswordResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("5/minute")
 def forgot_password(
-    forgot_request: ForgotPasswordRequest, db: DbSession, auth_service: AuthServiceDep
+    request: Request, forgot_request: ForgotPasswordRequest, db: DbSession, auth_service: AuthServiceDep
 ) -> ForgotPasswordResponse:
     try:
         return auth_service.forgot_password(db, forgot_request)
