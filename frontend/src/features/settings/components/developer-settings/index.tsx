@@ -81,14 +81,6 @@ const Settings = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showMobileMenu, setShowMobileMenu] = useState(true);
-  const [payData, setPayData] = useState<PaymentData>({
-    method: "bank",
-    accountName: "",
-    accountNumber: "",
-    bankName: "",
-    currency: "USD",
-    paypal: "",
-  });
   const photoInputRef = useRef<HTMLInputElement>(null);
   const activeTabExists = TABS.some((tab) => tab.id === activeTab);
   const visibleTab: SettingsTab = activeTabExists ? activeTab : "profile";
