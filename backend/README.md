@@ -65,6 +65,12 @@ TWILIO_TIMEOUT_SECONDS=20
 
 EMAIL_FROM_EMAIL=evolvv.aii@gmail.com
 EMAIL_FROM_NAME="Evolv AI"
+EMAIL_PROVIDER=brevo
+BREVO_API_KEY=YOUR_BREVO_API_KEY
+BREVO_API_BASE_URL=https://api.brevo.com/v3
+BREVO_TIMEOUT_SECONDS=20
+
+# Optional local SMTP fallback. Use EMAIL_PROVIDER=smtp to enable this path.
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USERNAME=evolvv.aii@gmail.com
@@ -91,9 +97,12 @@ In Supabase, make sure Email Auth is enabled. Do not add any Third-Party Auth
 provider for this email OTP flow.
 
 The backend generates its own 6-digit verification code, stores only a hash on
-the `users` row, and sends the code by SMTP. For Gmail testing, `SMTP_PASSWORD`
-must be a Google App Password, not the normal Gmail password. If Google shows the
-app password with spaces, paste it without spaces.
+the `users` row, and sends the code through the configured email provider. Use
+`EMAIL_PROVIDER=brevo` on Render free services because Render blocks outbound
+SMTP ports on free web services. For local Gmail SMTP testing, use
+`EMAIL_PROVIDER=smtp`; `SMTP_PASSWORD` must be a Google App Password, not the
+normal Gmail password. If Google shows the app password with spaces, paste it
+without spaces.
 
 Signup creates a `public.users` row with `email_verified=false`. The backend
 allows signin and protected routes only after the email OTP is verified and the

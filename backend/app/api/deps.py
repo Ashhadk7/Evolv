@@ -11,7 +11,7 @@ from app.models.user import User, UserRole
 from app.repositories import users as users_repository
 from app.services.account_service import AccountService
 from app.services.auth_service import AuthService
-from app.services.email_sender import SmtpEmailSender
+from app.services.email_sender import EmailSender, email_sender_from_settings
 from app.services.exceptions import (
     AuthProviderConfigurationError,
     AuthServiceUnavailableError,
@@ -29,12 +29,12 @@ def get_supabase_auth_client() -> SupabaseAuthClient:
 
 
 @lru_cache
-def get_email_sender() -> SmtpEmailSender:
-    return SmtpEmailSender(settings)
+def get_email_sender() -> EmailSender:
+    return email_sender_from_settings(settings)
 
 
 SupabaseAuthClientDep = Annotated[SupabaseAuthClient, Depends(get_supabase_auth_client)]
-EmailSenderDep = Annotated[SmtpEmailSender, Depends(get_email_sender)]
+EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
 
 
 def get_auth_service(

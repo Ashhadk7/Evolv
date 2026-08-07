@@ -27,12 +27,16 @@ class Settings(BaseSettings):
     SIGNUP_OTP_EXPIRE_MINUTES: int = 5
     SIGNUP_OTP_RETURN_DEBUG: bool = False
     PASSWORD_RESET_OTP_COOLDOWN_SECONDS: int = Field(default=30, ge=0, le=3600)
+    EMAIL_PROVIDER: Literal["smtp", "brevo"] = "smtp"
     EMAIL_FROM_EMAIL: str = Field(min_length=1)
     EMAIL_FROM_NAME: str = "Evolv AI"
-    SMTP_HOST: str = Field(min_length=1)
+    BREVO_API_KEY: SecretStr | None = None
+    BREVO_API_BASE_URL: str = "https://api.brevo.com/v3"
+    BREVO_TIMEOUT_SECONDS: int = Field(default=20, ge=1, le=120)
+    SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 465
-    SMTP_USERNAME: str = Field(min_length=1)
-    SMTP_PASSWORD: SecretStr
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: SecretStr | None = None
     SMTP_USE_SSL: bool = True
     SMTP_USE_STARTTLS: bool = False
     SMTP_TIMEOUT_SECONDS: int = 20
@@ -91,7 +95,7 @@ class Settings(BaseSettings):
         "SUPABASE_URL",
         "EMAIL_FROM_EMAIL",
         "SMTP_HOST",
-        "SMTP_USERNAME",
+        "BREVO_API_BASE_URL",
         "SECRET_KEY",
         "TWILIO_ACCOUNT_SID",
         "TWILIO_VERIFY_SERVICE_SID",
@@ -114,7 +118,6 @@ class Settings(BaseSettings):
     @field_validator(
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_ANON_KEY",
-        "SMTP_PASSWORD",
         "TWILIO_AUTH_TOKEN",
         "GOOGLE_CALENDAR_CLIENT_SECRET",
         "GROQ_API_KEY",

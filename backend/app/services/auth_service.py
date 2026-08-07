@@ -26,7 +26,7 @@ from app.schemas.auth import (
     SignupStartResponse,
     SignupVerifyEmailRequest,
 )
-from app.services.email_sender import SmtpEmailSender
+from app.services.email_sender import EmailSender
 from app.services.exceptions import (
     AuthUserMismatchError,
     DuplicateEmailError,
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    def __init__(self, auth_client: SupabaseAuthClient, email_sender: SmtpEmailSender) -> None:
+    def __init__(self, auth_client: SupabaseAuthClient, email_sender: EmailSender) -> None:
         self._auth_client = auth_client
         self._email_sender = email_sender
 
