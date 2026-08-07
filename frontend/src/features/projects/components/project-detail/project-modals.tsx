@@ -69,7 +69,6 @@ export function ProjectModals({
             developerName={payModalTarget.member.developer_name}
             amountAgreed={payModalTarget.member.amount_agreed_cents / 100}
             amountPaid={payModalTarget.member.amount_paid_cents / 100}
-            feePct={content.costModel.platformFeePct}
             stripeConnected={payModalTarget.member.developer_stripe_ready}
             onSend={(amount) => {
               sendPayment(payModalTarget.member, payModalTarget.phaseIdx, amount);

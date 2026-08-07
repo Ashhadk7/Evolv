@@ -78,7 +78,7 @@ export function PaymentTab({
     if (typeof window === "undefined" || connecting) return;
     setConnecting(true);
     try {
-      const settingsUrl = `${window.location.origin}/developer/settings`;
+      const settingsUrl = `${window.location.origin}/developer/settings?tab=payment`;
       const accountLink = await createStripeConnectAccountLink({
         refreshUrl: settingsUrl,
         returnUrl: settingsUrl,

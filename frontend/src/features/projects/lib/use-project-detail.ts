@@ -376,11 +376,14 @@ export function useProjectDetail({
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? `${member.id}-${crypto.randomUUID()}`
           : `${member.id}-${Date.now()}`;
+      const projectReturnUrl = `${origin}/founder/projects?project=${encodeURIComponent(
+        projectId ?? bp.id
+      )}`;
       const session = await createProjectPaymentCheckoutSession(member.id, {
         amount_cents: Math.round(amount * 100),
         idempotency_key: paymentKey,
-        success_url: `${origin}/founder/projects?stripe_session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/founder/projects?stripe_payment=cancelled&stripe_payment_key=${encodeURIComponent(paymentKey)}`,
+        success_url: `${projectReturnUrl}&stripe_session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${projectReturnUrl}&stripe_payment=cancelled&stripe_payment_key=${encodeURIComponent(paymentKey)}`,
       });
       updatePhase(phaseIdx, (ps) => ({
         ...ps,

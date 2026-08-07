@@ -722,9 +722,9 @@ function legacyPhases(bp: Blueprint): Omit<Phase, "primarySkill" | "weeklyRate" 
 function buildCostModel(bp: Blueprint, phases: Phase[]): CostModel {
   const buildWeeks = phases.reduce((s, p) => s + p.weeks, 0) || 1;
   const devTotal = phases.reduce((s, p) => s + p.cost, 0);
-  const platformFeePct = 0.08;
-  const platformFee = Math.round(devTotal * platformFeePct);
-  const devTakeHome = devTotal - platformFee;
+  const platformFeePct = 0;
+  const platformFee = 0;
+  const devTakeHome = devTotal;
   const buildMonths = buildWeeks / 4.33;
   const infraDuringBuild = Math.round(parseMonthly(bp.cost.hosting) * buildMonths);
   const contingency = Math.round(devTotal * 0.1);
@@ -743,7 +743,6 @@ function buildCostModel(bp: Blueprint, phases: Phase[]): CostModel {
     monthlyRunCost: bp.cost.hosting,
     composition: [
       { label: "Developer payouts", value: devTakeHome, tone: PALETTE.mint },
-      { label: "Evolv platform fee", value: platformFee, tone: PALETTE.teal },
       { label: "Infrastructure & tooling", value: infraDuringBuild, tone: PALETTE.mintSoft },
       { label: "Contingency (10%)", value: contingency, tone: PALETTE.faint },
     ],

@@ -69,7 +69,6 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: SecretStr | None = None
     STRIPE_WEBHOOK_SECRET: SecretStr | None = None
     STRIPE_API_BASE_URL: str = "https://api.stripe.com/v1"
-    STRIPE_PLATFORM_FEE_BPS: int = Field(default=800, ge=0, le=10000)
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

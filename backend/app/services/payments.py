@@ -111,11 +111,6 @@ def create_checkout_session(
             raise ProjectMemberConflictError("That payment session can no longer be opened.")
         return CheckoutSessionResult(session_id=existing.provider_ref, url=url)
 
-    platform_fee_cents = min(
-        amount_cents,
-        round(amount_cents * settings.STRIPE_PLATFORM_FEE_BPS / 10000),
-    )
-
     try:
         payment = projects_repository.create_payment(
             db,
@@ -149,7 +144,6 @@ def create_checkout_session(
                 ),
                 "line_items[0][price_data][unit_amount]": str(amount_cents),
                 "line_items[0][quantity]": "1",
-                "payment_intent_data[application_fee_amount]": str(platform_fee_cents),
                 "payment_intent_data[transfer_data][destination]": developer_account_id,
                 "payment_intent_data[metadata][evolv_payment_id]": str(payment.id),
                 "payment_intent_data[metadata][project_id]": str(project_id),

@@ -11,7 +11,6 @@ export function PaymentModal({
   developerName,
   amountAgreed,
   amountPaid,
-  feePct,
   stripeConnected,
   onSend,
   onClose,
@@ -19,15 +18,12 @@ export function PaymentModal({
   developerName: string;
   amountAgreed: number;
   amountPaid: number;
-  feePct: number;
   stripeConnected: boolean;
   onSend: (amount: number) => void;
   onClose: () => void;
 }) {
   const due = Math.max(0, amountAgreed - amountPaid);
   const [amount, setAmount] = useState(due);
-  const fee = Math.round(amount * feePct);
-  const takeHome = amount - fee;
   const statusLabel =
     amountPaid <= 0
       ? "Not paid yet"
@@ -102,16 +98,10 @@ export function PaymentModal({
             <span className="text-bp-muted">Charged through Stripe Checkout</span>
             <span className="text-bp-ink font-bold">{fmtMoney(amount)}</span>
           </div>
-          <div className="flex justify-between text-[12.5px]">
-            <span className="text-bp-muted">
-              Evolv platform fee ({Math.round(feePct * 100)}%)
-            </span>
-            <span className="text-bp-amber font-bold">-{fmtMoney(fee)}</span>
-          </div>
           <div className="bg-bp-border h-[1px] my-0.5" />
           <div className="flex justify-between text-[13px]">
             <span className="text-bp-ink font-bold">{developerName} receives</span>
-            <span className="text-bp-success font-extrabold">{fmtMoney(takeHome)}</span>
+            <span className="text-bp-success font-extrabold">{fmtMoney(amount)}</span>
           </div>
         </div>
       ) : (

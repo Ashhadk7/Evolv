@@ -40,7 +40,7 @@ import {
   updateNotificationPreferences,
 } from "@/features/notifications/notifications-api";
 import { ArrowLeft, User, CreditCard, LockKey, Bell, WarningCircle } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -79,6 +79,7 @@ const Settings = () => {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mobileDetailActive, setMobileDetailActive] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const activeTabExists = TABS.some((tab) => tab.id === activeTab);
@@ -92,6 +93,26 @@ const Settings = () => {
   useEffect(() => {
     if (!activeTabExists) setActiveTab("profile");
   }, [activeTabExists, setActiveTab]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (!requestedTab) return;
+
+    const nextTab = TABS.find((tab) => tab.id === requestedTab)?.id;
+    if (!nextTab) return;
+
+    queueMicrotask(() => {
+      setActiveTab(nextTab);
+      setMobileDetailActive(true);
+    });
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("tab");
+    router.replace(
+      params.toString() ? `/developer/settings?${params.toString()}` : "/developer/settings",
+      { scroll: false }
+    );
+  }, [router, searchParams, setActiveTab]);
 
   useEffect(() => {
     queueMicrotask(() => setProfile(hydrateDeveloperProfile(dashboardProfile)));

@@ -147,8 +147,7 @@ export function FinancialsSection({
               <Lock size={14} weight="duotone" className="text-bp-teal mt-px shrink-0" />
               <span className="text-bp-muted text-[11.5px] leading-[1.5]">
                 Each milestone is funded into Evolv escrow and released to the developer on your
-                approval, net of Evolv&apos;s {Math.round(cost.platformFeePct * 100)}% platform fee
-                — via Stripe Connect.
+                approval via Stripe Connect.
               </span>
             </div>
           </div>
