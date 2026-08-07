@@ -421,7 +421,7 @@ export function DashboardSidebar({
 
             <div className="pt-4 border-t border-[rgba(137,215,183,0.1)]">
               <button
-                onClick={openProfile}
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[#e8f4ef] hover:bg-[rgba(255,255,255,0.05)] text-left"
               >
                 {renderAvatar(32, 12)}
@@ -429,14 +429,44 @@ export function DashboardSidebar({
                   <p className="font-semibold text-sm truncate">{displayName}</p>
                   <p className="text-xs text-[rgba(232,244,239,0.42)]">{roleLabel}</p>
                 </div>
+                <motion.span
+                  animate={{ rotate: profileMenuOpen ? 180 : 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  style={{ display: "flex", flexShrink: 0 }}
+                >
+                  <Icon icon="solar:alt-arrow-down-bold" width={14} className="text-[rgba(232,244,239,0.42)]" />
+                </motion.span>
               </button>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] text-left font-medium text-sm"
-              >
-                <Icon icon="solar:logout-2-bold-duotone" width={18} height={18} />
-                <span>Log out</span>
-              </button>
+
+              <AnimatePresence>
+                {profileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <button
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        onNavigate("settings");
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-[#e8f4ef] hover:bg-[rgba(255,255,255,0.05)] text-left font-medium text-sm"
+                    >
+                      <Icon icon="solar:settings-minimalistic-bold-duotone" width={18} height={18} className="text-[#89d7b7]" />
+                      <span>Settings</span>
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] text-left font-medium text-sm"
+                    >
+                      <Icon icon="solar:logout-2-bold-duotone" width={18} height={18} />
+                      <span>Log out</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}

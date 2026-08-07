@@ -62,14 +62,14 @@ export function ProfilePreview({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="flex flex-col gap-6 pb-2"
+      className="flex min-w-0 flex-col gap-6 pb-2"
     >
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ boxShadow: "0 20px 48px rgba(15,28,24,0.10)" }}
         transition={{ duration: 0.24, ease: "easeOut" }}
-        className="overflow-hidden bg-white"
+        className="min-w-0 overflow-hidden bg-white"
         style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}
       >
         <div
@@ -97,13 +97,13 @@ export function ProfilePreview({
           </div>
         </div>
 
-        <div className="relative px-9 pb-10">
-          <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div className="pl-6" style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+        <div className="relative px-4 sm:px-9 pb-8 sm:pb-10">
+          <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="pl-2 sm:pl-6 pt-2 sm:pt-0 mb-2 sm:mb-4 sm:mt-4">
               <ProfileAvatar avatarUrl={local.avatarUrl} fullName={fullName} initials={initials} />
             </div>
 
-            <div className="flex flex-wrap gap-2 sm:pb-2">
+            <div className="flex w-full sm:w-auto gap-2 sm:pb-2 sm:mr-4 px-2 sm:px-0">
               {normalizedLinkedin && (
                 <motion.a
                   href={normalizedLinkedin}
@@ -111,12 +111,10 @@ export function ProfilePreview({
                   rel="noreferrer"
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 rounded-lg border bg-white px-3.5 py-2 text-[12px] font-bold"
+                  className="flex flex-1 sm:flex-none justify-center items-center gap-2 rounded-lg border bg-white px-3.5 py-2 text-[12px] font-bold"
                   style={{
                     borderColor: BORDER,
                     color: MID,
-                    paddingLeft: "1rem",
-                    paddingRight: "1rem",
                   }}
                 >
                   <LinkedinLogo size={15} weight="bold" />
@@ -128,8 +126,7 @@ export function ProfilePreview({
                 onClick={onEdit}
                 whileHover={{ y: -2, boxShadow: "0 8px 18px rgba(26,49,44,0.18)" }}
                 whileTap={{ scale: 0.98 }}
-                className="bp-gradient-btn flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold"
-                style={{ marginRight: "1rem" }}
+                className="bp-gradient-btn flex flex-1 sm:flex-none justify-center items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold"
               >
                 <PencilSimple size={15} weight="bold" />
                 Edit Profile
@@ -137,10 +134,10 @@ export function ProfilePreview({
             </div>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-2 sm:mt-5 px-2 sm:px-0 sm:pl-6">
             <div className="flex flex-wrap items-center gap-2">
               <h3
-                className="pl-6 text-[1.55rem] leading-tight font-extrabold"
+                className="text-[1.55rem] leading-tight font-extrabold"
                 style={{ color: TEXT_BODY }}
               >
                 {fullName}
@@ -154,25 +151,25 @@ export function ProfilePreview({
               </span>
             </div>
             <p
-              className="mt-2 pl-6 text-[12px] font-bold tracking-widest uppercase"
+              className="mt-2 text-[12px] font-bold tracking-widest uppercase"
               style={{ color: TEXT_MUTED }}
             >
               Professional Role
             </p>
-            <p className="mt-1 pl-6 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
+            <p className="mt-1 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
               Founder
             </p>
             <p
-              className="mt-2 max-w-2xl pl-6 text-[14px] leading-6 font-semibold"
+              className="mt-2 max-w-2xl text-[14px] leading-6 font-semibold"
               style={{ color: "#334d42" }}
             >
               {headline}
             </p>
             <div
-              className="mt-5 mb-4 flex flex-wrap items-center gap-x-6 gap-y-3 py-1.5 text-[12px]"
+              className="mt-5 mb-4 flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-3 py-1.5 text-[12px]"
               style={{ color: TEXT_MUTED }}
             >
-              <span className="flex items-center gap-1.5 pl-6 leading-5">
+              <span className="flex items-center gap-1.5 leading-5">
                 <Briefcase size={13} weight="bold" />
                 {founderFocus}
               </span>
@@ -189,7 +186,7 @@ export function ProfilePreview({
             </div>
           </div>
 
-          <div className="mt-8 mb-6 grid gap-2 pl-6 sm:grid-cols-3">
+          <div className="mt-6 sm:mt-8 mb-4 sm:mb-6 grid gap-3 sm:gap-2 px-2 sm:px-0 sm:pl-6 sm:grid-cols-3">
             {[
               {
                 label: "Profile strength",
@@ -216,7 +213,6 @@ export function ProfilePreview({
                 className="bg-[#f8faf8] px-5 py-5"
                 style={{
                   border: "1.5px solid #d8e7df",
-                  marginRight: "1.5rem",
                   borderRadius: 8,
                   boxShadow: "0 8px 20px rgba(15,28,24,0.04)",
                 }}
@@ -242,12 +238,12 @@ export function ProfilePreview({
         </div>
       </motion.section>
 
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.85fr]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[1.35fr_0.85fr]">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.06 }}
-          className="bg-white p-7"
+          className="min-w-0 bg-white p-5 sm:p-7"
           style={{ border: "1.5px solid #d4e4db", borderRadius: 8, marginBottom: 30 }}
         >
           <div className="mb-2 flex items-center justify-between gap-5">
@@ -370,10 +366,10 @@ export function ProfilePreview({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-col gap-5"
+          className="flex min-w-0 flex-col gap-5"
         >
           <section
-            className="bg-white p-6"
+            className="bg-white p-5 sm:p-6"
             style={{ border: "1.5px solid #d4e4db", borderRadius: 8 }}
           >
             <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
@@ -407,7 +403,7 @@ export function ProfilePreview({
           </section>
 
           <section
-            className="bg-white p-6"
+            className="bg-white p-5 sm:p-6"
             style={{ border: "1.5px solid #d4e4db", borderRadius: 8, marginBottom: 30 }}
           >
             <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>

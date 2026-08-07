@@ -56,7 +56,7 @@ export function ProfileEditor({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="flex flex-col gap-4 pb-10"
+      className="flex min-w-0 flex-col gap-4 pb-10"
     >
       <section className="bg-white p-5" style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -118,7 +118,7 @@ export function ProfileEditor({
         </div>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <section
           className="bg-white p-5"
           style={{ border: `1px solid ${BORDER}`, borderRadius: 8 }}
@@ -126,7 +126,7 @@ export function ProfileEditor({
           <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
             Public Identity
           </h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field
               label="First Name"
               value={local.firstName}
@@ -208,7 +208,7 @@ export function ProfileEditor({
           <h4 className="mb-4 text-[13px] font-extrabold" style={{ color: TEXT_BODY }}>
             Private Details
           </h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field
               label="Date of Birth"
               type="date"

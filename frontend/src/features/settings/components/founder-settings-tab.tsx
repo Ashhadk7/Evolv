@@ -31,15 +31,18 @@ interface Props {
 
 export function SettingsTab({ profile, onProfileSave, section, onSectionChange }: Props) {
   const [localSection, setLocalSection] = useState<SettingsSection>("profile");
-  const [mobileDetailActive, setMobileDetailActive] = useState<boolean>(Boolean(section));
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  // Always land on the menu first on mobile, same as the developer settings
+  // page — `section` is always defined here (the store defaults it to
+  // "profile"), so gating on `!section` skipped the menu on every visit.
+  const [showMobileMenu, setShowMobileMenu] = useState(true);
   const activeSection = section ?? localSection;
   const setSection = onSectionChange ?? setLocalSection;
   const router = useRouter();
 
-  const handleSelectSection = (s: SettingsSection) => {
-    setSection(s);
-    setMobileDetailActive(true);
+  const handleSectionChange = (id: SettingsSection) => {
+    setSection(id);
+    setShowMobileMenu(false);
   };
 
   const NAV: { id: SettingsSection; label: string; Icon: ElementType }[] = [
@@ -53,144 +56,208 @@ export function SettingsTab({ profile, onProfileSave, section, onSectionChange }
     setDeleteAccountOpen(true);
   };
 
-  const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Founder User";
-  const roleSubtitle = `Founder · ${profile.domains?.[0] || "HealthTech"}`;
+  const displayName = profile.name || profile.firstName ? `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() : profile.email || "Founder";
+  const roleLabel = profile.role || "Founder - Web3";
 
   return (
-    <div className="h-full overflow-y-auto md:overflow-hidden bg-[#f5f6f4]">
-      {/* ─ Mobile Menu View (Image 1) ─ */}
-      <div className={`md:hidden p-4 sm:p-6 flex flex-col gap-5 min-h-full ${mobileDetailActive ? "hidden" : "flex"}`}>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/founder/dashboard")}
-            className="w-9 h-9 rounded-full bg-white border border-[#eaeeed] flex items-center justify-center text-[#1a2e26] hover:bg-[#eaf5f0]"
-          >
-            <ArrowLeft size={16} weight="bold" />
-          </button>
-          <h1 className="text-xl font-extrabold text-[#1a2e26] tracking-tight">Settings</h1>
+    <div className="flex h-full overflow-hidden" style={{ background: "#f5f6f4" }}>
+      {/* ─ Left settings nav (Desktop) ─ */}
+      <div
+        className="hidden md:flex shrink-0 flex-col w-[220px]"
+        style={{
+          background: "#fff",
+          borderRight: `1px solid ${BORDER}`,
+          paddingTop: 20,
+          paddingBottom: 24,
+          paddingLeft: 24,
+          paddingRight: 24,
+        }}
+      >
+        {/* Brand */}
+        <div style={{ marginBottom: "1.25rem" }}>
+          <Logo dark={false} compact />
         </div>
 
-        {/* Profile Card */}
+        {/* Back Button */}
         <button
-          type="button"
-          onClick={() => handleSelectSection("profile")}
-          className="w-full text-left bg-white border border-[#eaeeed] rounded-2xl p-4 flex items-center justify-between shadow-sm hover:border-[#89d7b7] transition-all"
+          onClick={() => router.push("/founder/dashboard")}
+          className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] font-semibold text-[#428475] transition-all hover:bg-[#eaf5f0]"
+          style={{ border: "none", background: "transparent", marginBottom: "1rem" }}
         >
-          <div className="flex items-center gap-3.5">
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt={fullName} className="w-12 h-12 rounded-full object-cover border border-[#eaeeed]" />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-[#1a312c] text-[#89d7b7] flex items-center justify-center font-bold text-base">
-                {fullName[0]?.toUpperCase() || "F"}
-              </div>
-            )}
-            <div>
-              <div className="font-bold text-[#1a2e26] text-[15px]">{fullName}</div>
-              <div className="text-xs text-[#8aab9a] font-medium">{roleSubtitle}</div>
-            </div>
-          </div>
-          <span className="text-[#8aab9a] text-lg">›</span>
+          <ArrowLeft size={13} weight="bold" /> Back to Dashboard
         </button>
 
-        {/* Account Section */}
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#8aab9a] mb-2 px-1">
-            Account
-          </div>
-          <div className="bg-white border border-[#eaeeed] rounded-2xl overflow-hidden shadow-sm divide-y divide-[#f2f6f4]">
-            <button
-              type="button"
-              onClick={() => handleSelectSection("profile")}
-              className="w-full p-4 flex items-center justify-between hover:bg-[#f9fbf0] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#eaf5f0] text-[#2e7d5c] flex items-center justify-center">
-                  <User size={18} weight="bold" />
-                </div>
-                <span className="font-bold text-[14px] text-[#1a2e26]">Edit profile</span>
-              </div>
-              <span className="text-[#8aab9a] text-lg">›</span>
-            </button>
+        <div style={{ height: 1, background: "#e6e0d7", marginBottom: "1.25rem" }} />
 
-            <button
-              type="button"
-              onClick={() => handleSelectSection("payment")}
-              className="w-full p-4 flex items-center justify-between hover:bg-[#f9fbf0] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#eaf5f0] text-[#2e7d5c] flex items-center justify-center">
-                  <CreditCard size={18} weight="bold" />
-                </div>
-                <span className="font-bold text-[14px] text-[#1a2e26]">Payment & billing</span>
-              </div>
-              <span className="text-[#8aab9a] text-lg">›</span>
-            </button>
+        <p
+          className="mb-4 text-[16px] font-black tracking-tight"
+          style={{ color: TEXT_BODY, letterSpacing: "-0.02em" }}
+        >
+          Settings
+        </p>
 
-            <button
-              type="button"
-              onClick={() => handleSelectSection("security")}
-              className="w-full p-4 flex items-center justify-between hover:bg-[#f9fbf0] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#eaf5f0] text-[#2e7d5c] flex items-center justify-center">
-                  <LockKey size={18} weight="bold" />
-                </div>
-                <span className="font-bold text-[14px] text-[#1a2e26]">Security & password</span>
-              </div>
-              <span className="text-[#8aab9a] text-lg">›</span>
-            </button>
-          </div>
+        <div className="flex flex-1 flex-col gap-0.5">
+          {NAV.map(({ id, label, Icon }) => {
+            const active = activeSection === id;
+            return (
+              <motion.button
+                key={id}
+                onClick={() => handleSectionChange(id)}
+                whileHover={active ? {} : { backgroundColor: "#f5f7f5", color: INK }}
+                animate={{
+                  backgroundColor: active ? "#f0f5f2" : CLEAR,
+                  color: active ? INK : TEXT_MUTED,
+                }}
+                transition={{ duration: 0.13 }}
+                className="relative flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-left"
+              >
+                {active && (
+                  <motion.span
+                    layoutId="settings-indicator"
+                    className="absolute left-0 rounded-r-full"
+                    style={{ width: 3, height: "55%", background: DARK, top: "22.5%" }}
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                )}
+                <Icon size={14} weight={active ? "fill" : "regular"} />
+                <span className="text-[13px] font-medium">{label}</span>
+              </motion.button>
+            );
+          })}
         </div>
 
-        {/* Preferences Section */}
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#8aab9a] mb-2 px-1">
-            Preferences
+        <div className="mt-auto border-t border-[#e6e0d7] pt-6 max-[980px]:hidden">
+          <div className="mb-[0.95rem] flex items-center gap-[0.45rem] text-[0.72rem] font-extrabold tracking-[0.08em] text-[#ff4d4d] uppercase">
+            <WarningCircle size={13} weight="fill" />
+            Danger Zone
           </div>
-          <div className="bg-white border border-[#eaeeed] rounded-2xl overflow-hidden shadow-sm divide-y divide-[#f2f6f4]">
-            <button
-              type="button"
-              onClick={() => handleSelectSection("notifications")}
-              className="w-full p-4 flex items-center justify-between hover:bg-[#f9fbf0] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#eef2fc] text-[#4a6baf] flex items-center justify-center">
-                  <Bell size={18} weight="bold" />
-                </div>
-                <span className="font-bold text-[14px] text-[#1a2e26]">Notifications</span>
-              </div>
-              <span className="text-[#8aab9a] text-lg">›</span>
-            </button>
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            className="min-h-[48px] w-full cursor-pointer rounded-lg border border-[rgba(255,107,107,0.38)] bg-[rgba(255,107,107,0.045)] px-[1.1rem] py-[0.7rem] text-left text-[0.86rem] font-medium text-[#ff3333] transition-all duration-150 hover:border-[#ff6b6b] hover:bg-[rgba(255,107,107,0.1)]"
+            style={{ fontFamily: '"Inter", sans-serif' }}
+          >
+            Delete Account
+          </button>
+        </div>
+      </div>
 
-            <button
-              type="button"
-              onClick={handleDeleteAccount}
-              className="w-full p-4 flex items-center justify-between hover:bg-[#fdf0f0] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#fdf0f0] text-[#b03030] flex items-center justify-center">
-                  <WarningCircle size={18} weight="bold" />
+      {/* ─ Mobile Settings Menu (Only visible on small screens when showMobileMenu is true) ─ */}
+      <div className={`md:hidden flex-col flex-1 overflow-y-auto ${showMobileMenu ? 'flex' : 'hidden'}`}>
+        {/* Header */}
+        <div className="flex items-center gap-4 px-5 pt-6 pb-2">
+          <button
+            onClick={() => router.push("/founder/dashboard")}
+            className="flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm"
+          >
+            <ArrowLeft size={14} weight="bold" className="text-[#0f1c18]" />
+          </button>
+          <h1 className="text-[20px] font-extrabold text-[#0f1c18]">Settings</h1>
+        </div>
+
+        <div className="px-5 pb-8 mt-4 space-y-6">
+          {/* Profile Card */}
+          <button
+            onClick={() => handleSectionChange("profile")}
+            className="w-full bg-white rounded-[16px] p-4 flex items-center gap-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 text-left"
+          >
+            <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
+              {profile.avatarUrl || profile.photo ? (
+                <img src={profile.avatarUrl || profile.photo} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4cb896] to-[#89d7b7] text-[#0f1c18] font-bold text-lg">
+                  {displayName.charAt(0).toUpperCase()}
                 </div>
-                <span className="font-bold text-[14px] text-[#b03030]">Delete Account</span>
-              </div>
-              <span className="text-[#b03030]/60 text-lg">›</span>
-            </button>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-[15px] text-[#0f1c18] truncate">{displayName}</p>
+              <p className="text-[13px] text-[#8ba69c] font-medium">{roleLabel}</p>
+            </div>
+            <div className="text-gray-400 shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+          </button>
+
+          {/* Account Section */}
+          <div>
+            <p className="text-[11px] font-bold text-[#8ba69c] uppercase tracking-wider mb-2.5 px-1">Account</p>
+            <div className="bg-white rounded-[16px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 overflow-hidden flex flex-col">
+              <button onClick={() => handleSectionChange("profile")} className="w-full flex items-center gap-4 p-4 text-left border-b border-gray-50 active:bg-gray-50">
+                <div className="w-9 h-9 rounded-full bg-[#f2f8f5] text-[#428475] flex items-center justify-center shrink-0">
+                  <User size={16} weight="fill" />
+                </div>
+                <span className="flex-1 font-bold text-[14px] text-[#0f1c18]">Edit profile</span>
+                <div className="text-gray-300 shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+              </button>
+              
+              <button onClick={() => handleSectionChange("payment")} className="w-full flex items-center gap-4 p-4 text-left border-b border-gray-50 active:bg-gray-50">
+                <div className="w-9 h-9 rounded-full bg-[#f2f8f5] text-[#428475] flex items-center justify-center shrink-0">
+                  <CreditCard size={16} weight="fill" />
+                </div>
+                <span className="flex-1 font-bold text-[14px] text-[#0f1c18]">Payment & billing</span>
+                <div className="text-gray-300 shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+              </button>
+
+              <button onClick={() => handleSectionChange("security")} className="w-full flex items-center gap-4 p-4 text-left active:bg-gray-50">
+                <div className="w-9 h-9 rounded-full bg-[#f2f8f5] text-[#428475] flex items-center justify-center shrink-0">
+                  <LockKey size={16} weight="fill" />
+                </div>
+                <span className="flex-1 font-bold text-[14px] text-[#0f1c18]">Security & password</span>
+                <div className="text-gray-300 shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+              </button>
+            </div>
+          </div>
+
+          {/* Preferences Section */}
+          <div>
+            <p className="text-[11px] font-bold text-[#8ba69c] uppercase tracking-wider mb-2.5 px-1">Preferences</p>
+            <div className="bg-white rounded-[16px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 overflow-hidden flex flex-col">
+              <button onClick={() => handleSectionChange("notifications")} className="w-full flex items-center gap-4 p-4 text-left border-b border-gray-50 active:bg-gray-50">
+                <div className="w-9 h-9 rounded-full bg-[#eff4fe] text-[#4f7bf6] flex items-center justify-center shrink-0">
+                  <Bell size={16} weight="fill" />
+                </div>
+                <span className="flex-1 font-bold text-[14px] text-[#0f1c18]">Notifications</span>
+                <div className="text-gray-300 shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+              </button>
+
+              <button onClick={handleDeleteAccount} className="w-full flex items-center gap-4 p-4 text-left active:bg-gray-50">
+                <div className="w-9 h-9 rounded-full bg-[#fef2f2] text-[#ef4444] flex items-center justify-center shrink-0">
+                  <WarningCircle size={16} weight="fill" />
+                </div>
+                <span className="flex-1 font-bold text-[14px] text-[#ef4444]">Delete Account</span>
+                <div className="text-[#fca5a5] shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ─ Mobile Detail View ─ */}
-      <div className={`md:hidden p-4 sm:p-6 flex flex-col gap-4 min-h-full ${mobileDetailActive ? "flex" : "hidden"}`}>
-        <button
-          type="button"
-          onClick={() => setMobileDetailActive(false)}
-          className="self-start flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#eaeeed] text-xs font-bold text-[#428475]"
-        >
-          <ArrowLeft size={14} weight="bold" /> Settings
-        </button>
-        <div className="bg-white border border-[#eaeeed] rounded-2xl p-5 shadow-sm w-full">
-          <h2 className="text-xl font-extrabold text-[#1a2e26] mb-1">
+      {/* ─ Right content ─ */}
+      <div
+        className={`relative flex-1 overflow-y-auto overflow-x-hidden md:block ${showMobileMenu ? "hidden" : "block"}`}
+        style={{ paddingTop: 28, paddingBottom: 32 }}
+      >
+        {/* Mobile Header (Back to menu) */}
+        <div className="md:hidden px-5 mb-4">
+          <button
+            onClick={() => setShowMobileMenu(true)}
+            className="flex items-center gap-2 text-[13.5px] font-semibold text-[#428475]"
+          >
+            <ArrowLeft size={14} weight="bold" /> Settings
+          </button>
+        </div>
+
+        <div className="px-5 md:px-[40px] max-w-full" style={{ maxWidth: activeSection === "profile" ? 920 : 560 }}>
+          <h2
+            className="mb-2 font-extrabold"
+            style={{
+              fontSize: "1.65rem",
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              color: TEXT_BODY,
+            }}
+          >
             {activeSection === "profile"
               ? "Profile"
               : activeSection === "payment"
